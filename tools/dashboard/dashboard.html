@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DERO Live Dashboard</title>
+<!--
+  Self-contained: no external scripts, fonts or images. It polls the SAME ORIGIN's /metrics (Prometheus text) every
+  few seconds. Open it from the process that serves it:
+    derod       http://127.0.0.1:10102/dashboard   (RPC server; loopback by default)
+    dero-miner  http://127.0.0.1:<port>/dashboard  (only with --metrics-bind=127.0.0.1:<port>)
+  The page detects which process it is talking to from the metric names. Source: tools/dashboard/dashboard.html.
+-->
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f4f4f2; --surface-1: #fcfcfb; --border: #e2e1dc;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #77766f;
+  --series-1: #2a78d6;
+  --good: #008300; --warning: #b77a00; --critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #111110; --surface-1: #1a1a19; --border: #2e2e2c;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #96958c;
+    --series-1: #3987e5;
+    --good: #3fae3f; --warning: #d99a1e; --critical: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #111110; --surface-1: #1a1a19; --border: #2e2e2c;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #96958c;
+  --series-1: #3987e5;
+  --good: #3fae3f; --warning: #d99a1e; --critical: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--surface-0); color: var(--text-primary);
+  font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; padding: 16px; }
+h1 { font-size: 18px; margin: 0; }
+.sub { color: var(--text-secondary); font-size: 13px; }
+main { padding: 0 16px 24px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 18px 0 8px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+.tile .k { color: var(--text-secondary); font-size: 12px; }
+.tile .v { font-size: 22px; font-variant-numeric: tabular-nums; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .n { color: var(--text-muted); font-size: 11px; margin-top: 2px; min-height: 14px; }
+.tile svg { display: block; width: 100%; height: 28px; margin-top: 4px; }
+.tile svg path { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.badge { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-1); }
+.badge i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--text-muted); }
+.st-good i { background: var(--good); } .st-warn i { background: var(--warning); } .st-crit i { background: var(--critical); }
+#err { color: var(--critical); }
+details { margin-top: 18px; }
+pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; color: var(--text-secondary); background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 8px; max-height: 360px; overflow: auto; }
+button { font: inherit; padding: 2px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">DERO Live Dashboard</h1>
+  <span id="status" class="badge"><i></i><span>connecting</span></span>
+  <span class="sub" id="meta"></span>
+  <span class="sub" id="err" role="alert"></span>
+  <button id="pause" type="button">Pause</button>
+</header>
+<main><div id="main"></div><details id="raw"><summary id="rawsum">Raw /metrics</summary><pre id="rawpre"></pre></details></main>
+<script>
+"use strict";
+const POLL_MS = 3000, KEEP = 120; // 6 minutes of sparkline at 3 s
+let paused = false, prev = null, prevT = 0;
+const hist = {};
+
+function parse(text) { // Prometheus text exposition -> {name: [{labels, value}]}
+  const out = {};
+  for (const line of text.split("\n")) {
+    if (!line || line[0] === "#") continue;
+    const m = /^([a-zA-Z_:][a-zA-Z0-9_:.]*)(\{([^}]*)\})?\s+(\S+)/.exec(line);
+    if (!m) continue;
+    const labels = {};
+    if (m[3]) for (const kv of m[3].matchAll(/([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"((?:[^"\\]|\\.)*)"/g)) labels[kv[1]] = kv[2];
+    (out[m[1]] = out[m[1]] || []).push({ labels, value: parseFloat(m[4]) });
+  }
+  return out;
+}
+const sum = (d, n, f) => (d[n] || []).filter(s => !f || f(s.labels)).reduce((a, s) => a + s.value, 0);
+const has = (d, n) => !!d[n];
+const one = (d, n) => has(d, n) ? d[n][0].value : NaN;
+function rate(d, n, dt, f) { // per-second rate of a counter between two polls
+  if (!prev || !dt || !has(d, n)) return NaN;
+  const r = (sum(d, n, f) - sum(prev, n, f)) / dt;
+  return r >= 0 ? r : NaN; // counter reset (process restart)
+}
+function meanHist(d, n) { const c = one(d, n + "_count"); return c > 0 ? one(d, n + "_sum") / c : NaN; }
+function fmt(v, unit) {
+  if (v === undefined || Number.isNaN(v)) return "–";
+  if (unit === "s") return v >= 3600 ? (v / 3600).toFixed(1) + " h" : v >= 60 ? (v / 60).toFixed(1) + " min" : v >= 1 ? v.toFixed(1) + " s" : (v * 1000).toFixed(0) + " ms";
+  if (unit === "H/s") { const u = ["H/s", "KH/s", "MH/s", "GH/s", "TH/s"]; let i = 0; while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; } return v.toFixed(i ? 2 : 0) + " " + u[i]; }
+  if (unit === "%") return (v * 100).toFixed(1) + "%";
+  if (unit === "B") { const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; } return v.toFixed(i ? 1 : 0) + " " + u[i]; }
+  if (unit === "/s") return v.toFixed(v < 10 ? 2 : 0) + "/s";
+  return Math.abs(v) >= 1e6 ? v.toExponential(3) : (Number.isInteger(v) ? v.toLocaleString() : v.toFixed(2));
+}
+function spark(key, v) {
+  const h = hist[key] = hist[key] || [];
+  if (!Number.isNaN(v)) { h.push(v); if (h.length > KEEP) h.shift(); }
+  if (h.length < 2) return "";
+  const lo = Math.min(...h), hi = Math.max(...h), span = hi - lo || 1;
+  const pts = h.map((y, i) => (i / (KEEP - 1) * 100).toFixed(2) + "," + (26 - (y - lo) / span * 24).toFixed(2));
+  return '<svg viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="M' + pts.join(" L") + '"/></svg>';
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function tile(k, v, unit, note, sparkKey) {
+  return '<div class="tile"><div class="k">' + esc(k) + '</div><div class="v">' + esc(fmt(v, unit)) + '</div><div class="n">' + esc(note || "") + "</div>" + (sparkKey ? spark(sparkKey, v) : "") + "</div>";
+}
+const section = (t, tiles) => "<h2>" + esc(t) + '</h2><div class="grid">' + tiles.join("") + "</div>";
+
+function nodeView(d, dt) {
+  const st = (d.dero_sync_status || []).find(s => s.value === 1);
+  const status = st ? st.labels.status : "unknown";
+  const cls = status === "synced" ? "st-good" : status === "syncing" ? "st-warn" : "st-crit";
+  const paid = sum(d, "miniblock_ours_paid_total"), orph = sum(d, "miniblock_ours_orphaned_total");
+  const retrans = sum(d, "KCP_RetransSegs"), outSeg = sum(d, "KCP_OutSegs");
+  return { status, cls, html:
+    section("Chain & sync", [
+      tile("Height", one(d, "dero_chain_height"), "", "topo " + fmt(one(d, "dero_chain_topoheight"))),
+      tile("Tip age", one(d, "dero_tip_age_seconds"), "s", "wall clock − tip timestamp", "tip"),
+      tile("Lag vs peers", one(d, "dero_sync_lag_blocks"), "", "peer median " + fmt(one(d, "dero_peer_median_height"))),
+      tile("Block processing", meanHist(d, "block_processing_duration_histogram_seconds"), "s", "mean, since start"),
+      tile("Sync blocks fetched", rate(d, "p2p_sync_blocks_fetched_total", dt), "/s", "fallbacks " + fmt(sum(d, "p2p_sync_large_block_fallbacks_total"))),
+      tile("Mempool / regpool", one(d, "mempool_count"), "", "regpool " + fmt(one(d, "regpool_count"))),
+    ]) +
+    section("Peers & transport", [
+      tile("Peers out", one(d, "p2p_peer_outgoing_count"), "", "", "pout"),
+      tile("Peers in", one(d, "p2p_peer_incoming_count"), "", one(d, "p2p_peer_incoming_count") === 0 ? "0 inbound: is UDP 11011 forwarded?" : ""),
+      tile("Bans", sum(d, "p2p_bans_total"), "", "handshake failures " + fmt(sum(d, "p2p_handshake_failures_total"))),
+      tile("KCP retransmit ratio", outSeg ? retrans / outSeg : NaN, "%", "lost segs " + fmt(sum(d, "KCP_LostSegs"))),
+      tile("KCP sent", rate(d, "KCP_OutBytes", dt), "B", "bytes/s, received " + fmt(rate(d, "KCP_InBytes", dt), "B") + "/s", "kcpo"),
+    ]) +
+    section("Mining (getwork) & own miniblocks", [
+      tile("Getwork miners", one(d, "dero_getwork_miners"), ""),
+      tile("Jobs sent", rate(d, "getwork_jobs_sent_total", dt), "/s", "per connected miner", "jobs"),
+      tile("Own submitted", sum(d, "miniblock_ours_submitted_total"), "", "since start"),
+      tile("Own paid fraction", paid + orph ? paid / (paid + orph) : NaN, "%", "paid " + paid + ", orphaned " + orph),
+      tile("Own ack (median peer)", meanHist(d, "miniblock_ours_median_ack_seconds"), "s", "mean of per-share medians"),
+    ]) +
+    section("Health", [
+      tile("Recovered panics", sum(d, "recovered_panics_total") + sum(d, "rpc_recovered_panics_total"), "", "all levels + RPC"),
+      tile("RPC clients (ws)", one(d, "rpc_client_count"), ""),
+      tile("RPC unknown methods", sum(d, "rpc_unknown_method_total"), "", "requests for unregistered names"),
+      tile("Free disk", one(d, "free_disk_space_bytes"), "B"),
+      tile("Heap in use", one(d, "go_memstats_heap_inuse_bytes"), "B", "", "heap"),
+      tile("Goroutines", one(d, "go_goroutines"), "", "", "gor"),
+    ]) };
+}
+function minerView(d, dt) {
+  const up = one(d, "dero_miner_connected") === 1;
+  const paid = sum(d, "dero_miner_paid_total"), orph = sum(d, "dero_miner_orphaned_total");
+  const sc = one(d, "dero_miner_submit_seconds_count");
+  return { status: up ? "connected" : "disconnected", cls: up ? "st-good" : "st-crit", html:
+    section("Hashing", [
+      tile("Hashrate (15 s)", one(d, "dero_miner_hashrate_15s"), "H/s", "", "hr"),
+      tile("Hashrate (poll)", rate(d, "dero_miner_hashes_total", dt), "H/s", "from hashes_total"),
+      tile("Network (est.)", one(d, "dero_miner_network_hashrate_estimate"), "H/s", "≈ difficulty D"),
+      tile("Height", one(d, "dero_miner_height"), ""),
+      tile("Threads", one(d, "dero_miner_threads"), ""),
+    ]) +
+    section("Shares", [
+      tile("Accepted miniblocks", one(d, "dero_miner_accepted_miniblocks_total"), "", "blocks " + fmt(one(d, "dero_miner_accepted_blocks_total"))),
+      tile("Rejected", one(d, "dero_miner_rejected_total"), ""),
+      tile("Found CPU / GPU", sum(d, "dero_miner_found_total", l => l.source === "cpu"), "", "GPU " + fmt(sum(d, "dero_miner_found_total", l => l.source === "gpu"))),
+      tile("Paid fraction", paid + orph ? paid / (paid + orph) : NaN, "%", "paid " + paid + ", orphaned " + orph + ", unresolved " + fmt(one(d, "dero_miner_unresolved"))),
+      tile("Submit latency", sc > 0 ? one(d, "dero_miner_submit_seconds_sum") / sc : NaN, "s", "mean; max " + fmt(one(d, "dero_miner_submit_seconds_max"), "s")),
+    ]) +
+    section("GPU & reliability", [
+      tile("GPU split staged", rate(d, "dero_miner_split_hashed_total", dt), "H/s", "dropped stale " + fmt(one(d, "dero_miner_split_dropped_total"))),
+      tile("GPU restarts", sum(d, "dero_miner_gpu_restarts_total") + sum(d, "dero_miner_split_restarts_total"), "", "split disabled " + one(d, "dero_miner_split_disabled")),
+      tile("GPU/CPU mismatches", one(d, "dero_miner_gpu_mismatch_total"), ""),
+      tile("Sort fallbacks", one(d, "dero_miner_sort_fallbacks_total"), "", "checked " + fmt(one(d, "dero_miner_sort_checked_total"))),
+      tile("Getwork reconnects", one(d, "dero_miner_getwork_reconnects_total"), ""),
+    ]) };
+}
+
+async function poll() {
+  if (paused) return;
+  const err = document.getElementById("err");
+  try {
+    const r = await fetch("metrics", { cache: "no-store" });
+    if (!r.ok) throw new Error("/metrics returned HTTP " + r.status);
+    const text = await r.text(), d = parse(text), now = performance.now();
+    const dt = prev ? (now - prevT) / 1000 : 0;
+    const miner = has(d, "dero_miner_up");
+    const v = miner ? minerView(d, dt) : nodeView(d, dt);
+    document.getElementById("title").textContent = miner ? "dero-miner" : "derod";
+    const b = document.getElementById("status");
+    b.className = "badge " + v.cls; b.lastElementChild.textContent = v.status;
+    const ver = (d.app_version || d.dero_miner_info || [{ labels: {} }])[0].labels.version || "";
+    document.getElementById("meta").textContent = ver + " · up " + fmt(one(d, miner ? "dero_miner_uptime_seconds" : "app_uptime_seconds"), "s") + " · " + new Date().toLocaleTimeString();
+    document.getElementById("main").innerHTML = v.html;
+    document.getElementById("rawsum").textContent = "Raw /metrics (" + text.length.toLocaleString() + " bytes)";
+    if (document.getElementById("raw").open) document.getElementById("rawpre").textContent = text;
+    err.textContent = "";
+    prev = d; prevT = now;
+  } catch (e) {
+    err.textContent = String(e.message || e) + (location.protocol === "file:" ? " — open the served copy at /dashboard instead of the file" : "");
+    const b = document.getElementById("status"); b.className = "badge st-crit"; b.lastElementChild.textContent = "unreachable";
+  }
+}
+document.getElementById("pause").onclick = e => { paused = !paused; e.target.textContent = paused ? "Resume" : "Pause"; if (!paused) poll(); };
+poll(); setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>

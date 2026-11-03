@@ -1,0 +1,35 @@
+# R20: these rules lived only in the live checkout's .git/info/exclude, which no clone or worktree inherits, so
+# `git add -A` in an agent's clone staged __pycache__/, bin/ and logs, and the page could not be rebuilt the same way.
+bin/
+nohup.out
+*.log
+mainnet/
+harness/corpus/tags.tsv
+**/__pycache__/
+# the runtime captures ARE evidence the artifact cites — they must be tracked despite *.log above
+!harness/runtime/*.log
+.DS_Store
+harness/kit/.cache/
+# the audit transcript behind harness/model/raw/forensics.json; mine_forensics records an explicit SKIP without it
+harness/model/forensics_in.json
+# R21 (storageops): `go build ./cmd/<x>` in the repo root drops the binary there; that is how an r19 dero-miner
+# (12.9 MB) got committed in e1bae2c (r20 F9). The run commands use bin/ (already ignored).
+/dero-miner
+/derod
+/dero-wallet-cli
+/dero-miner.exe
+/derod.exe
+/dero-wallet-cli.exe
+# install backups and in-flight builds next to the GPU servers (gpu_split_server.22102026.r19-backup sat untracked
+# in the live tree, one `git add -A` away from a 127 KB binary commit)
+gpu-miner-poc/*-backup
+gpu-miner-poc/*.new.*
+gpu-miner-poc/BUILD_STAMPS.tmp.*
+# R21: PDF renders of the artifact pages (large binaries; regenerate from the HTML)
+artifacts/*.pdf
+# R22: crash-safety scratch — a go_mutate journal (its presence means a source file is still mutated: S1 refuses to
+# run) and the hidden temp files of atomic snapshot writes
+harness/intel/.go_mutate.journal
+harness/intel/.go_mutate.orig
+harness/runtime/.*.tmp
+harness/loop/.*.tmp

@@ -1,0 +1,16 @@
+# name  sha256(name.swift)  sha256(name)  -- written by build.sh; checked by dero-miner at GPU start (gpu_stamp.go)
+# r21 seed: the pairs tracked at 3ed6e8f. gpu_split_server was rebuilt from the r20 source per RUN_REPORT Round 20
+# (binary mtime 13:03:14 > source 12:21:03, banner kernels=r20); the others predate the stamps (mtime order checked).
+# r21 merge: gpu_split_server rebuilt by build.sh from the merged source (r21 gpusort op 3 + storageops autoreleasepool);
+# its binary travels outside the text patch (scratchpad r21merge/gpu_split_server.r21merge), installed by mv.
+gpu_fullhash ee642785b69e605660ec29264481e1df33c669048780930ae7bf9c298192e07e fc865412f887108d2fb6fb4092995dd091ffe1369219544cfa37c65be78692d2
+gpu_hash_sais 3a34091f235d90e1d804b0bd2c455ab154c855da47c0105a58d15f79c0ae21c1 826ca861547cd6df76d300fabe53b5109e847f340bbb79f96636f98f3730fb4c
+gpu_hashes 002ce0abe7844b75b53f8ec5dfe3c58da84c012889aca7c2e72c831f9843936e a45f34a17fcec2ec5fc8d87566dc33b94ae8609c4366603577438236b8c0a87d
+gpu_loop af816ee7d8bd74ded5363beb70afbebca4edfebaf4785e2df653d16486627367 ea13aa781131216e7b20aef24e1d1ebcff62db701776c7124ecc56f5105b18db
+gpu_presais b1b28d86e42b88eafaac3e3ae2e20a3f5a7a6e3fdafcdca51ebb2a6d43205f2a 653a39edd8fa753a3053f58a411706a0fcad9126e2d33a20858ccc73f2c1b00b
+gpu_sais 2ba0a604f9499db1a84a2f127bea14fa6e977b2fccd3bc02d73cb69bbb7dfeec b0e879414e74e466f0fb45c03e8fd339abb17538f82a02ad7265a7d966a41102
+gpu_sha256 a4165054f34d44fa52fc36eda02ecad116c47b21f0487a693c12a91bd392f36f c10515f751990122d477c2d9bfa895788821cb8342b4e2cacc97f1250fa64920
+# r22 merge: gpu_split_server rebuilt (xcrun swiftc -O, build.sh conventions) from the merged r22 source (gpukernels:
+# table-driven stage-1 ops, load-ahead PRGA, word table loop; the source is byte-identical to the gpukernels patch's);
+# its binary travels outside the text patch (scratchpad r22merge/gpu_split_server.r22), installed by mv.
+gpu_split_server 5aff39c8f529af51e239f74400b9b0efb694dcfa032f02768752d0388e997098 78b60598d12f71f85a3e59ea8ad9f7185bae7b30955c48b8620d89325f778083

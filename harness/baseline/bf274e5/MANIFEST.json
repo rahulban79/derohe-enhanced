@@ -1,0 +1,14 @@
+{
+ "base": "bf274e5",
+ "why": "exact copies of the source the running derod (3.6.0-153+21082026, built 2026-08-25) was compiled from, kept so log lines it printed stay anchorable after the fix changes those lines; stored with a .base suffix so the Go toolchain does not treat them as packages of this module (go vet ./... / go build ./...)",
+ "files": {
+  "blockchain/transaction_execute.go": "ad235e756c94961965304bbe2e93f8980ef62a77",
+  "p2p/chain_sync.go": "9a3546ca1e57f6a2cb5c766e6d4eaf9296cf1fed",
+  "p2p/rpc_notifications.go": "6798ffa23efdedf8a0160afcd2122d995941ee7c",
+  "p2p/connection_pool.go": "50a811759315b1e5e6797cead553de07789cf53f",
+  "config/version.go": "3ae1387494c077a67c5015a9070085013803bd4a",
+  "cmd/derod/rpc/rpc_dero_getinfo.go": "5148e19b1ca70bdb79dcf9723e76d4895c39ae39",
+  "p2p/rpc_cbor_codec.go": "7137189e47a07b8bddbe64cc744de99465799996"
+ },
+ "suffix": ".base"
+}

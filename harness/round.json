@@ -1,0 +1,82 @@
+{
+ "_doc": "r23c round registry: the one place a round's ids live (read by harness/pipeline/fix_build_verify.py and harness/pipeline/benchlock.py, checked by harness/kat/test_round_registry_r23c.py). The literal string 'pending' means not known yet: never replace it with a guess. Protocol: artifacts/dero-rft.md and harness/README.md.",
+ "current": "r24",
+ "upstream_base": "bf274e5",
+ "benchlock": "~/derohe-persist/bench.lock",
+ "rounds": [
+  {
+   "id": "r23b",
+   "status": "shipped",
+   "version_suffix": "22102026.r23b",
+   "new_tests_base": "21cd5b7",
+   "merge_commit": "3224c07",
+   "head_after": "cd1be86",
+   "pipeline_full": "pipeline_20261030T215745",
+   "go_mutations": "853/853",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "c7ded01",
+    "target": "cd1be86"
+   },
+   "evidence": "ARCHITECTURE.md §40.5; RUN_REPORT.md Round 23b; harness/runtime/gomut_20261030T215745.json; config/version.go at cd1be86"
+  },
+  {
+   "id": "r23c",
+   "status": "measured",
+   "version_suffix": "22102026.r23c",
+   "new_tests_base": "cd1be86",
+   "merge_commit": "091b35d",
+   "head_after": "53b847b",
+   "pipeline_full": "pipeline_20261101T120821",
+   "go_mutations": "955/955",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "cd1be86",
+    "target": "cf89e78"
+   },
+   "evidence": "R23c branches from cd1be86 (the R23b head): pipeline_20261101T120821 (S1-S6 PASS, S7 FAIL G22 anchor, fixed in 4f0dda2) then project-only pipeline_20261101T142234 PASS (KATs 35/35, harness mutations 34/34, gates 22/22, 0 refused rows). MEASURED live 2026-11-02 01:08-01:28 (n=81): 94,273 H/s mean at 17.37 cores, 5,435 H/cpu-s (+5.2 % vs r23b 5,164), staged 87,904, GPU busy 95.6 % of 96 (GPU co-binds); paid 39/45, emission 489 blocks 0 alerts (harness/runtime/r23c_live_window_20261102.txt, harness/runtime/r23c_live_extract_20261102.txt; artifacts/dero-rft.md §13; RUN_REPORT.md Round 23c Live measurement; ARCHITECTURE.md §41.11). Whole run 00:53:03-02:04:08 (typed console exit): 4,265 s, avg 94,009 H/s, luck 1.06, derod 92/95 paid (harness/runtime/r23c_live_extract_20261102.txt). Still pending: uptime under launchd, 8192,3,2 ABBA, --phase-duty A/B, 24 h emission read",
+   "commits": "091b35d..53b847b (merge 091b35d; run-1 fixes 4f0dda2; project-only prep 8a086cd, fb15ceb; records 53b847b); docs 2d9cd04, 2e2cb9f; measurement docs a9bddfd, L3 rounding fix b205a4d (project-only run 1 pipeline_20261102T013726 FAIL at miner_runs), records 51caf2b (project-only pipeline_20261102T014053 PASS: KATs 35/35, harness mutations 34/34, gates 22/22)",
+   "pipeline_project": "pipeline_20261101T142234"
+  },
+  {
+   "id": "r24",
+   "status": "measured",
+   "version_suffix": "22102026.r24",
+   "new_tests_base": "cf89e78",
+   "merge_commit": "59eee1d",
+   "head_after": "c4cebe6",
+   "pipeline_full": "pipeline_20261102T110200",
+   "go_mutations": "1108/1108",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "b76eee1",
+    "target": "7648fac"
+   },
+   "evidence": "R24 opened 2026-11-02 from the r23c measured head cf89e78; miner track paused by the user (artifacts/dero-rft.md §0.3, §2.7): no live miner, node-only dimensions. Implemented: combined patch d19d3f9a38b1cece1ffd4cff5087167f (79 files, 8 dimensions) merged as 59eee1d; pipeline_20261102T090301 S1-S6 PASS (go mutations 1108/1108, race 26 pkgs, shadow 120 blocks 0 mismatches, installed +22102026.r24, backups bin/*.22102026.r23c-backup; minerbench/gpubench PAUSED §0.3), S7 FAIL at mine_evolution (KeyError R24, fixed bed3ef4); project-only pipeline_20261102T103606 PASS; area intelligence (G23) + disclosure track (G24) integrated 76fd69b; pipeline_20261102T104901 S3 FAIL (opt-in simulator tests registered, fixed cc1c391); full pipeline_20261102T110200 PASS (--no-install: S1-S5 PASS, mutations 1108/1108, gates 21/24 + 3 PAUSED miner). MEASURED live 2026-11-02 on the restarted r24 derod (banner 15:31:03, pid 49367; reads 15:41:24 and 16:32:01): synced, lag 0, tip age 22-27 s, 12 out / 0 in, 0 ERROR/WARN; emission OK 219 audited, 0 alerts, payees 1,447/1,447; disclosure --live S1-S4 PASS twice (CI24-1 / BD7 CONFIRMED fixed live); B38 415 with JSON-RPC -32600 body CONFIRMED; new counters 0 (no tx block in 217, no sync, no miner): B18/B34 pending, B36/B39 flips PAUSED (miner), 24 h emission pending (harness/runtime/r24_live_first_20261102.txt, r24_live_hour_20261102.txt, r24_live_txcount_20261102.txt, disclosure_live_20261102T234142Z.txt, disclosure_live_20261103T003206Z.txt; artifacts/dero-rft.md §13)",
+   "tracks": {
+    "miner": "paused",
+    "node": "active"
+   }
+  },
+  {
+   "id": "r25",
+   "status": "planned",
+   "version_suffix": "pending",
+   "new_tests_base": "7648fac",
+   "merge_commit": "pending",
+   "head_after": "pending",
+   "pipeline_full": "pending",
+   "go_mutations": "pending",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "pending",
+    "target": "pending"
+   },
+   "tracks": {
+    "miner": "paused",
+    "node": "active"
+   },
+   "evidence": "plan only: artifacts/dero-rft.md"
+  }
+ ]
+}

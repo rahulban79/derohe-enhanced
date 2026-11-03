@@ -1,0 +1,973 @@
+#!/usr/bin/env python3
+"""peer_intel.py (r24) — the consensus observatory of the network peers this node talks to, pseudonymised.
+
+The node's own view of its neighbourhood, read-only: DERO.GetPeerInfo (cmd/derod/rpc/rpc_dero_explorer.go, fields of
+p2p/peer_info.go PeerInfo), DERO.GetSyncInfo, DERO.GetInfo, derod /metrics (p2p_*), the derod log's P2P lines, and
+COPIES of the datadir files peers.json, first_relay.json, v2_offences.json and ban_list.json. It measures per-peer
+health and activity (lag, version mix, latency, clock offset, connection age, bytes, first-relay wins, churn) and runs
+detectors that are each grounded in a code rule of this tree, graded:
+
+  OBSERVED  the node's own rule fired on that peer (the rule's code line AND the observation line are cited)
+  ANOMALY   statistically or operationally unusual (the test and its threshold are stated); never an accusation
+  NORMAL    the detector ran and nothing crossed its rule or threshold
+  pending   the detector could not run (no input, or its rule line is not in this tree any more)
+
+PRIVACY (r24, artifacts/dero-rft.md §0.6 "Scrub + publish"). Peer IP addresses, peer tags and this box's names never
+leave the private directory (default ~/derohe-persist/peer_intel_private, mode 700, outside every repository). A
+peer is named 'peer-' + 8 hex of blake2b(salt | 'ip' | ip), a node identity 'node-' + 8 hex of blake2b(salt | 'id' |
+peer_id), a block builder 'miner-' + 8 hex of blake2b(salt | 'builder' | key prefix); THIS node's own builder key is
+'this-node' (read from the private self.json, never printed). The salt lives only in the private directory. /16
+diversity is computed on the private IPs; only the counts reach the outputs. Raw captures (with IPs) stay private.
+
+Outputs (all pseudonymised, all in harness/runtime/, tracked as evidence):
+  peer_capture_<ts>.jsonl   one fact per line ({"src": ..., "peer": ...}), the anchor of every rendered value
+  peer_logx_<ts>.jsonl      the P2P log lines the detectors used: derod.log line number, time, kind, pseudonym, numbers
+  peer_intel.json           the report (KPIs, peers, detectors, census, proposals CO24-*), each value with its line
+  peer_series.jsonl         one appended line per run (the rolling series)
+
+  python3 -I harness/intel/peer_intel.py --live [--private DIR] [--log FILE ...] [--rpc URL]
+  python3 -I harness/intel/peer_intel.py --capture DIR      # analyse an existing (private or synthetic) capture
+  python3 -I harness/intel/peer_intel.py --check            # gate G27 on the newest outputs
+Exit 0 · 3 G27 failed · 2 no input.
+"""
+import argparse, datetime, hashlib, ipaddress, json, os, re, secrets, shutil, statistics, sys, time, urllib.request
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+HARNESS = HERE.parent
+ROOT = HARNESS.parent
+RPC = 'http://127.0.0.1:10102/json_rpc'
+METRICS = 'http://127.0.0.1:10102/metrics'
+PRIVATE = Path.home() / 'derohe-persist' / 'peer_intel_private'
+PRIVATE_KEEP = int(os.environ.get('DERO_PRIVATE_KEEP') or 24)                # r24: private raw runs kept
+PRIVATE_MAX_BYTES = int(os.environ.get('DERO_PRIVATE_MAX_BYTES') or 64 * 1024 * 1024)
+DATADIR_FILES = ('peers.json', 'first_relay.json', 'v2_offences.json', 'ban_list.json')
+RPC_METHODS = ('GetPeerInfo', 'GetSyncInfo', 'GetInfo')
+FRESH_H = 24
+CURRENT_VERSION_RX = re.compile(r'^3\.6\.0-153\.')                     # this tree's release line (config/version.go)
+VERSION_RX = re.compile(r'^\d+\.\d+\.\d+-\d+\.DEROHE\.STARGATE(\+\d{8}(\.[A-Za-z0-9]{1,12})?)?$')
+IPV4 = re.compile(r'(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?!\.?\d)')
+IPV6 = re.compile(r'(?<![\w:])[0-9a-fA-F:]{6,39}(?![\w:])')
+LOGGER_IP = re.compile(r'^P2P\.(incoming|outgoing)\.(\[[^\]]+\]|[^:]+):(\d+)$')
+
+# Thresholds of the ANOMALY tests (each stated on the page with its reason)
+CLOCK_FUTURE_MS = 50          # blockchain/blockchain.go: a block more than 50 ms in our future is rejected
+FIRST_RELAY_CONC = 0.50       # one peer delivering more than half of all first relays: topology dependence
+NETGROUP_SHARE = 0.25         # one /16 holding more than a quarter of the active peers: eclipse-risk indicator
+MIN_NETGROUPS = 4             # fewer distinct /16s than this among the active peers: eclipse-risk indicator
+REMOTE_UNSERVED_MULT = 5.0    # a peer with > 5x the median per-peer 'could not serve' count (and >= 20 lines)
+
+# Every detector names the code line its rule lives on; the line is re-found at run time (no line, no verdict).
+RULES = {
+    'v2_remnant': ('p2p/common.go', 'if common.Height >= globals.Config.MAJOR_HF3_HEIGHT+config.STABLE_LIMIT && common.Top_Version < 3 {'),
+    'v2_ban': ('p2p/penalty.go', 'const V2_BAN_BASE = 3600'),
+    'lagging': ('p2p/metrics_preregister.go', 'const LAGGING_PEER_BLOCKS = 25'),
+    'stuck_evict': ('p2p/stuck_peer.go', 'v.c.logger.V(1).Info("evicting stuck peer", "peer_height", v.height, "our_height", our, "hold", until.Sub(now).String())'),
+    'short_answer': ('p2p/sync_pipeline.go', 'return fetched, fmt.Errorf("peer answered %d blocks for %d requested", len(r.resp.CBlocks), len(p.ids))'),
+    'remote_unserved': ('p2p/object_errors.go', 'logger.V(1).Info(msg+": peer could not serve the object", append([]interface{}{"peer_error", err.Error()}, keysAndValues...)...)'),
+    'clock_future': ('blockchain/blockchain.go', 'if bl.Timestamp > (uint64(globals.Time().UTC().UnixMilli() + 50)) { // give 50 millisec passing'),
+    'penalty_ban': ('p2p/penalty.go', 'c.logger.Info("peer banned for misbehaviour", "ip", ip, "last_reason", reason, "seconds", secs)'),
+    'netgroup_cap': ('p2p/diversity.go', 'const MAX_OUTBOUND_PER_NETGROUP = 2 // outgoing connections per IPv4 /16 or IPv6 /32'),
+    'inv_budget': ('p2p/inv_budget.go', 'var inv_txids_over_budget = metrics.Set.NewCounter("p2p_inv_txids_over_budget_total")'),
+    'first_relay': ('p2p/first_relay.go', 's.Builders[hex.EncodeToString(integrator[:8])]++'),
+    'chunk_tip': ('p2p/chunk_server.go', 'chunk dropped: block builds on a tip we do not have'),
+    'chain_request': ('p2p/rpc_chain_request.go', 'func (c *Connection) Chain(request Chain_Request_Struct, response *Chain_Response_Struct) error {'),
+    'peer_info': ('p2p/peer_info.go', 'ClockOffsetMs   float64 `json:"clock_offset_ms"`'),
+    'call_timeout': ('p2p/call.go', 'metrics.Set.GetOrCreateCounter(fmt.Sprintf(`p2p_call_timeouts_total{method="%s"}`, method)).Inc()'),
+    'fingerprint': ('cmd/derod/rpc/rpc_dero_explorer.go', 'const HF3_V3_HASH = "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5"'),
+}
+HF3_HEIGHT = 7504640          # config/config.go MAJOR_HF3_HEIGHT (mainnet)
+STABLE_LIMIT = 8              # config/config.go STABLE_LIMIT
+LAGGING = 25                  # p2p/metrics_preregister.go LAGGING_PEER_BLOCKS
+
+# log message -> kind (P2P loggers only)
+LOG_KINDS = (
+    ('dropping peer on pre-HF3 (v2) chain', 'v2_drop'),
+    ('evicting stuck peer', 'stuck_evict'),
+    ('peer could not serve the object', 'remote_unserved'),
+    ('connection closed during the call', 'closed_call'),
+    ('peer banned for misbehaviour', 'penalty_ban'),
+    ('inbound sessions from this address block refused', 'aggregate_refuse'),
+    ('Purging connection due to ban list', 'ban_purge'),
+    ('Purging connection due since idle', 'idle_purge'),
+    ('We need to resync with the peer', 'resync'),
+    ('chunk dropped: block builds on a tip we do not have', 'chunk_unknown_tip'),
+    ('backing off from this connection', 'backoff'),
+)
+LOG_NUMS = ('height', 'our_height', 'peer_height', 'peer_top_version', 'ban_seconds', 'seconds', 'pruned')
+PAGE_RAW_KEYS = ('triage', 'logbridge', 'intel', 'runtime', 'forensics', 'localdiff', 'consts')   # r24: raw files G27 scans whole
+LOGX_PER_KEY = 4              # evidence lines kept per (kind, peer): the first two and the last two
+
+
+# ───────────────────────────── private material ─────────────────────────────
+def private_dir(p=None):
+    d = Path(p) if p else PRIVATE
+    d.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(d, 0o700)
+    except OSError:
+        pass
+    return d
+
+
+def load_salt(priv):
+    f = Path(priv) / 'salt'
+    if not f.exists():
+        f.write_text(secrets.token_hex(32) + '\n')
+        os.chmod(f, 0o600)
+    return f.read_text().strip()
+
+
+def load_self(priv):
+    """{'builder8': 16 hex of THIS node's integrator key} from the private self.json (absent: nobody is 'this-node')."""
+    try:
+        return json.loads((Path(priv) / 'self.json').read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+class Pseud:
+    def __init__(self, salt, self_builder=None):
+        self.salt, self.self_builder = salt, (self_builder or '').lower()
+
+    def h(self, kind, value):
+        return hashlib.blake2b(f'{self.salt}|{kind}|{value}'.encode(), digest_size=16).hexdigest()[:8]
+
+    def peer(self, ip):
+        return 'peer-' + self.h('ip', host_of(ip))
+
+    def node(self, peer_id):
+        return 'node-' + self.h('id', str(peer_id))
+
+    def builder(self, key8):
+        k = str(key8).lower()
+        return 'this-node' if self.self_builder and k == self.self_builder else 'miner-' + self.h('builder', k)
+
+    def entry(self, s):
+        return 'ban-' + self.h('ban', s)
+
+
+def host_of(addr):
+    """the host part of 'ip', 'ip:port', '[v6]:port'; a CIDR is kept whole."""
+    a = str(addr or '').strip()
+    if a.startswith('['):
+        return a[1:a.index(']')] if ']' in a else a
+    if a.count(':') == 1:
+        return a.split(':')[0]
+    return a
+
+
+def ip_class(ip):
+    try:
+        x = ipaddress.ip_address(host_of(ip))
+    except ValueError:
+        return 'cidr' if '/' in str(ip) else 'unknown'
+    if x.is_loopback:
+        return 'loopback'
+    if x.is_private or x.is_link_local:
+        return 'private'
+    return 'public'
+
+
+def netgroup(ip):
+    """IPv4 /16 or IPv6 /32 (p2p/diversity.go netgroup), computed privately."""
+    try:
+        x = ipaddress.ip_address(host_of(ip))
+    except ValueError:
+        return None
+    n = 16 if x.version == 4 else 32
+    return str(ipaddress.ip_network(f'{x}/{n}', strict=False))
+
+
+# ───────────────────────────── capture (read-only) ─────────────────────────────
+def rpc(method, url=RPC, timeout=10):
+    req = urllib.request.Request(url, data=json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': f'DERO.{method}'}).encode(),
+                                 headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode())
+
+
+def capture_live(priv, url=RPC, metrics=METRICS, datadir=None, sleep=time.sleep):
+    """one private capture: three RPC reads a second apart, one /metrics GET, copies of the four datadir files."""
+    ts = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    d = Path(priv) / 'raw' / ts
+    d.mkdir(parents=True, exist_ok=True)
+    for x in (d.parent, d):                                 # r24 (verify): raw dirs were created 755 under the 700 root
+        os.chmod(x, 0o700)
+    for m in RPC_METHODS:
+        (d / f'{m}.json').write_text(json.dumps(rpc(m, url), indent=1))
+        sleep(1.0)
+    with urllib.request.urlopen(metrics, timeout=10) as r:
+        (d / 'metrics.txt').write_bytes(r.read())
+    dd = Path(datadir or (Path.home() / 'dero-data' / 'mainnet'))
+    for f in DATADIR_FILES:
+        if (dd / f).exists():
+            shutil.copyfile(dd / f, d / f)                  # read the original, write only the private copy
+    for f in d.iterdir():
+        os.chmod(f, 0o600)
+    return d
+
+
+def load_capture(d):
+    d = Path(d)
+    cap = {}
+    for m in RPC_METHODS:
+        try:
+            j = json.loads((d / f'{m}.json').read_text())
+            cap[m] = j.get('result', j)
+        except (OSError, ValueError):
+            cap[m] = None
+    try:
+        cap['metrics'] = (d / 'metrics.txt').read_text(errors='replace')
+    except OSError:
+        cap['metrics'] = ''
+    for f in DATADIR_FILES:
+        try:
+            cap[f] = json.loads((d / f).read_text())
+        except (OSError, ValueError):
+            cap[f] = None
+    cap['_dir'] = d.name
+    return cap
+
+
+PROM = re.compile(r'^([a-zA-Z_:][a-zA-Z0-9_:]*)(\{([^}]*)\})?\s+(\S+)')
+LABEL = re.compile(r'(\w+)="((?:[^"\\]|\\.)*)"')
+
+
+def parse_prom(text):
+    out = []
+    for l in (text or '').splitlines():
+        m = PROM.match(l)
+        if not m or not m.group(1).startswith(('p2p_', 'KCP_', 'dero_peer', 'dero_sync')):
+            continue
+        try:
+            v = float(m.group(4))
+        except ValueError:
+            continue
+        out.append((m.group(1), dict(LABEL.findall(m.group(3) or '')), v))
+    return out
+
+
+# ───────────────────────────── log ─────────────────────────────
+def log_files(explicit=None):
+    if explicit:
+        return [Path(p) for p in explicit]
+    d = Path.home() / 'dero-data' / 'logs'
+    return sorted(d.glob('derod*.log*'), key=lambda p: p.stat().st_mtime) if d.exists() else []
+
+
+def log_ip(d):
+    m = LOGGER_IP.match(str(d.get('N', '')))
+    if m:
+        return host_of(m.group(2)), m.group(1)
+    for k in ('ip', 'peer'):
+        v = d.get(k)
+        if isinstance(v, str) and (IPV4.search(v) or ':' in v):
+            return host_of(v), None
+    return None, None
+
+
+def scan_log(paths, ps):
+    """{runs, current_start_line, events: {(kind, peer): {...}}, logx: [lines]} over the P2P lines of the log files.
+    The current run starts at the last daemon banner ('alpha version'); counts are kept for the whole file and for
+    the current run."""
+    events, starts, short = {}, [], []
+    recs = 0
+    for p in paths:
+        try:
+            fh = open(p, errors='replace')
+        except OSError:
+            continue
+        with fh:
+            for i, l in enumerate(fh, 1):
+                if '"P2P' not in l and 'alpha version' not in l:           # cheap pre-filter; the JSON decides
+                    continue
+                try:
+                    d = json.loads(l)
+                except ValueError:
+                    continue
+                recs += 1
+                if 'alpha version' in str(d.get('M', '')):
+                    starts.append((p.name, i, d.get('T')))
+                    continue
+                if not str(d.get('N', '')).startswith('P2P'):
+                    continue
+                msg = str(d.get('M', ''))
+                kind = next((k for t, k in LOG_KINDS if t in msg), None)
+                if kind is None and msg == 'Call failed GetObject' and 'peer answered' in str(d.get('error', '')):
+                    kind = 'short_answer'
+                if kind is None:
+                    continue
+                ip, direction = log_ip(d)
+                if not ip:
+                    continue
+                peer = ps.peer(ip)
+                nums = {k: d[k] for k in LOG_NUMS if isinstance(d.get(k), (int, float))}
+                if kind == 'short_answer':
+                    m = re.search(r'peer answered (\d+) blocks for (\d+) requested', str(d.get('error')))
+                    if m:
+                        nums['answered'], nums['requested'] = int(m.group(1)), int(m.group(2))
+                if kind == 'penalty_ban' and isinstance(d.get('last_reason'), str) and re.fullmatch(r'[a-z_]{1,32}', d['last_reason']):
+                    nums['reason'] = d['last_reason']
+                if isinstance(d.get('hold'), str) and re.fullmatch(r'[0-9hms.]{1,16}', d['hold']):
+                    nums['hold'] = d['hold']
+                e = events.setdefault((kind, peer), {'n': 0, 'lines': [], 'last': None, 'ipc': ip_class(ip), 'at': []})
+                e['n'] += 1
+                e['at'].append((p.name, i))
+                rec = {'file': p.name, 'line': i, 'kind': kind, 'peer': peer, 'T': d.get('T'), 'L': d.get('L'), 'C': d.get('C'),
+                       'dir': direction, **nums}
+                if len(e['lines']) < LOGX_PER_KEY // 2:
+                    e['lines'].append(rec)
+                e['last'] = rec
+    cur = starts[-1] if starts else None
+    return {'records': recs, 'runs': len(starts), 'current_start': cur, 'events': events}
+
+
+def in_current(rec, cur):
+    return cur is None or (rec['file'] == cur[0] and rec['line'] >= cur[1])
+
+
+# ───────────────────────────── analysis ─────────────────────────────
+def rule_anchors(root):
+    out = {}
+    for k, (f, q) in RULES.items():
+        try:
+            lines = (Path(root) / f).read_text(errors='replace').splitlines()
+        except OSError:
+            out[k] = {'file': f, 'quote': q, 'line': None, 'status': 'NOFILE'}
+            continue
+        hits = [i + 1 for i, l in enumerate(lines) if q in l]
+        out[k] = {'file': f, 'quote': q, 'line': hits[0] if hits else None, 'status': 'OK' if hits else 'MISSING'}
+    return out
+
+
+def version_class(v):
+    v = str(v or '')
+    if not VERSION_RX.match(v):
+        return 'custom'
+    return 'current' if CURRENT_VERSION_RX.match(v) else 'outdated'
+
+
+def render_version(v):
+    """a version string is rendered only when it is a plain release string; anything else could carry a name."""
+    return v if VERSION_RX.match(str(v or '')) else 'custom (not shown)'
+
+
+def num(x, nd=3):
+    return round(float(x), nd) if isinstance(x, (int, float)) else None
+
+
+class Out:
+    """the capture file as it is written: every fact line knows its own 1-based line number."""
+    def __init__(self):
+        self.lines = []
+
+    def add(self, obj):
+        self.lines.append(json.dumps(obj, ensure_ascii=False, sort_keys=False))
+        return len(self.lines)
+
+
+def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
+    """(report, capture_lines, logx_lines). Pure: everything it reads is passed in."""
+    ts = ts or datetime.datetime.now().astimezone().isoformat(timespec='seconds')
+    ra = rule_anchors(root)
+    C, X = Out(), Out()
+    pi = cap.get('GetPeerInfo') or {}
+    si = cap.get('GetSyncInfo') or {}
+    gi = cap.get('GetInfo') or {}
+    our_h = pi.get('our_height', si.get('height'))
+    hdr = C.add({'src': 'capture', 'captured': ts, 'raw': cap.get('_dir'), 'node_version': si.get('version') or gi.get('version'),
+                 'our_height': our_h, 'our_topoheight': pi.get('our_topoheight'), 'peers_listed': len(pi.get('peers') or []),
+                 'incoming': pi.get('incoming'), 'outgoing': pi.get('outgoing'), 'v2_chain_peers_seen_7d': pi.get('v2_chain_peers_seen_7d')})
+    sync_l = C.add({'src': 'GetSyncInfo', 'status': si.get('status'), 'lag_blocks': si.get('lag_blocks'),
+                    'peer_median_height': si.get('peer_median_height'), 'tip_age_seconds': si.get('tip_age_seconds'),
+                    'chain_fingerprint': si.get('chain_fingerprint'), 'p2p_bans_total': si.get('p2p_bans_total'),
+                    'inbound_connections_since_start': si.get('inbound_connections_since_start'),
+                    'peers_incoming': si.get('peers_incoming'), 'peers_outgoing': si.get('peers_outgoing'),
+                    'uptime_seconds': si.get('uptime_seconds'), 'version': si.get('version')})
+    # ── datadir copies, keyed by IP privately
+    fr = ((cap.get('first_relay.json') or {}).get('peers') or {})
+    v2o = cap.get('v2_offences.json') or {}
+    bans = cap.get('ban_list.json') or {}
+    pj = cap.get('peers.json') or {}
+    now_s = time.time() if not cap.get('_now') else cap['_now']
+    # ── active peers
+    peers, ips_active, ids_seen = [], {}, {}
+    for p in pi.get('peers') or []:
+        ip = host_of(p.get('address'))
+        pid = ps.peer(ip)
+        ips_active[pid] = ip
+        node = ps.node(p.get('peer_id')) if p.get('peer_id') else None
+        if node:
+            ids_seen.setdefault(node, set()).add(pid)
+        f = fr.get(ip) or {}
+        mb_t, mb_f = p.get('miniblocks_total') or 0, p.get('miniblocks_first') or 0
+        row = {'src': 'GetPeerInfo', 'peer': pid, 'node': node, 'dir': 'in' if p.get('incoming') else 'out', 'ipclass': ip_class(ip),
+               'height': p.get('height'), 'topoheight': p.get('topoheight'),
+               'lag': (our_h - p['height']) if isinstance(our_h, int) and isinstance(p.get('height'), int) else None,
+               'topo_lag': (pi.get('our_topoheight') - p['topoheight']) if isinstance(pi.get('our_topoheight'), int) and isinstance(p.get('topoheight'), int) else None,
+               'top_version': p.get('top_version'), 'version': render_version(p.get('daemon_version')),
+               'version_class': version_class(p.get('daemon_version')), 'latency_ms': num(p.get('latency_ms'), 1),
+               'clock_offset_ms': num(p.get('clock_offset_ms'), 3), 'connected_s': p.get('connected_seconds'),
+               'bytes_in': p.get('bytes_in'), 'bytes_out': p.get('bytes_out'), 'first_relays': p.get('first_relays'),
+               'mb_first': mb_f, 'mb_total': mb_t, 'mb_first_share': round(mb_f / mb_t, 4) if mb_t else None,
+               'relay_delay_ms': round(f['delay_sum_us'] / f['delay_n'] / 1000, 1) if f.get('delay_n') else None,
+               'builders': len(f.get('builders') or {}), 'pruned': p.get('pruned'), 'has_tag': bool(p.get('tag'))}
+        row['line'] = C.add({k: v for k, v in row.items()})
+        peers.append(row)
+    # ── first relays (block builders that reached us first through each peer)
+    builders, fr_rows = {}, []
+    for ip, s in sorted(fr.items(), key=lambda kv: -(kv[1].get('firsts') or 0)):
+        b = {ps.builder(k): v for k, v in sorted((s.get('builders') or {}).items(), key=lambda kv: -kv[1])}
+        for k, v in b.items():
+            builders[k] = builders.get(k, 0) + v
+        fr_rows.append({'src': 'first_relay.json', 'peer': ps.peer(ip), 'firsts': s.get('firsts'),
+                        'delay_mean_ms': round(s['delay_sum_us'] / s['delay_n'] / 1000, 1) if s.get('delay_n') else None,
+                        'delay_n': s.get('delay_n'), 'builders': b, 'last_first': s.get('last_first'),
+                        'connected': ps.peer(ip) in ips_active})
+        fr_rows[-1]['line'] = C.add({k: v for k, v in fr_rows[-1].items()})
+    bl_line = C.add({'src': 'first_relay.json', 'builders_total': dict(sorted(builders.items(), key=lambda kv: -kv[1]))})
+    # ── v2 offences, bans, peer list
+    v2_rows = []
+    for ip, r in v2o.items():
+        v2_rows.append({'src': 'v2_offences.json', 'peer': ps.peer(ip), 'n': r.get('n'), 'last': r.get('last'),
+                        'connected': ps.peer(ip) in ips_active})
+        v2_rows[-1]['line'] = C.add({k: v for k, v in v2_rows[-1].items()})
+    ban_rows = []
+    for k, until in bans.items():
+        scope = 'cidr' if '/' in str(k) else 'ip'
+        name = ps.entry(k) if scope == 'cidr' else ps.peer(k)
+        ban_rows.append({'src': 'ban_list.json', 'entry': name, 'scope': scope + (('/' + str(k).split('/')[1]) if scope == 'cidr' else ''),
+                         'until': until, 'remaining_s': int(until - now_s) if isinstance(until, (int, float)) else None,
+                         'v2_offender': scope == 'ip' and k in v2o})
+        ban_rows[-1]['line'] = C.add({kk: vv for kk, vv in ban_rows[-1].items()})
+    pl_rows = []
+    for ip, r in pj.items():
+        pl_rows.append({'src': 'peers.json', 'peer': ps.peer(ip), 'ipclass': ip_class(ip), 'goodcount': r.get('goodcount'),
+                        'failcount': r.get('failcount'), 'whitelist': r.get('whitelist'), 'lastconnected': r.get('lastconnected'),
+                        'connected': ps.peer(ip) in ips_active})
+        pl_rows[-1]['line'] = C.add({k: v for k, v in pl_rows[-1].items()})
+    # ── metrics (IP labels pseudonymised)
+    prom = parse_prom(cap.get('metrics'))
+    mt, mt_line, fr_metric = {}, {}, {}
+    for name, labels, v in prom:
+        lab = {k: (ps.peer(x) if k == 'peer' else x) for k, x in labels.items()}
+        if any(IPV4.search(str(x)) for x in lab.values()):
+            continue                                              # an unexpected IP-bearing label is never written
+        key = name + ('{' + ','.join(f'{k}={lab[k]}' for k in sorted(lab)) + '}' if lab else '')
+        if '_bucket' in name:
+            continue
+        ln = C.add({'src': 'metrics', 'name': name, 'labels': lab, 'value': v})
+        mt[key], mt_line[key] = v, ln
+        if name == 'p2p_first_relay_total' and 'peer' in lab:
+            fr_metric[lab['peer']] = (v, ln)
+    M = lambda k, d=None: mt.get(k, d)
+    # ── log
+    ev = logscan.get('events') or {}
+    cur = logscan.get('current_start')
+    per_kind = {}
+    logx_line = {}
+    for (kind, peer), e in sorted(ev.items()):
+        recs = e['lines'] + ([e['last']] if e['last'] and e['last'] not in e['lines'] else [])
+        lines = []
+        for r in recs:
+            lines.append(X.add(r))
+        cur_n = sum(1 for f, l in e.get('at', []) if in_current({'file': f, 'line': l}, cur))
+        per_kind.setdefault(kind, {})[peer] = {'n': e['n'], 'n_current': cur_n, 'logx_lines': lines,
+                                               'first_T': recs[0]['T'] if recs else None,
+                                               'last_T': e['last']['T'] if e['last'] else None, 'ipclass': e['ipc']}
+        logx_line[(kind, peer)] = lines
+    # ── detectors
+    D = []
+
+    def det(did, title, rule, grade_fn, test):
+        a = ra.get(rule)
+        d = {'id': did, 'title': title, 'rule': a, 'test': test, 'findings': []}
+        if not a or a['status'] != 'OK':
+            d['grade'] = 'pending'
+            d['why'] = f"rule line not found in this tree ({a and a['file']})"
+        else:
+            grade_fn(d)
+            g = {f['grade'] for f in d['findings']}
+            d['grade'] = 'OBSERVED' if 'OBSERVED' in g else 'ANOMALY' if 'ANOMALY' in g else d.get('grade') or 'NORMAL'
+        D.append(d)
+        return d
+
+    def f_v2(d):
+        for r in v2_rows:
+            lx = logx_line.get(('v2_drop', r['peer']), [])
+            lg = (per_kind.get('v2_drop') or {}).get(r['peer'])
+            d['findings'].append({'peer': r['peer'], 'grade': 'OBSERVED', 'what': f"dropped {r['n']}x for a v2-remnant chain (top_version < 3 past HF3+{STABLE_LIMIT}; v2_offences.json)" + (f"; {lg['n']} log lines, {lg['n_current']} in the current run" if lg else '') + f"; connected now: {r['connected']}",
+                                  'cap_line': r['line'], 'logx_lines': lx})
+        for p in peers:
+            if isinstance(p.get('height'), int) and p['height'] >= HF3_HEIGHT + STABLE_LIMIT and (p.get('top_version') or 0) < 3:
+                d['findings'].append({'peer': p['peer'], 'grade': 'OBSERVED', 'what': f"active peer reports top_version {p['top_version']} at height {p['height']}", 'cap_line': p['line']})
+        for (k, peer), lx in logx_line.items():
+            if k == 'v2_drop' and not any(f['peer'] == peer for f in d['findings']):
+                d['findings'].append({'peer': peer, 'grade': 'OBSERVED', 'what': f"log: dropped {per_kind['v2_drop'][peer]['n']}x for a v2-remnant chain ({per_kind['v2_drop'][peer]['n_current']} in the current run)", 'logx_lines': lx})
+    det('D1', 'Peers on the v2 remnant chain', 'v2_remnant', f_v2, f'rule: height >= HF3 ({HF3_HEIGHT}) + STABLE_LIMIT ({STABLE_LIMIT}) and top_version < 3 → dropped and banned (1 h, escalating)')
+
+    def f_lag(d):
+        for p in peers:
+            if isinstance(p.get('lag'), int) and p['lag'] > LAGGING:
+                d['findings'].append({'peer': p['peer'], 'grade': 'ANOMALY', 'what': f"{p['lag']} blocks behind us (> LAGGING_PEER_BLOCKS {LAGGING}): gets no relays", 'cap_line': p['line']})
+            elif isinstance(p.get('lag'), int) and p['lag'] < -LAGGING:
+                d['findings'].append({'peer': p['peer'], 'grade': 'ANOMALY', 'what': f"advertises {-p['lag']} blocks above our tip", 'cap_line': p['line']})
+    det('D2', 'Lagging or over-advertising peers (live)', 'lagging', f_lag, f'test: |our height − peer height| > {LAGGING} (LAGGING_PEER_BLOCKS)')
+
+    def f_stuck(d):
+        for peer, e in (per_kind.get('stuck_evict') or {}).items():
+            d['findings'].append({'peer': peer, 'grade': 'OBSERVED', 'what': f"evicted as stuck {e['n']}x in the log since {str(e['first_T'])[:10]} ({e['n_current']} in the current run; height not advancing while > {LAGGING} behind)", 'logx_lines': e['logx_lines']})
+    det('D3', 'Stuck peers evicted (log)', 'stuck_evict', f_stuck, 'rule: a peer > LAGGING_PEER_BLOCKS behind whose height does not move for STUCK_PEER_WINDOW (10 min) is evicted and held')
+
+    def f_short(d):
+        for peer, e in (per_kind.get('short_answer') or {}).items():
+            d['findings'].append({'peer': peer, 'grade': 'OBSERVED', 'what': f"answered fewer blocks than requested {e['n']}x in the log since {str(e['first_T'])[:10]} ({e['n_current']} in the current run): announced a chain it then did not serve", 'logx_lines': e['logx_lines']})
+    det('D4', "Peers advertising blocks they cannot serve ('answered 0 blocks for N requested')", 'short_answer', f_short, 'rule: a sync fetch whose reply carries fewer blocks than requested fails with this error')
+
+    def f_unserved(d):
+        u = per_kind.get('remote_unserved') or {}
+        if not u:
+            return
+        med = statistics.median([e['n'] for e in u.values()]) if len(u) > 1 else None
+        for peer, e in u.items():
+            g = 'ANOMALY' if e['n'] >= 20 and (med is None or e['n'] > REMOTE_UNSERVED_MULT * max(med, 1)) else 'NORMAL'
+            d['findings'].append({'peer': peer, 'grade': g, 'what': f"{e['n']} 'could not serve the object' replies in the log since {str(e['first_T'])[:10]} ({e['n_current']} in the current run; {len(u)} peer(s) with any, median {'n/a' if med is None else f'{med:g}'}; ANOMALY if >= 20 and > {REMOTE_UNSERVED_MULT:g}x the median, or the only one)", 'logx_lines': e['logx_lines']})
+    det('D5', 'Objects a peer announced but could not serve (remote errors)', 'remote_unserved', f_unserved, f'test: >= 20 lines and > {REMOTE_UNSERVED_MULT:g}x the per-peer median')
+
+    def f_clock(d):
+        # r24 (verify): the NTP-style offset (p2p/time.go offset_micro, remote clock minus ours) is only known to within
+        # +/- RTT/2 (path asymmetry), so a reading flags only when even its lower bound |offset| - latency_ms/2 is past
+        # the 50 ms allowance; the r24 builder flagged -76.1 ms at 217.7 ms RTT, which is inside that uncertainty.
+        for p in peers:
+            o = p.get('clock_offset_ms')
+            rtt = p.get('latency_ms') if isinstance(p.get('latency_ms'), (int, float)) else 0.0
+            if isinstance(o, (int, float)) and abs(o) - rtt / 2 > CLOCK_FUTURE_MS:
+                side = ('its clock is ahead of ours: blocks it stamps can be rejected here by the 50 ms future rule' if o > 0 else
+                        'its clock is behind ours: blocks we stamp can be more than 50 ms in its future')
+                d['findings'].append({'peer': p['peer'], 'grade': 'ANOMALY', 'what': f"clock offset {o:+.1f} ms at {rtt:.1f} ms RTT (|offset| - RTT/2 = {abs(o) - rtt / 2:.1f} ms > {CLOCK_FUTURE_MS} ms; {side})", 'cap_line': p['line']})
+    det('D6', 'Clock skew of peers', 'clock_future', f_clock, f'test: |clock_offset_ms| - latency_ms/2 > {CLOCK_FUTURE_MS} (the consensus future-timestamp allowance, beyond the +/- RTT/2 measurement uncertainty of the offset)')
+
+    def f_pen(d):
+        for peer, e in (per_kind.get('penalty_ban') or {}).items():
+            d['findings'].append({'peer': peer, 'grade': 'OBSERVED', 'what': f"score-banned {e['n']}x for misbehaviour ({e['n_current']} in the current run)", 'logx_lines': e['logx_lines']})
+        for key in ('p2p_penalty_bans_total', 'p2p_penalty_aggregate_bans_total', 'p2p_penalty_evictions_total'):
+            if M(key):
+                d['findings'].append({'peer': '(node-wide)', 'grade': 'OBSERVED', 'what': f'{key} = {M(key):g}', 'cap_line': mt_line[key]})
+    det('D7', 'Misbehaviour bans (invalid PoW, malformed or undecodable frames, fetch timeouts)', 'penalty_ban', f_pen, 'rule: offences add score; 100 points bans the IP (penalty.go)')
+
+    def f_net(d):
+        groups = {}
+        for pid, ip in ips_active.items():
+            g = netgroup(ip)
+            if g:
+                groups.setdefault(g, []).append(pid)
+        outs = {}
+        for p in peers:
+            if p['dir'] == 'out':
+                g = netgroup(ips_active[p['peer']])
+                outs.setdefault(g, []).append(p['peer'])
+        n = len(ips_active)
+        sizes = sorted((len(v) for v in groups.values()), reverse=True)
+        d['diversity'] = {'peers': n, 'netgroups': len(groups), 'top_netgroup_peers': sizes[0] if sizes else 0,
+                          'top_netgroup_share': round(sizes[0] / n, 4) if n else None, 'sizes': sizes}
+        d['diversity']['line'] = C.add({'src': 'diversity', **{k: v for k, v in d['diversity'].items()}})
+        for g, members in outs.items():
+            if len(members) > 2:
+                d['findings'].append({'peer': ', '.join(sorted(members)), 'grade': 'OBSERVED', 'what': f'{len(members)} outgoing peers share one /16 (cap MAX_OUTBOUND_PER_NETGROUP = 2)', 'cap_line': d['diversity']['line']})
+        if n and (sizes[0] / n > NETGROUP_SHARE or len(groups) < MIN_NETGROUPS):
+            d['findings'].append({'peer': '(peer set)', 'grade': 'ANOMALY', 'what': f"top /16 holds {sizes[0]}/{n} peers, {len(groups)} distinct /16s (ANOMALY if share > {NETGROUP_SHARE} or < {MIN_NETGROUPS} groups)", 'cap_line': d['diversity']['line']})
+    det('D8', 'Eclipse-risk indicators: peer-set diversity by /16', 'netgroup_cap', f_net, f'test: no /16 above {NETGROUP_SHARE:.0%} of the active peers, >= {MIN_NETGROUPS} distinct /16s; OBSERVED if > 2 outgoing in one /16')
+
+    def f_conc(d):
+        tot = sum(v for v, _ in fr_metric.values())
+        d['total'] = tot
+        if not tot:
+            return
+        top = max(fr_metric.items(), key=lambda kv: kv[1][0])
+        share = top[1][0] / tot
+        d['top_share'] = round(share, 4)
+        d['findings'].append({'peer': top[0], 'grade': 'ANOMALY' if share > FIRST_RELAY_CONC else 'NORMAL',
+                              'what': f"delivered {top[1][0]:g} of {tot:g} first relays this run ({share:.1%}; ANOMALY if > {FIRST_RELAY_CONC:.0%}: one path carries most new blocks to us)", 'cap_line': top[1][1]})
+    det('D9', 'First-relay concentration (topology dependence)', 'first_relay', f_conc, f'test: one peer > {FIRST_RELAY_CONC:.0%} of p2p_first_relay_total')
+
+    def f_inv(d):
+        for key in ('p2p_inv_txids_over_budget_total', 'p2p_unrequested_txs_dropped_total', 'p2p_frame_budget_refusals_total'):
+            if key in mt:
+                d['findings'].append({'peer': '(node-wide)', 'grade': 'OBSERVED' if mt[key] > 0 else 'NORMAL', 'what': f'{key} = {mt[key]:g} (must stay 0 on honest traffic)', 'cap_line': mt_line[key]})
+    det('D10', 'INV / transaction flood against the budgets', 'inv_budget', f_inv, 'rule: an INV beyond 64 txids/s (burst 1,024) per connection is clipped and counted')
+
+    def f_ids(d):
+        for node, pids in ids_seen.items():
+            if len(pids) > 1:
+                d['findings'].append({'peer': ', '.join(sorted(pids)), 'grade': 'ANOMALY', 'what': f'one peer_id ({node}) on {len(pids)} addresses at once', 'cap_line': next(p['line'] for p in peers if p['peer'] in pids)})
+    det('D11', 'One node identity on several addresses', 'peer_info', f_ids, 'test: the same handshake peer_id on > 1 active address')
+
+    def f_chunk(d):
+        for peer, e in (per_kind.get('chunk_unknown_tip') or {}).items():
+            d['findings'].append({'peer': peer, 'grade': 'NORMAL', 'what': f"{e['n']} chunk(s) on a tip we did not have yet (a race at block arrival, dropped without penalty)", 'logx_lines': e['logx_lines']})
+    det('D12', 'Chunks building on tips we do not have', 'chunk_tip', f_chunk, 'rule: such a chunk is dropped (not penalised); counted as information')
+
+    def f_chain(d):
+        inc = pi.get('incoming') or 0
+        d['findings'].append({'peer': '(node-wide)', 'grade': 'pending' if inc else 'NORMAL',
+                              'what': (f'{inc} inbound peer(s) could send Chain requests, and no counter of served Chain requests exists (CO24-N3)' if inc else
+                                       'no inbound connection: no peer can send us Chain requests (GetSyncInfo inbound unreachable)'), 'cap_line': sync_l})
+    det('D13', 'Chain-request amplification (inbound)', 'chain_request', f_chain, 'test: needs inbound peers and a served-request counter')
+
+    def f_ver(d):
+        for p in peers:
+            if p['version_class'] != 'current':
+                d['findings'].append({'peer': p['peer'], 'grade': 'ANOMALY' if p['version_class'] == 'custom' else 'NORMAL',
+                                      'what': f"version class {p['version_class']} ({p['version']})", 'cap_line': p['line']})
+    det('D14', 'Version mix (outdated / custom builds)', 'fingerprint', f_ver, 'test: daemon_version is a plain release string; current = 3.6.0-153 (this tree); outdated is NORMAL (still on the v3 chain)')
+    # ── churn and series
+    act = sorted(p['peer'] for p in peers)
+    churn = None
+    if prev and isinstance(prev.get('active'), list):
+        joined, left = sorted(set(act) - set(prev['active'])), sorted(set(prev['active']) - set(act))
+        churn = {'since': prev.get('captured'), 'joined': len(joined), 'left': len(left), 'joined_peers': joined, 'left_peers': left}
+    churn_line = C.add({'src': 'churn', 'churn': churn, 'active': act})
+    # ── KPIs
+    lags = [p['lag'] for p in peers if isinstance(p.get('lag'), int)]
+    lat = [p['latency_ms'] for p in peers if isinstance(p.get('latency_ms'), (int, float))]
+    vc = {}
+    for p in peers:
+        vc[p['version_class']] = vc.get(p['version_class'], 0) + 1
+    kpi = {'peers_active': len(peers), 'incoming': pi.get('incoming'), 'outgoing': pi.get('outgoing'),
+           'lag_max': max(lags) if lags else None, 'lag_median': statistics.median(lags) if lags else None,
+           'latency_median_ms': round(statistics.median(lat), 1) if lat else None,
+           'versions': vc, 'v2_seen_7d': pi.get('v2_chain_peers_seen_7d'), 'bans_listed': len(ban_rows),
+           'first_relay_top_share': next((d.get('top_share') for d in D if d['id'] == 'D9'), None),
+           'netgroups': next((d['diversity']['netgroups'] for d in D if d['id'] == 'D8' and 'diversity' in d), None),
+           'builders_seen': len(builders), 'observed': sum(1 for d in D if d['grade'] == 'OBSERVED'),
+           'anomaly': sum(1 for d in D if d['grade'] == 'ANOMALY'), 'pending': sum(1 for d in D if d['grade'] == 'pending'),
+           'handshake_failures': M('p2p_handshake_failures_total'), 'stuck_evictions': M('p2p_stuck_peer_evictions_total'),
+           'chain_fingerprint': si.get('chain_fingerprint'), 'sync_status': si.get('status')}
+    kpi_line = C.add({'src': 'kpis', **kpi})
+    census = {'bans': ban_rows, 'v2_offences': v2_rows, 'peer_list': pl_rows, 'first_relay': fr_rows,
+              'log_kinds': {k: {'peers': len(v), 'lines': sum(e['n'] for e in v.values())} for k, v in sorted(per_kind.items())},
+              'handshake_kinds': {k.split('kind=')[1].rstrip('}'): v for k, v in mt.items() if k.startswith('p2p_handshake_failures_by_kind_total{')},
+              'call_timeouts': {k.split('method=')[1].rstrip('}'): v for k, v in mt.items() if k.startswith('p2p_call_timeouts_total{')}}
+    census['log_kinds_line'] = C.add({'src': 'log_kinds', 'records': logscan.get('records'), 'runs': logscan.get('runs'),
+                                      'kinds': census['log_kinds']})
+    rep = {'tool': 'harness/intel/peer_intel.py', 'r': 'r24', 'captured': ts, 'raw': cap.get('_dir'),
+           'node_version': si.get('version') or gi.get('version'), 'header_line': hdr, 'sync_line': sync_l, 'kpi_line': kpi_line,
+           'builders_line': bl_line, 'churn_line': churn_line, 'kpis': kpi, 'churn': churn, 'peers': peers, 'builders': builders,
+           'detectors': D, 'census': census, 'rules': ra, 'thresholds': {'clock_future_ms': CLOCK_FUTURE_MS, 'first_relay_conc': FIRST_RELAY_CONC,
+           'netgroup_share': NETGROUP_SHARE, 'min_netgroups': MIN_NETGROUPS, 'lagging_blocks': LAGGING, 'remote_unserved_mult': REMOTE_UNSERVED_MULT},
+           'log': {'records': logscan.get('records'), 'runs': logscan.get('runs'),
+                   'current_start_line': (logscan.get('current_start') or [None, None])[1]}}
+    rep['proposals'] = proposals(rep, ra, root)
+    return rep, C.lines, X.lines
+
+
+# ───────────────────────────── node-side gaps → R25 (the self-recursive loop) ─────────────────────────────
+GAPS = (
+    ('CO24-N1', 'Per-peer offence score and last reasons are not exposed over RPC',
+     'p2p/penalty.go', 'func add_penalty(ip string, reason string, now time.Time) (ban_seconds uint64) {',
+     'GetPeerInfo (p2p/peer_info.go PeerInfo) has no penalty score field; individual offences below the ban score are not logged (only "peer banned for misbehaviour")',
+     'add penalty_score and last_offence{reason,ts} to PeerInfo; a V(1) log line per offence with the reason'),
+    ('CO24-N2', 'No per-reason offence counter (invalid_pow, malformed_request, undecodable, invalid_tx, timeout)',
+     'p2p/penalty.go', 'metrics.Set.GetOrCreateCounter("p2p_penalty_bans_total").Inc()',
+     '/metrics counts bans only; which rule a peer broke is invisible until it is banned',
+     'p2p_penalty_offences_total{reason} incremented in add_penalty'),
+    ('CO24-N3', 'Inbound Chain requests served are not counted',
+     'p2p/rpc_chain_request.go', 'func (c *Connection) Chain(request Chain_Request_Struct, response *Chain_Response_Struct) error {',
+     'chain-request amplification cannot be measured: no counter or log of served Chain requests and their sizes',
+     'p2p_chain_requests_served_total and p2p_chain_request_blocks_total (+ per-peer count in PeerInfo)'),
+    ('CO24-N4', 'Ban list entries carry no reason or origin',
+     'p2p/bans.go', 'if err := write_json_atomic(ban_file, &ban_map); err != nil { // tmp + fsync + rename (persist.go)',
+     'ban_list.json maps address -> expiry only; a ban from the v2 filter, a score ban and an operator ban look the same',
+     'persist {until, reason, source} per entry; GetBanList RPC (loopback) with reason counts'),
+    ('CO24-N5', 'Per-peer INV budget clips are node-wide only',
+     'p2p/inv_budget.go', 'var inv_txids_over_budget = metrics.Set.NewCounter("p2p_inv_txids_over_budget_total")',
+     'a flood is visible as one counter, not attributable to a connection',
+     'inv_clipped counter on Connection, exposed in PeerInfo'),
+    ('CO24-N6', 'Per-peer object-serve failures are only in the log',
+     'p2p/object_errors.go', 'logger.V(1).Info(msg+": peer could not serve the object", append([]interface{}{"peer_error", err.Error()}, keysAndValues...)...)',
+     "peer_intel reads 'could not serve' and 'answered N blocks' from derod.log; no counter or PeerInfo field carries them",
+     'objects_unserved and short_answers counters per Connection, in PeerInfo and /metrics (summed)'),
+    ('CO24-N7', 'Stuck-peer holds are not listed',
+     'p2p/stuck_peer.go', 'func stuck_held_count(now time.Time) (n int) {',
+     'p2p_stuck_peer_held is a count; which peers are held and until when is not readable',
+     'stuck_held entries (address, strikes, until) in GetPeerInfo'),
+)
+
+
+def proposals(rep, ra, root):
+    out = []
+    for pid, title, f, q, gap, fix in GAPS:
+        try:
+            lines = (Path(root) / f).read_text(errors='replace').splitlines()
+            ln = next((i + 1 for i, l in enumerate(lines) if q in l), None)
+        except OSError:
+            ln = None
+        out.append({'id': pid, 'title': title, 'anchor': {'file': f, 'quote': q, 'line': ln}, 'gap': gap, 'proposal': fix,
+                    'status': 'open' if ln else 'pending (anchor not in this tree)', 'target': 'R25', 'area': 'peers'})
+    return out
+
+
+# ───────────────────────────── privacy scan (shared with G27 and the KAT) ─────────────────────────────
+def leaks(text, secrets_=()):
+    """[(kind, sample)] of IP-like strings and of the given private strings (tags, IPs) found in text."""
+    out = []
+    for m in IPV4.finditer(text):
+        s = m.group(0)
+        try:
+            ipaddress.ip_address(s)
+        except ValueError:
+            continue
+        out.append(('ipv4', s))
+    for m in IPV6.finditer(text):
+        s = m.group(0)
+        if s.count(':') < 2 or not re.search(r'[0-9a-fA-F]', s):
+            continue
+        try:
+            ipaddress.IPv6Address(s)
+            out.append(('ipv6', s))
+        except ValueError:
+            pass
+    out.extend(('private', s[:2] + '…') for s in private_hits(text, secrets_))
+    return out
+
+
+def load_privkit():
+    """kit/privkit.py of THIS tree (by path, never a cached module of another tree: the KAT mutates copies)."""
+    import importlib.util
+    f = Path(__file__).resolve().parent.parent / 'kit' / 'privkit.py'
+    sp = importlib.util.spec_from_file_location(f'privkit_{abs(hash(str(f)))}_{f.stat().st_mtime_ns}', f)
+    m = importlib.util.module_from_spec(sp)
+    sp.loader.exec_module(m)
+    return m
+
+
+def private_hits(text, secrets_=()):
+    """the given private strings (IPs, tags, peer_ids, builder keys) found in text (r24: shared by the section and
+    the whole-page scans of G27)."""
+    out = []
+    for s in secrets_:
+        if s and len(s) >= 4 and s in text:
+            out.append(s)
+    return out
+
+
+def private_strings(priv):
+    """the IPs, tags, peer_ids and raw builder keys of the newest private raw capture (to check outputs against), or ()."""
+    try:
+        d = sorted(x for x in (Path(priv) / 'raw').iterdir() if x.is_dir() and re.fullmatch(r'\d{8}T\d{6}Z', x.name))[-1]
+    except (OSError, IndexError):
+        return ()
+    s = set()
+    try:
+        for p in (json.loads((d / 'GetPeerInfo.json').read_text()).get('result') or {}).get('peers') or []:
+            s.add(host_of(p.get('address')))
+            if p.get('tag'):
+                s.add(p['tag'])
+            if p.get('peer_id'):                         # r24 (verify): the handshake node id is private too
+                s.add(str(p['peer_id']))
+    except (OSError, ValueError):
+        pass
+    for f in DATADIR_FILES:
+        try:
+            j = json.loads((d / f).read_text())
+        except (OSError, ValueError):
+            continue
+        for k in (j.get('peers') or {}) if f == 'first_relay.json' else j:
+            s.add(host_of(k))
+            if f == 'first_relay.json':                  # r24 (verify): raw builder (miner) key prefixes are private
+                s.update(str(b) for b in ((j['peers'][k] or {}).get('builders') or {}))
+    # r24 (integration): a loopback / unspecified / test-range address (peers.json can hold 127.0.0.1) names no peer
+    # and appears legitimately on every page; only real peer addresses, tags and ids are private
+    pk = load_privkit()
+    return tuple(sorted(x for x in s if x and len(x) >= 7 and not (pk.IPV4.fullmatch(x) and pk.reserved(x))))
+
+
+def page_section(html_text, sid='peers'):
+    i = html_text.find(f'<section id="{sid}">')
+    if i < 0:
+        return None
+    j = html_text.find('</section>', i)
+    return html_text[i:j if j > 0 else len(html_text)]
+
+
+def g27(root=ROOT, priv=None, now=None):
+    """(ok, detail): fresh capture, outputs and the rendered section free of IPs/private strings, every row anchored."""
+    root = Path(root)
+    rt = root / 'harness' / 'runtime'
+    why = []
+    rp = rt / 'peer_intel.json'
+    try:
+        rep = json.loads(rp.read_text())
+    except (OSError, ValueError) as e:
+        return False, f'peer_intel.json unreadable: {type(e).__name__}'
+    try:
+        cap_t = datetime.datetime.fromisoformat(rep['captured'])
+        age = ((now or datetime.datetime.now().astimezone()) - cap_t).total_seconds() / 3600
+    except (KeyError, ValueError, TypeError):
+        age = None
+    if age is None or age > FRESH_H or age < -0.1:
+        why.append(f'capture not fresh ({age if age is None else round(age, 1)} h)')
+    capf, logxf = rt / rep.get('capture_file', '-'), rt / rep.get('logx_file', '-')
+    files = [rp, capf, logxf, root / 'harness/model/raw/peercards.json']
+    for f in (capf, logxf):
+        if not f.exists():
+            why.append(f'{f.name} missing')
+    if capf.exists() and rep.get('capture_sha') != hashlib.sha256(capf.read_bytes()).hexdigest()[:16]:
+        why.append('capture file changed since the report')
+    sec = None
+    page = root / 'artifacts' / 'dero-src-arch.html'
+    if page.exists():
+        sec = page_section(page.read_text(errors='replace'))
+    ps_ = private_strings(priv or PRIVATE)
+    nleak = 0
+    for f in files:
+        try:
+            t = f.read_text(errors='replace')
+        except OSError:
+            continue
+        lk = leaks(t, ps_)
+        if lk:
+            nleak += len(lk)
+            why.append(f'{f.name}: {len(lk)} leak(s) ({lk[0][0]})')
+    if sec is not None:
+        lk = leaks(sec, ps_)
+        if lk:
+            nleak += len(lk)
+            why.append(f'rendered section: {len(lk)} leak(s) ({lk[0][0]})')
+    # r24 (integration): the WHOLE generated page, harness/model/verified.json and the log-derived raw files carry no
+    # peer address (every non-reserved IPv4 pseudonymised at the miners, kit/privkit.py) and none of the newest private
+    # capture's strings; before r24 the triage / log-bridge / intel rows copied peer IPv4s from the derod console
+    privkit = load_privkit()
+    n_scan = 0
+    for f in [page, root / 'harness/model/verified.json'] + [root / f'harness/model/raw/{k}.json' for k in PAGE_RAW_KEYS]:
+        try:
+            t = f.read_text(errors='replace')
+        except OSError:
+            continue
+        n_scan += 1
+        lk = privkit.page_ip_leaks(t)
+        pv = private_hits(t, ps_)
+        if lk or pv:
+            nleak += len(lk) + len(pv)
+            why.append(f'{f.name}: {len(lk)} peer address(es) not pseudonymised, {len(pv)} private string(s) '
+                       f'(e.g. {(lk or pv)[0][:3]}…)')
+    # every rendered row anchored; every detector rule line resolves
+    n_rows = n_bad = 0
+    try:
+        rows = json.loads((root / 'harness/model/raw/peercards.json').read_text()).get('rows', [])
+    except (OSError, ValueError):
+        rows = None
+        why.append('model/raw/peercards.json missing (run harness/miners/mine_peers.py)')
+    for r in rows or []:
+        n_rows += 1
+        ok = False
+        for e in r.get('evidence') or []:
+            try:
+                ls = (root / e['file']).read_text(errors='replace').splitlines()
+            except OSError:
+                continue
+            ln = e.get('line')
+            if isinstance(ln, int) and 0 < ln <= len(ls) and str(e.get('quote', ''))[:200] in ls[ln - 1]:
+                ok = True
+                break
+        n_bad += not ok
+    if n_bad:
+        why.append(f'{n_bad} row(s) without a resolving anchor')
+    bad_rules = [d['id'] for d in rep.get('detectors', []) if d.get('grade') != 'pending' and (d.get('rule') or {}).get('status') != 'OK']
+    if bad_rules:
+        why.append(f'detectors graded without a rule line: {bad_rules}')
+    if rows is not None and rows and sec is None and page.exists():
+        why.append('the page has no peers section although rows exist (rebuild gen_deroarch)')
+    ok = not why
+    det = (f"capture {rep.get('captured')} ({rep.get('node_version')}), {rep['kpis'].get('peers_active')} peers, "
+           f"{len(rep.get('detectors', []))} detectors (OBSERVED {rep['kpis'].get('observed')}, ANOMALY {rep['kpis'].get('anomaly')}), "
+           f"{n_rows} rows anchored {n_rows - n_bad}/{n_rows}, leaks {nleak} (private strings checked: {len(ps_)}; "
+           f"whole page + verified.json + {len(PAGE_RAW_KEYS)} log-derived raw files scanned: {n_scan})")
+    return ok, det + ('' if ok else ' · ' + '; '.join(why)[:400])
+
+
+# ───────────────────────────── main ─────────────────────────────
+def write_atomic(path, text):
+    p = Path(path)
+    tmp = p.parent / f'.{p.name}.{os.getpid()}.tmp'
+    tmp.write_text(text)
+    os.replace(tmp, p)
+
+
+def run(cap_dir, priv, log_paths, root=ROOT, out_dir=None):
+    out_dir = Path(out_dir or (Path(root) / 'harness' / 'runtime'))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    salt = load_salt(priv)
+    ps = Pseud(salt, load_self(priv).get('builder8'))
+    cap = load_capture(cap_dir)
+    ls = scan_log(log_paths, ps)
+    series = out_dir / 'peer_series.jsonl'
+    prev = None
+    if series.exists():
+        try:
+            prev = json.loads(series.read_text().splitlines()[-1])
+        except (ValueError, IndexError):
+            prev = None
+    tsn = datetime.datetime.now()
+    rep, cl, xl = analyse(cap, ls, ps, root=root, ts=tsn.astimezone().isoformat(timespec='seconds'), prev=prev)
+    stamp = tsn.strftime('%Y%m%dT%H%M%S')
+    capf, logxf = out_dir / f'peer_capture_{stamp}.jsonl', out_dir / f'peer_logx_{stamp}.jsonl'
+    write_atomic(capf, '\n'.join(cl) + '\n')
+    write_atomic(logxf, '\n'.join(xl) + ('\n' if xl else ''))
+    rep['capture_file'], rep['logx_file'] = capf.name, logxf.name
+    rep['capture_sha'] = hashlib.sha256(capf.read_bytes()).hexdigest()[:16]
+    rep['log']['files'] = [Path(p).name for p in log_paths]
+    write_atomic(out_dir / 'peer_intel.json', json.dumps(rep, indent=1, ensure_ascii=False) + '\n')
+    k = rep['kpis']
+    with series.open('a') as f:
+        f.write(json.dumps({'captured': rep['captured'], 'version': rep['node_version'], 'capture': capf.name,
+                            'peers': k['peers_active'], 'out': k['outgoing'], 'in': k['incoming'], 'lag_max': k['lag_max'],
+                            'latency_median_ms': k['latency_median_ms'], 'versions': k['versions'], 'v2_seen_7d': k['v2_seen_7d'],
+                            'bans_listed': k['bans_listed'], 'first_relay_top_share': k['first_relay_top_share'],
+                            'netgroups': k['netgroups'], 'observed': k['observed'], 'anomaly': k['anomaly'],
+                            'handshake_failures': k['handshake_failures'], 'active': sorted(p['peer'] for p in rep['peers'])}) + '\n')
+    return rep, capf, logxf
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--live', action='store_true', help='capture now (read-only RPC, /metrics, datadir copies) into the private dir')
+    ap.add_argument('--capture', help='an existing capture directory')
+    ap.add_argument('--private', help='private directory (salt, self.json, raw captures)')
+    ap.add_argument('--log', nargs='*', help='derod log files (default ~/dero-data/logs/derod*.log*)')
+    ap.add_argument('--datadir', help='the datadir to copy the four JSON files from (read-only)')
+    ap.add_argument('--check', action='store_true', help='gate G27 on the newest outputs')
+    a = ap.parse_args()
+    priv = private_dir(a.private)
+    if a.check:
+        ok, det = g27(ROOT, priv)
+        print(('PASS ' if ok else 'FAIL ') + det)
+        return 0 if ok else 3
+    if a.live:
+        cd = capture_live(priv, datadir=a.datadir)
+    elif a.capture:
+        cd = Path(a.capture)
+    else:
+        ap.error('--live or --capture DIR')
+    rep, capf, logxf = run(cd, priv, log_files(a.log))
+    if a.live:
+        # r24 (integration): keep the newest PRIVATE_KEEP raw runs within PRIVATE_MAX_BYTES, 0700 dirs / 0600 files
+        privkit = load_privkit()
+        kept, gone = privkit.prune_private(Path(priv) / 'raw', keep=PRIVATE_KEEP, max_bytes=PRIVATE_MAX_BYTES,
+                                           pattern=r'^\d{8}T\d{6}Z$')
+        privkit.prune_private(priv, keep=10 ** 6, max_bytes=10 ** 15)              # modes only, on the whole tree
+        if gone:
+            print(f'peer_intel: pruned {len(gone)} private raw run(s), kept {len(kept)}')
+    k = rep['kpis']
+    print(f"peer_intel {rep['captured']} {rep['node_version']}: {k['peers_active']} peers ({k['outgoing']} out / {k['incoming']} in), "
+          f"lag max {k['lag_max']}, latency median {k['latency_median_ms']} ms, versions {k['versions']}, netgroups {k['netgroups']}, "
+          f"first-relay top share {k['first_relay_top_share']}, builders {k['builders_seen']}")
+    for d in rep['detectors']:
+        print(f"  {d['id']:<4} {d['grade']:<8} {d['title']}  ({len(d['findings'])} finding(s))")
+    print(f"wrote harness/runtime/{capf.name}, {logxf.name}, peer_intel.json, peer_series.jsonl; proposals {len(rep['proposals'])}")
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
