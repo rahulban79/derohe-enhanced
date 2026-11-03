@@ -436,10 +436,6 @@ Acceptance, all measured:
 | anchors | **372/372 resolved**, 278 rows drawn, 0 refused, 8 items the miners declined to claim |
 | kit gates on the retrofitted report | G5 G6 G7 G10 G11 G12 PASS · 122/122 cells cited |
 
-Published (same URL for the report, as before):
-`dero-src-arch.html` → https://claude.ai/artifact/Tyck6K4YQXGK8J3nzZfnTy ·
-`release151-migration-report.html` → https://claude.ai/artifact/By1Mffm5NYDzB3XWdcudTc ·
-`index.html` → https://claude.ai/artifact/56fyqKtgNGoQthTmyQYQNg
 
 ### 7.2 ★★ The node is not at the tip
 The harness computed an impossible cadence (7,345 blocks in 1,667 s) and following it proved the node is
