@@ -43,11 +43,11 @@ func GetInfo(ctx context.Context) (result rpc.GetInfo_Result, err error) {
 	{
 		version, err := chain.ReadBlockSnapshotVersion(chain.Get_Top_ID())
 		if err != nil {
-			panic(err)
+			panic(err) // r25 B86: store invariant (the top block), keeps ERROR + stack
 		}
 		balance_merkle_hash, err := chain.Load_Merkle_Hash(version)
 		if err != nil {
-			panic(err)
+			panic(err) // r25 B86: store invariant (the top block), keeps ERROR + stack
 		}
 		result.Merkle_Balance_TreeHash = fmt.Sprintf("%X", balance_merkle_hash[:])
 	}
@@ -97,6 +97,10 @@ func GetInfo(ctx context.Context) (result rpc.GetInfo_Result, err error) {
 	result.White_peerlist_size, result.Grey_PeerList_Size = p2p.Peer_List_Counts() // upstream never assigned these
 	result.Miners = CountMiners()
 	result.Miniblocks_In_Memory = chain.MiniBlocks.Count()
+	// r25 (CO24-C4, dero-rft §7 B58): declared upstream and never assigned (it always read 0 while the log showed ~100
+	// side-block lines per 3,000 blocks). The settled alt blocks this node accepted since its start: blocks deeper
+	// than STABLE_LIMIT whose id is not the one at their height in the topo index (p2p/consensus_obs_r25.go).
+	result.Alt_Blocks_Count = p2p.Alt_Blocks(chain.Get_Height(), chain.Get_Blocks_At_Height).Count
 	result.CountMinisRejected = CountMinisRejected
 	result.CountMinisAccepted = CountMinisAccepted
 	result.CountBlocks = CountBlocks

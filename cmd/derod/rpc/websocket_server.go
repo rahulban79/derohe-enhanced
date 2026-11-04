@@ -18,6 +18,7 @@ package rpc
 
 import "io"
 import "os"
+import "path/filepath"
 import "net"
 import "fmt"
 import "net/http"
@@ -180,6 +181,11 @@ func RPCServer_Start(params map[string]interface{}) (*RPCServer, error) {
 	chain = params["chain"].(*blockchain.Blockchain)
 	r.tx_chain = chain
 
+	// r25 (CO24-C6): the reorg monitor's lifetime counts survive restarts (reorg_events.go)
+	if err := reorg_state.enable_persist(filepath.Join(globals.GetDataDirectory(), REORG_MONITOR_FILE)); err != nil {
+		logger.V(1).Info("reorg monitor not persisted", "err", err.Error())
+	}
+
 	go r.Run()
 	logger.Info("RPC/Websocket server started")
 	atomic.AddUint32(&globals.Subsystem_Active, 1) // increment subsystem
@@ -199,6 +205,7 @@ func (r *RPCServer) RPCServer_Stop() {
 	}
 	// TODO we  must wait for connections to kill themselves
 	time.Sleep(1 * time.Second)
+	reorg_state.flush() // r25 (CO24-C6): the observations since the last periodic save
 	logger.Info("RPC Shutdown")
 	atomic.AddUint32(&globals.Subsystem_Active, ^uint32(0)) // this decrement 1 fom subsystem
 }
@@ -354,14 +361,14 @@ var internal_server = server.NewLocal(historical_apis, nil) // uses traditional 
 // Bridge HTTP to the JSON-RPC server.
 var bridge = jhttp.NewBridge(internal_server.Client)
 */
-var historical_apis = handler.Map{"getinfo": handler.New(GetInfo),
-	"get_info":                   handler.New(GetInfo), // this is just an alias to above
+var historical_apis = handler.Map{"getinfo": handler.New(GetInfoR25), // r25 BD6: + total_supply_basis (r25_rpcrobust.go)
+	"get_info":                   handler.New(GetInfoR25), // this is just an alias to above
 	"getblock":                   handler.New(GetBlock),
 	"getblockheaderbytopoheight": handler.New(GetBlockHeaderByTopoHeight),
 	"getblockheaderbyhash":       handler.New(GetBlockHeaderByHash),
 	"gettxpool":                  handler.New(GetTxPool),
 	"getrandomaddress":           handler.New(GetRandomAddress),
-	"gettransactions":            handler.New(GetTransaction),
+	"gettransactions":            handler.New(GetTransactionR25), // r25: + txs_status
 	"sendrawtransaction":         handler.New(SendRawTransaction),
 	"submitblock":                handler.New(SubmitBlock),
 	"getheight":                  handler.New(GetHeight),
@@ -377,7 +384,7 @@ var servicemux = handler.ServiceMap{
 	"DERO": handler.Map{
 		"Echo":                       handler.New(Echo),
 		"Ping":                       handler.New(Ping),
-		"GetInfo":                    handler.New(GetInfo),
+		"GetInfo":                    handler.New(GetInfoR25), // r25 BD6
 		"GetSyncInfo":                handler.New(GetSyncInfo),
 		"Subscribe":                  handler.New(Subscribe),
 		"WatchTx":                    handler.New(WatchTx),
@@ -392,12 +399,13 @@ var servicemux = handler.ServiceMap{
 		"GetTxStatus":                handler.New(GetTxStatus),
 		"GetFeeEstimate":             handler.New(GetFeeEstimate),       // r23
 		"GetMonetaryIntegrity":       handler.New(GetMonetaryIntegrity), // r23b
+		"GetConsensusStats":          handler.New(GetConsensusStats),    // r25 (consensus observatory)
 		"GetBlock":                   handler.New(GetBlock),
 		"GetBlockHeaderByTopoHeight": handler.New(GetBlockHeaderByTopoHeight),
 		"GetBlockHeaderByHash":       handler.New(GetBlockHeaderByHash),
 		"GetTxPool":                  handler.New(GetTxPool),
 		"GetRandomAddress":           handler.New(GetRandomAddress),
-		"GetTransaction":             handler.New(GetTransaction),
+		"GetTransaction":             handler.New(GetTransactionR25), // r25: + txs_status
 		"SendRawTransaction":         handler.New(SendRawTransaction),
 		"SubmitBlock":                handler.New(SubmitBlock),
 		"GetHeight":                  handler.New(GetHeight),

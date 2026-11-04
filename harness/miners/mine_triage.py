@@ -60,6 +60,26 @@ def rpc(method, params=None):
         return json.loads(r.read())
 
 
+def scrub_snapshot(snap, salt=None):
+    """r25 (peers, §7 B71): the triage snapshot is tracked evidence; its peer facts ('peer <ip> address=...') and the
+    ban list line carried raw addresses. Pseudonymised at the source (kit/privkit.py, the peer observatory's salt), so
+    the miner below anchors on 'peer-' names, exactly what minelib.emit writes into the raw file."""
+    sys.path.insert(0, str(M.HARNESS / 'kit'))
+    import privkit
+    return privkit.pseudonymise_obj(snap, salt or privkit.load_salt())
+
+
+def pseud_peer(addr, salt=None):
+    """r25 (pipeline run 3): the console's peer address in the snapshot's pseudonymised form. scrub_snapshot (B71)
+    pseudonymised the 'peer <ip> ...' facts, but the rows still looked them up by the raw console address, so three
+    rows (tri-remote-emptyblock, tri-remote-txstore, tri-closedpipe-churn) lost their anchor and left the page
+    (verify_deroarch --mutations: 'tri-remote-txstore not on the page'); the raw address would also have reached the
+    claim text. KAT: harness/kat/test_triage_pseud_r25.py."""
+    sys.path.insert(0, str(M.HARNESS / 'kit'))
+    import privkit
+    return privkit.pseudonymise_text(addr, salt or privkit.load_salt())
+
+
 def capture(log, errs):
     """One line per fact so each is anchorable: the chain's view of every txid, and the peer records."""
     ids = []
@@ -119,6 +139,7 @@ def capture(log, errs):
     snap = {'captured': datetime.now().astimezone().isoformat(timespec='seconds'), 'log': log.name,
             'source': 'DERO.GetTransaction per txid + <datadir>/mainnet/peers.json + ban_list.json',
             'facts': facts}
+    snap = scrub_snapshot(snap)                                    # r25 (B71): no peer address in the snapshot
     p = RUNTIME / f'triage_{datetime.now().strftime("%Y%m%dT%H%M%S")}.json'
     p.write_text(json.dumps(snap, indent=1))
     print(f'captured {p.name}: {len(facts)} facts')
@@ -243,7 +264,7 @@ def main():
     # ---- 3. a peer with an empty block file
     mv = of(lambda e: 'Invalid Major Version in Block' in e['kv'])
     if mv:
-        peer = sorted({e['logger'].split('.', 2)[2] for e in mv})
+        peer = sorted({pseud_peer(e['logger'].split('.', 2)[2]) for e in mv})  # r25: as the snapshot names it
         F('tri-remote-emptyblock', 'Invalid Major Version in Block: a peer\'s block file is empty', 'REMOTE',
           'remote storage fault · no cost here',
           f'{len(mv)} GetObject calls to {", ".join(peer)} came back with this text. It is the peer\'s own error: '
@@ -262,8 +283,10 @@ def main():
            (RPC2, 'call.Error = ServerError(resp.Error)')]
           + ([fact(f'peer {p.split(":")[0]} ') for p in peer]),
           fix=('p2p only: log_call_failure classifies an rpc2 ServerError as the peer\'s and logs it at V(1); the sync loop still '
-               'moves on to another peer as before.',
-               [('p2p/chain_sync.go', 'log_call_failure(connection.logger, err, "Call failed GetObject")'),
+               'moves on to another peer as before (r25: through Connection.call_failed, which also counts it per '
+               'connection, and the B47 sync hold skips that peer for a while).',
+               [('p2p/chain_sync.go', 'connection.sync_failed(connection.call_failed(err, "Call failed GetObject"), time.Now())'),
+                ('p2p/peer_observe.go', 'kind := log_call_failure(c.logger, err, msg, keysAndValues...)'),
                 (OE, 'if errors.As(err, &server_err) {')]),
           count=len(mv), peers=peer,
           impact='None. The sync loop returns and the block is fetched from another peer; the peer is not '
@@ -273,7 +296,7 @@ def main():
     # ---- 4. a peer that advertised transactions it could not serve
     ts = of(lambda e: '/bltx_store/' in e['kv'])
     if ts:
-        peer = sorted({e['logger'].split('.', 2)[2] for e in ts})
+        peer = sorted({pseud_peer(e['logger'].split('.', 2)[2]) for e in ts})  # r25: as the snapshot names it
         checks, lags = [], []
         for e in ts:
             m = re.search(r'bltx_store/([0-9a-f]{2})/([0-9a-f]{2})/([0-9a-f]{64})\.tx', e['kv'])
@@ -344,7 +367,7 @@ def main():
     # ---- 6. ordinary disconnects
     churn = [e for e in cp if e not in casc]
     if churn:
-        peer = sorted({e['logger'].split('.', 2)[2] for e in churn})
+        peer = sorted({pseud_peer(e['logger'].split('.', 2)[2]) for e in churn})  # r25: as the snapshot names it
         F('tri-closedpipe-churn', 'closed pipe: a peer connection ended under a read', 'TRANSPORT',
           'ordinary churn · our side closed · reconnected within seconds',
           f'{len(churn)} reads on {", ".join(peer)} ended because the session was already closed: kcp-go returns '

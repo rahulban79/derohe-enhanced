@@ -25,9 +25,9 @@ import "github.com/deroproject/derohe/globals"
 import "github.com/deroproject/derohe/config"
 import "github.com/deroproject/derohe/errormsg"
 import "github.com/deroproject/derohe/rpc"
+import "github.com/deroproject/derohe/cryptography/crypto"
 
 //import "github.com/deroproject/derohe/dvm"
-//import "github.com/deroproject/derohe/cryptography/crypto"
 
 func GetEncryptedBalance(ctx context.Context, p rpc.GetEncryptedBalance_Params) (result rpc.GetEncryptedBalance_Result, err error) {
 	defer func() { // safety so if anything wrong happens, we return error
@@ -37,11 +37,12 @@ func GetEncryptedBalance(ctx context.Context, p rpc.GetEncryptedBalance_Params) 
 	}()
 
 	uaddress, err := globals.ParseValidateAddress(p.Address)
-	if err != nil {
-		panic(err)
+	if err != nil { // r25 B86: caller input, was panic(err) -> ERROR + stack for every malformed address
+		return result, refuse_input("GetEncryptedBalance", "address", err.Error())
 	}
-
-	registration := LocatePointOfRegistration(uaddress)
+	if err = check_scid_tree("GetEncryptedBalance", p.SCID); err != nil { // r25 B86: was a panic at GetTree below
+		return result, err
+	}
 
 	topoheight := chain.Load_TOPO_HEIGHT()
 
@@ -49,14 +50,24 @@ func GetEncryptedBalance(ctx context.Context, p rpc.GetEncryptedBalance_Params) 
 		topoheight = p.TopoHeight
 	}
 
+	// r25 B85: refuse a pruned topoheight before ANY store read (it ended in panic(err) at ReadBlockSnapshotVersion)
+	if err = check_state_topo("GetEncryptedBalance", topoheight); err != nil {
+		return result, err
+	}
+
+	registration := LocatePointOfRegistration(uaddress)
+
 	toporecord, err := chain.Store.Topo_store.Read(topoheight)
-	if err != nil {
+	if err != nil { // r25 B86: invariant (topoheight is within 0..top and above the prune point): a damaged store
 		panic(err)
+	}
+	if err = check_state_record("GetEncryptedBalance", topoheight, crypto.Hash(toporecord.BLOCK_ID)); err != nil {
+		return result, err // r25 B85: a record that names no block, refused before its snapshot is read
 	}
 
 	ss, err := chain.Store.Balance_store.LoadSnapshot(toporecord.State_Version)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 	}
 
 	var balance_tree *graviton.Tree
@@ -68,7 +79,7 @@ func GetEncryptedBalance(ctx context.Context, p rpc.GetEncryptedBalance_Params) 
 	}
 
 	if balance_tree, err = ss.GetTree(treename); err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 	}
 
 	bits, _, balance_serialized, err := balance_tree.GetKeyValueFromKey(keyname)
@@ -83,18 +94,18 @@ func GetEncryptedBalance(ctx context.Context, p rpc.GetEncryptedBalance_Params) 
 			}, errormsg.ErrAccountUnregistered
 
 		} else {
-			panic(err)
+			panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 		}
 	}
 
 	version, err := chain.ReadBlockSnapshotVersion(toporecord.BLOCK_ID)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 	}
 
 	merkle_hash, err := chain.Load_Merkle_Hash(version)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 	}
 
 	// calculate top height merkle tree hash
@@ -102,12 +113,12 @@ func GetEncryptedBalance(ctx context.Context, p rpc.GetEncryptedBalance_Params) 
 
 	version, err = chain.ReadBlockSnapshotVersion(chain.Get_Top_ID())
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 	}
 
 	dmerkle_hash, err := chain.Load_Merkle_Hash(version)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 	}
 
 	return rpc.GetEncryptedBalance_Result{ // return success
@@ -148,18 +159,18 @@ func IsRegisteredAtTopoHeight(addr []byte, topoheight int64) bool {
 
 	toporecord, err := chain.Store.Topo_store.Read(topoheight)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 	}
 
 	ss, err := chain.Store.Balance_store.LoadSnapshot(toporecord.State_Version)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 	}
 
 	var balance_tree *graviton.Tree
 	balance_tree, err = ss.GetTree(config.BALANCE_TREE)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 	}
 
 	_, err = balance_tree.Get(addr)
@@ -169,7 +180,7 @@ func IsRegisteredAtTopoHeight(addr []byte, topoheight int64) bool {
 			return false
 
 		} else {
-			panic(err)
+			panic(err) // r25 B86: store invariant (state at or above the prune point), keeps ERROR + stack
 		}
 	}
 

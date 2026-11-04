@@ -48,6 +48,7 @@ const (
 	call_failure_other  call_failure = iota // anything else, logged as before
 	call_failure_remote                     // the peer answered with its own error
 	call_failure_closed                     // the connection was already closed under the call
+	call_failure_short                      // r25: the peer answered a sync fetch with fewer blocks than asked
 )
 
 func (k call_failure) String() string {
@@ -56,6 +57,8 @@ func (k call_failure) String() string {
 		return "remote"
 	case call_failure_closed:
 		return "closed"
+	case call_failure_short:
+		return "short"
 	}
 	return "other"
 }
@@ -68,6 +71,9 @@ func classify_call_error(err error) call_failure {
 	var server_err rpc2.ServerError
 	if errors.As(err, &server_err) {
 		return call_failure_remote
+	}
+	if is_short_answer(err) { // r25 (CO24-N6): the peer's answer, so not an ERROR of this node (G15 error_at_tip)
+		return call_failure_short
 	}
 	if errors.Is(err, io.ErrClosedPipe) || errors.Is(err, rpc2.ErrShutdown) {
 		return call_failure_closed
@@ -91,6 +97,8 @@ func log_call_failure(logger logr.Logger, err error, msg string, keysAndValues .
 		logger.V(1).Info(msg+": peer could not serve the object", append([]interface{}{"peer_error", err.Error()}, keysAndValues...)...)
 	case call_failure_closed:
 		logger.V(1).Info(msg+": connection closed during the call", append([]interface{}{"error", err.Error()}, keysAndValues...)...)
+	case call_failure_short: // r25: same message and error text as the r24 ERROR line (peer_intel D4 reads it), at V(1)
+		logger.V(1).Info(msg, append([]interface{}{"error", err.Error()}, keysAndValues...)...)
 	default:
 		logger.V(2).Error(err, msg, keysAndValues...)
 	}

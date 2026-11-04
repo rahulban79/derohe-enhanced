@@ -110,9 +110,11 @@ func (connection *Connection) add_compact_block(bl *block.Block, txs []*transact
 	if chain.Is_Block_Topological_order(blid) || chain.Is_Block_Tip(blid) {
 		return true
 	}
+	note_block_seen(connection, blid, int64(cp.Height)) // r25 (CO24-C5)
 	if _, ok := Add_Complete_Block_HF3(chain, &cbl); !ok {
 		return false
 	}
+	note_block_result(connection, &cbl, nil, true) // r25 (CO24-C4): accepted; a refused compact block falls back to the full block
 	connection.logger.V(2).Info("block assembled from first chunk and local pools", "blid", blid, "txcount", len(txs))
 	Broadcast_Block(&cbl, connection.Peer_ID)
 	observe_block_txs(raws, txs) // r24 (B18): only txs of an accepted block are observed

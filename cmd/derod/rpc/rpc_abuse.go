@@ -125,6 +125,17 @@ const ABUSE_AGG_PREFIX = "agg:"
 // An honest wallet polling ONE method this node lacks once per block (3.3/min) settles at ~24 points, under the line.
 const ABUSE_TRUST_PROBE_MAX = 10 * ABUSE_PTS_UNKNOWN_METHOD // 10 unknown names at once, or ~6.9/min sustained
 
+// r25 (secpool, B48): a fresh key's burst is a quarter of a trusted key's.
+//
+// Every new remote key started with the full ABUSE_DEFAULT_BURST (2,000 tokens) at once: a fresh websocket could spend
+// it on 58 full GetTransaction calls (256 txids = 34 tokens each, ~14.8k txids) before the rate applied (r24 rpcws
+// residual), and an operator with one key in each of N aggregates (/24, /48) got N full bursts at once, because the
+// aggregate bucket only bounds keys that share an aggregate. An untrusted key now holds at most
+// ABUSE_FRESH_BURST_FRAC of the burst (500 tokens at the default: still ten explorer pages or a wallet refresh 25 times
+// over); the RATE is unchanged, so a client that stays under 200 weighted calls/s never notices, and a key earns the
+// full burst with its trust (ABUSE_TRUST_AGE and ABUSE_TRUST_CALLS of served calls). Loopback never reaches this code.
+const ABUSE_FRESH_BURST_FRAC = 0.25
+
 // behaviour points
 const (
 	ABUSE_PTS_UNKNOWN_METHOD = 5.0 // a name no handler serves: 20 within a minute ban
@@ -338,7 +349,7 @@ func (t *abuse_table) entry(key string, now time.Time) *abuse_entry {
 		t.m[ABUSE_OVERFLOW_KEY] = e
 		return e
 	}
-	e := &abuse_entry{tokens: t.burst, tok_at: now, score_at: now, last_seen: now, first_seen: now}
+	e := &abuse_entry{tokens: t.burst, tok_at: now, score_at: now, last_seen: now, first_seen: now} // r25 (B48): admit_items clamps an untrusted key to its fresh burst
 	if strings.HasPrefix(key, ABUSE_AGG_PREFIX) {
 		e.aggregate = true
 		e.tokens = t.burst * ABUSE_AGG_SCALE
@@ -502,6 +513,8 @@ func (t *abuse_table) admit_items(key, method string, unknown bool, item_tokens 
 	rate, burst := t.rate, t.burst
 	if e.overflow {
 		rate, burst = rate*ABUSE_OVERFLOW_SCALE, burst*ABUSE_OVERFLOW_SCALE
+	} else if !trusted { // r25 (B48): a fresh key holds a quarter of the burst until it is trusted
+		burst *= ABUSE_FRESH_BURST_FRAC
 	}
 	refill(e, rate, burst, now)
 	cost := float64(remote_cost(method) + item_tokens)

@@ -1,0 +1,153 @@
+{
+ "admission_today": "refused at relay/RPC admission (glue/txprecheck/window.go:136-145); exemption only below HF3 (config/config.go:110; p2p/hf3_parity.go:49,66)",
+ "body": {
+  "reserialize_equal": true,
+  "sha256": "edf64d781e8b62bb7e4caf1f05d5d566c16e663e6be72e123142ca4de6e8e1c5",
+  "size": 3221,
+  "source": "src-2"
+ },
+ "burn_total": 0,
+ "carrier_count": 2,
+ "carriers": [
+  {
+   "blid": "61ddd0924e704ff4a690279b2aace2152e82b87612c712ea9c0b03f5f34bb5ca",
+   "class": "RAW (checks i-ii)",
+   "exception_path": {
+    "below_hf3": true,
+    "executed": "yes (INTERPRETATION of SRC + RAW: blockchain/blockchain.go:994-1024 (every Tx_hashes entry of each block in topological order is executed); this block is in the RAW chain)",
+    "execution_parity": {
+     "entry_parity": true,
+     "override_changes_execution": true,
+     "rule": "p2p/hf3_parity.go:77 Parity = (height > table Height) == Tx_Parity; blockchain/transaction_execute.go:243-246 uses it instead of Proof.Parity() (blockchain/transaction_execute.go:213)"
+    },
+    "height_eq_table_height": true,
+    "nonce_check": "bypassed: blockchain/transaction_verify.go:234-237 caches TXID+Bl_Tips; this block's key TXID+tips (blockchain/transaction_verify.go:90-93) equals it, so blockchain/transaction_verify.go:94-96 returns (p2p/hf3_parity.go:74-76 (verify before add); blockchain/blockchain.go:826 (nonce), :858 (verify))",
+    "proof_verification": "skipped: blockchain/transaction_verify.go:232-233 stores the TXID in transaction_valid_cache before any check; the key below HF3 is the TXID (blockchain/transaction_verify.go:433-436); blockchain/transaction_verify.go:438-441 returns before Proof.Verify (blockchain/transaction_verify.go:450-461). Still applied before that return: blockchain/transaction_verify.go:256-322, :327-338, :341-431",
+    "table_bl_tips_is_this_block": false,
+    "tips_eq_table_bl_tips": true
+   },
+   "height": 7421416,
+   "tier": "A",
+   "tips": [
+    "ce19715247ee9683c1eca0e0994ac58fff6701b1aea9e80498fa0966abeb0b8f"
+   ],
+   "topo": 7421416
+  },
+  {
+   "blid": "61dd24f0dde1f21e0ec06946e9e158992fbe77a98798db5308fa6c5ecf985c1f",
+   "class": "RAW (checks i-ii)",
+   "exception_path": {
+    "below_hf3": true,
+    "executed": "yes (INTERPRETATION of SRC + RAW: blockchain/blockchain.go:994-1024 (every Tx_hashes entry of each block in topological order is executed); this block is in the RAW chain)",
+    "execution_parity": {
+     "entry_parity": false,
+     "override_changes_execution": false,
+     "rule": "p2p/hf3_parity.go:77 Parity = (height > table Height) == Tx_Parity; blockchain/transaction_execute.go:243-246 uses it instead of Proof.Parity() (blockchain/transaction_execute.go:213)"
+    },
+    "height_eq_table_height": false,
+    "nonce_check": "applied: this block's key TXID+tips (blockchain/transaction_verify.go:90-93) differs from the cached TXID+Bl_Tips, so the full check blockchain/transaction_verify.go:98-196 runs",
+    "proof_verification": "skipped: blockchain/transaction_verify.go:232-233 stores the TXID in transaction_valid_cache before any check; the key below HF3 is the TXID (blockchain/transaction_verify.go:433-436); blockchain/transaction_verify.go:438-441 returns before Proof.Verify (blockchain/transaction_verify.go:450-461). Still applied before that return: blockchain/transaction_verify.go:256-322, :327-338, :341-431",
+    "table_bl_tips_is_this_block": false,
+    "tips_eq_table_bl_tips": false
+   },
+   "height": 7421417,
+   "tier": "A",
+   "tips": [
+    "61ddd0924e704ff4a690279b2aace2152e82b87612c712ea9c0b03f5f34bb5ca"
+   ],
+   "topo": 7421417
+  }
+ ],
+ "class": "RAW body (checks i-iii, raw/provenance.json); fields below DERIVED",
+ "duplicates": {
+  "bodies_held_under_this_txid": 1,
+  "other_bodies": "pending: one body was fetched per TXID; block tx lists carry only the TXID, which excludes the proof (transaction.go:191), so a second body with the same core statement is not observable from RAW blocks"
+ },
+ "fee": 80,
+ "grade": {
+  "checked": [
+   "body RAW (i-iii)",
+   "carriers RAW (i-ii)",
+   "TXID by node Go and pinned Python Keccak-256",
+   "exception path per carrier (SRC lines)",
+   "proof under the current verifier: not decidable: ring state unavailable"
+  ],
+  "deciding_fact_missing": "the ring's balance state at the reference block (needed to re-run the verifier) is not held; even with it, a pass would not settle the hidden amount (C1)",
+  "evidence_grade": "E2",
+  "public_fields": {
+   "burn_total": 0,
+   "fee": 80,
+   "note": "public fields move no plaintext value into existence: the fee is paid out of the sender's encrypted balance; burn and value are 0",
+   "value_field": 0
+  },
+  "question": "did this tx create value beyond the emission formula?",
+  "status": "builder grade, written before the audit; the audited grade is audit/audit_report.json verdicts (G29), rft \u00a70.8.1 rule 5",
+  "txid": "d9d7e7de41ca9c81693eca4e3ea56ae02b6680887c35fc1b1b2da71967335404",
+  "verdict_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA"
+ },
+ "has_scdata": false,
+ "hf3": true,
+ "payloads": [
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 16,
+   "fees": 80,
+   "has_proof": true,
+   "pointer_bytes": 80,
+   "ring_size": 16,
+   "rpc_payload_len": 145,
+   "rpc_type": 1,
+   "scid_zero": true,
+   "statement_roothash": "cb13c2734405654c4043724c78d66ba15e09799da578f9aa2e378911b486e933"
+  }
+ ],
+ "proof_current_verifier": {
+  "reason": "not decidable: ring state unavailable: the reference block is outside the held state (archive committed topo 7453290..7467515; live node state starts at prunedheight 7,498,540, disc:108-112)",
+  "result": "not decidable: ring state unavailable"
+ },
+ "ref_blid": "160f20ba673f360d4882fecc6749ca79aded640c3ce804168e9aae49c047703a",
+ "ref_blid_height_eq_ref_height": true,
+ "ref_blid_in_raw_chain": true,
+ "ref_height": 7421412,
+ "registration_signature_valid": "not applicable: not a registration",
+ "scdata_keys": 0,
+ "serialized_keccak256": {
+  "node_go": "35ebedd62117018f4880852eef5f49ebd749906e5884fb679733a470da645679",
+  "python_matches": true,
+  "use": "the verifier's cache key only for tx.Height >= MAJOR_HF3_HEIGHT (blockchain/transaction_verify.go:433-436); below it (every tx here) the key is the TXID"
+ },
+ "statement_roothash_vs_archive": "not reconstructable: no held state for the reference topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "table_entry": {
+  "bl_tips": "ce19715247ee9683c1eca0e0994ac58fff6701b1aea9e80498fa0966abeb0b8f",
+  "class": "SRC",
+  "file": "blockchain/hardfork_fixes.go",
+  "group": "duplicates",
+  "height": 7421416,
+  "line": 86,
+  "parity_literal": false,
+  "tx_parity": false
+ },
+ "table_semantics": {
+  "bl_tips_block_raw": true,
+  "bl_tips_height": 7421415,
+  "bl_tips_is_that_carrier_itself": false,
+  "bl_tips_is_tip_of_that_carrier": true,
+  "height_is_inclusion_height_of_a_carrier": true,
+  "other_carriers": [
+   7421417
+  ],
+  "tx_ref_blid_eq_bl_tips": false
+ },
+ "tx_type": "NORMAL",
+ "txid": "d9d7e7de41ca9c81693eca4e3ea56ae02b6680887c35fc1b1b2da71967335404",
+ "txid_recomputed": {
+  "core_statement_len": 896,
+  "core_statement_sha256": "88103889a74292599c277a2cba418d73696355ef83fca393a7cb378dcfa7bb1b",
+  "node_go": true,
+  "python_keccak256": true,
+  "rule": "TXID = Keccak256(SerializeCoreStatement), transaction/transaction.go:192-200, :510-524"
+ },
+ "value_field": 0,
+ "version": 1
+}

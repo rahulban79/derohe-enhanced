@@ -204,6 +204,11 @@ func TestR24TxpoolLoad(t *testing.T) {
 					txpolicy.Detach()
 					again := chain.Add_TX_To_Pool(decode(raws[k+j]))
 					t.Errorf("ab admit (policy on=%v, round %d, sender %d): %s; again with the policy off: %v", on, r, k+j, err, again)
+					// r25 (secpool, B43): keep the failing bytes and where the tx points, for an offline diagnosis
+					ftx := decode(raws[k+j])
+					enc.Encode(map[string]interface{}{"m": "b43_failure", "hex": fmt.Sprintf("%x", raws[k+j]), "tx_height": ftx.Height,
+						"blid": fmt.Sprintf("%x", ftx.BLID), "blid_topo": chain.Load_Block_Topological_order(crypto.Hash(ftx.BLID)),
+						"tip_topo": chain.Load_TOPO_HEIGHT(), "tip_height": chain.Get_Height(), "sender": k + j, "round": r})
 				}
 				ms := (cpu_seconds() - c0) * 1000
 				if on {

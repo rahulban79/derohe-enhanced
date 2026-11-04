@@ -144,9 +144,7 @@ func TestR19MethodsOnSimulatorChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Shutdown()
-	old_chain := chain
-	chain = c
-	defer func() { chain = old_chain }()
+	defer swap_global_chain(c)() // r25 B41: under chain_swap_mu, so the fate resolver never races the swap
 
 	miner := genesis_miner(t)
 	for i := 0; i < 6; i++ {

@@ -114,7 +114,9 @@ def pi1(base):
     P = load(base)
     t = tmp()
     rep, *_ = analyse(P, write_cap(t / 'c', [peer(ip) for ip in NORMAL_IPS]), write_log(t))
-    bad = [(d['id'], d['grade']) for d in rep['detectors'] if d['grade'] not in ('NORMAL',)]
+    # r25: D15 needs the r25 GetPeerInfo fields, which this r24-shaped capture lacks, so it is 'pending' (never NORMAL by
+    # default); the r25 KAT (test_peer_intel_r25.py PI14) checks an r25-shaped normal capture is all NORMAL, D15 included
+    bad = [(d['id'], d['grade']) for d in rep['detectors'] if d['grade'] not in ('NORMAL',) and not (d['id'] == 'D15' and d['grade'] == 'pending')]
     shutil.rmtree(t, ignore_errors=True)
     return not bad, f'flagged {bad}'
 

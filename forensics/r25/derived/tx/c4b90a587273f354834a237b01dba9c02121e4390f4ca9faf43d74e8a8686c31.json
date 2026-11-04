@@ -1,0 +1,72 @@
+{
+ "body": {
+  "reserialize_equal": true,
+  "sha256": "b4615348e1916faa33b267f45c4a70d12066f058d4bc3530025b7a2b1f09e99e",
+  "size": 1705,
+  "source": "src-2"
+ },
+ "burn_total": 0,
+ "carrier_count": 1,
+ "carriers": [
+  {
+   "blid": "2c0d7624f27b36a4ffba4e98448c37913ec927a20a2679d11faa5883724fd154",
+   "class": "RAW (checks i-ii)",
+   "height": 7471806,
+   "tier": "A",
+   "tips": [
+    "2dc3a363b8a0803f1573f66ea4b6578935654d104223986d3533be0359cb1ad9"
+   ],
+   "topo": 7471806
+  }
+ ],
+ "class": "RAW body (checks i-iii, raw/provenance.json); fields below DERIVED",
+ "duplicates": {
+  "bodies_held_under_this_txid": 1,
+  "other_bodies": "pending: one body was fetched per TXID; block tx lists carry only the TXID, which excludes the proof (transaction.go:191), so a second body with the same core statement is not observable from RAW blocks"
+ },
+ "fee": 121,
+ "has_scdata": false,
+ "hf3": false,
+ "payloads": [
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 2,
+   "fees": 121,
+   "has_proof": true,
+   "pointer_bytes": 10,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 0,
+   "scid_zero": true,
+   "statement_roothash": "00d20064ae22bde989f931d49dff244e27ba368304e968813515753c114e4de4"
+  }
+ ],
+ "proof_current_verifier": {
+  "reason": "not decidable: ring state unavailable: the reference block is outside the held state (archive committed topo 7453290..7467515; live node state starts at prunedheight 7,498,540, disc:108-112)",
+  "result": "not decidable: ring state unavailable"
+ },
+ "ref_blid": "4cbafb5f6d90d340f4b13d01d245ca2b9c7386889cdae83eadd2ee1c56a6b00d",
+ "ref_blid_height_eq_ref_height": true,
+ "ref_blid_in_raw_chain": true,
+ "ref_height": 7471801,
+ "registration_signature_valid": "not applicable: not a registration",
+ "scdata_keys": 0,
+ "serialized_keccak256": {
+  "node_go": "012a0508d27faae9990063ed1e2bad5404f8762617d98861e3dde13cbdde6dc9",
+  "python_matches": true,
+  "use": "the verifier's cache key only for tx.Height >= MAJOR_HF3_HEIGHT (blockchain/transaction_verify.go:433-436); below it (every tx here) the key is the TXID"
+ },
+ "statement_roothash_vs_archive": "not reconstructable: no held state for the reference topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "tx_type": "NORMAL",
+ "txid": "c4b90a587273f354834a237b01dba9c02121e4390f4ca9faf43d74e8a8686c31",
+ "txid_recomputed": {
+  "core_statement_len": 364,
+  "core_statement_sha256": "63e3dec8eea8d5cea93ad5d7f904acebf800a4c59b925bee1d5c37e29af8fbf7",
+  "node_go": true,
+  "python_keccak256": true,
+  "rule": "TXID = Keccak256(SerializeCoreStatement), transaction/transaction.go:192-200, :510-524"
+ },
+ "value_field": 0,
+ "version": 1
+}

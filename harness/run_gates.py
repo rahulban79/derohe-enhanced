@@ -44,7 +44,8 @@
   G21 the payout ledger holds             R23: the newest minerruns snapshot (< 24 h): every L-check passes, and the payout
                                            ledger is present and recomputable (paid DERO = paid x per-miniblock reward,
                                            expected inside or outside its own Poisson interval as the verdict says)
-  G22 the soundness page is backed      R23b: every claim unit of artifacts/dero-soundness-r23.html (each <p>, <li>, figure,
+  G22 the soundness page is backed      R23b: every claim unit of the current round's soundness page (each <p>, <li>, figure,
+                                           r25: artifacts/dero-soundness-<current>.html, named by harness/kit/soundpage.py;
                                            tile, code line) is classified in loop/SOUNDNESS_CLAIMS.json; every CODE claim
                                            (height-bound proof skip, pinned nonce bypass, already-mined guard, validity
                                            window 11, TXID scope, CalcSupply, emission auditor) is backed by a named test
@@ -60,13 +61,25 @@
   r24 G25 the artifacts agree with their canonical sources (harness/intel/coherence.py; the index page is judged by
        the S7 step after gen_index.py instead).
   r24 G26 the chain-consensus observatory is fresh, graded and anchored (harness/intel/consensus_intel.py g26): a live
-       capture < 24 h old, all 18 detectors graded OBSERVED/ANOMALY/NORMAL/NO-DATA, rule and row anchors re-read, no
+       capture < 24 h old, all 20 detectors (r25: + D19, D20) graded OBSERVED/ANOMALY/NORMAL/NO-DATA, rule and row anchors re-read, no
        address/IP literal in harness/runtime/consensus_intel.json or the newest consensus_capture_*.txt.
   r24 G27 the peer observatory is fresh, private and anchored (harness/intel/peer_intel.py g27; consensus-network dim):
        newest peer_intel.json < 24 h, its capture unchanged, no IP or private tag in its outputs or the rendered 'peers'
        section, every peers row anchored, no detector graded without its code rule line; r24 integration: no peer
        address (non-reserved IPv4) and no private string anywhere in dero-src-arch.html, model/verified.json or the
        log-derived raw files (kit/privkit.py page_ip_leaks).
+  r25 G28 the forensic dataset is reproducible (harness/forensics/verify_dataset.py g28; forensics-replay, B77): every
+       version under forensics/ re-verifies byte for byte against forensics/ledger.json (sealed manifests unchanged),
+       and harness/runtime/forensics_replay.json holds >= 2 full replay.py PASS runs of the newest manifest from
+       distinct cwds with byte-identical reports.
+  r25 G29 the forensic dataset is independently audited (harness/forensics/audit_check.py g29; forensics-audit, B78): the
+       newest version's audit/ (audit_report.json, challenges.json, AUDIT.md) is bound to its current data, every FAILS or
+       UNRESOLVED challenge is reflected in a non-PROVEN verdict, no PROVEN verdict rests on EXT, A1-A4 are challenged, and
+       the dataset text carries no exploit or private content (KAT MF3, MF4).
+  r25 G30 the forensics frontend traces to the dataset (harness/forensics/facts.py g30; B79): every number in the ledger's
+       forensics sections (<!--forensics:begin/end-->) and in the src-arch "Forensic dataset" line is a fact span naming
+       its dataset file and SHA-256 (= the manifest entry) and showing the value re-derived now; no untraced number; the
+       window explorer's embedded data decodes to derived/window.jsonl.gz (KAT test_forensics_g30_r25.py).
 Appends one row per gate to loop/GATES.md. Exit 0 all pass (or PAUSED) · 3 any fail.  Usage: run_gates.py [cycle-label]
 """
 import datetime, html, html.parser, json, re, subprocess, sys, tempfile, urllib.request
@@ -753,6 +766,42 @@ def main():
         res.append(('G27 the peer observatory is fresh, private and anchored', ok27, det27))
     except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
         res.append(('G27 the peer observatory is fresh, private and anchored', False, f'peer_intel could not run: {type(e).__name__}: {e}'))
+    # G28 (r25 forensics-replay, B77) — the forensic dataset is reproducible (harness/forensics/verify_dataset.py g28):
+    # every version re-verifies byte for byte against forensics/ledger.json, and two recorded full replay.py runs of the
+    # newest manifest (distinct cwds) re-derived every derived/ file with byte-identical reports
+    try:
+        import importlib.util as _iu28
+        _sp28 = _iu28.spec_from_file_location(f'verify_dataset_for_gates_{id(HERE)}', HERE / 'forensics/verify_dataset.py')
+        VD = _iu28.module_from_spec(_sp28)
+        _sp28.loader.exec_module(VD)
+        ok28, det28 = VD.g28(HERE.parent)
+        res.append(('G28 the forensic dataset is reproducible', ok28, det28))
+    except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
+        res.append(('G28 the forensic dataset is reproducible', False, f'verify_dataset could not run: {type(e).__name__}: {e}'))
+    # G29 (r25 forensics-audit, B78) — the independent audit is present (harness/forensics/audit_check.py g29): bound to the
+    # newest dataset's current data, 0 FAILS/UNRESOLVED challenges left on a PROVEN verdict (MF3/MF4), A1-A4 challenged,
+    # a second implementation, and no exploit/private text in the dataset
+    try:
+        import importlib.util as _iu29
+        _sp29 = _iu29.spec_from_file_location(f'audit_check_for_gates_{id(HERE)}', HERE / 'forensics/audit_check.py')
+        AC = _iu29.module_from_spec(_sp29)
+        _sp29.loader.exec_module(AC)
+        ok29, det29 = AC.g29(HERE.parent)
+        res.append(('G29 the forensic dataset is independently audited', ok29, det29))
+    except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
+        res.append(('G29 the forensic dataset is independently audited', False, f'audit_check could not run: {type(e).__name__}: {e}'))
+    # G30 (r25 forensics frontend, B79) — every figure of the ledger's forensics sections and of the src-arch "Forensic
+    # dataset" line is a span naming its dataset file and SHA-256 and equal to the fact re-derived from the dataset now;
+    # no number is left untraced; the window explorer's embedded data decodes to derived/window.jsonl.gz row by row
+    try:
+        import importlib.util as _iu30
+        _sp30 = _iu30.spec_from_file_location(f'facts_for_gates_{id(HERE)}', HERE / 'forensics/facts.py')
+        FX = _iu30.module_from_spec(_sp30)
+        _sp30.loader.exec_module(FX)
+        ok30, det30 = FX.g30(HERE.parent)
+        res.append(('G30 the forensics frontend traces to the dataset', ok30, det30))
+    except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
+        res.append(('G30 the forensics frontend traces to the dataset', False, f'facts could not run: {type(e).__name__}: {e}'))
 
     # G13 — a fix may change logging and peer handling, never what the node accepts or computes
     import consensus_guard as CG

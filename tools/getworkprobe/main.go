@@ -17,7 +17,8 @@
 // to the first FINAL job of that height. That is NOT the node's dead-normal window and bounds it in neither direction
 // (r24 verify): with no dead window the last normal job was live work (seconds before the flip); with several dead jobs
 // it starts at the LAST one while the node books from the FIRST (r24_verify_test.go). The node's own numbers are
-// getwork_final_flip_delay_seconds / getwork_final_flip_l9_seconds.
+// getwork_final_flip_delay_seconds / getwork_final_flip_l9_seconds; r25: --metrics=<derod /metrics URL> prints their
+// deltas over the run (node_counters.go), which is the B39 read.
 package main
 
 import (
@@ -116,10 +117,19 @@ func main() {
 	address := flag.String("address", "", "a REGISTERED dero1 address (unregistered ones get no normal jobs)")
 	duration := flag.Duration("duration", 10*time.Minute, "how long to listen")
 	outp := flag.String("out", "", "write every job as a JSON line here")
+	murl := flag.String("metrics", "", "r25: derod /metrics URL (e.g. http://127.0.0.1:10102/metrics): print the node's flip-counter deltas over the run")
 	flag.Parse()
 	if *address == "" {
 		fmt.Fprintln(os.Stderr, "getworkprobe: --address is required")
 		os.Exit(2)
+	}
+	var before map[string]float64
+	if *murl != "" { // r25 perfops (B39): read before dialing, so the delta covers the whole session
+		var err error
+		if before, err = read_counters(*murl); err != nil {
+			fmt.Fprintln(os.Stderr, "getworkprobe:", err)
+			os.Exit(2)
+		}
 	}
 	d := websocket.Dialer{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, HandshakeTimeout: 5 * time.Second}
 	c, _, err := d.Dial("wss://"+*daemon+"/ws/"+*address, nil)
@@ -159,4 +169,17 @@ func main() {
 		enc.Encode(j)
 	}
 	fmt.Println(summarize(jobs))
+	if before != nil {
+		after, err := read_counters(*murl)
+		if err == nil {
+			var d FlipDelta
+			if d, err = flip_delta(before, after); err == nil {
+				fmt.Println(d)
+			}
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "getworkprobe:", err)
+			os.Exit(3)
+		}
+	}
 }

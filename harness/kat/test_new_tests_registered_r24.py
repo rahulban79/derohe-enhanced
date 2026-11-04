@@ -39,6 +39,23 @@ def round_prefix():
     return 'R' + n[1:]
 
 
+FIRST_ROUND = 24   # this KAT's round: from here on every round's tests stay registered
+
+
+def round_prefixes():
+    """r25 (rpcrobust): the current round AND every earlier round since FIRST_ROUND that is not 'planned'. NT1 used to
+    check only the current round, so once R25 opened (current = r25) the three r24 mutations below edited entries NT1
+    no longer read: MISSED 0/3 on a tree with R25 tests, and a dropped R24 registration went unseen."""
+    reg = json.loads((HARNESS / 'round.json').read_text(encoding='utf-8'))
+    out = []
+    for r in reg.get('rounds', []):
+        m = re.fullmatch(r'r(\d+)([a-z]?)', str(r.get('id', '')))
+        if m and int(m.group(1)) >= FIRST_ROUND and r.get('status') != 'planned':
+            out.append('R' + m.group(1) + m.group(2))
+    cur = round_prefix()
+    return out if cur in out else out + [cur]
+
+
 OPT_IN_LINES = 4   # how many lines after `func TestX(` an env-gated skip may sit in
 
 
@@ -74,11 +91,17 @@ def unregistered(funcs, new_tests):
 
 def nt1(base):
     F = load_fbv(base)
-    funcs, oi = round_funcs(round_prefix(), with_opt_in=True)
+    funcs, oi = {}, {}
+    for pre in round_prefixes():
+        f1, o1 = round_funcs(pre, with_opt_in=True)
+        for k, v in f1.items():
+            funcs.setdefault(k, []).extend(v)
+        for k, v in o1.items():
+            oi.setdefault(k, []).extend(v)
     n = sum(len(v) for v in funcs.values())
     miss = unregistered(funcs, F.NEW_TESTS)
     reg_oi = registered_opt_in(oi, F.NEW_TESTS)
-    return (n > 0 and not miss and not reg_oi), (f'{n} {round_prefix()} tests in {len(funcs)} packages, unregistered '
+    return (n > 0 and not miss and not reg_oi), (f'{n} {"+".join(round_prefixes())} tests in {len(funcs)} packages, unregistered '
                                                  f'{len(miss)} {miss[:5]}; opt-in {sum(len(v) for v in oi.values())} '
                                                  f'{sorted(oi.items())}, registered opt-in {reg_oi}')
 
@@ -102,6 +125,7 @@ MUTATIONS = [
     ('NT1', FBV, "        './glue/txcanon/': 'TestR24AdmitRunsTxpolicy',\n",
      "        './cmd/simulator/': 'TestR24EvictionSparesTemplateTxs|TestR24TxpoolLoad',\n"
      "        './glue/txcanon/': 'TestR24AdmitRunsTxpolicy',\n", 'the opt-in simulator harnesses registered (S3 FAIL)'),
+    ('NT1', FBV, "'TestR25BlockHeaderByHashUnknownIsError|", "'", 'one r25 rpcrobust test dropped from NEW_TESTS'),
 ]
 
 

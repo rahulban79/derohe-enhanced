@@ -36,11 +36,11 @@ func NameToAddress(ctx context.Context, p rpc.NameToAddress_Params) (result rpc.
 
 	toporecord, err := chain.Store.Topo_store.Read(topoheight)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (current state, fixed tree name), keeps ERROR + stack
 	}
 	ss, err := chain.Store.Balance_store.LoadSnapshot(toporecord.State_Version)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (current state, fixed tree name), keeps ERROR + stack
 	}
 
 	var zerohash crypto.Hash
@@ -49,7 +49,7 @@ func NameToAddress(ctx context.Context, p rpc.NameToAddress_Params) (result rpc.
 
 	tree, err := ss.GetTree(treename)
 	if err != nil {
-		panic(err)
+		panic(err) // r25 B86: store invariant (current state, fixed tree name), keeps ERROR + stack
 	}
 
 	var value_bytes []byte
@@ -60,15 +60,26 @@ func NameToAddress(ctx context.Context, p rpc.NameToAddress_Params) (result rpc.
 			return
 		}
 
-		addr, _ := rpc.NewAddressFromCompressedKeys([]byte(v.ValueString))
-		if err != nil {
+		var addr string
+		if addr, err = name_value_address(v.ValueString, globals.IsMainnet()); err != nil {
 			return
 		}
-		addr.Mainnet = globals.IsMainnet()
-		result.Address = addr.String()
+		result.Address = addr
 		result.Name = p.Name
 		result.Status = "OK"
 	}
 	return
 
+}
+
+// name_value_address turns a name-service value (the registrant's compressed key) into an address string (r25 B86:
+// upstream wrote `addr, _ := NewAddressFromCompressedKeys(...)` and then tested the stale err of the unmarshal, so a
+// value that is not a key dereferenced a nil address inside the recover: ERROR + stack, -32098).
+func name_value_address(raw string, mainnet bool) (string, error) {
+	addr, err := rpc.NewAddressFromCompressedKeys([]byte(raw))
+	if err != nil {
+		return "", refuse_input("NameToAddress", "name_value", err.Error())
+	}
+	addr.Mainnet = mainnet
+	return addr.String(), nil
 }

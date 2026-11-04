@@ -1,9 +1,28 @@
-# DERO HE — enhanced node and miner (3.6.0-153 +22102026.r24)
+# DERO HE — enhanced node and miner (3.6.0-153 +22102026.r25)
 
 > **License: research and personal use only.** Use and distribution of this technology is subject to the Java Research License included herein ([`LICENSE`](LICENSE)); commercial use requires a separate license from the DERO Project.
 
 An enhanced build of the DERO HE daemon (`derod`), miner (`dero-miner`) and wallet CLI. Every change is
 non-consensus: it runs on the current mainnet with no fork. Highlights:
+
+Round 25 (`+22102026.r25`) adds:
+
+- **RPC robustness:** a state read below the node's prune point gets a typed error (-32031) before any read instead
+  of a recovered panic; every input-reachable panic in the RPC handlers returns a typed error; an unknown block hash
+  gets a typed not-found (-32032); `GetTransaction` reports `txs_status`; `GetInfo` states its supply basis.
+- **Consensus observability:** `DERO.GetConsensusStats` (miniblock refusals and block rejections by reason, side
+  blocks, reorg monitor persisted across restarts, first-seen times); `alt_blocks_count` is set; block headers carry
+  fees and first-seen times. Read on the running node: the side-block count matched the node's own list in 60 of 60
+  one-minute samples.
+- **Peers:** per-peer offence scores and reasons, ban reasons and sources in a sidecar file, Chain-request, INV-clip
+  and unserved-object counters; a peer that answers a sync with nothing is held from sync with an escalating back-off.
+- **Pool and lane:** a netgroup quota on the returning-peer inbound lane, a reduced burst for fresh remote RPC keys,
+  rebroadcast skips transactions a recent block carries, the pool cap holds under concurrency.
+- **Monetary forensics:** a reproducible dataset of the HF3-exemption window (content-pinned replay, two runs
+  byte-exact; an independent second-implementation audit; every figure on the report traced to a dataset file). The
+  75 exempt transactions are graded not decidable from public data; no inflation is shown in scope.
+- **Harness:** a standing derod error census, a prune guard for every state-reading probe, a resume checkpoint, a
+  tooling self-check, and a per-round soundness review page.
 
 Round 24 (`+22102026.r24`) adds:
 

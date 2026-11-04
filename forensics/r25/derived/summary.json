@@ -1,0 +1,25 @@
+{
+ "emission_identity_ok": true,
+ "grades": {
+  "NOT-DECIDABLE-FROM-PUBLIC-DATA/E1": 2,
+  "NOT-DECIDABLE-FROM-PUBLIC-DATA/E2": 73
+ },
+ "hf3_missing": 0,
+ "hf3_records": 75,
+ "link_rows": 599,
+ "serialize_keccak_python_eq": 94,
+ "state_roots_held_window_topos": 14226,
+ "tierA_block_id_python_sha3_eq": 605,
+ "tierA_block_records": 605,
+ "tierA_blocks": 605,
+ "tool": {
+  "keccak_impl": "keccak-pure-py-1"
+ },
+ "tx_records": 94,
+ "txid_python_keccak_eq": 94,
+ "window": [
+  7415466,
+  7497942
+ ],
+ "window_rows": 82477
+}

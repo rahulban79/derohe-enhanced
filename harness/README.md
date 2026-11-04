@@ -185,6 +185,9 @@ python3 -I intel/peer_intel.py --check           # gate G27 alone
 python3 -I miners/mine_peers.py                  # model/raw/peercards.json (section 'peers', rendered by kit/peerkit.py)
 python3 -I kat/test_peer_intel_r24.py            # PI1..PI13 + 30 mutations (a planted IP, tag, peer_id or builder key in the page FAILS G27;
                                                  #   PI13: an address anywhere on the page, in verified.json or a log-derived raw file)
+python3 -I kat/test_peer_intel_r25.py            # r25: PI14..PI25 + 23 mutations (detectors read the CO24-N* counters of an r25
+                                                 #   derod; B72 per-node clock cross-check; D15 sync holds (B47); gaps close
+                                                 #   themselves; B71 log_intel / mine_triage snapshots pseudonymised)
 ```
 S7 runs `peer_intel.py --live` after metrics_intel and before area_intel (whose `peers` area reads it: metric source
 kind `peerintel`, anchored on the KPI line of the timestamped capture), and `mine_peers.py` with the other miners.
@@ -244,10 +247,18 @@ python3 -I intel/consensus_intel.py --from <raw>    # re-analyse a pseudonymised
 python3 -I intel/consensus_intel.py g26             # gate G26 alone
 python3 -I miners/mine_consensus.py                 # rows of section 'chainobs' (kit/consensuskit.py renders them)
 python3 -I kat/test_consensus_intel_r24.py          # CI1..CI19b + 28 mutations
+python3 -I kat/test_consensus_intel_r25.py          # r25: CR1..CR10 + 20 mutations (D19 collective finals, D20 alt blocks, D02/D13 windows, r25 node counters)
 ```
 S7 runs it after metrics_intel and before area_intel (JUDGED: exit 0 or 5 and a new capture text), and mine_consensus
 with the other miners. Node-side gaps it finds are proposals CO24-C* (area `consensus`, `feeds` → area_proposals.json;
 rft §7 B55–B62).
+r25 (consensus dimension): the r25 derod serves what the observatory used to reconstruct from DEBUG lines —
+`DERO.GetConsensusStats` (miniblock refusals and block rejections by reason, the settled alt blocks behind GetInfo
+`alt_blocks_count`, the reorg monitor's lifetime record), `fees` / `first_seen_ms` / `first_seen_local` on every
+GetBlockHeadersRange header and `first_seen_ms` on GetMiniBlocks. The tool reads them when served (D02, D11, D20,
+arrival lag, fees, lifetime reorgs) and falls back to the log on an older binary; a CO24 proposal is raised only while
+the CAPTURED binary still shows its gap. D19 grades the integrator-only coalition (CO24-C8), D13 and D02 read the
+window, not the whole log (B72); the peer census joins `consensus_series.jsonl`.
 
 ## Consensus observability: the loop and the privacy kit (r24 integration, rft §0.7)
 

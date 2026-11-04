@@ -10,7 +10,7 @@ func TestIsPublic(t *testing.T) {
 	cases := map[string]bool{
 		"127.0.0.1": false, "192.168.1.218": false, "10.1.2.3": false, "172.16.5.4": false,
 		"100.85.181.2": false, "169.254.1.1": false, "0.0.0.0": false, "::1": false, "fe80::1": false,
-		"203.0.113.10": true, "203.0.113.22": true, "100.128.0.1": true, "2a01:4f8::1": true,
+		"203.0.113.163": true, "203.0.113.161": true, "100.128.0.1": true, "2a01:4f8::1": true,
 	}
 	for s, want := range cases {
 		if got := is_public(net.ParseIP(s)); got != want {
@@ -20,8 +20,8 @@ func TestIsPublic(t *testing.T) {
 }
 
 func TestDialAddress(t *testing.T) {
-	out := &Connection{Addr: &net.UDPAddr{IP: net.ParseIP("203.0.113.10"), Port: 11011}}
-	if got := dial_address(out); got != "203.0.113.10:11011" {
+	out := &Connection{Addr: &net.UDPAddr{IP: net.ParseIP("203.0.113.163"), Port: 11011}}
+	if got := dial_address(out); got != "203.0.113.163:11011" {
 		t.Errorf("outgoing: %q", got)
 	}
 	in := &Connection{Incoming: true, Port: 10101, Addr: &net.UDPAddr{IP: net.ParseIP("1.2.3.4"), Port: 55555}}

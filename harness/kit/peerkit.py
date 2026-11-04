@@ -7,7 +7,9 @@ from (proof column). Peers appear only by pseudonym; no address or tag ever reac
 rendered section).
 """
 GRADE_COL = {'OBSERVED': 'var(--gap)', 'ANOMALY': 'var(--warn)', 'NORMAL': 'var(--ok)', 'pending': 'var(--mut)'}
-GRADE_ICON = {'OBSERVED': '●', 'ANOMALY': '▲', 'NORMAL': '✓', 'pending': '…'}
+# r25 (pipeline run 4): 'pending' was '…', which the page's G11 cut audit (textkit) reads as truncated text with no
+# tooltip (verify_deroarch DK16 FAIL once a peers row was pending); a hollow circle says 'not measured yet' instead
+GRADE_ICON = {'OBSERVED': '●', 'ANOMALY': '▲', 'NORMAL': '✓', 'pending': '○'}
 VCLASS = (('current', 'var(--ok)'), ('outdated', 'var(--warn)'), ('custom', 'var(--gap)'))
 
 

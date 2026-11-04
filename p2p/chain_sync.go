@@ -237,7 +237,7 @@ try_again:
 				orequest.Block_list = append(orequest.Block_list, response.Block_list[i])
 				fill_common(&orequest.Common)
 				if err := connection.call("Peer.GetObject", orequest, &oresponse); err != nil {
-					log_call_failure(connection.logger, err, "Call failed GetObject")
+					connection.sync_failed(connection.call_failed(err, "Call failed GetObject"), time.Now()) // r25 (CO24-N6, B47)
 					return
 				} else { // process the response
 					cbl, _ := ConvertCBlock_To_CompleteBlock(oresponse.CBlocks[0])
@@ -255,7 +255,7 @@ try_again:
 			our_topo_order := chain.Load_Block_Topological_order(response.Block_list[i])
 			if our_topo_order != (int64(i)+response.Start_topoheight) || our_topo_order == -1 { // if block is not in our chain, add it to request list
 				if failcount < 4 {
-					if _, ok := Add_Complete_Block_HF3(chain, ramstore.check(response.Block_list[i])); !ok {
+					if _, ok := connection.add_block(ramstore.check(response.Block_list[i])); !ok { // r25: attributed
 						failcount++
 					}
 				}
@@ -297,7 +297,7 @@ try_again:
 		return connection.process_object_response_run(o, 0, true, nil, run)
 	}); err != nil {
 		sync_sizes.failed()
-		log_call_failure(connection.logger, err, "Call failed GetObject")
+		connection.sync_failed(connection.call_failed(err, "Call failed GetObject"), time.Now()) // r25 (CO24-N6, B47)
 		return
 	}
 
@@ -442,10 +442,12 @@ func (connection *Connection) process_object_response_run(response Objects, sent
 
 		// check if we can add ourselves to chain
 		// r23c (verify): finish() is deferred so a panic out of the add path can never leave the overlap polling
+		note_block_seen(connection, cbl.Bl.GetHash(), int64(cbl.Bl.Height)) // r25 (CO24-C5)
 		err, ok := func() (error, bool) { defer overlap.finish(); return Add_Complete_Block_HF3(chain, &cbl) }()
 		if ok {
 			run.keep(overlap) // r24: the next block (maybe in the next response) may skip its own prewarm
 		}
+		note_block_result(connection, &cbl, err, ok) // r25 (CO24-C3/C4): attributed verdict (consensus_obs_r25.go)
 		if !ok && err == errormsg.ErrInvalidPoW {
 			connection.logger.V(2).Error(err, "This peer should be banned")
 			connection.penalize("invalid_pow")

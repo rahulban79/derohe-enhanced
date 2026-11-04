@@ -1,6 +1,6 @@
 {
  "_doc": "r23c round registry: the one place a round's ids live (read by harness/pipeline/fix_build_verify.py and harness/pipeline/benchlock.py, checked by harness/kat/test_round_registry_r23c.py). The literal string 'pending' means not known yet: never replace it with a guess. Protocol: artifacts/dero-rft.md and harness/README.md.",
- "current": "r24",
+ "current": "r25",
  "upstream_base": "bf274e5",
  "benchlock": "~/derohe-persist/bench.lock",
  "rounds": [
@@ -50,7 +50,7 @@
    "new_rpc_methods": {},
    "github_sync": {
     "base": "b76eee1",
-    "target": "7648fac"
+    "target": "cbaf664"
    },
    "evidence": "R24 opened 2026-11-02 from the r23c measured head cf89e78; miner track paused by the user (artifacts/dero-rft.md §0.3, §2.7): no live miner, node-only dimensions. Implemented: combined patch d19d3f9a38b1cece1ffd4cff5087167f (79 files, 8 dimensions) merged as 59eee1d; pipeline_20261102T090301 S1-S6 PASS (go mutations 1108/1108, race 26 pkgs, shadow 120 blocks 0 mismatches, installed +22102026.r24, backups bin/*.22102026.r23c-backup; minerbench/gpubench PAUSED §0.3), S7 FAIL at mine_evolution (KeyError R24, fixed bed3ef4); project-only pipeline_20261102T103606 PASS; area intelligence (G23) + disclosure track (G24) integrated 76fd69b; pipeline_20261102T104901 S3 FAIL (opt-in simulator tests registered, fixed cc1c391); full pipeline_20261102T110200 PASS (--no-install: S1-S5 PASS, mutations 1108/1108, gates 21/24 + 3 PAUSED miner). MEASURED live 2026-11-02 on the restarted r24 derod (banner 15:31:03, pid 49367; reads 15:41:24 and 16:32:01): synced, lag 0, tip age 22-27 s, 12 out / 0 in, 0 ERROR/WARN; emission OK 219 audited, 0 alerts, payees 1,447/1,447; disclosure --live S1-S4 PASS twice (CI24-1 / BD7 CONFIRMED fixed live); B38 415 with JSON-RPC -32600 body CONFIRMED; new counters 0 (no tx block in 217, no sync, no miner): B18/B34 pending, B36/B39 flips PAUSED (miner), 24 h emission pending (harness/runtime/r24_live_first_20261102.txt, r24_live_hour_20261102.txt, r24_live_txcount_20261102.txt, disclosure_live_20261102T234142Z.txt, disclosure_live_20261103T003206Z.txt; artifacts/dero-rft.md §13)",
    "tracks": {
@@ -60,9 +60,31 @@
   },
   {
    "id": "r25",
+   "status": "measured",
+   "version_suffix": "22102026.r25",
+   "new_tests_base": "629b8de",
+   "merge_commit": "1b047f7",
+   "head_after": "83cf9d6",
+   "pipeline_full": "pipeline_20261103T182557",
+   "go_mutations": "1271/1271",
+   "new_rpc_methods": {
+    "DERO.GetConsensusStats": "consensus_stats"
+   },
+   "github_sync": {
+    "base": "cbaf664",
+    "target": "pending"
+   },
+   "tracks": {
+    "miner": "paused",
+    "node": "active"
+   },
+   "evidence": "R25 opened 2026-11-03 from 629b8de (R24 measured + R25 plan); miner track paused (dero-rft §0.3); node + monetary-forensics engine (§0.8) + tooling track (§0.9); derod restarted by the user on r24 at 2026-11-03T09:53:38; merged 2026-11-03 as 1b047f7 (7 verified patches at a888afd: rpcrobust, consensus, peers, secpool, cryptodisc, perfops, harnesstool; combined r25_combined.vs-a888afd.patch md5 b577f0fe314e5f9cd278eab89ee8d6a5, 171 files). New RPC method DERO.GetConsensusStats (probed by S5); additive fields not probed by S5: GetInfo total_supply_basis + alt_blocks_count, GetTransaction txs_status, GetBlockHeadersRange fees/first_seen_ms, GetMiniBlocks first_seen_ms, GetPeerInfo penalty/sync-hold/offender fields; pipeline: run1 pipeline_20261103T125920 S3a FAIL (flaky fixed-hash test, 99ef779), run2 pipeline_20261103T130341 S1-S5 PASS / S6 refused (mid-run commit, provenance guard), run3 pipeline_20261103T144257 S1-S6 PASS (installed +22102026.r25, backups bin/*.22102026.r24-backup after the backup-tag fix d0b5762) / S7 FAIL (triage rows, fixed d0b5762), project-only runs 4-6 (peerkit glyph 037fd3a, G25/G16 a02a5a0, then PASS), run7 pipeline_20261103T165745 S5 FAIL (control = installed build, fixed 354a8e0), run8 pipeline_20261103T182557 full PASS (--no-install): mutations 1271/1271, race 26/0, shadow 120 blocks 0 mismatches vs the r24 control, GetConsensusStats probed, gates 24/27 + 3 PAUSED (miner). MEASURED live 2026-11-04 on the restarted r25 derod (user restart 06:57:28, pid 34438; window to 08:00:18, 60 samples): 60/60 synced, lag 0, 14-15 out / 0 in, 0 ERROR/WARN (G15 clear), 0 panics/bans; GetConsensusStats OK, alt_blocks_count 7 = stats 7 (B58), refusals insert_failed 834 / stale_height 11 (B55; B103 opened), 2 reorgs logged + reorg_monitor.json (B60), first_seen + fees fields (B56/B59), peer_intel evidence_mode counter, ban_reasons.json written; B80 typed -32032, txs_status not_found, total_supply_basis, B38 415; B18 observed 4 (CONFIRMED); emission 227 audited 0 alerts payees 1451/1451; disclosure --live S1-S4 PASS, census 15,440 scalars 0 noncanonical; G28 PASS on the measured build; B85 -32031 unit-proven, live pending-no-event (never probed); B47/B48/B57/B61 pending-no-event (harness/runtime/r25_live_window_20261104.txt; artifacts/dero-rft.md section 13 R25)"
+  },
+  {
+   "id": "r26",
    "status": "planned",
    "version_suffix": "pending",
-   "new_tests_base": "7648fac",
+   "new_tests_base": "pending",
    "merge_commit": "pending",
    "head_after": "pending",
    "pipeline_full": "pending",

@@ -54,6 +54,26 @@ import "github.com/deroproject/derohe/metrics"
 var ban_map = map[string]uint64{} // keeps ban maps
 var ban_mutex sync.Mutex
 
+// r25 (peers, CO24-N4 / §7 B66): why each ban exists. ban_list.json maps address -> expiry only, so a ban placed by
+// the v2-chain filter (common.go), a misbehaviour-score ban (penalty.go) and an operator's console ban looked the
+// same on disk, in BanList_Print and to the observatory. The reason lives in a SIDECAR map with the same keys
+// (persisted to ban_reasons.json), not in ban_list.json: older binaries decode ban_list.json as map[string]uint64
+// and would drop the whole list on a format change. Same keys, same lifetime: every delete from ban_map deletes the
+// entry here too, so it is bounded by the ban list. Local bookkeeping only; who is banned and for how long is
+// exactly as before.
+type ban_info struct {
+	Source string `json:"source"`           // BAN_SOURCE_*
+	Reason string `json:"reason,omitempty"` // the score's last reason, or a short fixed text
+	At     int64  `json:"at"`               // unix seconds the ban was (last) placed
+}
+
+const BAN_SOURCE_V2 = "v2_chain"               // common.go: a peer on the pre-HF3 remnant chain
+const BAN_SOURCE_SCORE = "score"               // penalty.go: misbehaviour score reached PENALTY_BAN_SCORE
+const BAN_SOURCE_OPERATOR = "operator"         // the console "ban" command
+const BAN_SOURCE_UNATTRIBUTED = "unattributed" // Ban_Address without a source (any other caller)
+
+var ban_meta = map[string]ban_info{} // guarded by ban_mutex; keys = ban_map keys
+
 // loads peers list from disk
 func load_ban_list() {
 	go ban_clean_up_goroutine() // start routine to clean up ban list
@@ -80,6 +100,25 @@ func load_ban_list() {
 			logger.V(1).Info("Successfully loaded bans from file", "ban_count", (len(ban_map)))
 		}
 	}
+	load_ban_meta_locked(filepath.Join(globals.GetDataDirectory(), "ban_reasons.json")) // r25 (CO24-N4)
+}
+
+// load_ban_meta_locked reads the ban_reasons.json sidecar and keeps only entries whose key is banned (r25). A missing
+// or undecodable file leaves every ban "unattributed": the bans themselves are unaffected.
+func load_ban_meta_locked(path string) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	m := map[string]ban_info{}
+	if json.Unmarshal(b, &m) != nil {
+		return
+	}
+	for k, v := range m {
+		if _, ok := ban_map[k]; ok {
+			ban_meta[k] = v
+		}
+	}
 }
 
 // save ban list to disk
@@ -94,6 +133,10 @@ func save_ban_list() {
 		logger.Error(err, "creating ban data file")
 	} else {
 		logger.V(1).Info("Successfully saved bans to file", "count", (len(ban_map)))
+	}
+	// r25 (CO24-N4): the reasons sidecar, same keys (ban_clean_up above dropped the expired ones from both)
+	if err := write_json_atomic(filepath.Join(globals.GetDataDirectory(), "ban_reasons.json"), &ban_meta); err != nil {
+		logger.V(1).Info("could not save ban reasons", "err", err.Error())
 	}
 }
 
@@ -130,7 +173,8 @@ func ban_clean_up() {
 	for k, v := range ban_map {
 		if v < current_time {
 			delete(ban_map, k)
-			ban_gen++ // r23c
+			delete(ban_meta, k) // r25: same keys, same lifetime
+			ban_gen++           // r23c
 		}
 	}
 }
@@ -347,6 +391,12 @@ func ban_index_contains_locked(ip net.IP) bool {
 // address can be an address or a subnet
 
 func Ban_Address(address string, ban_seconds uint64) (err error) {
+	return Ban_Address_Reason(address, ban_seconds, BAN_SOURCE_UNATTRIBUTED, "")
+}
+
+// Ban_Address_Reason is Ban_Address that also records who placed the ban and why (r25, CO24-N4). The ban itself is
+// placed exactly as Ban_Address placed it before.
+func Ban_Address_Reason(address string, ban_seconds uint64, source, reason string) (err error) {
 	ban_mutex.Lock()
 	defer ban_mutex.Unlock()
 
@@ -359,6 +409,8 @@ func Ban_Address(address string, ban_seconds uint64) (err error) {
 	//logger.Warnf("%s banned for %d secs", address, ban_seconds)
 	_, existed := ban_map[address]
 	ban_map[address] = uint64(time.Now().UTC().Unix()) + ban_seconds
+	ban_meta[address] = ban_info{Source: source, Reason: trim64(reason), At: time.Now().Unix()} // r25
+	metrics.Set.GetOrCreateCounter(fmt.Sprintf(`p2p_bans_by_source_total{source="%s"}`, ban_source_label(source))).Inc()
 	if !existed { // r23c: the index depends on the keys only; a new key is added in place (no O(bans) rebuild)
 		ban_index_add_locked(address)
 	}
@@ -390,7 +442,8 @@ func UnBan_Address(address string) (err error) {
 	defer ban_mutex.Unlock()
 	logger.Info("unbanned", "address", address)
 	delete(ban_map, address)
-	ban_gen++ // r23c
+	delete(ban_meta, address) // r25
+	ban_gen++                 // r23c
 	return
 }
 
@@ -422,10 +475,15 @@ func BanList_Print() {
 	ban_mutex.Lock()
 	defer ban_mutex.Unlock()
 	logger.Info(fmt.Sprintf("Ban List contains %d \n", len(ban_map)))
-	logger.Info(fmt.Sprintf("%-22s %-6s\n", "Addr", "Seconds to unban"))
+	logger.Info(fmt.Sprintf("%-22s %-6s %s\n", "Addr", "Seconds to unban", "Source (reason)"))
 
 	for k, v := range ban_map {
-		logger.Info(fmt.Sprintf("%-22s %6d\n", k, v-uint64(time.Now().UTC().Unix())))
+		mi := ban_meta[k] // r25 (CO24-N4): an entry from before r25 has none
+		src := mi.Source
+		if src == "" {
+			src = BAN_SOURCE_UNATTRIBUTED
+		}
+		logger.Info(fmt.Sprintf("%-22s %6d %s (%s)\n", k, v-uint64(time.Now().UTC().Unix()), src, mi.Reason))
 	}
 
 }

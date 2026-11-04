@@ -2311,3 +2311,98 @@ watches who makes the chain and the peers this node hears it from, built without
   one peer delivers two thirds of first relays and is also the only one with unserved objects (D5, D9); one node id sits
   on two addresses (D11) and its two clock offsets disagree by 180 ms, so the D6 reading is a path artefact candidate
   (B72). No grade is an accusation.
+
+## 43. ★ Round 25: a node-only round plus the monetary-forensics engine — typed RPC errors, consensus and peer counters, a sync hold, dataset v1 of the HF3 window with content-pinned replay, an independent audit, a traced frontend, and the tooling track (+22102026.r25, 2026-11-03)
+
+> Filled from the R25 records: the pipeline records (`harness/loop/runs/pipeline_20261103T*.jsonl`), the registry
+> (`harness/round.json` r25), the digest `harness/loop/runs/r25_dimension_results_20261103.json` (node workflow
+> wf_73b0a863-dde, forensics workflow wf_f130a2af-f58, the merge's "Left open") and the dataset `forensics/r25/`.
+> Bench and shadow figures are labelled; live r25 figures stay OPEN until the user restarts derod onto r25. The miner
+> track is PAUSED (artifacts/dero-rft.md §0.3).
+
+**43.1 RPC robustness (rpcrobust).** The R25 discovery's four GetEncryptedBalance calls below prunedheight made the r24
+node log four recovered panics (`panic(err)` after `ReadBlockSnapshotVersion`, rpc_dero_getencryptedbalance.go:92; B85,
+self-caused, G15 FAIL until the restart). r25: a typed −32031 before any read, a rate-limited WARNING without a stack,
+and a metric; all 31 `panic(` lines of the handlers audited (B86); GetBlockHeaderByHash's shadowed `err` (B80); per-tx
+`txs_status` on GetTransaction; GetInfo `total_supply_basis` (BD6); wallet RPC Content-Type (B40); the B41 chain-swap
+race closed with one lock. Harness: `error_census.py` (every ERROR/WARNING kind by class each S7) and `kit/pruneguard.py`
+(every probe refuses a state read below the live prunedheight and logs its state reads). Residual: NameToAddress for an
+unknown name answers untyped −32098; GetEncryptedBalance with no topoheight reads topoheight 0 (B100).
+
+**43.2 Consensus observability (consensus).** CO24-C1..C7 (B55–B61) as logging, counters and RPC fields only
+(`p2p/consensus_obs_r25.go`, `cmd/derod/rpc/consensus_stats_r25.go`), `DERO.GetConsensusStats`, D19 and the B72
+detector fixes in `consensus_intel.py`. The verifier moved a mutex out of the topo reads in the alt tracker (96 µs per
+read under the lock) and demoted two console lines upstream never logged. BlockHeader_Print stays without fees
+(`rpc/` is guarded). Live: OPEN until the restart (alt_blocks_count, Reorganisation INFO lines, `reorg_monitor.json`).
+
+**43.3 Peers (peers).** CO24-N1..N7 (B63–B69): offence scores, ban reasons and sources (`ban_reasons.json`), Chain
+requests, INV clips, unserved objects, stuck holds; B47: a sync peer that answers with nothing is held, escalating
+(the peers version of two builds won at the merge; a hold starts at the first failure). B70/B71 address hygiene, B72 D6
+cross-check. Verifier residuals: strikes never decay and a fully held set means no sync; `Offenders()` holds penalty_mu
+22.6–23.4 ms per GetPeerInfo on a full table (B99); two invalid_pow offences never ban (B102, policy). Live: OPEN
+(`peer_intel --live` should report evidence_mode `counter`).
+
+**43.4 Security and pool (secpool).** B48 netgroup quota on the proven lane and a quarter burst for fresh remote keys,
+B42 rebroadcast skips mined txs, B44 cap under concurrency, BD5/FX-N4 admission refuses non-reduced proof scalars
+(block txs only counted). The verifier found that the burst and quota changes had emptied four older mutation proofs
+while every test stayed green, and that the B47 call sites had no test; both fixed. B19 (user decision), B43 (root
+cause) open.
+
+**43.5 Crypto, supply and the disclosure track (cryptodisc).** BD9 settled by an executable honest-proof test (11 of 13
+scalar classes verify under a value+Order re-encoding: encoding malleability under one TXID, pinned); B22 refuted above
+height 399,000; B33 re-anchored; B81 (the HF3 table covers walls 2 and 3, not wall 1) corrected in the track and, this
+round, in memory. Live reads on the r24 binary: B51 25.1–40.9 ms CPU per GetRandomAddress (verifier pooled 1.0–2.3× the
+calibration).
+
+**43.6 Perf and ops (perfops).** B46: the herd fix cuts sync CPU per block ×0.923, but sync blocks/s is set by the
+one-at-a-time block add in guarded `blockchain/` (refuted as a lever, 36-run shadow campaign); B39 75 min live on r24
+(dead windows = the 100 ms template cache, 0 slow); B35 `tools/launchd-derod -preflight` (the verifier closed a false
+PASS for renamed or relative-datadir derods); B20 `benchlock --qos`.
+
+**43.7 Tooling (harnesstool, rft §0.9).** Area `tooling` and `tooling_intel.py` (B87), the scrubbed memory mirror (B88),
+the booking rule KAT (B89), the ORDER early warning (B90), the meta review, the generator determinism and scrub control
+(B93: pubscrub misses 3 of 5 planted kinds, the src-arch build time breaks byte-exact double runs; open), every R24/R25
+tooling defect class with a KAT. Pipeline self-fixes this round: the backup-tag reader took the first letter of the
+next Go string literal (r24i/r24p), and after an install the shadow control must be the live node's build, not
+bin/derod.
+
+**43.8 The monetary-forensics engine (rft §0.8).** Stages, each with its own agent: acquire (21 candidate endpoints from
+the repo and our own peers, 9 answered GetInfo, 6 serve the window; pseudonyms only, hosts private), extract (83,076
+blocks and 94 tx bodies re-hashed, decoded with the node's own code through `tools/forensics`), replay (G28), audit
+(G29, a second implementation sharing no code: its own Keccak-f[1600], decoders, table parser and tips walk). The
+dataset `forensics/r25/` holds tier A (605 blocks and every table body in git), tier B (the store of 83,171 blobs in
+`~/derohe-persist/forensics_raw`, outside git, referenced by SHA-256) and the derived records. Integration (this
+round's last agent):
+- **Content pins** (`harness/forensics/pins.py`): the replay is bound to the bytes it depends on (8 replay tools, 486
+  decoder build inputs from `go list -deps` incl. vendored packages, `config/version.go` without its build-suffix line,
+  the HF3 table, and the exact 29 line ranges derive.py cites), not to a commit; `pinned_commit` is provenance. The
+  decoder is built with `-buildvcs=false`, and the audit binds to the pins' aggregate, so neither changes with HEAD.
+  KAT MF12 (unrelated commit PASSES; a changed tool, input, cited or shifted line, table or input set FAILS).
+- **The overturn at its source:** A4b's wording left derive.py; the audit re-ran (audit-2), audit-1 is kept under
+  `audit/history/audit-1/` and G29 refuses a rewritten, dropped or unrecorded history run; overturns over all runs 1;
+  A10c stays UNRESOLVED (archive roots witnessed at 190 of 14,226 topos, no end-state check).
+- **Frontend and G30** (`artifacts/src/forensics_section.py`, `harness/forensics/facts.py`): eight sections of
+  `dero-r1-r25.html`; every figure a fact span with file and SHA-256; no bare number; the window explorer decodes
+  compact embedded data (block id + blob SHA-256 per height in a vowel-free base64, so no privacy grep can match by
+  chance) and G30 decodes it back against `derived/window.jsonl.gz` row by row; an exploit and privacy lint over the
+  rendered sections (MF8/MF9).
+- **Wiring:** area `forensics` (`harness/areas.json`), S7 steps `verify_dataset.py`, `s7_replay.py` (full where the store
+  and the archive copy exist, else PARTIAL and labelled; a full S7 run must reproduce the recorded report),
+  `facts.py --write`; gates G28–G30; coherence check `forensics`.
+- **What the dataset proves and does not:** see the ledger section "Monetary forensics": public emission and coinbase
+  identities hold for every window block; per-tx facts (exception path, today's verifier outcome where state is
+  held); no statement about hidden amounts (NOT-DECIDABLE-FROM-PUBLIC-DATA for the 75 TXIDs).
+- **Closed pages stay byte-exact:** the r24 ledger page read live runtime files and drifted once R25 wrote its own
+  disclosure entries; a closed page now reads frozen inputs (`artifacts/src/frozen/r24/`, from 629b8de).
+
+**43.9 Resume checkpoint (rft §0.10).** `harness/intel/round_checkpoint.py` (KAT RC1–RC6) writes
+`~/derohe-persist/round_state/r25_RESUME.md` every 10 minutes with the registry, the commits, every workflow agent's
+state and its resume call, the pipeline runs and the §6 checklist; the coordinator's `r25_NOTES.md` "In flight" section
+is folded into it. This agent resumed from it after a usage-limit stop (nothing of its own had been committed; the
+scratch tree and the persist copies were intact).
+
+**43.10 Live r25 node (measured 2026-11-04, rft §13 R25).** Restart 06:57:28, window to 08:00:18 (`harness/runtime/r25_live_window_20261104.txt`):
+synced 60/60, 0 ERROR/WARN, 0 panics; GetConsensusStats, B55/B56/B58/B59/B60, the counter-mode peer observatory,
+ban_reasons.json, B80 −32032, txs_status, total_supply_basis and B18 CONFIRMED live; B85 −32031 unit-proven (never sent
+live); B47/B48/B57/B61 pending an event; B103 (insert_failed = concurrent duplicates, PLAUSIBLE), B104, B105 opened.
+Miner: PAUSED.

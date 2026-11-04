@@ -88,7 +88,7 @@ func (connection *Connection) update(common *Common_Struct) {
 	if common.Height >= globals.Config.MAJOR_HF3_HEIGHT+config.STABLE_LIMIT && common.Top_Version < 3 {
 		secs := v2_ban_seconds(Address(connection))
 		connection.logger.V(1).Info("dropping peer on pre-HF3 (v2) chain", "peer_height", common.Height, "peer_top_version", common.Top_Version, "ban_seconds", secs)
-		Ban_Address(Address(connection), secs) // escalates 1 h -> 24 h so the same v2 peer stops costing a dial every hour
+		Ban_Address_Reason(Address(connection), secs, BAN_SOURCE_V2, "top_version<3 past HF3") // escalates 1 h -> 24 h so the same v2 peer stops costing a dial every hour; r25: with its source
 		connection.exit()
 		return
 	}

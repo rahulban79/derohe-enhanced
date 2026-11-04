@@ -48,7 +48,7 @@ LOG_GLOBS = [os.path.expanduser(os.environ.get('DERO_DATADIR', '~/dero-data')) +
 PRIVATE = Path(os.environ.get('DERO_CONSENSUS_PRIVATE') or (Path.home() / 'derohe-persist' / 'consensus_private'))
 PRIVATE_KEEP = int(os.environ.get('DERO_PRIVATE_KEEP') or 8)                 # r24: private raw runs kept
 PRIVATE_MAX_BYTES = int(os.environ.get('DERO_PRIVATE_MAX_BYTES') or 120 * 1024 * 1024)
-SCHEMA = 'consensus_intel/1 (r24)'
+SCHEMA = 'consensus_intel/1 (r24)'   # r25: fields added (fees, first_seen_ms, consensus_stats), none removed or renamed
 DEFAULT_WINDOW = 3000
 CHUNK = 100                 # GetBlockHeadersRange limit per call (cmd/derod/rpc/rpc_dero_explorer.go MAX_HEADERS_RANGE)
 SLEEP_S = 0.4               # between range calls: keep the RPC load light (a few calls per second at most)
@@ -82,7 +82,7 @@ RULES = {
     'mbl_count': ('blockchain/miniblocks_consensus.go', 'if uint64(len(bl.MiniBlocks)) != (config.BLOCK_TIME - config.MINIBLOCK_HIGHDIFF + 1) {', None),
     'mbl_final': ('blockchain/miniblocks_consensus.go', 'err = fmt.Errorf("No final miniblock")', None),
     'template_ts': ('blockchain/miner_block.go', 'bl.Timestamp = uint64(globals.Time().UTC().UnixMilli())', None),
-    'header_integrator': ('cmd/derod/rpc/blockheader.go', 'result.Miners[9] = addr.String()', None),
+    'header_integrator': ('cmd/derod/rpc/blockheader.go', 'miners[9] = integrator', None),   # r25: header_miners (CO24-C7)
     'finality': ('cmd/derod/rpc/reorg_events.go', 'reorg_violations_total = dmetrics.Set.GetOrCreateCounter("rpc_reorg_final_violations_total")', None),
     'v2_filter': ('p2p/common.go', 'if common.Height >= globals.Config.MAJOR_HF3_HEIGHT+config.STABLE_LIMIT && common.Top_Version < 3 {', None),
     'hf3': ('globals/globals.go', None, None),     # resolved below by find_hf3()
@@ -90,7 +90,15 @@ RULES = {
     'hf3_v3_hash': ('cmd/derod/rpc/rpc_dero_explorer.go', 'const HF3_V3_HASH = "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5"', r'"([0-9a-f]{64})"'),
     'hf3_v2_prefix': ('cmd/derod/rpc/rpc_dero_explorer.go', 'const HF3_V2_PREFIX = "54219c50"', r'"([0-9a-f]{8})"'),
     'penalty_series': ('p2p/penalty.go', 'metrics.Set.GetOrCreateCounter(fmt.Sprintf(`p2p_penalty_events_total{reason="%s"}`, reason)).Inc()', None),
+    # r25 (consensus): the node-side counters the r25 derod adds (p2p/consensus_obs_r25.go); D02/D11/D20 cite them
+    'block_rejected_series': ('p2p/consensus_obs_r25.go', 'var block_rejected = new_reason_counter("blockchain_block_rejected_total")', None),
+    'miniblock_refused_series': ('p2p/consensus_obs_r25.go', 'var miniblock_refused = new_reason_counter("p2p_miniblock_refused_total")', None),
+    'alt_settle': ('p2p/consensus_obs_r25.go', 'if !e.settled && tip_height-e.height > config.STABLE_LIMIT {', None),  # r25 verify: settle reads outside the lock
 }
+# r25 (B72): rejection reasons that are a consensus VALIDITY rule refusing an object (D11 OBSERVED); the others
+# (past_missing, advance/previous block, panic, stale or final miniblocks) are relay or ordering refusals, reported only
+VALIDITY_REJECTS = ('future_timestamp', 'timestamp_not_after_parent', 'invalid_pow', 'invalid_size', 'tx_double_spend', 'invalid_tx', 'invalid_block')
+VALIDITY_MBL_REFUSALS = ('invalid_pow', 'unregistered_miner')
 # the HF3 fork fingerprint: RULES['hf3_v3_hash'] / RULES['hf3_v2_prefix'] (cmd/derod/rpc/rpc_dero_explorer.go), r24 verifier
 
 # derod log kinds: (kind, how a line is recognised, the Go literal that prints it). The literal is found in the
@@ -108,6 +116,10 @@ LOG_KINDS = [
     ('tx_refused_window', 'M', 'Incoming TX refused by the admission window', '"Incoming TX refused by the admission window"'),
     ('finality_violation', 'S', 'FINALITY VIOLATION', '"FINALITY VIOLATION: a block at or below the announced final height was replaced"'),
     ('startup', 'S', 'DERO HE daemon :', 'DERO HE daemon :  It is an alpha version'),
+    # r25 (consensus): the r25 derod's attributed lines (p2p/consensus_obs_r25.go, cmd/derod/rpc/reorg_events.go)
+    ('block_rejected_r25', 'M', 'Block rejected', 'Info("Block rejected", "blid"'),
+    ('miniblock_refused_r25', 'M', 'Miniblock refused', 'Info("Miniblock refused", "reason"'),
+    ('reorganisation', 'M', 'Reorganisation', 'logger.Info("Reorganisation", "seq"'),
 ]
 REJECT_RX = re.compile(r'block_logger(?:\.V\(\d\))?\.Error\(fmt\.Errorf\("([^"%]{8,})"')
 REJECT_FILE = 'blockchain/blockchain.go'
@@ -265,7 +277,8 @@ METRIC_NAMES = ('rpc_reorgs_observed_total', 'rpc_reorg_replaced_topoheights_tot
                 'miniblock_propagation_duration_histogram_seconds_count', 'p2p_miniblock_deliveries_total', 'p2p_penalty_events_total',
                 'p2p_penalty_bans_total', 'p2p_bans_total', 'p2p_hf3_table_blocks_total', 'p2p_compact_block_rejects_total',
                 'blockchain_sync_total', 'mempool_count', 'tx_policy_known_invalid_total', 'tx_precheck_refused_total',
-                'tx_policy_pool_full_refused_total', 'dero_emission_audit_blocks_total')
+                'tx_policy_pool_full_refused_total', 'dero_emission_audit_blocks_total',
+                'blockchain_block_rejected_total', 'p2p_miniblock_refused_total', 'p2p_block_offer_duplicate_total')   # r25
 
 
 def read_metrics(url=METRICS_URL):
@@ -328,7 +341,9 @@ def capture_live(window, salt, own_addr, log_paths, url=RPC_URL, murl=METRICS_UR
             heads.append({'topo': h['topoheight'], 'height': h['height'], 'hash': h['hash'], 'ts': h['timestamp'],
                           'diff': int(h['difficulty']), 'tx': h['txcount'], 'major': h['major_version'],
                           'minor': h['minor_version'], 'side': h['sideblock'], 'orphan': h['orphan_status'],
-                          'tips': [t[:16] for t in h.get('tips') or []], 'miners': [P(m) for m in h.get('miners') or []]})
+                          'tips': [t[:16] for t in h.get('tips') or []], 'miners': [P(m) for m in h.get('miners') or []],
+                          **({'fees': h['fees']} if 'fees' in h else {}),                          # r25 (CO24-C2)
+                          **({'fs': h['first_seen_ms']} if 'first_seen_ms' in h else {})})        # r25 (CO24-C5)
         time.sleep(sleep_s)
     mbls = []
     for t in range(max(start, top - MBL_SAMPLE + 1), top + 1):
@@ -358,9 +373,13 @@ def capture_live(window, salt, own_addr, log_paths, url=RPC_URL, murl=METRICS_UR
     try:
         mi = rpc('DERO.GetMonetaryIntegrity', url=url)
         fin = mi.get('finality') or {}
+        lt = fin.get('lifetime')                                    # r25 (CO24-C6): persisted across restarts
         fin = {k: fin.get(k) for k in ('observed', 'reorgs', 'replaced_total', 'deepest', 'deepest_heights', 'final_violations',
                                         'local_rewinds', 'window')} | {'last_fork_topoheight': (fin.get('last') or {}).get('fork_topoheight'),
                                                                         'last_replaced': (fin.get('last') or {}).get('replaced')}
+        if isinstance(lt, dict):
+            fin['lifetime'] = {k: lt.get(k) for k in ('since', 'starts', 'observed', 'reorgs', 'replaced_total', 'deepest',
+                                                      'deepest_heights', 'final_violations', 'local_rewinds')}
     except Exception as e:                                           # noqa: BLE001
         fin = {'error': str(e)[:160]}
     try:
@@ -376,6 +395,7 @@ def capture_live(window, salt, own_addr, log_paths, url=RPC_URL, murl=METRICS_UR
         met = read_metrics(murl)
     except Exception as e:                                           # noqa: BLE001
         met = {'_error': str(e)[:160]}
+    cstats = read_consensus_stats(url)                               # r25: absent on a pre-r25 derod (method not found)
     # side blocks named in the log inside the window: fetch a few by hash for their integrator
     logs = parse_logs(log_paths, ROOT)
     hmin = heads[0]['height'] if heads else 0
@@ -405,9 +425,31 @@ def capture_live(window, salt, own_addr, log_paths, url=RPC_URL, murl=METRICS_UR
     return {'schema': SCHEMA, 'source': 'live', 'captured': now_utc().isoformat(timespec='seconds'),
             'capture_seconds': round(time.time() - t0, 1), 'window_requested': window, 'getinfo': gi_keep, 'syncinfo': si_keep,
             'headers': heads, 'miniblocks': mbls, 'fork': fork, 'finality': fin, 'peerinfo': pinfo, 'metrics': met,
-            'alts': alts, 'own_known': bool(own_addr), 'participants_named': len(pmap),
+            'alts': alts, 'own_known': bool(own_addr), 'participants_named': len(pmap), 'consensus_stats': cstats,
             'log': {'files': [Path(p).name for p in log_paths], 'census': logs['census'], 'by_day': logs['by_day'],
-                    'first_last': logs['first_last'], 'events': logs['events'], 'lines': logs['lines'], 'startups_ms': logs['startups_ms']}}
+                    'first_last': logs['first_last'], 'events': logs['events'], 'wevents': logs['wevents'], 'lines': logs['lines'],
+                    'startups_ms': logs['startups_ms']}}
+
+
+def read_consensus_stats(url=RPC_URL):
+    """r25: DERO.GetConsensusStats (counters by reason, settled alt blocks, reorg lifetime). None when the node does not
+    serve it (a pre-r25 binary), {'error': ...} on any other failure. Block hashes are cut to 16 hex (enough to join with
+    the log); no peer id is kept (the RPC carries none)."""
+    try:
+        r = rpc('DERO.GetConsensusStats', {}, url=url)
+    except Exception as e:                                           # noqa: BLE001
+        msg = str(e)
+        return None if ('not found' in msg.lower() or 'method' in msg.lower() and 'unknown' in msg.lower()) else {'error': msg[:160]}
+    alt = r.get('alt_blocks') or {}
+    c = r.get('counters') or {}
+    return {'version': r.get('version'), 'uptime_seconds': r.get('uptime_seconds'), 'height': r.get('height'),
+            'stable_limit': r.get('stable_limit'),
+            'miniblock_refused': c.get('miniblock_refused') or {}, 'miniblock_refused_total': c.get('miniblock_refused_total'),
+            'block_rejected': c.get('block_rejected') or {}, 'block_rejected_total': c.get('block_rejected_total'),
+            'block_offer_duplicates': c.get('block_offer_duplicates'),
+            'alt': {k: alt.get(k) for k in ('count', 'unsettled', 'tracked', 'settled', 'tracked_from_height', 'settle_depth')}
+                   | {'blocks': [{'hash': (b.get('hash') or '')[:16], 'height': b.get('height')} for b in alt.get('blocks') or []]},
+            'blocks_seen_tracked': r.get('blocks_seen_tracked'), 'miniblocks_seen_tracked': r.get('miniblocks_seen_tracked')}
 
 
 # ─────────────────────────── the log ───────────────────────────
@@ -423,6 +465,7 @@ def parse_logs(paths, root):
     rejects = reject_literals(root)
     census, by_day, first_last = collections.Counter(), collections.defaultdict(collections.Counter), {}
     events, startups, n = [], [], 0
+    wevents = []   # r25 (B72): timed v2-drop and rejection lines, so D02/D13 can read the window (kept apart from block events)
     keys_m = {m: k for k, how, m, _ in LOG_KINDS if how == 'M'}
     keys_s = [(m, k) for k, how, m, _ in LOG_KINDS if how == 'S']
     for p in paths:
@@ -472,10 +515,16 @@ def parse_logs(paths, root):
                                        't': tm, 'f': Path(p).name, 'l': ln})
                 elif kind == 'own_block':
                     events.append({'k': 'own', 'blid': str(d.get('blid')), 'h': d.get('height'), 't': tm, 'f': Path(p).name, 'l': ln})
+                elif kind == 'v2_drop':                                   # r25 (B72): D13 counts the window, not the log
+                    wevents.append({'k': 'v2', 't': tm, 'f': Path(p).name, 'l': ln})
+                elif kind.startswith('block_rejected:'):                  # r25 (B72): D02 counts the window
+                    wevents.append({'k': 'reject', 'msg': kind.split(':', 1)[1], 't': tm, 'f': Path(p).name, 'l': ln})
+                elif kind == 'block_rejected_r25':
+                    wevents.append({'k': 'reject', 'msg': 'r25:' + str(d.get('reason')), 't': tm, 'f': Path(p).name, 'l': ln})
                 elif kind == 'startup':
                     startups.append(tm)
     return {'census': dict(census), 'by_day': {k: dict(v) for k, v in sorted(by_day.items())}, 'first_last': first_last,
-            'events': events, 'lines': n, 'startups_ms': [s for s in startups if s]}
+            'events': events, 'wevents': wevents, 'lines': n, 'startups_ms': [s for s in startups if s]}
 
 
 # ─────────────────────────── statistics (pure) ───────────────────────────
@@ -667,7 +716,14 @@ def analyze(cap, R, root=ROOT):
     k['tx_total'] = sum(int(h.get('tx') or 0) for h in H)
     k['tx_per_block_mean'] = round(k['tx_total'] / n, 4)
     k['tx_per_block_max'] = max(int(h.get('tx') or 0) for h in H)
-    k['fees_total'] = 'pending'          # no fee field in BlockHeader_Print (rpc/daemon_rpc.go): proposal CO24-C2
+    # r25 (CO24-C2): an r25 derod serves the fee sum per header (GetBlockHeadersRange 'fees', null = a tx unreadable);
+    # a pre-r25 one serves none and the KPI stays pending
+    if H and all('fees' in h for h in H):
+        k['fees_total'] = sum(int(h['fees']) for h in H if h['fees'] is not None)
+        k['fees_unknown_blocks'] = sum(1 for h in H if h['fees'] is None)
+        k['fee_blocks'] = sum(1 for h in H if h['fees'])
+    else:
+        k['fees_total'] = 'pending'      # no fee field in this binary's headers: proposal CO24-C2
     k['major_versions'] = dict(collections.Counter(str(h.get('major')) for h in H))
     # participants
     minis = collections.Counter()
@@ -690,7 +746,10 @@ def analyze(cap, R, root=ROOT):
     # construction. The count is taken from the GetMiniBlocks sample instead (it resolves per miniblock) and says so.
     _ms = [x for x in cap.get('miniblocks') or [] if 'n' in x]
     k['unresolved_miniblocks'] = (f"{sum(int(x.get('unknown_miners') or 0) for x in _ms)} in {len(_ms)} sampled blocks" if _ms else 'pending')
-    k['unresolved_miniblocks_header'] = 'blind (blockheader.go pads and overwrites; see CO24-C7)'
+    if H and all('fees' in h for h in H):    # r25 header (CO24-C7): an unresolved key keeps its own slot
+        k['unresolved_miniblocks_header'] = sum(1 for h in H for x in (h.get('miners') or [])[:regular] if x == 'unknown')
+    else:
+        k['unresolved_miniblocks_header'] = 'blind (blockheader.go pads and overwrites; see CO24-C7)'
     mc = [c for p, c in minis.items() if p != 'unknown']
     fc = [c for p, c in finals.items() if p != 'unknown']
     k['top1_regular_share'] = round(max(mc) / tm, 4) if mc else 'pending'
@@ -734,12 +793,18 @@ def analyze(cap, R, root=ROOT):
             first_seen[e['blid']] = e
     idx = {h['hash']: i for i, h in enumerate(H)}
     lags = {}
+    rpc_fs = any(h.get('fs') for h in H)            # r25 (CO24-C5): the node's own first-seen time, not a log line
     for hsh, i in idx.items():
-        e = first_seen.get(hsh)
-        if e:
-            lag = e['t'] - ts[i]
+        if rpc_fs:
+            t_seen = H[i].get('fs') or None
+        else:
+            e = first_seen.get(hsh)
+            t_seen = e['t'] if e else None
+        if t_seen:
+            lag = t_seen - ts[i]
             if lag <= LIVE_LAG_MAX_MS:
                 lags[i] = lag
+    k['arrival_source'] = 'rpc first_seen_ms' if rpc_fs else ('derod log "Chain extended"' if lags else 'pending')
     k['blocks_seen_live'] = len(lags)
     lv = list(lags.values())
     k['arrival_lag_median_ms'] = round(statistics.median(lv)) if lv else 'pending'
@@ -760,6 +825,18 @@ def analyze(cap, R, root=ROOT):
     k['metric_reorgs_observed'] = met.get('rpc_reorgs_observed_total', 'pending')
     k['metric_penalty_events'] = sum(v for kk, v in met.items() if kk.startswith('p2p_penalty_events_total')) if met else 'pending'
     k['alt_blocks_count_getinfo'] = gi.get('alt_blocks_count')
+    lt = fin.get('lifetime') if isinstance(fin.get('lifetime'), dict) else None       # r25 (CO24-C6)
+    for f_ in ('reorgs', 'replaced_total', 'deepest_heights', 'final_violations', 'starts'):
+        k[f'finality_lifetime_{f_}'] = lt.get(f_) if lt and lt.get(f_) is not None else 'pending'
+    cs = cap.get('consensus_stats') if isinstance(cap.get('consensus_stats'), dict) and 'error' not in cap.get('consensus_stats') else None
+    k['consensus_stats'] = 'served' if cs else 'pending'                                   # r25: DERO.GetConsensusStats
+    k['miniblock_refused_total'] = cs.get('miniblock_refused_total') if cs else 'pending'  # r25 (CO24-C1)
+    k['block_rejected_total'] = cs.get('block_rejected_total') if cs else 'pending'        # r25 (CO24-C3)
+    k['alt_blocks_rpc'] = (cs.get('alt') or {}).get('count') if cs else 'pending'          # r25 (CO24-C4)
+    pi_ = cap.get('peerinfo') or {}                                                         # r25 (CO24-C8): peer census in the series
+    k['peers_connected'] = pi_.get('peers', 'pending') if 'error' not in pi_ else 'pending'
+    k['peers_below_v3'] = pi_.get('peers_below_v3', 'pending') if 'error' not in pi_ else 'pending'
+    k['peer_versions'] = pi_.get('top_versions', 'pending') if 'error' not in pi_ else 'pending'
     out['kpis'] = k
     # series for the page: per-100-block bins
     bins = []
@@ -793,18 +870,37 @@ def detectors(cap, R, H, k, parts, seq_final, lags, dts, mism_ev, alpha_p, teste
     D.append(det('D01-ts-monotonic', 'Block timestamps rise strictly along the chain', 'OBSERVED' if bad else 'NORMAL', len(bad),
                  A(R, 'ts_parent'), 'count of blocks whose timestamp <= its parent\'s (must be 0)',
                  [{'height': b[0], 'hash': b[1], 'delta_ms': b[2]} for b in bad[:5]]))
-    # D02 future skew vs this node's clock (consensus rule: ts <= now + future ms at acceptance)
+    # D02 future skew vs this node's clock (consensus rule: ts <= now + future ms at acceptance).
+    # r25 (B72): an accepted block more than `fut` ms ahead is impossible by construction (the rule rejects it BEFORE its
+    # "Chain extended" line or its first-seen record), so the lag test alone can never fire. The rule FIRING is the
+    # rejection: the r25 counter blockchain_block_rejected_total{reason="future_timestamp"} (GetConsensusStats) and the
+    # rule's own rejection line inside the window. An accepted block beyond the limit (lag test) would mean this
+    # node's clock moved between acceptance and the record: still OBSERVED.
     fut = int(R['ts_future']['value'])
-    if not lags:
-        D.append(det('D02-ts-future', 'No block arrived before its own timestamp beyond the future limit', 'NO-DATA', 'pending',
-                     A(R, 'ts_future'), f'first-seen log time minus block timestamp < -{fut} ms (must be 0)', [],
-                     'no block of the window was first seen live in the log'))
+    cs = cap.get('consensus_stats') if isinstance(cap.get('consensus_stats'), dict) and 'error' not in cap.get('consensus_stats') else None
+    t_win = ts[0] if ts else 0
+    fut_lit = 'Rejecting Block, timestamp is too much into future'
+    evs_ = (cap.get('log') or {}).get('wevents') or []   # r25: timed v2-drop / rejection lines
+    fut_lines = [e for e in evs_ if e.get('k') == 'reject' and (fut_lit in str(e.get('msg')) or e.get('msg') == 'r25:future_timestamp')
+                 and (e.get('t') or 0) >= t_win]
+    fut_ctr = int((cs.get('block_rejected') or {}).get('future_timestamp') or 0) if cs else None
+    v = [(heights[i], H[i]['hash'][:16], lag) for i, lag in lags.items() if lag < -fut]
+    if not lags and cs is None and not fut_lines:
+        D.append(det('D02-ts-future', 'No block was refused for a timestamp beyond the future limit', 'NO-DATA', 'pending',
+                     A(R, 'ts_future'), f'rejections for a timestamp > now + {fut} ms (counter or rule line in the window) + accepted lags < -{fut} ms (must be 0)', [],
+                     'no live block, no r25 counter and no rejection line in the window'))
     else:
-        v = [(heights[i], H[i]['hash'][:16], lag) for i, lag in lags.items() if lag < -fut]
-        D.append(det('D02-ts-future', 'No block arrived before its own timestamp beyond the future limit', 'OBSERVED' if v else 'NORMAL',
-                     len(v), A(R, 'ts_future'), f'first-seen log time minus block timestamp < -{fut} ms over {len(lags)} live blocks (must be 0)',
+        n_rej = max(fut_ctr or 0, len({(e.get('f'), e.get('l')) for e in fut_lines if e.get('msg') != 'r25:future_timestamp'}),
+                    len([e for e in fut_lines if e.get('msg') == 'r25:future_timestamp']))
+        D.append(det('D02-ts-future', 'No block was refused for a timestamp beyond the future limit', 'OBSERVED' if (v or n_rej) else 'NORMAL',
+                     n_rej + len(v), A(R, 'ts_future'),
+                     f'rejections for a timestamp > now + {fut} ms (r25 counter: {"served" if cs else "absent"}; rule lines in the window: {len(fut_lines)}) '
+                     f'+ accepted blocks first seen < -{fut} ms over {len(lags)} live blocks (must be 0)',
+                     [{'rejected_future_counter': fut_ctr, 'rejection_lines_window': len(fut_lines)}] +
+                     [{'line': [e.get('f'), e.get('l')], 'msg': str(e.get('msg'))[:60]} for e in fut_lines[:3]] +
                      [{'height': a, 'hash': b, 'lag_ms': c} for a, b, c in sorted(v, key=lambda x: x[2])[:5]],
-                     f'{k["arrival_before_timestamp"]} block(s) arrived before their timestamp but inside the +{fut} ms allowance'))
+                     f'{k["arrival_before_timestamp"]} block(s) arrived before their timestamp but inside the +{fut} ms allowance; '
+                     'the accepted-lag half alone is a tautology (B72): the rule rejects such a block before it is recorded'))
     # D03 forward stamping per integrator: a forward stamp is the only thing that makes a block reach this node BEFORE its
     # own timestamp (network delay only adds). Per integrator binomial excess of such arrivals over the window rate. The
     # fastest-arrival decile is reported beside it as context: from one vantage point it measures network proximity.
@@ -884,18 +980,34 @@ def detectors(cap, R, H, k, parts, seq_final, lags, dts, mism_ev, alpha_p, teste
                  f'GetMonetaryIntegrity finality: deepest_heights <= {sl} and final_violations == 0 (reorg_events.go)',
                  [{'finality': {kk: vv for kk, vv in (cap.get('finality') or {}).items()}}],
                  f"side-block log lines in the window {k['side_block_lines_window']} ({k['side_block_won']} won the height, {k['side_block_lost']} lost); "
-                 f"GetInfo alt_blocks_count {k['alt_blocks_count_getinfo']} (never assigned: CO24-C4)"))
+                 f"GetInfo alt_blocks_count {k['alt_blocks_count_getinfo']} "
+                 + ('(r25: settled alt blocks since start, D20)' if k.get('consensus_stats') == 'served' else '(never assigned: CO24-C4)')
+                 + (f"; lifetime reorgs {k.get('finality_lifetime_reorgs')} over {k.get('finality_lifetime_starts')} start(s) (CO24-C6)"
+                    if k.get('finality_lifetime_reorgs') != 'pending' else '')))
     # D11 invalid blocks / miniblocks rejected (log census + penalty series)
     lc = (cap.get('log') or {}).get('census') or {}
     rej = {kk: v for kk, v in lc.items() if kk.startswith('block_rejected:')}
     pen = {kk: v for kk, v in (cap.get('metrics') or {}).items() if kk.startswith('p2p_penalty_events_total')}
     inval = {kk: v for kk, v in pen.items() if 'invalid_pow' in kk}
-    D.append(det('D11-invalid-objects', 'Blocks or miniblocks rejected by a consensus rule', 'OBSERVED' if (rej or any(inval.values())) else 'NORMAL',
-                 sum(rej.values()) + int(sum(inval.values())), A(R, 'penalty_series'),
-                 'derod.log block rejection lines (every block_logger.Error literal of blockchain/blockchain.go) + /metrics p2p_penalty_events_total{reason=~"invalid_pow.*"}',
-                 [{'kind': kk, 'lines': v} for kk, v in sorted(rej.items())] + [{'metric': kk, 'value': v} for kk, v in sorted(pen.items())],
-                 'a rejection is the rule working; the sender is not named (the log line carries no peer: CO24-C3). Stale/unregistered '
-                 'miniblock refusals are not logged or counted at all (CO24-C1)'))
+    if cs:   # r25 (CO24-C1/C3): read from the node's counters since its start, attributed by reason
+        brj, mrf = cs.get('block_rejected') or {}, cs.get('miniblock_refused') or {}
+        bad_b = {r_: n_ for r_, n_ in brj.items() if r_ in VALIDITY_REJECTS and n_}
+        bad_m = {r_: n_ for r_, n_ in mrf.items() if r_ in VALIDITY_MBL_REFUSALS and n_}
+        D.append(det('D11-invalid-objects', 'Blocks or miniblocks rejected by a consensus rule', 'OBSERVED' if (bad_b or bad_m or any(inval.values())) else 'NORMAL',
+                     sum(bad_b.values()) + sum(bad_m.values()), A(R, 'block_rejected_series'),
+                     'r25 counters (GetConsensusStats): blockchain_block_rejected_total{reason in ' + '|'.join(VALIDITY_REJECTS) + '} + '
+                     'p2p_miniblock_refused_total{reason in ' + '|'.join(VALIDITY_MBL_REFUSALS) + '} + p2p_penalty_events_total{reason=~"invalid_pow.*"}',
+                     [{'source': 'counter', 'block_rejected': brj, 'miniblock_refused': mrf, 'duplicates': cs.get('block_offer_duplicates')}]
+                     + [{'metric': kk, 'value': v} for kk, v in sorted(pen.items())] + [{'kind': kk, 'lines': v, 'source': 'log (whole)'} for kk, v in sorted(rej.items())],
+                     'counter-derived (r25): each rejection line names the sender by its peer_id; relay/ordering refusals (stale or final '
+                     'miniblocks, past_missing, advance/previous block) are counted but are not a validity rule firing'))
+    else:
+        D.append(det('D11-invalid-objects', 'Blocks or miniblocks rejected by a consensus rule', 'OBSERVED' if (rej or any(inval.values())) else 'NORMAL',
+                     sum(rej.values()) + int(sum(inval.values())), A(R, 'penalty_series'),
+                     'derod.log block rejection lines (every block_logger.Error literal of blockchain/blockchain.go) + /metrics p2p_penalty_events_total{reason=~"invalid_pow.*"}',
+                     [{'kind': kk, 'lines': v} for kk, v in sorted(rej.items())] + [{'metric': kk, 'value': v} for kk, v in sorted(pen.items())],
+                     'a rejection is the rule working; the sender is not named (the log line carries no peer: CO24-C3). Stale/unregistered '
+                     'miniblock refusals are not logged or counted at all (CO24-C1)'))
     # D12 fork fingerprint at HF3 (this node on the upgraded chain)
     fk = cap.get('fork') or {}
     if fk.get('hash'):
@@ -908,18 +1020,22 @@ def detectors(cap, R, H, k, parts, seq_final, lags, dts, mism_ev, alpha_p, teste
                  f'block at height {(fk or {}).get("height_asked")} ({R["hf3"]["file"]}:{R["hf3"]["line"]}): hash == HF3_V3_HASH {R["hf3_v3_hash"]["value"][:8]}.. and major_version 3 (v2 remnant: {R["hf3_v2_prefix"]["value"]})',
                  [fk] if fk else [], str((cap.get('syncinfo') or {}).get('chain_fingerprint') or '')))
     # D13 v2 remnant peers (their chain fails the fork-version rule; the node drops them)
+    # r25 (B72): the grade reads the WINDOW (peers connected now + drop lines since the window's first block); the
+    # whole log (since 2026-10-21) and the 7-day GetSyncInfo count are context, not evidence about this window
     pi = cap.get('peerinfo') or {}
     v2_log = lc.get('v2_drop', 0)
+    v2_win = sum(1 for e in evs_ if e.get('k') == 'v2' and (e.get('t') or 0) >= t_win)
     v2_now = pi.get('peers_below_v3')
     v2_7d = (cap.get('syncinfo') or {}).get('v2_chain_peers_seen_7d')
     if v2_now is None and v2_7d is None:
         g = 'NO-DATA'
     else:
-        g = 'OBSERVED' if ((v2_now or 0) + (v2_7d or 0) + v2_log) else 'NORMAL'
+        g = 'OBSERVED' if ((v2_now or 0) + v2_win) else 'NORMAL'
     D.append(det('D13-v2-remnant', 'Peers still on the pre-HF3 v2 remnant chain', g,
-                 f'{v2_now} connected below v3, {v2_7d} seen in 7 d, {v2_log} drop lines in the log', A(R, 'v2_filter'),
-                 'GetPeerInfo top_version < 3 among active peers + GetSyncInfo v2_chain_peers_seen_7d + log "dropping peer on pre-HF3 (v2) chain"',
-                 [{'peers_below_v3': v2_now, 'v2_chain_peers_seen_7d': v2_7d, 'v2_drop_lines': v2_log}],
+                 f'{v2_now} connected below v3, {v2_win} drop lines in the window ({v2_log} in the whole log, {v2_7d} seen in 7 d)', A(R, 'v2_filter'),
+                 'GetPeerInfo top_version < 3 among active peers + log "dropping peer on pre-HF3 (v2) chain" lines since the window\'s first block '
+                 '(whole-log and 7-day counts are context)',
+                 [{'peers_below_v3': v2_now, 'v2_drop_lines_window': v2_win, 'v2_drop_lines_log': v2_log, 'v2_chain_peers_seen_7d': v2_7d}],
                  'their blocks fail Check_Block_Version (blockchain.go); the v2 filter drops them, so they cannot affect this chain; counted, never named'))
     # D14/D15 share concentration
     for did, key, label in (('D14-concentration-regular', 'regular', 'regular miniblocks'), ('D15-concentration-final', 'final', 'finals (block integration)')):
@@ -962,7 +1078,69 @@ def detectors(cap, R, H, k, parts, seq_final, lags, dts, mism_ev, alpha_p, teste
                  mbt, A(R, 'block_time'), 'window MEAN of consecutive-height timestamp gaps outside 15..22 s (harness/intel/log_intel.py RULES cadence)',
                  [{'mean_s': mbt, 'median_s': k['block_time_median_s'], 'p95_s': k['block_time_p95_s'], 'max_s': k['block_time_max_s'],
                    'averageblocktime50_s': k['averageblocktime50_s']}]))
+    D.append(collective_final(parts, k))                                   # r25 (CO24-C8, B62)
+    D.append(alt_reconcile(cap, R, H, k))                                   # r25 (CO24-C4, B58)
     return D
+
+
+def collective_final(parts, k):
+    """D19 (r25, CO24-C8): the integrator-only participants (paid finals, no regular miniblock of their own) TOGETHER.
+    D15 tests one participant against 1/3; a set of nodes that only assemble other miners' work can hold more as a
+    group. ANOMALY when the Wilson 95 % lower bound of their joint final share is above 1/3 (the same selfish-mining
+    threshold, Eyal-Sirer 2014, applied to the coalition). Pooling by design (miner_block.go pays the template builder),
+    so a signal of concentration of block ASSEMBLY, never an accusation."""
+    tf = sum(p['final'] for p in parts)
+    io = [p for p in parts if p['role'] == 'integrator-only']
+    if not tf:
+        return det('D19-collective-final', 'Integrator-only participants together assemble no more than 1/3 of the blocks', 'NO-DATA', 'pending',
+                   None, 'Wilson 95 % lower bound of the integrator-only joint final share > 1/3 = ANOMALY', [])
+    n_io = sum(p['final'] for p in io)
+    lo, hi = wilson(n_io, tf)
+    g = 'ANOMALY' if lo > 1 / 3 else 'NORMAL'
+    return det('D19-collective-final', 'Integrator-only participants together assemble no more than 1/3 of the blocks', g, round(n_io / tf, 4), None,
+               'Wilson 95 % lower bound of the integrator-only joint final share > 1/3 = ANOMALY (coalition form of D15)',
+               [{'integrator_only': len(io), 'finals': n_io, 'of': tf, 'share': round(n_io / tf, 4), 'ci95': [round(lo, 4), round(hi, 4)],
+                 'members': [p['id'] for p in sorted(io, key=lambda p: -p['final'])][:8]}],
+               f"Nakamoto coefficient by finals {k.get('nakamoto_final')}, top-3 final share {k.get('top3_final_share')}; pooling by design "
+               '(the final pays the template builder\'s integrator), not a rule broken')
+
+
+def alt_reconcile(cap, R, H, k):
+    """D20 (r25, CO24-C4): GetInfo alt_blocks_count is the node's settled alt count, and the alt blocks it lists are the
+    ones the log shows. Log side: every block with a "Chain extended" or "... but height is same" line since the newest
+    derod start, settled (height <= window tip height - STABLE_LIMIT - 1) and inside the window, that is not the main
+    block at its height. Node side: GetConsensusStats alt_blocks (r25), same height range. ANOMALY when GetInfo and
+    GetConsensusStats disagree or the two sets differ; NO-DATA on a pre-r25 node (no GetConsensusStats)."""
+    cs = cap.get('consensus_stats') if isinstance(cap.get('consensus_stats'), dict) and 'error' not in cap.get('consensus_stats') else None
+    rule = A(R, 'alt_settle')
+    test = ('GetInfo alt_blocks_count == GetConsensusStats alt_blocks.count, and the settled non-main blocks of the log since the '
+            'newest start == the listed alt blocks over the same heights')
+    if not cs or not H:
+        return det('D20-alt-blocks', 'GetInfo alt_blocks_count equals the side blocks this node kept', 'NO-DATA', 'pending', rule, test, [],
+                   'needs DERO.GetConsensusStats (r25 derod)')
+    alt = cs.get('alt') or {}
+    starts = (cap.get('log') or {}).get('startups_ms') or []
+    t0 = max(starts) if starts else 0
+    sl = int(R['stable_limit']['value'])
+    hi_h = H[-1]['height'] - sl - 1
+    lo_h = max(H[0]['height'], int(alt.get('tracked_from_height') or 0))
+    blocks = alt.get('blocks') or []
+    if (alt.get('count') or 0) > len(blocks) and blocks:     # the node lists only the newest ALT_LIST_KEEP
+        lo_h = max(lo_h, min(b['height'] for b in blocks))
+    main_at = {h['height']: h['hash'] for h in H}
+    log_alt = {e['blid'][:16] for e in (cap.get('log') or {}).get('events') or []
+               if e.get('k') in ('add', 'side') and (e.get('t') or 0) >= t0 and isinstance(e.get('h'), int) and lo_h <= e['h'] <= hi_h
+               and main_at.get(e['h']) != e['blid']}
+    node_alt = {b['hash'] for b in blocks if isinstance(b.get('height'), int) and lo_h <= b['height'] <= hi_h}
+    gi_n = (cap.get('getinfo') or {}).get('alt_blocks_count')
+    only_log, only_node = sorted(log_alt - node_alt), sorted(node_alt - log_alt)
+    bad = gi_n != alt.get('count') or only_log or only_node
+    return det('D20-alt-blocks', 'GetInfo alt_blocks_count equals the side blocks this node kept', 'ANOMALY' if bad else 'NORMAL',
+               f"alt_blocks_count {gi_n}, node {alt.get('count')}, log {len(log_alt)} / node {len(node_alt)} in heights {lo_h}..{hi_h}", rule, test,
+               [{'getinfo_alt_blocks_count': gi_n, 'stats_count': alt.get('count'), 'unsettled': alt.get('unsettled'), 'tracked': alt.get('tracked'),
+                 'heights': [lo_h, hi_h], 'log_alt': len(log_alt), 'node_alt': len(node_alt), 'only_in_log': only_log[:5], 'only_in_node': only_node[:5]}],
+               'a block is settled once it is more than STABLE_LIMIT below the tip; the alt set counts blocks this node ACCEPTED (the log '
+               'lines) that are not in the topo index at their height')
 
 
 def role(p):
@@ -1053,37 +1231,53 @@ def log_census(cap, root):
 
 
 def proposals(cap, R, k, root):
-    """Node-side gaps this run had to work around: each is an R25 candidate (CO24-*) with its code anchor."""
+    """Node-side gaps this run had to work around: each is an R25 candidate (CO24-*) with its code anchor.
+    r25: a gap is proposed only while the CAPTURED binary still shows it (a live reading closes it, not the tree), and
+    each anchor list names the upstream line and the r25 line, whichever this tree holds."""
     P = []
+    H = cap.get('headers') or []
+    cs = cap.get('consensus_stats') if isinstance(cap.get('consensus_stats'), dict) and 'error' not in cap.get('consensus_stats') else None
+    r25_headers = bool(H) and all('fees' in h for h in H)
+    lifetime = isinstance((cap.get('finality') or {}).get('lifetime'), dict)
 
     def add(pid, sev, title, anchors, why):
         good = [a for a in anchors if a]
         if good:
             P.append({'id': pid, 'severity': sev, 'title': title, 'anchors': good, 'why': why})
 
-    add('CO24-C1', 'medium', 'Count and log miniblock refusals by reason in NotifyMiniBlock (stale height, unregistered miner, unexpandable tip, final propagated)',
-        [literal_anchor(root, 'return fmt.Errorf("Stale Miniblock")'), literal_anchor(root, 'return fmt.Errorf("unregistered miner")'),
-         literal_anchor(root, 'return fmt.Errorf("tip could not be expanded")')],
-        'these return an error to the peer with no log line and no /metrics series, so miniblock spam is invisible to the observatory (only invalid PoW is penalised)')
-    add('CO24-C2', 'medium', 'Expose the fees of a block in BlockHeader_Print / GetBlockHeadersRange',
-        [literal_anchor(root, 'TXCount       int64    `json:"txcount"`')],
-        f"fees per block cannot be measured without decoding every transaction (window fees_total = {k.get('fees_total')})")
-    add('CO24-C3', 'medium', 'Name the sending peer (pseudonymous id) and count block rejections by reason (blockchain_block_rejected_total{reason})',
-        [literal_anchor(root, 'block_logger.Error(fmt.Errorf("Rejecting Block, timestamp is too much into future, make sure that system clock is correct"), "")')],
-        'a block rejection line carries no peer id, so an invalid block cannot be attributed and repeated offenders cannot be graded')
-    if k.get('alt_blocks_count_getinfo') in (0, None) and k.get('side_block_lines_window'):
+    def L(q):
+        return literal_anchor(root, q)
+    if not cs:
+        add('CO24-C1', 'medium', 'Count and log miniblock refusals by reason in NotifyMiniBlock (stale height, unregistered miner, unexpandable tip, final propagated)',
+            [L('return fmt.Errorf("Stale Miniblock")'), L('return fmt.Errorf("unregistered miner")'), L('return fmt.Errorf("tip could not be expanded")'),
+             L('return c.refuse_miniblock(MBL_REFUSED_STALE, mbl.Height, fmt.Errorf("Stale Miniblock"))')],
+            'these return an error to the peer with no log line and no /metrics series, so miniblock spam is invisible to the observatory (only invalid PoW is penalised)')
+    if not r25_headers:
+        add('CO24-C2', 'medium', 'Expose the fees of a block in BlockHeader_Print / GetBlockHeadersRange',
+            [L('TXCount       int64    `json:"txcount"`'), L('Fees           *uint64 `json:"fees"`')],
+            f"fees per block cannot be measured without decoding every transaction (window fees_total = {k.get('fees_total')})")
+    if not cs:
+        add('CO24-C3', 'medium', 'Name the sending peer (pseudonymous id) and count block rejections by reason (blockchain_block_rejected_total{reason})',
+            [L('block_logger.Error(fmt.Errorf("Rejecting Block, timestamp is too much into future, make sure that system clock is correct"), "")'),
+             L('var block_rejected = new_reason_counter("blockchain_block_rejected_total")')],
+            'a block rejection line carries no peer id, so an invalid block cannot be attributed and repeated offenders cannot be graded')
+    if not cs and k.get('alt_blocks_count_getinfo') in (0, None) and k.get('side_block_lines_window'):
         add('CO24-C4', 'medium', 'Assign GetInfo alt_blocks_count (declared, never set) from the side blocks the chain keeps',
-            [literal_anchor(root, 'Alt_Blocks_Count           uint64  `json:"alt_blocks_count"`')],
+            [L('Alt_Blocks_Count           uint64  `json:"alt_blocks_count"`')],
             f"GetInfo says alt_blocks_count {k.get('alt_blocks_count_getinfo')} while the log shows {k.get('side_block_lines_window')} side-block lines in the window")
-    add('CO24-C5', 'low', 'Record the first-seen time of each block (and miniblock) and expose it by RPC',
-        [literal_anchor(root, 'block_logger.Info("Chain extended", "new height", height)')],
-        'arrival lag (timestamp skew vs this clock) is measurable only from the DEBUG "Chain extended" log line; a rotated or quieter log loses it')
-    add('CO24-C6', 'low', 'Persist the reorg monitor across restarts and log each reorganisation at INFO',
-        [literal_anchor(root, "// derod does not log a reorganisation at the default level and GetInfo does not show one, so a wallet that cached")],
-        f"GetMonetaryIntegrity finality counts reset at every start (reorgs {k.get('finality_reorgs')} since the current start); history before it is lost")
-    add('CO24-C7', 'low', 'Resolve header miners against the block\'s topoheight state, not Topo_store.Read(height)',
-        [literal_anchor(root, 'if toporecord, err1 := chain.Store.Topo_store.Read(result.Height); err1 == nil { // we must now fill in compressed ring members')],
-        'correct only while topoheight == height (GetMiniBlocks already resolves at the topoheight, rpc_dero_explorer.go)')
+    if not any(h.get('fs') for h in H) and not r25_headers:
+        add('CO24-C5', 'low', 'Record the first-seen time of each block (and miniblock) and expose it by RPC',
+            [L('block_logger.Info("Chain extended", "new height", height)')],
+            'arrival lag (timestamp skew vs this clock) is measurable only from the DEBUG "Chain extended" log line; a rotated or quieter log loses it')
+    if not lifetime:
+        add('CO24-C6', 'low', 'Persist the reorg monitor across restarts and log each reorganisation at INFO',
+            [L("// derod does not log a reorganisation at the default level and GetInfo does not show one, so a wallet that cached")],
+            f"GetMonetaryIntegrity finality counts reset at every start (reorgs {k.get('finality_reorgs')} since the current start); history before it is lost")
+    if not r25_headers:
+        add('CO24-C7', 'low', 'Resolve header miners against the block\'s topoheight state, not Topo_store.Read(height)',
+            [L('if toporecord, err1 := chain.Store.Topo_store.Read(result.Height); err1 == nil { // we must now fill in compressed ring members'),
+             L('func header_miners(n int, resolve func(i int) (string, bool), integrator string, has_integrator bool) []string {')],
+            'correct only while topoheight == height (GetMiniBlocks already resolves at the topoheight, rpc_dero_explorer.go)')
     return P
 
 
@@ -1156,7 +1350,10 @@ def series_row(doc, ts, capfile):
     k = doc.get('kpis') or {}
     keep = ('window_blocks', 'window_height_last', 'block_time_mean_s', 'block_time_median_s', 'block_time_p95_s', 'difficulty_mean',
             'difficulty_rule_mismatches', 'participants', 'top1_regular_share', 'top1_final_share', 'hhi_regular', 'nakamoto_regular',
-            'nakamoto_final', 'side_block_lines_window', 'finality_reorgs', 'arrival_lag_median_ms', 'empty_block_ratio', 'this_node_regular')
+            'nakamoto_final', 'side_block_lines_window', 'finality_reorgs', 'arrival_lag_median_ms', 'empty_block_ratio', 'this_node_regular',
+            # r25 (CO24-C8 + node counters): the collective share, the peer census and the r25 counters join the series
+            'integrator_only_final_share', 'top3_final_share', 'peers_connected', 'peers_below_v3', 'peer_versions', 'alt_blocks_count_getinfo',
+            'alt_blocks_rpc', 'miniblock_refused_total', 'block_rejected_total', 'finality_lifetime_reorgs', 'fees_total', 'arrival_source')
     return {'ts': ts, 'captured': doc.get('captured'), 'version': doc.get('version'), 'capture': capfile,
             **{kk: k.get(kk) for kk in keep}, 'grades': doc.get('summary')}
 
@@ -1183,9 +1380,10 @@ def write_outputs(doc, rt, ts, series=True):
 DETECTOR_IDS = ('D01-ts-monotonic', 'D02-ts-future', 'D03-ts-forward', 'D04-ts-backward', 'D05-difficulty-rule', 'D06-difficulty-jump',
                 'D07-miniblock-structure', 'D08-final-bursts', 'D09-late-release', 'D10-reorg-depth', 'D11-invalid-objects',
                 'D12-fork-fingerprint', 'D13-v2-remnant', 'D14-concentration-regular', 'D15-concentration-final', 'D16-final-vs-regular',
-                'D17-this-node', 'D18-cadence')
-# detectors that may legitimately read NO-DATA (no live log window, unknown own address); the others must grade
-MAY_BE_NODATA = ('D02-ts-future', 'D03-ts-forward', 'D09-late-release', 'D17-this-node')
+                'D17-this-node', 'D18-cadence', 'D19-collective-final', 'D20-alt-blocks')   # r25: D19, D20
+# detectors that may legitimately read NO-DATA (no live log window, unknown own address); the others must grade.
+# r25: D20 needs DERO.GetConsensusStats, which a pre-r25 derod does not serve
+MAY_BE_NODATA = ('D02-ts-future', 'D03-ts-forward', 'D09-late-release', 'D17-this-node', 'D20-alt-blocks')
 
 
 def g26(root=ROOT, at=None, max_age_h=FRESH_H):

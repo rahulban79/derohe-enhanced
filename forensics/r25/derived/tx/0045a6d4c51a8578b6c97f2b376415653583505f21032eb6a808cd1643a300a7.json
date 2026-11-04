@@ -1,0 +1,178 @@
+{
+ "admission_today": "refused at relay/RPC admission (glue/txprecheck/window.go:136-145); exemption only below HF3 (config/config.go:110; p2p/hf3_parity.go:49,66)",
+ "body": {
+  "reserialize_equal": true,
+  "sha256": "dac0126145be6c04c4765be9d04753d28eb4ff0facce0263fad0bc220c23d853",
+  "size": 1703,
+  "source": "src-2"
+ },
+ "burn_total": 0,
+ "carrier_count": 1,
+ "carriers": [
+  {
+   "blid": "eadbe4fcbebc1c2d030e9a390bfbf8727119e330c1d6ea8f1a8d6c724e176d32",
+   "class": "RAW (checks i-ii)",
+   "exception_path": {
+    "below_hf3": true,
+    "executed": "yes (INTERPRETATION of SRC + RAW: blockchain/blockchain.go:994-1024 (every Tx_hashes entry of each block in topological order is executed); this block is in the RAW chain)",
+    "execution_parity": {
+     "entry_parity": false,
+     "override_changes_execution": false,
+     "rule": "p2p/hf3_parity.go:77 Parity = (height > table Height) == Tx_Parity; blockchain/transaction_execute.go:243-246 uses it instead of Proof.Parity() (blockchain/transaction_execute.go:213)"
+    },
+    "height_eq_table_height": true,
+    "nonce_check": "bypassed: blockchain/transaction_verify.go:234-237 caches TXID+Bl_Tips; this block's key TXID+tips (blockchain/transaction_verify.go:90-93) equals it, so blockchain/transaction_verify.go:94-96 returns (p2p/hf3_parity.go:74-76 (verify before add); blockchain/blockchain.go:826 (nonce), :858 (verify))",
+    "proof_verification": "skipped: blockchain/transaction_verify.go:232-233 stores the TXID in transaction_valid_cache before any check; the key below HF3 is the TXID (blockchain/transaction_verify.go:433-436); blockchain/transaction_verify.go:438-441 returns before Proof.Verify (blockchain/transaction_verify.go:450-461). Still applied before that return: blockchain/transaction_verify.go:256-322, :327-338, :341-431",
+    "table_bl_tips_is_this_block": false,
+    "tips_eq_table_bl_tips": true
+   },
+   "height": 7467516,
+   "tier": "A",
+   "tips": [
+    "5460bce958ff0642dcbabbade30fee81589c69bee6d1a1e987df99768d2b2579"
+   ],
+   "topo": 7467516
+  }
+ ],
+ "class": "RAW body (checks i-iii, raw/provenance.json); fields below DERIVED",
+ "duplicates": {
+  "bodies_held_under_this_txid": 1,
+  "other_bodies": "pending: one body was fetched per TXID; block tx lists carry only the TXID, which excludes the proof (transaction.go:191), so a second body with the same core statement is not observable from RAW blocks"
+ },
+ "fee": 121,
+ "grade": {
+  "checked": [
+   "body RAW (i-iii)",
+   "carriers RAW (i-ii)",
+   "TXID by node Go and pinned Python Keccak-256",
+   "exception path per carrier (SRC lines)",
+   "proof under the current verifier: fail"
+  ],
+  "deciding_fact_missing": "today's verifier rejects the proof against our archive state (check: Recover key failed B^w * A; single implementation, the node's own verifier); under the pinned code a node accepts this body only on the HF3 exemption path, which skips proof verification (a code-path classification, not a record of how the network first accepted the block, which this dataset does not determine); whether value was created depends on the ElGamal-encrypted amounts, which no public field reveals",
+  "evidence_grade": "E1",
+  "public_fields": {
+   "burn_total": 0,
+   "fee": 121,
+   "note": "public fields move no plaintext value into existence: the fee is paid out of the sender's encrypted balance; burn and value are 0",
+   "value_field": 0
+  },
+  "question": "did this tx create value beyond the emission formula?",
+  "status": "builder grade, written before the audit; the audited grade is audit/audit_report.json verdicts (G29), rft \u00a70.8.1 rule 5",
+  "txid": "0045a6d4c51a8578b6c97f2b376415653583505f21032eb6a808cd1643a300a7",
+  "verdict_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA"
+ },
+ "has_scdata": false,
+ "hf3": true,
+ "payloads": [
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 4,
+   "commitments": 2,
+   "fees": 121,
+   "has_proof": true,
+   "pointer_bytes": 8,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 0,
+   "scid_zero": true,
+   "statement_roothash": "c209d3c0a0d163dc7fb5fd4e1ab19012cf2f46f06b186c8523ca0f80ec95a6b3"
+  }
+ ],
+ "proof_current_verifier": {
+  "checks": [
+   {
+    "cite": "blockchain/transaction_verify.go:225",
+    "name": "version",
+    "result": "pass"
+   },
+   {
+    "cite": "blockchain/transaction_verify.go:256-322",
+    "detail": "burn value, payload count, base payload, roothash equality, ring size/pointers, distinct members",
+    "name": "statement_sanity",
+    "result": "pass"
+   },
+   {
+    "cite": "blockchain/transaction_verify.go:327-341",
+    "name": "reference_state",
+    "result": "pass"
+   },
+   {
+    "cite": "blockchain/transaction_verify.go:336-338",
+    "name": "statement_roothash",
+    "result": "pass"
+   },
+   {
+    "cite": "blockchain/transaction_verify.go:358-431",
+    "name": "ring_expansion",
+    "result": "pass"
+   },
+   {
+    "cite": "blockchain/transaction_verify.go:450-461",
+    "detail": "Recover key failed B^w * A",
+    "name": "proof_verify",
+    "result": "fail"
+   }
+  ],
+  "exemption": "HF3 cache bypassed in this run: yes: this mode never fills or reads transaction_valid_cache (transaction_verify.go:232-238, :433-441)",
+  "failed_check": "Recover key failed B^w * A",
+  "implementation": "single (node verifier via tools/forensics verify)",
+  "payloads": [
+   {
+    "failed_check": "Recover key failed B^w * A",
+    "payload": 0,
+    "proof_verify": "fail",
+    "ring_expanded": true
+   }
+  ],
+  "result": "fail",
+  "state_root": "c209d3c0a0d163dc7fb5fd4e1ab19012cf2f46f06b186c8523ca0f80ec95a6b3",
+  "state_source": "derived/archive_state (our replaywall archive copy)",
+  "state_version": 18957
+ },
+ "ref_blid": "ce22e7f524ff20c649c96d51dea0d6e95cd1d3324b9584217f486af0747c2f4d",
+ "ref_blid_height_eq_ref_height": true,
+ "ref_blid_in_raw_chain": true,
+ "ref_height": 7467512,
+ "registration_signature_valid": "not applicable: not a registration",
+ "scdata_keys": 0,
+ "serialized_keccak256": {
+  "node_go": "0f1e69805ec6abd215ed76cfb546326704ee24937b45bfcdf4bf82a5012a6a65",
+  "python_matches": true,
+  "use": "the verifier's cache key only for tx.Height >= MAJOR_HF3_HEIGHT (blockchain/transaction_verify.go:433-436); below it (every tx here) the key is the TXID"
+ },
+ "statement_roothash_vs_archive": {
+  "archive_root": "c209d3c0a0d163dc7fb5fd4e1ab19012cf2f46f06b186c8523ca0f80ec95a6b3",
+  "equal": true,
+  "state_version": 18957
+ },
+ "table_entry": {
+  "bl_tips": "5460bce958ff0642dcbabbade30fee81589c69bee6d1a1e987df99768d2b2579",
+  "class": "SRC",
+  "file": "blockchain/hardfork_fixes.go",
+  "group": "no duplicates, but false parity",
+  "height": 7467516,
+  "line": 103,
+  "parity_literal": false,
+  "tx_parity": true
+ },
+ "table_semantics": {
+  "bl_tips_block_raw": true,
+  "bl_tips_height": 7467515,
+  "bl_tips_is_that_carrier_itself": false,
+  "bl_tips_is_tip_of_that_carrier": true,
+  "height_is_inclusion_height_of_a_carrier": true,
+  "other_carriers": [],
+  "tx_ref_blid_eq_bl_tips": false
+ },
+ "tx_type": "NORMAL",
+ "txid": "0045a6d4c51a8578b6c97f2b376415653583505f21032eb6a808cd1643a300a7",
+ "txid_recomputed": {
+  "core_statement_len": 362,
+  "core_statement_sha256": "1b5eca21fed7afd25e684fbebd2d7382d2a17cf4656982dc3e895190197656be",
+  "node_go": true,
+  "python_keccak256": true,
+  "rule": "TXID = Keccak256(SerializeCoreStatement), transaction/transaction.go:192-200, :510-524"
+ },
+ "value_field": 0,
+ "version": 1
+}

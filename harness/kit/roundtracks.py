@@ -23,6 +23,59 @@ PAUSABLE_STAGES = ('minerbench', 'gpubench')    # S4b, S4c
 # r24: the sources whose change makes a paused S4b/S4c run anyway — a miner change is out of scope while paused
 # (§0.3), so if one appears the A/B evidence is required exactly as before
 MINER_PATHS = ('cmd/dero-miner', 'astrobwt', 'gpu-miner-poc')
+# r25 (B49): the miner BINARY is also built from node packages (`go list -deps ./cmd/dero-miner`: config, rpc, block,
+# transaction, globals, metrics, cryptography/*, glue/httpguard, tools/dashboard at 17da0dc), so a node-side change to
+# one of them changes the miner too; while paused, such a change runs S4b/S4c as a miner change does. A package's
+# non-test .go files in its own directory count (not its subdirectories: rpc/ is a dependency, cmd/derod/rpc/ is not).
+# config/version.go changes every round with the version string only; a diff that touches nothing else is exempt.
+MINER_DEPS_CMD = ['go', 'list', '-deps', '-f', '{{if .Module}}{{if .Module.Main}}{{.Dir}}{{end}}{{end}}', './cmd/dero-miner']
+VERSION_FILE = 'config/version.go'
+# r25 (verify): the module build inputs are miner inputs too. The miner imports 30 vendored third-party packages
+# (`go list -deps ./cmd/dero-miner` at 17da0dc) and MINER_DEPS_CMD lists first-party dirs only, so a go.mod / go.sum /
+# vendor/ change rebuilt the miner without running S4b/S4c. Any such change counts (conservative: vendor/ moves rarely).
+MODULE_INPUTS = ('go.mod', 'go.sum', 'vendor/modules.txt')
+
+
+def miner_dep_dirs(go_list_out, root):
+    """repo-relative package dirs of the miner's first-party dependencies from MINER_DEPS_CMD output. Pure."""
+    root = str(root).rstrip('/') + '/'
+    out = set()
+    for l in str(go_list_out or '').splitlines():
+        l = l.strip()
+        if l.startswith(root):
+            out.add(l[len(root):].strip('/'))
+        elif l == root.rstrip('/'):
+            out.add('')
+    return sorted(out)
+
+
+def version_only(diff_text):
+    """True when a unified diff of config/version.go changes only the `var Version = semver.MustParse(...)` line. Pure."""
+    ch = [l for l in str(diff_text or '').splitlines()
+          if l[:1] in '+-' and not l.startswith(('+++', '---'))]
+    return bool(ch) and all('semver.MustParse(' in l and 'Version' in l for l in ch)
+
+
+def miner_relevant(paths, dep_dirs, version_is_only=False):
+    """the changed paths that change the miner: anything under MINER_PATHS, a module build input (MODULE_INPUTS, or
+    a non-test source under vendor/), or a non-test .go file (or a C/asm source) directly inside one of `dep_dirs`; config/version.go is skipped when `version_is_only`. Pure."""
+    deps = set(dep_dirs or [])
+    out = []
+    for p in paths:
+        if p.startswith(tuple(m + '/' for m in MINER_PATHS)) or p in MINER_PATHS:
+            out.append(p)
+            continue
+        if p in MODULE_INPUTS or (p.startswith('vendor/') and p.endswith(('.go', '.c', '.h', '.s'))
+                                  and not p.endswith('_test.go')):
+            out.append(p)   # r25 (verify): a module / vendored-source change rebuilds the miner
+            continue
+        d, _, f = p.rpartition('/')
+        if d not in deps or f.endswith('_test.go') or not f.endswith(('.go', '.c', '.h', '.s')):
+            continue
+        if p == VERSION_FILE and version_is_only:
+            continue
+        out.append(p)
+    return sorted(out)
 
 
 def load(path):

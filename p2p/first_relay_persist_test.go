@@ -13,9 +13,9 @@ func TestFirstRelayPersistRoundTrip(t *testing.T) {
 	now := time.Unix(1792850000, 0)
 	first_relay.Peers, first_relay.Blocks = map[string]*RelayStat{}, 0
 	for i := 0; i < 7; i++ {
-		first_relay.record("203.0.113.22", "203.0.113.22:11011", []byte{0x2d, 0xa7, 0xf0, 0x63, 0xca, 0xa4, 0x63, 0xcd}, 131000, now)
+		first_relay.record("203.0.113.161", "203.0.113.161:11011", []byte{0x2d, 0xa7, 0xf0, 0x63, 0xca, 0xa4, 0x63, 0xcd}, 131000, now)
 	}
-	first_relay.record("203.0.113.21", "203.0.113.21:11011", nil, 351000, now)
+	first_relay.record("203.0.113.162", "203.0.113.162:11011", nil, 351000, now)
 	path := filepath.Join(t.TempDir(), FIRST_RELAY_FILE)
 	if err := save_first_relay_to(path); err != nil {
 		t.Fatal(err)
@@ -28,14 +28,14 @@ func TestFirstRelayPersistRoundTrip(t *testing.T) {
 		t.Fatalf("loaded %d entries, want 2", n)
 	}
 	top := first_relay.top(FIRST_RELAY_STICKY, FIRST_RELAY_MIN_FIRSTS)
-	if len(top) != 1 || top[0] != "203.0.113.22:11011" {
-		t.Fatalf("sticky set after restart = %v, want [203.0.113.22:11011]", top)
+	if len(top) != 1 || top[0] != "203.0.113.161:11011" {
+		t.Fatalf("sticky set after restart = %v, want [203.0.113.161:11011]", top)
 	}
-	if first_relay.score("203.0.113.22") != 7 || first_relay.Blocks != 8 {
-		t.Fatalf("score/blocks not restored: %d %d", first_relay.score("203.0.113.22"), first_relay.Blocks)
+	if first_relay.score("203.0.113.161") != 7 || first_relay.Blocks != 8 {
+		t.Fatalf("score/blocks not restored: %d %d", first_relay.score("203.0.113.161"), first_relay.Blocks)
 	}
-	if first_relay.Peers["203.0.113.22"].Builders["2da7f063caa463cd"] != 7 {
-		t.Fatalf("builders map not restored: %v", first_relay.Peers["203.0.113.22"].Builders)
+	if first_relay.Peers["203.0.113.161"].Builders["2da7f063caa463cd"] != 7 {
+		t.Fatalf("builders map not restored: %v", first_relay.Peers["203.0.113.161"].Builders)
 	}
 }
 

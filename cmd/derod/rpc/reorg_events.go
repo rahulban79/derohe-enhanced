@@ -24,8 +24,12 @@ package rpc
 // (as one GetTxStatus call). Node-local and read-only: nothing here affects what the node accepts or relays.
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/deroproject/derohe/cryptography/crypto"
 	dmetrics "github.com/deroproject/derohe/metrics"
@@ -63,7 +67,30 @@ type Reorg_Stats struct {
 	LocalRewinds   uint64       `json:"local_rewinds"` // r23b merge: events from a local pop/Rewind_Chain (never violations)
 	Window         int          `json:"window"`
 	Last           *Reorg_Event `json:"last,omitempty"`
+	// r25 (CO24-C6, dero-rft §7 B60): the counts above reset at every start; Lifetime carries them across restarts
+	// (persisted in the datadir, REORG_MONITOR_FILE). nil when persistence is off (tests, or the file unwritable).
+	Lifetime *Reorg_Lifetime `json:"lifetime,omitempty"`
 }
+
+// Reorg_Lifetime is the reorg monitor summed over every run of this datadir since Since (r25, CO24-C6).
+type Reorg_Lifetime struct {
+	Since          string `json:"since"`  // RFC 3339 time the file was created
+	Starts         uint64 `json:"starts"` // node runs that loaded or created it (this one included)
+	Observed       uint64 `json:"observed"`
+	Reorgs         uint64 `json:"reorgs"`
+	ReplacedTotal  uint64 `json:"replaced_total"`
+	Deepest        int    `json:"deepest"`
+	DeepestHeights int64  `json:"deepest_heights"`
+	Violations     uint64 `json:"final_violations"`
+	LocalRewinds   uint64 `json:"local_rewinds"`
+	LastForkTopo   int64  `json:"last_fork_topoheight"` // -1 none
+	LastAt         string `json:"last_at,omitempty"`    // RFC 3339 time of the newest reorganisation
+	File           string `json:"file"`                 // base name inside the datadir
+	SaveErrors     uint64 `json:"save_errors"`
+}
+
+const REORG_MONITOR_FILE = "reorg_monitor.json" // r25 (CO24-C6)
+const REORG_SAVE_EVERY = 100                    // observations between saves when nothing happened (an event saves at once)
 
 type reorg_tracker struct {
 	sync.Mutex
@@ -72,6 +99,9 @@ type reorg_tracker struct {
 	tiph  int64 // chain height at the last observation
 	final int64
 	st    Reorg_Stats
+	life  *Reorg_Lifetime // r25 (CO24-C6): nil = not persisted
+	path  string
+	dirty int // observations since the last save
 }
 
 func new_reorg_tracker() *reorg_tracker {
@@ -183,7 +213,92 @@ func (r *reorg_tracker) observe(top int64, blid_at func(int64) (crypto.Hash, err
 	}
 	r.slots = cur
 	r.top, r.final, r.tiph = top, final, tiph
+	if r.life != nil { // r25 (CO24-C6): the same increments, summed across runs
+		r.life.Observed++
+		r.dirty++
+		if ev != nil {
+			r.life.Reorgs++
+			r.life.ReplacedTotal += uint64(ev.Replaced)
+			if ev.Replaced > r.life.Deepest {
+				r.life.Deepest = ev.Replaced
+			}
+			if r.st.DeepestHeights > r.life.DeepestHeights {
+				r.life.DeepestHeights = r.st.DeepestHeights
+			}
+			if ev.FinalViolated {
+				r.life.Violations++
+			}
+			if ev.LocalRewind {
+				r.life.LocalRewinds++
+			}
+			r.life.LastForkTopo = ev.ForkTopoHeight
+			r.life.LastAt = time.Now().UTC().Format(time.RFC3339)
+		}
+		if ev != nil || r.dirty >= REORG_SAVE_EVERY {
+			r.save_locked()
+		}
+	}
+	if ev != nil {
+		log_reorg(ev)
+	}
 	return ev
+}
+
+// log_reorg writes one INFO line per reorganisation (r25, CO24-C6): upstream logged none at the default level.
+func log_reorg(ev *Reorg_Event) {
+	defer func() { recover() }() // the logger is unset in unit tests that never started the RPC server
+	logger.Info("Reorganisation", "seq", ev.Seq, "fork_topoheight", ev.ForkTopoHeight, "replaced", ev.Replaced,
+		"lowest_replaced_height", ev.LowestReplacedHeight, "old_topoheight", ev.OldTopoHeight, "new_topoheight", ev.NewTopoHeight,
+		"final_violated", ev.FinalViolated, "local_rewind", ev.LocalRewind)
+}
+
+// enable_persist loads (or creates) the lifetime record at path and counts this start (r25, CO24-C6). A missing file
+// starts a new record; an unreadable or corrupt one is kept aside as <path>.corrupt and a new record started, so a
+// bad file never stops the node.
+func (r *reorg_tracker) enable_persist(path string) error {
+	r.Lock()
+	defer r.Unlock()
+	life := &Reorg_Lifetime{LastForkTopo: -1}
+	if raw, err := os.ReadFile(path); err == nil {
+		if json.Unmarshal(raw, life) != nil || life.Since == "" {
+			_ = os.Rename(path, path+".corrupt")
+			life = &Reorg_Lifetime{LastForkTopo: -1}
+		}
+	}
+	if life.Since == "" {
+		life.Since = time.Now().UTC().Format(time.RFC3339)
+	}
+	life.Starts++
+	life.File = filepath.Base(path)
+	r.life, r.path = life, path
+	return r.save_locked()
+}
+
+// flush saves the lifetime record now (r25, CO24-C6): at shutdown, so up to REORG_SAVE_EVERY-1 observations since the
+// last periodic save are not lost (the shadow run of 2026-11-03 read observed 37 by RPC and 0 on disk after a stop).
+func (r *reorg_tracker) flush() error {
+	r.Lock()
+	defer r.Unlock()
+	return r.save_locked()
+}
+
+// save_locked writes the lifetime record atomically (tmp + rename, mode 0600). Caller holds r.
+func (r *reorg_tracker) save_locked() error {
+	r.dirty = 0
+	if r.life == nil || r.path == "" {
+		return nil
+	}
+	raw, err := json.MarshalIndent(r.life, "", " ")
+	if err == nil {
+		tmp := r.path + ".tmp"
+		if err = os.WriteFile(tmp, raw, 0600); err == nil {
+			err = os.Rename(tmp, r.path)
+		}
+	}
+	if err != nil {
+		r.life.SaveErrors++
+	}
+	return err
 }
 
 func (r *reorg_tracker) stats() Reorg_Stats {
@@ -194,6 +309,10 @@ func (r *reorg_tracker) stats() Reorg_Stats {
 		cp := *s.Last
 		cp.OldHashes = append([]string(nil), s.Last.OldHashes...)
 		s.Last = &cp
+	}
+	if r.life != nil { // r25: a copy, never the tracker's own record
+		lt := *r.life
+		s.Lifetime = &lt
 	}
 	return s
 }

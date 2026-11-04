@@ -110,9 +110,7 @@ func TestR23TxFinalityOnSimulatorChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Shutdown()
-	old_chain := chain
-	chain = c
-	defer func() { chain = old_chain }()
+	defer swap_global_chain(c)() // r25 B41: under chain_swap_mu, so the fate resolver never races the swap
 
 	walletapi.Initialize_LookupTable(1, 1<<12)
 	w, err := walletapi.Create_Encrypted_Wallet_Memory("", new(crypto.BNRed).SetBytes(big.NewInt(4000037).Bytes()))

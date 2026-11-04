@@ -31,6 +31,7 @@ import "github.com/deroproject/derohe/globals"
 func (c *Connection) Chain(request Chain_Request_Struct, response *Chain_Response_Struct) error {
 	defer handle_connection_panic(c)
 	if len(request.Block_list) < 1 { // malformed request ban peer
+		chain_requests_refused.Inc() // r25 (CO24-N3)
 		c.logger.V(3).Info("malformed chain request  received, banning peer", "request", request)
 		c.penalize("malformed_request")
 		c.exit()
@@ -38,12 +39,14 @@ func (c *Connection) Chain(request Chain_Request_Struct, response *Chain_Respons
 	}
 
 	if len(request.Block_list) != len(request.TopoHeights) || len(request.Block_list) > 1024 {
+		chain_requests_refused.Inc() // r25 (CO24-N3)
 		c.logger.V(3).Info("Peer chain is invalid", "blocks", len(request.Block_list), "topos", len(request.TopoHeights))
 		c.exit()
 		return nil
 	}
 
 	if request.Block_list[len(request.Block_list)-1] != globals.Config.Genesis_Block_Hash {
+		chain_requests_refused.Inc() // r25 (CO24-N3)
 		c.logger.V(3).Info("Peer chain is invalid", "blocks", len(request.Block_list), "topos", len(request.TopoHeights))
 		c.exit()
 		return nil
@@ -87,6 +90,8 @@ func (c *Connection) Chain(request Chain_Request_Struct, response *Chain_Respons
 
 	response.Start_height = start_height
 	response.Start_topoheight = start_topoheight
+	// r25 (CO24-N3): chain-request amplification becomes measurable
+	c.note_chain_served(len(response.Block_list))
 	fill_common(&response.Common) // fill common info
 	c.update(&request.Common)     // update common information
 

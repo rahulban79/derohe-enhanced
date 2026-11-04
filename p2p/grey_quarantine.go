@@ -15,7 +15,8 @@ package p2p
 // a gossiped (grey) entry once FailCount reaches 8, and the very next handshake or 10th ping of any connected peer
 // gossips it again (peer_add_gossip -> Peer_Add with FailCount 0), so the back-off restarts at 1 s and a dead
 // address costs 8 dials every ~2-3 minutes forever. peers.json at 13:19 showed the four grey entries at FailCount
-// 3, 4, 4 and 7 only 5 minutes after the restart. Over the 7-day log 89.38.99.117 and 89.38.97.110 produced 1,542
+// [r25 B70: RFC 5737 stand-ins for the observed addresses]
+// 3, 4, 4 and 7 only 5 minutes after the restart. Over the 7-day log 89.38.99.117 and 203.0.113.169 produced 1,542
 // and 1,364 "backing off" lines and never once connected.
 //
 // A grey entry purged for failures is now remembered for GREY_QUARANTINE (doubling per repeat, at most

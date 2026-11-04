@@ -58,7 +58,7 @@ ROOT = HARNESS.parent
 STATUSES = ('planned', 'in-progress', 'implemented', 'shipped', 'measured')
 DONE = ('implemented', 'shipped', 'measured')
 TRACKED_IDS = ('B18', 'B19', 'B28', 'B29', 'B30', 'B34', 'B35', 'B38', 'B39', 'BD5', 'BD6', 'BD7', 'BD8', 'BD9')
-CHECKS = ('round', 'pipeline', 'registry', 'live', 'disclosure', 'areas', 'backlog', 'pages', 'index', 'srcarch', 'observatory')
+CHECKS = ('round', 'pipeline', 'registry', 'live', 'disclosure', 'areas', 'backlog', 'pages', 'index', 'srcarch', 'observatory', 'forensics')
 # outputs the generators write; a commit touching only these does not change what src-arch shows
 GENERATED = (r'harness/stamp\.json$', r'harness/model/verified\.json$', r'harness/model/raw/', r'harness/runtime/',
              r'harness/loop/runs/', r'harness/loop/GATES\.md$', r'harness/loop/[A-Z_]+_LAST\.json$',
@@ -277,9 +277,24 @@ class Ctx:
         return read(self.root / rel)
 
 
+def soundness_rel(root):
+    """r25: the current round's soundness page (harness/kit/soundpage.py; one page per round, older ones are history)"""
+    import importlib.util
+    kit = next((k for k in (Path(root) / 'harness/kit/soundpage.py', HARNESS / 'kit/soundpage.py') if k.is_file()), None)
+    if kit is None:
+        return 'artifacts/dero-soundness-<no soundpage helper>.html'
+    spec = importlib.util.spec_from_file_location(f'soundpage_for_coherence_{id(root)}', kit)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    try:
+        return m.rel(root)
+    except (OSError, ValueError):
+        return 'artifacts/dero-soundness-<no current round>.html'
+
+
 def artifact_files(c):
     fs = ['RUN_REPORT.md', 'ARCHITECTURE.md', '.skills/dero-miner-tuning/SKILL.md', 'artifacts/dero-rft.md',
-          'artifacts/dero-src-arch.html', 'artifacts/index.html', 'artifacts/dero-soundness-r23.html', c.ledger]
+          'artifacts/dero-src-arch.html', 'artifacts/index.html', soundness_rel(c.root), c.ledger]
     return [f for f in dict.fromkeys(fs) if (c.root / f).exists()]
 
 
@@ -711,7 +726,7 @@ def check_pages(c, index=True):
         if not (art / h).exists():
             ln = next((i for i, l in enumerate(it.splitlines(), 1) if h in l), None)
             c.drift('index', 'artifacts/index.html', ln, f'{h} exists in artifacts/', 'missing', 'artifacts/ listing')
-    need = ['dero-src-arch.html', 'dero-soundness-r23.html']
+    need = ['dero-src-arch.html', Path(soundness_rel(c.root)).name]   # r25: the current round's soundness page
     if (c.root / c.ledger).exists():
         need.append(Path(c.ledger).name)
     for n in need:
@@ -908,6 +923,53 @@ def check_srcarch(c):
                 f"STALE: {len(missing)} round commit(s) missing, e.g. {', '.join(missing[:4])}", 'git log (run mine_evolution.py, then gen_deroarch.py build)')
 
 
+def check_forensics(c):
+    """r25 (rft §0.6 rule for G30): every figure of the ledger's forensics sections and of the src-arch "Forensic dataset"
+    line against the newest forensic dataset (harness/forensics/facts.py does the reading); one drift per failure, and
+    the manifest SHA-256 the RUN_REPORT / ARCHITECTURE round sections quote (first 8+ hex after "manifest") must be the
+    newest manifest's."""
+    fp = c.root / 'harness' / 'forensics' / 'facts.py'
+    if not fp.exists() or not (c.root / 'forensics' / 'ledger.json').exists():
+        return
+    import importlib.util as _iu
+    sp = _iu.spec_from_file_location(f'facts_for_coherence_{id(c)}', fp)
+    FX = _iu.module_from_spec(sp)
+    sp.loader.exec_module(FX)
+    try:
+        ds = FX.newest_dataset(c.root)
+        F = FX.build(ds, c.root)
+    except Exception as e:                                           # noqa: BLE001
+        c.fact()
+        c.drift('forensics', 'forensics/ledger.json', None, 'a readable newest dataset', f'{type(e).__name__}: {e}', 'harness/forensics/facts.py')
+        return
+    msha = F.facts['manifest_sha256']['value']
+    for x in F.problems:
+        c.fact()
+        c.drift('forensics', f'forensics/{ds.name}/manifest.json', None, 'dataset files equal to the manifest', x, 'manifest_check')
+    for rel, b, e, need in ((c.ledger, FX.BEGIN, FX.END, True), ('artifacts/dero-src-arch.html', FX.SA_BEGIN, FX.SA_END, False)):
+        p = c.root / rel
+        if not p.exists():
+            continue
+        txt = p.read_text()
+        c.fact()
+        if b not in txt:
+            if rel == c.ledger and re.search(r'r(\d+)\.html$', rel) and int(re.search(r'r(\d+)\.html$', rel).group(1)) < 25:
+                continue
+            c.drift('forensics', rel, None, f'the forensics block {b}', 'none', f'forensics/{ds.name}/manifest.json')
+            continue
+        probs, n = FX.check_page(txt, F, b, e, need)
+        c.facts += n
+        for x in probs:
+            c.drift('forensics', rel, None, 'every figure traced to its dataset file + SHA-256', x[:200], f'forensics/{ds.name} (G30)')
+    for rel in ('RUN_REPORT.md', 'ARCHITECTURE.md'):
+        t = c.text(rel) or ''
+        for i, l in enumerate(t.splitlines(), 1):
+            for mm in re.finditer(r'forensic[^|]{0,80}?manifest (?:SHA-256 )?`?([0-9a-f]{8,64})', l):
+                c.fact()
+                if not msha.startswith(mm.group(1)):
+                    c.drift('forensics', rel, i, msha[:12], mm.group(1)[:12], f'forensics/{ds.name}/manifest.json')
+
+
 # ───────────────────────────── driver ─────────────────────────────
 def run(root=ROOT, skip=()):
     c = Ctx(root)
@@ -916,7 +978,8 @@ def run(root=ROOT, skip=()):
     steps = {'round': lambda: check_round(c), 'pipeline': lambda: check_pipeline(c, files), 'registry': lambda: check_registry(c),
              'live': lambda: check_live(c, files), 'disclosure': lambda: check_disclosure(c), 'areas': lambda: check_areas(c),
              'backlog': lambda: check_backlog(c), 'pages': lambda: check_pages(c, index='index' not in skip),
-             'srcarch': lambda: check_srcarch(c), 'observatory': lambda: check_observatory(c, files)}
+             'srcarch': lambda: check_srcarch(c), 'observatory': lambda: check_observatory(c, files),
+             'forensics': lambda: check_forensics(c)}
     for k, fn in steps.items():
         if k not in skip:
             fn()

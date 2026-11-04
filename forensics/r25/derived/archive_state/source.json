@@ -1,0 +1,30 @@
+{
+ "archive": "archive:replaywall-20260819 (APFS clone in the scratchpad; the datadir itself is never opened)",
+ "block_files_vs_raw_chain": {
+  "block_file_ids_in_raw_chain": 14226,
+  "block_files": 14724,
+  "files_above_last_committed_topo": 406,
+  "first_height_above": 7467516,
+  "of_those_in_raw_chain": 0,
+  "reading": "block files the stalled replaywall node held above its last committed topo are not the RAW-chain blocks at those heights when of_those_in_raw_chain is 0 (resolves disc:131 \"canonicality pending\" for that store)"
+ },
+ "class": "DERIVED by tools/forensics (node code: graviton + Load_Merkle_Hash logic, blockchain/store.go:297-327; the current verifier without the HF3 cache, tools/forensics/extract.go) from our own archive store; that store is NOT in the dataset, so replay re-derives these files only where the copy is present and otherwise re-checks their SHA-256",
+ "committed_records": 14226,
+ "committed_topo_range": [
+  7453290,
+  7467515
+ ],
+ "inputs_sha256": {
+  "balances_files": [
+   "1580479a396a963e9ef688d12c7d221afe5e121a5a83cb8fd10084f12ffbdb0d"
+  ],
+  "balances_version_root_bin": "c7e3fcd759413294f2e77cd720cfeaf39ae7b24fc9cd7d8738efae5251ec346b",
+  "bltx_block_file_names": "8091a5dfc28d55d0b464d117dd78d54011e83d721678feeb45e8ba0b451af178",
+  "topo_copy": "43642760f80b8180bb81323a8ae4b7c5bd840505938de6166df28bfa3f9f229f"
+ },
+ "roots_error": 0,
+ "roots_ok": 14226,
+ "semantics": "roots are the replaywall run's own node-computed balance-tree roots (base tree from its fastsync at topo 7,453,290, not end-state-checked; blocks commit to no checked root, disc:119-120)",
+ "topo_records": 14632,
+ "versions": 14226
+}

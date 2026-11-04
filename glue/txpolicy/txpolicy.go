@@ -41,6 +41,16 @@
 //     (chain height - STABLE_LIMIT) reaches T, i.e. after at most STABLE_LIMIT more blocks, and each block takes at
 //     most BLOCK_TX_CAPACITY bytes. So at the default a tx is refused only when at least that many better-paying
 //     bytes are already waiting. Not scored against a relaying peer (honest peers relay low fees).
+//
+// r25 (secpool, B44): two holes in rule 3 closed.
+//   - The cap was soft under concurrency: the gate counted only admitted bytes, so admissions still verifying were
+//     invisible to each other. With the pool 3,000 B under a 30,000 B cap, six concurrent 3,000 B floor-fee txs all
+//     passed the gate and none could evict anyone (equal rates), leaving 45,000 B (r24 verifier). Now a leader
+//     RESERVES its bytes from the gate until it leaves (inflight); the gate and FeeToEnter count them.
+//   - The fee-rate summary was reused for SUMMARY_TTL even when the set of mined txs had changed: right after a block
+//     carried the pooled txs, a newcomer could be refused for up to 250 ms against bytes that were no longer
+//     pending. The summary now also records WHICH mined set it was built from (the map RecentlyMined returns is
+//     rebuilt only when the topoheight moves) and is rebuilt when that changes.
 
 package txpolicy
 
@@ -49,6 +59,7 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"reflect"
 	"regexp"
 	"sort"
 	"sync"
@@ -108,14 +119,16 @@ func less_rate(afee, asize, bfee, bsize uint64) bool {
 
 type policy struct {
 	sync.Mutex
-	pool     Pool
-	mined    func() map[crypto.Hash]bool // txids the recent blocks carry (nil: none known)
-	protect  func() map[crypto.Hash]bool // r24 (verify-txpool): txids of block templates handed to miners
-	cap      uint64
-	now      func() time.Time
-	sum_at   time.Time
-	sum      []entry // the pool, lowest exact fee rate first
-	sum_size uint64
+	pool      Pool
+	mined     func() map[crypto.Hash]bool // txids the recent blocks carry (nil: none known)
+	protect   func() map[crypto.Hash]bool // r24 (verify-txpool): txids of block templates handed to miners
+	cap       uint64
+	now       func() time.Time
+	sum_at    time.Time
+	sum       []entry // the pool, lowest exact fee rate first
+	sum_size  uint64
+	sum_mined uintptr // r25 (B44): identity of the mined set the summary was built from (0: none)
+	inflight  uint64  // r25 (B44): bytes reserved by admissions between the gate and leave
 
 	flights map[crypto.Hash]*flight
 	neg     map[crypto.Hash]neg_entry
@@ -125,6 +138,7 @@ type policy struct {
 type flight struct {
 	done chan struct{}
 	err  error
+	size uint64 // r25 (B44): bytes this leader reserved in p.inflight
 }
 
 type neg_entry struct {
@@ -142,6 +156,7 @@ func Attach(pool Pool, cap uint64) {
 	p.Lock()
 	defer p.Unlock()
 	p.pool, p.cap, p.sum, p.sum_size, p.sum_at = pool, cap, nil, 0, time.Time{}
+	p.sum_mined, p.inflight = 0, 0
 	p.flights = map[crypto.Hash]*flight{}
 	p.neg = map[crypto.Hash]neg_entry{}
 	p.neg_q = nil
@@ -207,10 +222,10 @@ func FeeToEnter(size uint64) uint64 {
 		return 0
 	}
 	p.refresh(false)
-	if p.sum_size+size <= p.cap {
+	if p.sum_size+p.inflight+size <= p.cap { // r25 (B44): bytes still verifying count, as in gate
 		return 0
 	}
-	need, got := p.sum_size+size-p.cap, uint64(0)
+	need, got := p.sum_size+p.inflight+size-p.cap, uint64(0)
 	var top entry
 	prot := p.protected()
 	for _, e := range p.sum {
@@ -248,16 +263,25 @@ func Snapshot() (s Status) {
 	return
 }
 
-// refresh rebuilds the fee-rate summary when it is older than SUMMARY_TTL (or force). Caller holds p.
-func (p *policy) refresh(force bool) {
-	if !force && !p.sum_at.IsZero() && p.now().Sub(p.sum_at) < SUMMARY_TTL {
-		return
+// map_id is the identity of a map value (0 for nil): RecentlyMined returns the same map until the topoheight moves.
+func map_id(m map[crypto.Hash]bool) uintptr {
+	if m == nil {
+		return 0
 	}
-	listed := p.pool.Mempool_List_TX_SortedInfo()
+	return reflect.ValueOf(m).Pointer()
+}
+
+// refresh rebuilds the fee-rate summary when it is older than SUMMARY_TTL, when the mined set changed since it was
+// built (r25, B44), or when forced. Caller holds p.
+func (p *policy) refresh(force bool) {
 	var mined map[crypto.Hash]bool
 	if p.mined != nil {
 		mined = p.mined()
 	}
+	if !force && !p.sum_at.IsZero() && p.now().Sub(p.sum_at) < SUMMARY_TTL && map_id(mined) == p.sum_mined {
+		return
+	}
+	listed := p.pool.Mempool_List_TX_SortedInfo()
 	s := make([]entry, 0, len(listed))
 	size := uint64(0)
 	for _, l := range listed {
@@ -272,7 +296,7 @@ func (p *policy) refresh(force bool) {
 		size += l.Size
 	}
 	sort.SliceStable(s, func(i, j int) bool { return less_rate(s[i].fee, s[i].size, s[j].fee, s[j].size) })
-	p.sum, p.sum_size, p.sum_at = s, size, p.now()
+	p.sum, p.sum_size, p.sum_at, p.sum_mined = s, size, p.now(), map_id(mined)
 }
 
 // victims: the lowest-paying entries, each paying strictly less per byte than (fee, size), whose sizes add up to at
@@ -325,10 +349,10 @@ func (p *policy) remember_invalid(key crypto.Hash, err error) {
 // gate decides, before verification, whether tx may be verified at all. Caller holds p.
 func (p *policy) gate(fee, size uint64) error {
 	p.refresh(false)
-	if p.sum_size+size <= p.cap {
+	if p.sum_size+p.inflight+size <= p.cap { // r25 (B44): admissions still verifying hold their bytes
 		return nil
 	}
-	if _, ok := p.victims(fee, size, p.sum_size+size-p.cap); !ok {
+	if _, ok := p.victims(fee, size, p.sum_size+p.inflight+size-p.cap); !ok {
 		return ErrPoolFull
 	}
 	return nil
@@ -394,14 +418,22 @@ func (p *policy) enter(key crypto.Hash, fee, size uint64) (leader *flight, follo
 	if err = p.gate(fee, size); err != nil {
 		return nil, nil, err
 	}
-	leader = &flight{done: make(chan struct{}), err: errFlightAborted}
+	leader = &flight{done: make(chan struct{}), err: errFlightAborted, size: size}
 	p.flights[key] = leader
+	p.inflight += size // r25 (B44): reserved until leave
 	return leader, nil, nil
 }
 
 func (p *policy) leave(key crypto.Hash) {
 	p.Lock()
 	defer p.Unlock()
+	if f := p.flights[key]; f != nil {
+		if f.size <= p.inflight { // r25 (B44); a re-Attach while this flight ran reset inflight to 0
+			p.inflight -= f.size
+		} else {
+			p.inflight = 0
+		}
+	}
 	delete(p.flights, key)
 }
 

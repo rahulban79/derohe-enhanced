@@ -1,0 +1,57 @@
+{
+ "body": {
+  "reserialize_equal": true,
+  "sha256": "1a47dca9d6437b7d0cb31658b7c3f1a2f3a6fb42c74e33891c2d2507d777df50",
+  "size": 101,
+  "source": "src-2"
+ },
+ "burn_total": 0,
+ "carrier_count": 1,
+ "carriers": [
+  {
+   "blid": "d12e8c1bd87e6513a0e96488a6ca1d256a6961b2c79f6f8c3580f40458d55797",
+   "class": "RAW (checks i-ii)",
+   "height": 7493779,
+   "tier": "A",
+   "tips": [
+    "0dd788bcf67f5346c9e9c41f082df0e97d72400730865f3f66de996b88050ac3"
+   ],
+   "topo": 7493779
+  }
+ ],
+ "class": "RAW body (checks i-iii, raw/provenance.json); fields below DERIVED",
+ "duplicates": {
+  "bodies_held_under_this_txid": 1,
+  "other_bodies": "pending: one body was fetched per TXID; block tx lists carry only the TXID, which excludes the proof (transaction.go:191), so a second body with the same core statement is not observable from RAW blocks"
+ },
+ "fee": 0,
+ "has_scdata": false,
+ "hf3": false,
+ "payloads": [],
+ "proof_current_verifier": {
+  "registration_signature_valid": true,
+  "result": "not applicable: registration (signature checked instead)"
+ },
+ "ref_blid": "0000000000000000000000000000000000000000000000000000000000000000",
+ "ref_blid_height_eq_ref_height": false,
+ "ref_blid_in_raw_chain": false,
+ "ref_height": 0,
+ "registration_signature_valid": true,
+ "scdata_keys": 0,
+ "serialized_keccak256": {
+  "node_go": "00000007998ef3f504cfd1076a58d7a6f3a8a4b60215584c81924c33129e15ad",
+  "python_matches": true,
+  "use": "the verifier's cache key only for tx.Height >= MAJOR_HF3_HEIGHT (blockchain/transaction_verify.go:433-436); below it (every tx here) the key is the TXID"
+ },
+ "tx_type": "REGISTRATION",
+ "txid": "00000007998ef3f504cfd1076a58d7a6f3a8a4b60215584c81924c33129e15ad",
+ "txid_recomputed": {
+  "core_statement_len": 101,
+  "core_statement_sha256": "1a47dca9d6437b7d0cb31658b7c3f1a2f3a6fb42c74e33891c2d2507d777df50",
+  "node_go": true,
+  "python_keccak256": true,
+  "rule": "TXID = Keccak256(SerializeCoreStatement), transaction/transaction.go:192-200, :510-524"
+ },
+ "value_field": 0,
+ "version": 1
+}

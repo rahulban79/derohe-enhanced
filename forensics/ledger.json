@@ -1,0 +1,11 @@
+{
+ "note": "append-only ledger of forensic dataset versions (rft \u00a70.8.1 rule 4); a sealed entry never changes; verify_dataset.py checks every version against it",
+ "versions": [
+  {
+   "manifest_sha256": "cc80176e3dde0c6723f7124000fd6208d9cd9befacb8b9ad10fb8a0062f8c6b6",
+   "sealed": true,
+   "supersedes": [],
+   "version": "r25"
+  }
+ ]
+}

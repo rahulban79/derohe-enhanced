@@ -25,6 +25,7 @@ import "github.com/deroproject/derohe/metrics"
 
 var p2p_counters = []string{
 	"p2p_bans_total",
+	"p2p_block_offer_duplicate_total", // r25 (consensus_obs_r25.go)
 	"p2p_bootstrap_fallbacks_total",
 	"p2p_bootstrap_foreign_keys_total",
 	"p2p_bootstrap_prefill_fallbacks_total",
@@ -53,6 +54,12 @@ var p2p_counters = []string{
 	"p2p_tx_fetch_budget_drops_total",
 	"p2p_tx_fetch_failures_total",
 	"p2p_tx_inv_known_skipped_total",
+	"p2p_chain_requests_served_total",  // r25 (peers, CO24-N3)
+	"p2p_chain_request_blocks_total",   // r25
+	"p2p_chain_requests_refused_total", // r25
+	"p2p_objects_unserved_total",       // r25 (CO24-N6)
+	"p2p_sync_short_answers_total",     // r25 (CO24-N6)
+	"p2p_sync_peer_holds_total",        // r25 (B47)
 }
 
 func init() {

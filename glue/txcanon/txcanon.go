@@ -35,6 +35,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"math/bits"
 
 	"github.com/deroproject/derohe/cryptography/bn256"
 	"github.com/deroproject/derohe/glue/txpolicy"
@@ -100,6 +101,96 @@ func registration_canonical(tx *transaction.Transaction) bool {
 	return new(big.Int).SetBytes(tx.S[:]).Cmp(bn256.Order) < 0 && new(big.Int).SetBytes(tx.C[:]).Cmp(bn256.Order) < 0
 }
 
+// ErrNonReducedProofScalar is returned for a transaction whose proof carries a scalar that is not reduced modulo the
+// group order (r25, BD5 / disclosure track FX-N4).
+//
+// Why: Proof.Deserialize (cryptography/crypto/proof_generate.go, consensus code) reads every 32-byte proof scalar with
+// big.Int.SetBytes and never range-checks it, and Proof.Serialize writes it back unchanged, so a value >= Order
+// survives the r22 round-trip check above. Honest provers reduce every scalar (disclosure track NF24-5), and the r24
+// census of the last 100,000 mainnet blocks counted 0 of 15,866 proof scalars >= Order. A non-reduced scalar is an
+// encoding that no honest wallet produces; like the r23b registration check this is encoding hygiene for what this
+// node pools and relays. It is NOT a mitigation of the range-proof soundness defect (disclosure track C1/FX-N3: an
+// encoding census cannot see that), and consensus still accepts such a tx inside a block (blocks never pass here).
+var ErrNonReducedProofScalar = errors.New("transaction proof carries a scalar that is not reduced modulo the group order; not relayed")
+
+var (
+	scalarRejected   = metrics.Set.NewCounter("tx_proof_scalar_nonreduced_rejected_total") // r25: refused at admission
+	scalarUnparsed   = metrics.Set.NewCounter("tx_proof_scalar_layout_unknown_total")      // r25: proof size off the layout: not judged
+	blockScalarNonRd = metrics.Set.NewCounter("block_tx_proof_scalar_nonreduced_total")    // r25: accepted block txs (count only)
+	orderBytes       = func() (b [32]byte) { bn256.Order.FillBytes(b[:]); return }()
+)
+
+// Proof byte layout (Proof.Serialize, proof_generate.go:84; InnerProduct.Serialize, proof_innerproduct.go:42), for a
+// ring of 2^m: BA BS A B (4 points), 8m points, u, 2m scalars f, z_A, T_1 T_2, that mu c s_sk s_r s_b s_tau, ip.a
+// ip.b, 7 L/R point pairs. Points are 33 bytes, scalars 32: size = 1013 + 328m.
+const (
+	proofFixed   = 4*33 + 33 + 32 + 2*33 + 7*32 + 2*32 + 7*2*33 // 1013
+	proofPerM    = 8*33 + 2*32                                  // 328
+	proofScalars = 10                                           // z_A, the 7, ip.a, ip.b (plus 2m of f)
+)
+
+// proof_scalar_offsets returns the byte offsets of every scalar in a serialized proof of n bytes, or ok=false when
+// n is not a size the layout produces.
+func proof_scalar_offsets(n int) (offs []int, ok bool) {
+	if n < proofFixed+proofPerM || (n-proofFixed)%proofPerM != 0 {
+		return nil, false
+	}
+	m := (n - proofFixed) / proofPerM
+	f := 4*33 + 8*33*m + 33
+	for j := 0; j < 2*m; j++ {
+		offs = append(offs, f+32*j)
+	}
+	za := f + 64*m
+	offs = append(offs, za)
+	rest := za + 32 + 2*33
+	for k := 0; k < 9; k++ { // that mu c s_sk s_r s_b s_tau ip.a ip.b
+		offs = append(offs, rest+32*k)
+	}
+	return offs, len(offs) == 2*m+proofScalars
+}
+
+// proof_scalars_reduced reports whether every proof scalar of tx is < Order, reading them in ser, the node's own
+// encoding of tx (Transaction.Serialize: header, then each payload's proof in order, so the proofs are the tail of
+// ser; a payload's proof size follows from its ring, 2^m = pointers / bytes per key). Reading the bytes that
+// roundtrip already produced costs no second serialization (r25 A/B: a separate Proof.Serialize per payload added
+// ~17 us CPU to Check of a ring-16 tx). judged is false when the sizes do not add up (then the tx is not refused for
+// its scalars: fail open, counted).
+func proof_scalars_reduced(ser []byte, tx *transaction.Transaction) (reduced bool, judged bool) {
+	total := 0
+	sizes := make([]int, len(tx.Payloads))
+	for i := range tx.Payloads {
+		st := &tx.Payloads[i].Statement
+		if tx.Payloads[i].Proof == nil || st.Bytes_per_publickey == 0 {
+			return true, false
+		}
+		ring := len(st.Publickeylist_pointers) / int(st.Bytes_per_publickey)
+		if ring < 2 || ring&(ring-1) != 0 {
+			return true, false
+		}
+		m := bits.TrailingZeros(uint(ring))
+		sizes[i] = proofFixed + proofPerM*m
+		total += sizes[i]
+	}
+	if total > len(ser) {
+		return true, false
+	}
+	at := len(ser) - total
+	for _, n := range sizes {
+		offs, ok := proof_scalar_offsets(n)
+		if !ok {
+			return true, false
+		}
+		pb := ser[at : at+n]
+		for _, o := range offs {
+			if bytes.Compare(pb[o:o+32], orderBytes[:]) >= 0 {
+				return false, true
+			}
+		}
+		at += n
+	}
+	return true, true
+}
+
 // Check reports whether tx, decoded from raw, may enter the mempool. canonical is true when raw is exactly the
 // node's own encoding of tx. A non-canonical encoding is still accepted when its canonical form decodes back to a
 // transaction with the same txid and the same canonical bytes (e.g. an undefined point flag byte); otherwise the
@@ -109,34 +200,43 @@ func Check(raw []byte, tx *transaction.Transaction) (canonical bool, err error) 
 		regRejected.Inc()
 		return false, ErrNonCanonicalRegistration
 	}
-	canonical, err = roundtrip(raw, tx)
+	var ser []byte
+	canonical, ser, err = roundtrip(raw, tx)
 	switch {
 	case err != nil:
 		rejected.Inc()
+		return canonical, err
 	case !canonical:
 		nonCanonical.Inc()
 	}
-	return canonical, err
+	if reduced, judged := proof_scalars_reduced(ser, tx); !reduced { // r25 (BD5 / FX-N4)
+		scalarRejected.Inc()
+		return false, ErrNonReducedProofScalar
+	} else if !judged {
+		scalarUnparsed.Inc()
+	}
+	return canonical, nil
 }
 
-// roundtrip is Check without the mempool counters.
-func roundtrip(raw []byte, tx *transaction.Transaction) (canonical bool, err error) {
-	ser, err := serialize(tx)
+// roundtrip is Check without the mempool counters. ser is the node's own encoding of tx (r25: returned for the
+// scalar check; nil on error).
+func roundtrip(raw []byte, tx *transaction.Transaction) (canonical bool, ser []byte, err error) {
+	ser, err = serialize(tx)
 	if err != nil {
-		return false, fmt.Errorf("%w: %v", ErrNotRoundTrip, err)
+		return false, nil, fmt.Errorf("%w: %v", ErrNotRoundTrip, err)
 	}
 	if bytes.Equal(raw, ser) {
-		return true, nil
+		return true, ser, nil
 	}
 	var back transaction.Transaction
 	if err = decode(&back, ser); err != nil {
-		return false, fmt.Errorf("%w: %v", ErrNotRoundTrip, err)
+		return false, nil, fmt.Errorf("%w: %v", ErrNotRoundTrip, err)
 	}
 	ser2, err := serialize(&back)
 	if err != nil || back.GetHash() != tx.GetHash() || !bytes.Equal(ser2, ser) {
-		return false, ErrNotRoundTrip
+		return false, nil, ErrNotRoundTrip
 	}
-	return false, nil
+	return false, ser, nil
 }
 
 var (
@@ -152,7 +252,12 @@ var (
 // from us. It returns the check's verdict for tests and logging.
 func Observe(raw []byte, tx *transaction.Transaction) error {
 	blockObserved.Inc()
-	canonical, err := roundtrip(raw, tx)
+	canonical, ser, err := roundtrip(raw, tx)
+	if err == nil {
+		if reduced, _ := proof_scalars_reduced(ser, tx); !reduced { // r25 (BD5): counted only, never refused
+			blockScalarNonRd.Inc()
+		}
+	}
 	switch {
 	case err != nil:
 		blockBroken.Inc()

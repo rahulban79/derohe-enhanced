@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """soundness.py — R23b gate G22: every code-behaviour claim on the soundness review page is backed.
 
-The page (artifacts/dero-soundness-r23.html) makes claims about what the node's code does (the HF3 proof skip is
+The page (artifacts/dero-soundness-<current round>.html, named by harness/kit/soundpage.py from harness/round.json;
+r25: one page per round, earlier pages stay as history) makes claims about what the node's code does (the HF3 proof skip is
 height-bound, the nonce bypass is pinned, the already-mined guard, the 11-block validity window, the TXID scope, the
 CalcSupply formula, the emission auditor's status). A claim is only as good as what re-checks it, so:
 
@@ -288,6 +289,8 @@ def evaluate(page_text, registry, last, root=ROOT, live=True, get=None):
         why.append(f'units matched by several entries: {amb[:3]}')
     if partial:
         why.append(f'{len(partial)} unit(s) only partly covered by their entry: {partial[:3]}')
+    if registry.get('_want_page') and registry.get('page') != registry['_want_page']:
+        why.append(f"the claim registry names {registry.get('page')!r}, the current round's page is {registry['_want_page']!r} (r25)")
     code = [x for x in out if x['kind'] == 'code']
     on = [x for x in code if x['on_page']]
     return {'ok': not why and bool(units) and bool(code), 'units': len(units), 'unregistered': unreg, 'stale': stale,
@@ -299,11 +302,23 @@ def evaluate(page_text, registry, last, root=ROOT, live=True, get=None):
             'record': (last or {}).get('run')}
 
 
+def soundpage():
+    """r25: harness/kit/soundpage.py, loaded by path (this file is itself loaded by path from run_gates and the pipeline)"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f'soundpage_for_soundness_{id(HERE)}', HERE / 'kit/soundpage.py')
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
 def load(root=ROOT):
+    """r25: the page is the CURRENT round's soundness page (soundpage.rel), never a name fixed in a file; the registry's
+    own 'page' must name the same file, or evaluate() fails (a registry left on an older round is stale)."""
     reg = json.loads((Path(root) / 'harness/loop/SOUNDNESS_CLAIMS.json').read_text())
     lp = Path(root) / 'harness/loop/SOUNDNESS_LAST.json'
     last = json.loads(lp.read_text()) if lp.exists() else None
-    page = (Path(root) / reg['page']).read_text()
+    reg['_want_page'] = soundpage().rel(root)
+    page = (Path(root) / reg['_want_page']).read_text()
     return page, reg, last
 
 

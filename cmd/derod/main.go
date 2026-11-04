@@ -337,6 +337,8 @@ func main() {
 	txpolicy.SetMinedSource(derodrpc.RecentlyMined) // mined txs stay pooled until HouseKeeping (recent_mined.go)
 	// r24 verify-txpool: never evict a tx a mining job's template carries (template_txs.go)
 	txpolicy.SetProtectedSource(derodrpc.TemplateTxs)
+	// r25 (secpool, B42): the p2p rebroadcast loop stops re-announcing txs a recent block already carries
+	p2p.SetMinedSource(derodrpc.RecentlyMined)
 
 	// since user is using a proxy, he definitely does not want to give out his IP
 	if globals.Arguments["--socks-proxy"] != nil {
@@ -355,10 +357,16 @@ func main() {
 
 	// setup function pointers
 	chain.P2P_Block_Relayer = func(cbl *block.Complete_Block, peerid uint64) {
+		if peerid == 0 { // r25 (CO24-C4/C5): a block mined here: first-seen 'local' and tracked for the alt verdict
+			p2p.Note_Local_Block(cbl)
+		}
 		p2p.Broadcast_Block(cbl, peerid)
 	}
 
 	chain.P2P_MiniBlock_Relayer = func(mbl block.MiniBlock, peerid uint64) {
+		if peerid == 0 { // r25 (CO24-C5): a miniblock mined here
+			p2p.Note_Local_MiniBlock(mbl)
+		}
 		p2p.Broadcast_MiniBlock(mbl, peerid)
 	}
 
@@ -1142,7 +1150,7 @@ restart_loop:
 			if len(line_parts) == 3 { // process ban time if provided
 				// if user provided a time, apply ban for specific time
 				if s, err := strconv.ParseInt(line_parts[2], 10, 64); err == nil && s >= 0 {
-					p2p.Ban_Address(line_parts[1], uint64(s))
+					p2p.Ban_Address_Reason(line_parts[1], uint64(s), p2p.BAN_SOURCE_OPERATOR, "console") // r25 (CO24-N4)
 					break
 				} else {
 					fmt.Printf("err parsing ban time (only positive number) %s", err)
@@ -1150,7 +1158,7 @@ restart_loop:
 				}
 			}
 
-			err := p2p.Ban_Address(line_parts[1], 10*60) // default ban is 10 minutes
+			err := p2p.Ban_Address_Reason(line_parts[1], 10*60, p2p.BAN_SOURCE_OPERATOR, "console") // default ban is 10 minutes; r25: source
 			if err != nil {
 				fmt.Printf("err parsing address %s", err)
 				break

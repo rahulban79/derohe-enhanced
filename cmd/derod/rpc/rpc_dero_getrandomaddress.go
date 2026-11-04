@@ -50,6 +50,9 @@ func GetRandomAddress(ctx context.Context, p rpc.GetRandomAddress_Params) (resul
 			err = rpc_internal_error(r)
 		}
 	}()
+	if err = check_scid_tree("GetRandomAddress", p.SCID); err != nil { // r25 B86: was a panic at ss.GetTree below
+		return
+	}
 	topoheight := chain.Load_TOPO_HEIGHT()
 	old_topoheight := topoheight
 
@@ -63,20 +66,20 @@ func GetRandomAddress(ctx context.Context, p rpc.GetRandomAddress_Params) (resul
 
 		toporecord, err := chain.Store.Topo_store.Read(topoheight)
 		if err != nil {
-			panic(err)
+			panic(err) // r25 B86: store invariant (current and current-5 state), keeps ERROR + stack
 		}
 		toporecord_old, err := chain.Store.Topo_store.Read(old_topoheight)
 		if err != nil {
-			panic(err)
+			panic(err) // r25 B86: store invariant (current and current-5 state), keeps ERROR + stack
 		}
 
 		ss, err := chain.Store.Balance_store.LoadSnapshot(toporecord.State_Version)
 		if err != nil {
-			panic(err)
+			panic(err) // r25 B86: store invariant (current and current-5 state), keeps ERROR + stack
 		}
 		ss_old, err := chain.Store.Balance_store.LoadSnapshot(toporecord_old.State_Version)
 		if err != nil {
-			panic(err)
+			panic(err) // r25 B86: store invariant (current and current-5 state), keeps ERROR + stack
 		}
 
 		treename := config.BALANCE_TREE
@@ -86,11 +89,11 @@ func GetRandomAddress(ctx context.Context, p rpc.GetRandomAddress_Params) (resul
 
 		balance_tree, err := ss.GetTree(treename)
 		if err != nil {
-			panic(err)
+			panic(err) // r25 B86: store invariant (current and current-5 state), keeps ERROR + stack
 		}
 		balance_tree_old, err := ss_old.GetTree(treename)
 		if err != nil {
-			panic(err)
+			panic(err) // r25 B86: store invariant (current and current-5 state), keeps ERROR + stack
 		}
 
 		account_map := map[string]bool{}

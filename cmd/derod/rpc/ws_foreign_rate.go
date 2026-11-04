@@ -57,6 +57,7 @@ var foreign_method_cost = map[string]int{
 	"DERO.GetBlockHeadersRange": 8,
 	"DERO.GetDifficultyHistory": 8,
 	"DERO.GetMiniBlocks":        4,
+	"DERO.GetConsensusStats":    4, // r25: up to 200 first-seen lookups
 	"DERO.GetTxPoolDetail":      4,
 	"DERO.GetTxStatus":          4,
 	"DERO.GetFeeEstimate":       2, // r23: one pool pass, cached 1 s

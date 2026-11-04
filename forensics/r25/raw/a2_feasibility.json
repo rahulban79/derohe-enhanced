@@ -1,0 +1,35 @@
+{
+ "class": "EXT: the treehash at 7,415,465 is the sources' claim until our own replay of 7,415,466..7,498,540 from that base reaches our treehash ca11cc21... (end-state check, rft \u00a70.8.4 (a2)); the 7,498,540 agreement is a claim matching our own value",
+ "method": "DERO.GetEncryptedBalance(address = the public config constant Mainnet Dev_Address, config/config.go:106, topoheight T) on each archival source, 1 call/s; never sent to the live node. It reads Topo_store + Balance_store.LoadSnapshot(state_version) exactly as the p2p TreeSection handler does (p2p/rpc_treesection.go:35-43; cmd/derod/rpc/rpc_dero_getencryptedbalance.go), so a reply at T = that source holds the snapshot TreeSection would serve.",
+ "question": "(a2) feasibility, read-only: does any reachable source hold balance-tree state at topo 7,415,465 (the state before the window)?",
+ "sources_probed": [
+  "src-1",
+  "src-2",
+  "src-4",
+  "src-7",
+  "src-8",
+  "src-9"
+ ],
+ "state_at_7415465": {
+  "answered_ok": 6,
+  "blockhash_equals_our_verified_block_at_topo_7415465": true,
+  "blockhash_ext_distinct": [
+   "0019bc7841d11b6ad03acc17eec89aa955d3b295333bbd08922ecdf45bab6ce8"
+  ],
+  "of": 6,
+  "our_block_7415465": "0019bc7841d11b6ad03acc17eec89aa955d3b295333bbd08922ecdf45bab6ce8",
+  "treehash_ext_distinct": [
+   "6d34a230c210cdc1a02b0b2427e4c61c43afd54bb1c1b75d649876151d5f91d1"
+  ]
+ },
+ "state_at_7498540": {
+  "answered_ok": 6,
+  "of": 6,
+  "our_live_treehash_at_7498540": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7 (discovery line 112, own node)",
+  "sources_agree_with_our_treehash": true,
+  "treehash_ext_distinct": [
+   "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7"
+  ]
+ },
+ "verdict": "FEASIBLE (state version present on 6 of 6 archival sources); not run in R25: a TreeSection client (tools/forensics) and the replay are R26 work (rft \u00a70.8.7)"
+}

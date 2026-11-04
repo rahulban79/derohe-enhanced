@@ -1,0 +1,43 @@
+{
+ "base_reward": 30750,
+ "base_reward_python_eq": true,
+ "blid": "6e366565ec477cd64d50a2fea7ecf58183161632b2a250f29b2a5146241de897",
+ "class": "RAW (checks i-ii); row DERIVED",
+ "coinbase": {
+  "formula_only": true,
+  "miner_tx_type": "COINBASE",
+  "miner_tx_value": 0
+ },
+ "fees": 0,
+ "full_reward": 30750,
+ "height": 7471807,
+ "hf3_carrier": false,
+ "hf3_txids": [],
+ "integrator_leftover": 0,
+ "major_version": 2,
+ "miniblock_share": 3075,
+ "miniblocks": 10,
+ "miniblocks_final": 1,
+ "minor_version": 2,
+ "proof_field_nonzero": false,
+ "public_burns": 0,
+ "reward_ext": 30750,
+ "reward_ext_eq_formula": true,
+ "reward_rule": "blockchain/transaction_execute.go:126-160: (base + fees) split equally over the miniblocks, leftover to the integrator; base = CalcBlockReward (blockchain/transaction_execute.go:60-62)",
+ "sha256": "0608df6476745bd21e5351182e80af88b66987563b5bf3bd540e9fe15ff7303b",
+ "sha3_256": "6e366565ec477cd64d50a2fea7ecf58183161632b2a250f29b2a5146241de897",
+ "state_root_post": "not reconstructable: no held state for this topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "state_root_pre": "not reconstructable: no held state for this topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "supply_after": 1673405235600,
+ "supply_before": 1673405204850,
+ "supply_identity_ok": true,
+ "tier": "A",
+ "timestamp_ms": 1786690926268,
+ "tips": [
+  "2c0d7624f27b36a4ffba4e98448c37913ec927a20a2679d11faa5883724fd154"
+ ],
+ "topo": 7471807,
+ "tx_count": 0,
+ "tx_hashes": [],
+ "txs": []
+}

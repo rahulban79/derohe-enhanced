@@ -19,6 +19,7 @@ package rpc
 import "context"
 import "github.com/deroproject/derohe/cryptography/crypto"
 import "github.com/deroproject/derohe/rpc"
+import "github.com/deroproject/derohe/metrics"
 
 func GetBlockHeaderByHash(ctx context.Context, p rpc.GetBlockHeaderByHash_Params) (result rpc.GetBlockHeaderByHash_Result, err error) {
 	defer func() { // safety so if anything wrong happens, we return error
@@ -27,11 +28,16 @@ func GetBlockHeaderByHash(ctx context.Context, p rpc.GetBlockHeaderByHash_Params
 		}
 	}()
 	hash := crypto.HashHexToHash(p.Hash)
-	if block_header, err := GetBlockHeader(chain, hash); err == nil { // if err return err
-		return rpc.GetBlockHeaderByHash_Result{ // return success
-			Block_Header: block_header,
-			Status:       "OK",
-		}, nil
+	// r25 B80: upstream wrote `if block_header, err := ...; err == nil`, which shadowed the named err, so an unknown or
+	// pruned hash returned an all-zero header, status "" and NO error
+	block_header, err1 := GetBlockHeader(chain, hash)
+	if err1 != nil {
+		metrics.Set.GetOrCreateCounter(`rpc_block_not_found_total{method="GetBlockHeaderByHash"}`).Inc()
+		err = &NotFoundError{What: "block", ID: hash.String()}
+		return
 	}
-	return
+	return rpc.GetBlockHeaderByHash_Result{ // return success
+		Block_Header: block_header,
+		Status:       "OK",
+	}, nil
 }

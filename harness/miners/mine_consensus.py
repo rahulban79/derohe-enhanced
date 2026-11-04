@@ -55,10 +55,16 @@ KPIS = [
     ('finality_reorgs', 'reorgs since start', 'GetMonetaryIntegrity finality monitor (resets at restart)'),
     ('finality_deepest_heights', 'deepest reorg, heights', 'must stay below STABLE_LIMIT 8'),
     ('finality_final_violations', 'finality violations', 'must stay 0'),
-    ('alt_blocks_count_getinfo', 'GetInfo alt_blocks_count', 'declared, never assigned (CO24-C4)'),
+    ('alt_blocks_count_getinfo', 'GetInfo alt_blocks_count', 'r24 and older: declared, never assigned (CO24-C4); r25: settled alt blocks since start'),
+    ('alt_blocks_rpc', 'alt blocks (GetConsensusStats)', 'r25: accepted blocks deeper than STABLE_LIMIT that are not in the topo index'),
+    ('miniblock_refused_total', 'miniblock refusals since start', 'r25 counter p2p_miniblock_refused_total, by reason (CO24-C1)'),
+    ('block_rejected_total', 'block rejections since start', 'r25 counter blockchain_block_rejected_total, by reason (CO24-C3)'),
+    ('finality_lifetime_reorgs', 'reorgs over every run', 'r25: the reorg monitor persisted across restarts (CO24-C6)'),
+    ('peers_connected', 'peers connected', 'GetPeerInfo count at capture (r25: in the series, CO24-C8)'),
+    ('arrival_source', 'arrival lag source', 'r25: the node\'s first_seen_ms, else the DEBUG "Chain extended" line'),
     ('empty_block_ratio', 'empty block ratio', 'blocks with no transaction'),
     ('tx_total', 'transactions in the window', 'sum of header txcount'),
-    ('fees_total', 'fees in the window', 'no fee field in the header (CO24-C2)'),
+    ('fees_total', 'fees in the window', 'r25: sum of header fees (GetBlockHeadersRange); pending on an older binary (CO24-C2)'),
 ]
 
 

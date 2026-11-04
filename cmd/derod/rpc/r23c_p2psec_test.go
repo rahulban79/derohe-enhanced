@@ -204,15 +204,16 @@ func TestR23cAggregateBucketBoundsRotatingFlood(t *testing.T) {
 	now := time.Unix(1700000000, 0)
 	make_trusted(t, tb, "198.51.100.250", now)
 	admitted := 0
-	for k := 0; k < 64; k++ {
-		for i := 0; i < 2000; i++ {
+	per_key := int(ABUSE_DEFAULT_BURST * ABUSE_FRESH_BURST_FRAC) // r25 (B48): each key spends exactly its fresh burst, so
+	for k := 0; k < 64; k++ {                                    // only the aggregate bucket can refuse (no own refusal is scored)
+		for i := 0; i < per_key; i++ {
 			if v, _ := tb.admit(fmt.Sprintf("198.51.100.%d", k+1), "DERO.GetInfo", false, now); v == abuse_ok {
 				admitted++
 			}
 		}
 	}
 	limit := int(ABUSE_DEFAULT_BURST * ABUSE_AGG_SCALE)
-	t.Logf("64 rotating keys: %d calls admitted at one instant (aggregate burst %d, per-key bursts would give %d)", admitted, limit, 64*2000)
+	t.Logf("64 rotating keys: %d calls admitted at one instant (aggregate burst %d, per-key bursts would give %d)", admitted, limit, 64*per_key)
 	if admitted > limit {
 		t.Fatalf("rotating keys got %d calls past an aggregate burst of %d", admitted, limit)
 	}

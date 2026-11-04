@@ -1,0 +1,163 @@
+{
+ "body": {
+  "reserialize_equal": true,
+  "sha256": "e6fb9ac37c9b7fd3823847c31b7d2e53b61a23b420e515d7be365755da9b99f6",
+  "size": 13353,
+  "source": "src-2"
+ },
+ "burn_total": 0,
+ "carrier_count": 1,
+ "carriers": [
+  {
+   "blid": "62b7f3dca80f15926153820fb5737fc102d407facdf8cf1130278e3adc64f2a3",
+   "class": "RAW (checks i-ii)",
+   "height": 7415464,
+   "tier": "A",
+   "tips": [
+    "2567da2544f55d3856e82d48a7869b82359838cb173a4ae2db3e62bcf97ac970"
+   ],
+   "topo": 7415464
+  }
+ ],
+ "class": "RAW body (checks i-iii, raw/provenance.json); fields below DERIVED",
+ "duplicates": {
+  "bodies_held_under_this_txid": 1,
+  "other_bodies": "pending: one body was fetched per TXID; block tx lists carry only the TXID, which excludes the proof (transaction.go:191), so a second body with the same core statement is not observable from RAW blocks"
+ },
+ "fee": 320,
+ "has_scdata": false,
+ "hf3": false,
+ "payloads": [
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 2,
+   "fees": 40,
+   "has_proof": true,
+   "pointer_bytes": 10,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 1,
+   "scid_zero": true,
+   "statement_roothash": "be521e3a3f4e3e3ef2d3bbb2d3625ba47d0ffa7ac448258d11aa7779ec396b82"
+  },
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 2,
+   "fees": 40,
+   "has_proof": true,
+   "pointer_bytes": 10,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 1,
+   "scid_zero": true,
+   "statement_roothash": "be521e3a3f4e3e3ef2d3bbb2d3625ba47d0ffa7ac448258d11aa7779ec396b82"
+  },
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 2,
+   "fees": 40,
+   "has_proof": true,
+   "pointer_bytes": 10,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 1,
+   "scid_zero": true,
+   "statement_roothash": "be521e3a3f4e3e3ef2d3bbb2d3625ba47d0ffa7ac448258d11aa7779ec396b82"
+  },
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 2,
+   "fees": 40,
+   "has_proof": true,
+   "pointer_bytes": 10,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 1,
+   "scid_zero": true,
+   "statement_roothash": "be521e3a3f4e3e3ef2d3bbb2d3625ba47d0ffa7ac448258d11aa7779ec396b82"
+  },
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 2,
+   "fees": 40,
+   "has_proof": true,
+   "pointer_bytes": 10,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 1,
+   "scid_zero": true,
+   "statement_roothash": "be521e3a3f4e3e3ef2d3bbb2d3625ba47d0ffa7ac448258d11aa7779ec396b82"
+  },
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 2,
+   "fees": 40,
+   "has_proof": true,
+   "pointer_bytes": 10,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 1,
+   "scid_zero": true,
+   "statement_roothash": "be521e3a3f4e3e3ef2d3bbb2d3625ba47d0ffa7ac448258d11aa7779ec396b82"
+  },
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 2,
+   "fees": 40,
+   "has_proof": true,
+   "pointer_bytes": 10,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 1,
+   "scid_zero": true,
+   "statement_roothash": "be521e3a3f4e3e3ef2d3bbb2d3625ba47d0ffa7ac448258d11aa7779ec396b82"
+  },
+  {
+   "burn_value": 0,
+   "bytes_per_publickey": 5,
+   "commitments": 2,
+   "fees": 40,
+   "has_proof": true,
+   "pointer_bytes": 10,
+   "ring_size": 2,
+   "rpc_payload_len": 145,
+   "rpc_type": 1,
+   "scid_zero": true,
+   "statement_roothash": "be521e3a3f4e3e3ef2d3bbb2d3625ba47d0ffa7ac448258d11aa7779ec396b82"
+  }
+ ],
+ "proof_current_verifier": {
+  "reason": "not decidable: ring state unavailable: the reference block is outside the held state (archive committed topo 7453290..7467515; live node state starts at prunedheight 7,498,540, disc:108-112)",
+  "result": "not decidable: ring state unavailable"
+ },
+ "ref_blid": "f3eccb09e14ee15a0ff87a74df530d14f46233b655d69ef56817b9ee87d36a28",
+ "ref_blid_height_eq_ref_height": false,
+ "ref_blid_in_raw_chain": false,
+ "ref_height": 7415458,
+ "registration_signature_valid": "not applicable: not a registration",
+ "scdata_keys": 0,
+ "serialized_keccak256": {
+  "node_go": "64ea2e2d25dcba66853799003c91fbe4d846c6e5b9f18df2a9c0b34ef195a275",
+  "python_matches": true,
+  "use": "the verifier's cache key only for tx.Height >= MAJOR_HF3_HEIGHT (blockchain/transaction_verify.go:433-436); below it (every tx here) the key is the TXID"
+ },
+ "statement_roothash_vs_archive": "not reconstructable: no held state for the reference topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "tx_type": "NORMAL",
+ "txid": "4b3e162ea00acd4c56922e4205740330d3e601d19e25dfc6833dffc0c9e2c2cc",
+ "txid_recomputed": {
+  "core_statement_len": 2625,
+  "core_statement_sha256": "0b9ff54590bf92a46a6b1106562a54eff1adb310389a7ee974469cec9f6843ac",
+  "node_go": true,
+  "python_keccak256": true,
+  "rule": "TXID = Keccak256(SerializeCoreStatement), transaction/transaction.go:192-200, :510-524"
+ },
+ "value_field": 0,
+ "version": 1
+}

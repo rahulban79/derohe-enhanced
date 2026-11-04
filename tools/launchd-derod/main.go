@@ -28,6 +28,10 @@
 //
 // Without --data-dir the plist carries the placeholder DATA_DIR and -check refuses it (launchd would start a node on a
 // datadir nobody chose). Nothing here installs anything: the tool only prints.
+//
+// r25 (B35): run the same command with -preflight first (preflight.go): it prints PASS/WARN/FAIL per check and exits 0
+// only when bootstrapping that plist now would start a node that can run (binary, store, log dir, no derod already on
+// the store, ports free, plutil -lint), with the running node's flags compared against the plist's.
 package main
 
 import (
@@ -212,10 +216,15 @@ func run(args []string, out, errw io.Writer) int {
 	fs.IntVar(&c.ExitTimeout, "exit-timeout", c.ExitTimeout, "seconds launchd waits after SIGTERM before SIGKILL")
 	extra := fs.String("flags", strings.Join(c.Extra, " "), "further derod flags, space separated")
 	strict := fs.Bool("check", true, "refuse a placeholder or unusable configuration")
+	pre := fs.Bool("preflight", false, "r25: dry run: check binary, store, log dir, running derod, ports, plutil; print findings, no plist")
+	installed := fs.String("installed", default_installed(LABEL), "r25: where the plist will be installed (compared by -preflight)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	c.Extra = strings.Fields(*extra)
+	if *pre { // r25 perfops (B35): the dry run never prints a plist, so it cannot be redirected into LaunchAgents by mistake
+		return pf_report(out, preflight(c, probes_for_run(), *installed))
+	}
 	if *strict {
 		if err := check(c); err != nil {
 			fmt.Fprintln(errw, "launchd-derod:", err, "(pass -check=false for a template)")
@@ -225,5 +234,8 @@ func run(args []string, out, errw io.Writer) int {
 	out.Write(render(c))
 	return 0
 }
+
+// probes_for_run is real_probes; a test swaps it to run the -preflight flag path against forged probes.
+var probes_for_run = real_probes
 
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }

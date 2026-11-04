@@ -31,7 +31,8 @@ package p2p
 //
 // Round 23, fast re-eviction. Live r22 derod (pid 30565, derod.log 2026-10-29 14:55 -> 2026-10-30 00:08): the same two
 // peers were evicted 7 times each over the log (4 each since the 19:55 restart), always at the very same heights
-// (203.0.113.20 at 7,472,150; 203.0.113.19 at 7,537,830). After every hold they were redialled and held a connection
+// [r25 B70: RFC 5737 stand-ins for the observed addresses]
+// (203.0.113.166 at 7,472,150; 203.0.113.167 at 7,537,830). After every hold they were redialled and held a connection
 // for the full STUCK_PEER_WINDOW again, e.g.
 // hold end 20:35:38 -> evicted 20:46:35, hold end 21:46:38 -> evicted 21:57:05: about 10.5 min connected per cycle,
 // each minute costing ~49 KB of upload (the r21 GetPeerInfo above) plus their chain requests. The hold entry now keeps

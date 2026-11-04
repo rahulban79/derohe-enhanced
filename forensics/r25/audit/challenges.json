@@ -1,0 +1,468 @@
+{
+ "binding": {
+  "data_sha256": "f470de2a0c0a8c0227d1b499c989a688493d39846dd3681955c3d69373f79508",
+  "files_bound": 1421,
+  "manifest_sha256_at_audit": "d320dc8b7e0799dda749e7f81d3fea7ecf43ba0daf6e77c24f5b87ac1f6e9390"
+ },
+ "challenges": [
+  {
+   "affects": [
+    "V-EMISSION",
+    "V-HF3-ALL"
+   ],
+   "claim": "anchor block 7,498,540 (e18be51e) is on the v3 chain",
+   "claim_source": "rft \u00a70.8.5; raw/anchors.json",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "live topo records sha256 00c1f34dab107194; 6100 tips steps from height 7,504,640 to the anchor; fork block major 3"
+    },
+    {
+     "class": "EXT",
+     "what": "raw/sources.json: 6 archival sources report v3 at 7,504,640 (corroboration only)"
+    }
+   ],
+   "id": "A1",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own copy of the live node topo.map records 7,498,540..7,504,640: the record at 7,498,540 is the anchor id with height field 7,498,540; from the record at 7,504,640 (the HF3 fork block) a tips walk over the live node's own block files (APFS clones), each SHA3-256-checked by this implementation, reaches the anchor; the fork block decodes with major version 3 and id prefix e454090e (the v3 fingerprint)"
+  },
+  {
+   "affects": [
+    "V-HF3-ALL"
+   ],
+   "claim": "the table's Height is the inclusion height (B82)",
+   "claim_source": "rft \u00a70.8.5; B82; derived/tx/*.json table_semantics",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "Height == earliest carrier height 75/75; Bl_Tips == its tip 74/75, == the carrier itself 1/75; tx.BLID == Bl_Tips 0/75; dual carriers 67, single 8, carrier gaps [1, 2, 3, 4, 5, 6] heights"
+    },
+    {
+     "class": "SRC",
+     "what": "blockchain/hardfork_fixes.go sha256 467db1b30b0ff16c (= manifest: True), 75 entries, groups {'duplicates': 67, 'no duplicates, but false parity': 8}"
+    }
+   ],
+   "id": "A2",
+   "note": "Height is the inclusion height of the EARLIEST carrier; for dual-carrier TXIDs the later carrier is 1-6 heights after it.",
+   "result": "HOLDS",
+   "test": "own carrier census over the RAW chain (every block's tx list from this decoder): for each of the 75 TXIDs the earliest carrier height equals the table Height; Bl_Tips is that carrier's sole tip, or the carrier itself"
+  },
+  {
+   "affects": [
+    "V-HF3-ALL"
+   ],
+   "claim": "for aa0faf67 the table Bl_Tips is the carrier block itself, not its tip",
+   "claim_source": "acquire/extract open item",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "TXIDs whose Bl_Tips is the carrier itself: ['aa0faf67']"
+    }
+   ],
+   "id": "A2b",
+   "note": "",
+   "result": "HOLDS",
+   "test": "same census, this TXID only; consequence checked: its carrier's tips list differs from [Bl_Tips], so the nonce bypass key of transaction_verify.go:234-237 does not match at that carrier (full nonce check :98-196)"
+  },
+  {
+   "affects": [
+    "V-EMISSION",
+    "V-HF3-ALL"
+   ],
+   "claim": "a file's name is its id (content addressing)",
+   "claim_source": "rft \u00a70.8.5; raw/blobs, tier B store, archive block files",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "tier A 700 files (606 blocks, 94 txs), tier B 83171 files, 0 content-address failures; store index 22680e91cd2b5210 == manifest"
+    },
+    {
+     "class": "RAW",
+     "what": "replaywall block files 14724: name == SHA3-256 14724"
+    }
+   ],
+   "id": "A3",
+   "note": "",
+   "result": "HOLDS",
+   "test": "every tier A file and every tier B store file hashed (SHA-256 == name); every block blob SHA3-256 (own Keccak) == the id it is reached by; every replaywall block file (APFS clone) SHA3-256 == the id in its name"
+  },
+  {
+   "affects": [
+    "V-HF3-ALL"
+   ],
+   "claim": "the exemption skips proof verification for these bodies under the pinned code",
+   "claim_source": "derived/tx/*.json exception_path.proof_verification",
+   "evidence": [
+    {
+     "class": "SRC",
+     "what": "18/18 code anchors present"
+    },
+    {
+     "class": "DERIVED",
+     "what": "tx.Height < 7504640: 75/75; skip on 142/142 carriers; sanity 75/75"
+    }
+   ],
+   "id": "A4a",
+   "note": "A code-path classification (INTERPRETATION of SRC + RAW): what a node running the pinned code does. It is not a record of what any node did when the blocks were first accepted (A4b).",
+   "result": "HOLDS",
+   "test": "code anchors at the pinned commit (18 lines, text present); the body field tx.Height < MAJOR_HF3_HEIGHT (cache key = TXID, transaction_verify.go:433-436) for every body; every carrier below HF3; the RAW-checkable statement sanity rules (payload count, base payload, roothash equality, ring size, distinct pointers, burn) pass, so the path reaches :438 unless the state-dependent checks (:327-431) fail, which needs the ring state"
+  },
+  {
+   "affects": [
+    "V-HF3-0045a6d4"
+   ],
+   "claim": "no derived grade asserts how the network first accepted a table tx (the A4b wording \"the chain accepted the tx only through the exemption\", overturned by audit-1, was corrected at its source, derive.py; 0 grade(s) still carry it)",
+   "claim_source": "derived/grades.json and derived/tx/0045a6d4\u2026.json grade.deciding_fact_missing",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "earliest carrier precedes the first table commit for 75/75 TXIDs (minimum margin 39.8 h); first commits {'4712b7b67c5b': 60, '6c33c1c33354': 1, 'f7a56db69495': 14}"
+    },
+    {
+     "class": "EXT",
+     "what": "git author dates and miner-set block timestamps are claims of time; the 39.8 h minimum margin is far above any timestamp tolerance"
+    }
+   ],
+   "id": "A4b",
+   "note": "Overturned in audit-1 (audit/history/audit-1); the derived wording now states only what A4a (code path under the pinned code) and A11 (verifier re-run) support. The test is unchanged: the claim would FAIL again if any grade reintroduced it.",
+   "result": "HOLDS",
+   "test": "for every TXID, the first git commit that adds it to blockchain/hardfork_fixes.go (git log -S) against the timestamp of its earliest RAW carrier: the claim needs the table to exist when the network accepted the block"
+  },
+  {
+   "affects": [
+    "V-EMISSION"
+   ],
+   "claim": "topo == height in every window row (topo_ext was EXT)",
+   "claim_source": "raw/headerchain.jsonl.gz topo_ext; derived/window.jsonl.gz topo",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "83077 blocks walked 7498540..7415464, multi-tip 0, contiguous True"
+    }
+   ],
+   "id": "A5",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own tips walk from the anchor (topo 7,498,540 by our live topo record): single-tip chain, heights contiguous, so each block's topo is DERIVED as anchor topo minus its step count, independent of the sources"
+  },
+  {
+   "affects": [
+    "V-EMISSION"
+   ],
+   "claim": "the window is complete: 82,477 of 82,477 heights RAW with checks (i)-(ii)",
+   "claim_source": "acquire verdict",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "window heights reached 82477/82477; unreached blocks 0"
+    }
+   ],
+   "id": "A6",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own walk covers every window height; no blob in the store is left unreached; check (i) by own SHA3"
+  },
+  {
+   "affects": [
+    "V-HF3-ALL"
+   ],
+   "claim": "each of the 94 TXIDs recomputes, and sits in a verified block (check iii)",
+   "claim_source": "extract verdict (Python Keccak over Go-emitted core bytes)",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "94 bodies, TXID in a verified block 94; the wire bytes are canonical (raw-slice hash == node TXID)"
+    }
+   ],
+   "id": "A7",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own Keccak-256 over the core statement sliced from the RAW body bytes by this decoder (not re-serialized), the body parsed to its last byte (proof lengths from the ring size), and the TXID found in a walked block"
+  },
+  {
+   "affects": [
+    "V-EMISSION"
+   ],
+   "claim": "window emission = CalcSupply(7,497,943) - CalcSupply(7,415,466) = 2,536,167,750 atomic",
+   "claim_source": "derived/emission.json",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "reward values [30750], sum 2536167750, CalcSupply delta 2536167750"
+    },
+    {
+     "class": "SRC",
+     "what": "blockchain/supply.go:5-27, blockchain/transaction_execute.go:44-45,60-62, config/config.go:34,61"
+    }
+   ],
+   "id": "A8",
+   "note": "The identity is true by construction (CalcSupply sums CalcBlockReward), so alone it shows only that the reward schedule is flat across the window. The informative public checks are A8b.",
+   "result": "HOLDS",
+   "test": "constants and formulas read from config.go, supply.go, transaction_execute.go (text-matched); per-block reward and supply step recomputed for 82,477 heights"
+  },
+  {
+   "affects": [
+    "V-EMISSION"
+   ],
+   "claim": "the formula coinbase pays out exactly base + fees in every window block",
+   "claim_source": "audit (strengthens V-EMISSION)",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "COINBASE 82477, no value field 82477, one final miniblock 82477, payout identity 82477 of 82477"
+    }
+   ],
+   "id": "A8b",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own decode of every block: the miner tx is COINBASE with no value field, exactly one Final miniblock, and the payout rule of transaction_execute.go:126-160 (integrator share + leftover, share per non-final miniblock) sums to base + fees; the identity is linear in the fee, so it holds also where fees are pending"
+  },
+  {
+   "affects": [
+    "V-EMISSION"
+   ],
+   "claim": "fees: known for 80,902 blocks (16,800 atomic), pending for 1,575",
+   "claim_source": "derived/emission.json fees",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "known 80902 blocks sum 16800, pending 1575; our archive holds bodies that would settle 192 of the pending blocks"
+    }
+   ],
+   "id": "A8c",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own Fees() (zero-SCID payload fees) over the held bodies; a block with any body missing is pending"
+  },
+  {
+   "affects": [
+    "V-STATE-ROOTS"
+   ],
+   "claim": "no window block fills the header 'Proof' field (B83)",
+   "claim_source": "acquire/extract census",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "non-zero Proof field in 0 of 82477 window blocks"
+    }
+   ],
+   "id": "A9",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own decode of the 32-byte field after the miner tx in every walked block"
+  },
+  {
+   "affects": [
+    "V-HF3-0045a6d4",
+    "V-HF3-414f79b8"
+   ],
+   "claim": "the held archive state is the state the 2 decided txs were built against",
+   "claim_source": "extract open item",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "0045a6d4: ref height 7467512 state version 18957 roothash c209d3c0a0d163dc"
+    },
+    {
+     "class": "RAW",
+     "what": "414f79b8: ref height 7467492 state version 18518 roothash 15f02822aa5624be"
+    }
+   ],
+   "id": "A10a",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own copy of the replaywall topo records: the record at each tx's ref height is the tx's BLID; the verifier's root at that state version equals the tx's own Statement.Roothash (RAW, inside the TXID)"
+  },
+  {
+   "affects": [
+    "V-STATE-ROOTS"
+   ],
+   "claim": "no archive state root contradicts a RAW witness",
+   "claim_source": "derived/state_roots.json held (14,226 topos)",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "210 archive bodies, TXID == name 210, in RAW blocks 210; roothash == claimed root 199, != 0; distinct topos witnessed 190"
+    }
+   ],
+   "id": "A10b",
+   "note": "",
+   "result": "HOLDS",
+   "test": "every tx body our archive holds (210): TXID from its bytes, in a RAW-chain block, ref block on the RAW chain, and its Statement.Roothash compared with the builder's archive root at the ref topo"
+  },
+  {
+   "affects": [
+    "V-STATE-ROOTS"
+   ],
+   "claim": "the 14,226 archive roots are the canonical state roots of those topos",
+   "claim_source": "reading of derived/state_roots.json held",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "witnessed 190 of 14,226 topos; base tree from a fastsync bootstrap (its source unverified), no end-state check"
+    }
+   ],
+   "id": "A10c",
+   "note": "The builder labels these roots \"not end-state-checked\"; this row keeps that label binding: they are not shown as canonical roots (V-STATE-ROOTS -> pending).",
+   "result": "UNRESOLVED",
+   "test": "needs either a witness per topo or an end-state check that binds the archive's fastsync base (topo 7,453,290); witnessed topos counted (A10b), end-state check not run (R26, (a2))"
+  },
+  {
+   "affects": [
+    "V-HF3-0045a6d4",
+    "V-HF3-414f79b8"
+   ],
+   "claim": "today's verifier: 414f79b8 PASS, 0045a6d4 FAIL at a named proof check",
+   "claim_source": "derived/archive_state/proof_checks.jsonl",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "414f79b8 pass; 0045a6d4 fail:proof_verify (Recover key failed B^w * A); single implementation (the node's verifier)"
+    }
+   ],
+   "id": "A11",
+   "note": "Single implementation by design (rft \u00a70.8.5): no second proof verifier exists here.",
+   "result": "HOLDS",
+   "test": "re-run of the node's own verifier (tools/forensics verify, pinned binary sha256 = manifest decoder pin) on an independent APFS clone of the replaywall balances, HF3 cache not used"
+  },
+  {
+   "affects": [
+    "V-HF3-ALL"
+   ],
+   "claim": "exception-path counts: nonce bypassed on 74 carriers, full on 68, parity override changes execution on 73 of 142",
+   "claim_source": "derived/tx/*.json carriers[].exception_path",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "bypass 74, full 68, parity changes 73/142; builder records compared field by field: 142 carrier rows, mismatches 0"
+    }
+   ],
+   "id": "A12",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own rule evaluation: bypass iff the carrier's tips == [Bl_Tips] (transaction_verify.go:90-96, :234-237); override = (carrier height > Height) == Tx_Parity (hf3_parity.go:77) against the natural parity read from the raw proof bytes (Proof.Parity(): f[0] == 0, proof_generate.go:76-82; transaction_execute.go:213, :243-246)"
+  },
+  {
+   "affects": [
+    "V-HF3-ALL"
+   ],
+   "claim": "the 75 bodies carry no public value (burn 0, no value field)",
+   "claim_source": "derived/grades.json public_fields",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "types {'NORMAL': 75}; bodies with public value 0"
+    }
+   ],
+   "id": "A13",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own decode: tx type, value field, burn values, fees"
+  },
+  {
+   "affects": [
+    "V-EMISSION"
+   ],
+   "claim": "the builder's 82,477 window rows equal an independent re-derivation",
+   "claim_source": "derived/window.jsonl.gz, raw/headerchain.jsonl.gz",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "rows compared 82477, mismatches 0"
+    }
+   ],
+   "id": "A14",
+   "note": "",
+   "result": "HOLDS",
+   "test": "field by field: id, SHA-256, topo, tips, tx list, miniblocks/final, base reward, supply before/after, timestamp, Proof field, fees (or pending), headerchain id and SHA-256"
+  },
+  {
+   "affects": [
+    "V-EMISSION"
+   ],
+   "claim": "tier B counts: 83,077 blocks (window + 599 link + anchor), 1,726 tx-bearing window blocks with 1,835 txs, store 83,171 objects",
+   "claim_source": "acquire counts",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "store blocks 83077, txs 94, files 83171; tx-bearing 1726, txs 1835"
+    }
+   ],
+   "id": "A15",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own census of the store and the walk"
+  },
+  {
+   "affects": [
+    "V-HF3-ALL"
+   ],
+   "claim": "the archive files above its last committed topo (incl. fdb50de0 at 7,467,516) are off the RAW chain",
+   "claim_source": "extract (disc:131)",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "committed records 14226 == RAW chain 14226, bytes equal 14226; files above 406, on chain 0"
+    }
+   ],
+   "id": "A16",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own copy of the replaywall store: files above the last committed height checked against the walked chain"
+  },
+  {
+   "affects": [
+    "V-EMISSION"
+   ],
+   "claim": "EXT fields (reward_ext, topo_ext, treehash_ext) are never used as evidence",
+   "claim_source": "raw/headerchain.jsonl.gz, raw/a2_feasibility.json",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "topo from the walk (A5), reward from the formula (A8); reward_ext == formula on every row (EXT agrees)"
+    }
+   ],
+   "id": "A17",
+   "note": "",
+   "result": "HOLDS",
+   "test": "every check above re-derives topo, reward and roots without them; reward_ext compared only as a claim"
+  },
+  {
+   "affects": [
+    "V-HF3-ALL"
+   ],
+   "claim": "NOT-DECIDABLE-FROM-PUBLIC-DATA is the right grade for all 75 HF3 TXIDs",
+   "claim_source": "derived/grades.json",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "A8b, A12, A13; grade per TXID with checked items and the missing fact"
+    }
+   ],
+   "id": "A18",
+   "note": "",
+   "result": "HOLDS",
+   "test": "a PROVEN-INFLATION grade would need a failing public-value identity: none fails (A8b, A13); a PROVEN-NO-INFLATION grade would need the hidden amounts: they are ElGamal ciphertexts and 73 proofs cannot be re-run (no state), the 2 that can leave the amount hidden; no grade rests on EXT"
+  },
+  {
+   "affects": [
+    "V-HF3-ALL",
+    "V-EMISSION"
+   ],
+   "claim": "the dataset text holds no exploit content and no private information",
+   "claim_source": "rft \u00a70.8.1 rules 6-7",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "hits 0"
+    }
+   ],
+   "id": "A19",
+   "note": "",
+   "result": "HOLDS",
+   "test": "15 patterns (the G24 exploit lint of disclosure_track.py plus privacy regexes) and 25 private terms (read at run time, never stored) over 722 text files"
+  }
+ ],
+ "note": "independent audit challenges (rft \u00a70.8.5): result HOLDS / FAILS / UNRESOLVED; any FAILS or UNRESOLVED downgrades or corrects the verdicts it affects (audit_report.json verdicts)"
+}

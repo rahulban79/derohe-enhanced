@@ -252,7 +252,8 @@ func sticky_dial_targets(now time.Time) (out []string) {
 }
 
 // relay_dial_allowed applies the handshake back-off to the sticky loop, which bypassed it (Round 20 forensics). A
-// ranked address can go stale: 203.0.113.23:42151 (a random listening port advertised by a peer in an earlier run)
+// [r25 B70: RFC 5737 stand-ins for the observed addresses]
+// ranked address can go stale: 203.0.113.165:42151 (a random listening port advertised by a peer in an earlier run)
 // stayed in first_relay.json with 5 firsts and was redialled every 12 s on the live r19 node (2026-10-27 05:48-08:19:
 // 1,512 "backing off" lines, ~750 dials, each ending in a failed handshake) until the ranking halved it out. A listed
 // peer now waits for its ConnectAfter (Peer_SetFail: 1, 2, 4 ... 512 s), an unlisted one for its unlisted back-off.

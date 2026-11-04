@@ -177,7 +177,10 @@ def ci1(m):
             'block_time_p95_s': round(p95 / 1000, 3), 'hhi_regular': round(hh, 5), 'nakamoto_regular': nk,
             'top1_regular_share': round(srt[0] / tot, 4), 'difficulty_rule_mismatches': 0, 'window_blocks': N}
     got = {x: k[x] for x in want}
-    ok = len(g) == 18 and not bad and got == want and k['difficulty_clamped_steps'] > 0 and k['difficulty_rule_checked'] == N - 2
+    # r25: 20 detectors (D19, D20 added); D20 needs GetConsensusStats, which this r24-shaped capture has not, so it reads
+    # NO-DATA here (harness/kat/test_consensus_intel_r25.py proves it both ways)
+    bad.pop('D20-alt-blocks', None) if bad.get('D20-alt-blocks') == 'NO-DATA' else None
+    ok = len(g) == len(m.DETECTOR_IDS) == 20 and not bad and got == want and k['difficulty_clamped_steps'] > 0 and k['difficulty_rule_checked'] == N - 2
     return ok, f'non-NORMAL {bad}; kpis {got} want {want}; clamped {k["difficulty_clamped_steps"]}'
 
 
@@ -340,7 +343,7 @@ MUTATIONS = [
     ('CI12', "    rej = {kk: v for kk, v in lc.items() if kk.startswith('block_rejected:')}", "    rej = {}", 'rejection lines ignored'),
     ('CI13', "        on_v3 = fk['hash'] == R['hf3_v3_hash']['value'] and fk.get('major') == 3", "        on_v3 = True", 'any fork block passes'),
     ('CI13b', "        on_v3 = fk['hash'] == R['hf3_v3_hash']['value'] and fk.get('major') == 3", "        on_v3 = fk['hash'][:8] == 'e454090e' and fk.get('major') == 3", 'a typed 8-hex prefix passes a look-alike fork block'),
-    ('CI14', "        g = 'OBSERVED' if ((v2_now or 0) + (v2_7d or 0) + v2_log) else 'NORMAL'", "        g = 'NORMAL'", 'v2 peers never graded'),
+    ('CI14', "        g = 'OBSERVED' if ((v2_now or 0) + v2_win) else 'NORMAL'", "        g = 'NORMAL'", 'v2 peers never graded'),   # r25: window form
     ('CI15', "        g = 'ANOMALY' if sh > 1 / 3 else 'NORMAL'", "        g = 'ANOMALY' if sh > 2 / 3 else 'NORMAL'", 'the concentration threshold raised to 2/3'),
     ('CI16', "    return min(1.0, 2 * min(binom_upper(k, n, p), binom_lower(k, n, p)))", "    return 1.0", 'the finals-vs-regular test never rejects'),
     ('CI1', "        if acc * 2 > t:", "        if acc > t:", 'Nakamoto coefficient counts to the whole, not half'),

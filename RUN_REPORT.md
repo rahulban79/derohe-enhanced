@@ -1348,3 +1348,110 @@ over read-only RPC 127.0.0.1:10102 with `Content-Type: application/json`).
   (BD1–BD4) need a coordinated fork; C1 (B8) upstream.
 - Carried: B1 forward UDP 11011 (user); B11/B31 storefs atomicity and topo fsync (report-only); B21 upstream walletapi
   tests; B30 cookie (report-only); B35 install the derod plist (user); the paused miner rows (B2–B7, B25–B27, B37, B50).
+
+## Round 25 (2026-11-03) — node-only round (miner paused) plus the monetary-forensics engine: typed RPC errors and a prune guard, the CO24 consensus and peer counters, a sync hold for peers that cannot serve, pool and lane quotas, dataset v1 of the HF3 window with content-pinned replay, an independent audit and a traced frontend, and the tooling track; installed as +22102026.r25 (derod restart pending)
+
+**Why.** The user asked (2026-11-03, rft §2.11) that the node stack become a reproducible monetary-forensics engine for
+the Foundation's range-proof disclosure, separating what can be proved from what is speculation, and that the tooling
+around the source be massively enhanced (rft §0.9); the miner stays paused (rft §0.3). The R25 discovery
+(`harness/runtime/r25_forensics_discovery_20261103.txt`) found that the live node holds none of the HF3 window (every
+height lies below its prune point 7,498,540), that four state reads below that point made it log recovered panics
+(B85, self-caused), and that seven chain and seven peer facts the observatories needed were not readable (CO24).
+Base 17da0dc; registry `r25`, tracks miner `paused`.
+
+**Open loop.** Node workflow `wf_73b0a863-dde`: 7 dimensions (rpcrobust, consensus, peers, secpool, cryptodisc,
+perfops, harnesstool), 14 agents, a refute-by-default verifier per builder; every verifier upheld its dimension, with
+fixes merged (B41 completed in the rpcrobust verifier patch, the B47 wiring test, the perfops preflight false PASS).
+Forensics workflow `wf_f130a2af-f58`: acquire, extract, replay, audit. Digest in the tree:
+`harness/loop/runs/r25_dimension_results_20261103.json` (both workflows and the merge agent's "Left open").
+
+**Shipped** (node merge 1b047f7, 171 files, +14,731 / −477; forensics integrated as 84a0103 and f1f16fca; consensus
+guard PASS in every run, 7 consensus-package files vs bf274e5, all pre-existing):
+- **RPC robustness (B85, B86, B80, B40, BD6):** state reads below the prune point get a typed −32031 before any read,
+  with a rate-limited WARNING and a metric; all 31 `panic(` lines of `cmd/derod/rpc` audited, every input-reachable one
+  returns a typed error; GetBlockHeaderByHash no longer shadows its error; GetTransaction gains per-tx `txs_status`;
+  GetInfo `total_supply_basis` (formula-computed supply, FX-N9); the wallet RPC parses Content-Type like derod. A
+  standing derod error census (`harness/intel/error_census.py`, §6 step 1a) and the probe prune guard
+  (`harness/kit/pruneguard.py`) run every S7.
+- **Consensus observability (B55–B62):** miniblock refusals and block rejections by reason (with the peer id), block fees
+  in GetBlockHeadersRange, `alt_blocks_count`, first-seen times, a persisted reorg monitor, header miners[] at the
+  block's topoheight, the read-only `DERO.GetConsensusStats`; detector D19 in the harness. Counters, fields and log
+  lines only.
+- **Peers (B63–B72, B47):** per-peer offence score, ban reasons and sources (sidecar `ban_reasons.json`), Chain-request,
+  INV-clip, unserved-object and stuck-hold counters; a peer that answers a sync with nothing is held from sync,
+  escalating (instead of a re-sync every 4 s); observed peer addresses gone from Go sources and new snapshots.
+- **Security and pool (B48, B42, B44, BD5):** proven-lane quota per netgroup, a quarter burst for fresh remote RPC keys,
+  rebroadcast skips mined txs, the pool cap holds under concurrency, relay/RPC admission refuses non-reduced proof
+  scalars. B19 needs the user's guard decision; B43 reproduced, root cause pending.
+- **Crypto and disclosure:** BD9 settled by an honest-proof test (2 of 13 scalar classes refused); B22 refuted above
+  height 399,000 (20,000 of 20,000 live blocks have one final); B81: the HF3 table covers replay walls 2 and 3, not
+  wall 1; every disclosure claim re-tested (G24), 5 new facts.
+- **Perf and ops (B46, B39, B35, B20):** sync CPU per block ×0.923 but blocks/s unchanged (the one-at-a-time block add
+  sets it: refuted as a lever); B39 read live for 75 min on the r24 binary; `tools/launchd-derod -preflight`;
+  `benchlock --qos` (opt-in).
+- **Tooling (B87–B94):** area `tooling` with `tooling_intel.py`, a rebuilt scrubbed memory mirror, live readings booked
+  to the binary's round, the evolution ORDER early warning, the meta review, the resume checkpoint
+  (`harness/intel/round_checkpoint.py`, §0.10); install backup tags no longer read the next string's letter (r24i/r24p
+  renamed); the shadow control is the live node's build after an install.
+
+**Monetary forensics (rft §0.8).** Dataset v1 `forensics/r25/` of the window 7,415,466–7,497,942 (the span of the 75
+HF3 entries): every height RAW (checks i–ii from our anchor block 7,498,540), every table body RAW (check iii), from
+pseudonymous archival sources (B73 decision b1). Its forensic dataset manifest `cc80176e` binds 1,428 files. The
+integration changed the replay pin from "HEAD == 17da0dc" to **content pins** (`harness/forensics/pins.py`: 8 replay
+tools, 486 decoder build inputs, 29 cited source line ranges, the HF3 table), built the decoder with
+`-buildvcs=false` (Go stamped the commit into it, so the report changed with every commit) and bound the audit to the
+pins' aggregate instead of the commit; KAT MF12 shows an unrelated commit PASSES and a changed pinned byte FAILS. G28: 2
+full replays from distinct cwds byte-exact (report `ac3b6698`), 712/712 derived files, and the S7 replay step
+reproduces the same report. The audit's one overturn (A4b, "the chain accepted the tx only through the exemption":
+every earliest carrier predates the table commit) was corrected at its source (derive.py); the re-run audit holds 24
+of 25 challenges with A10c UNRESOLVED (archive roots not end-state-checked), and audit-1 is kept unchanged under
+`audit/history/` (overturns over all runs: 1; G29 checks that history). Grades: the 75 table TXIDs
+NOT-DECIDABLE-FROM-PUBLIC-DATA (2 E1, 73 E2: hidden amounts are ElGamal ciphertexts and the range proof is unsound,
+C1), the window's public emission PROVEN-NO-INFLATION-IN-SCOPE, state roots pending, the two EXT figures SPECULATION.
+The ledger's forensics sections show every figure as a span naming its file and SHA-256 (G30, KAT
+`test_forensics_g30_r25.py` GF1–GF6, 12 mutations). The discovery note's line 104 carries a dated correction
+(GetTransaction bodies are in `txs_as_hex[]`).
+
+**Pipeline.**
+- `pipeline_20261103T125920` (full run 1): S3a FAIL, a flaky TestR25ConsensusRPCOnSimulatorChain with -count > 1 → fresh ghost hash (99ef779).
+- `pipeline_20261103T130341` (full run 2): S1–S5 PASS; S6 refused by the provenance guard (a commit mid-run, self-caused).
+- `pipeline_20261103T144257` (full run 3, install): S1–S6 PASS, installed; S7 FAIL (a triage row missing from src-arch) → d0b5762.
+- `pipeline_20261103T164836` (project-only, run 6): PASS, KATs 35/35, harness mutations 34/34, gates 24/27 (+3 PAUSED, miner).
+- `pipeline_20261103T165745` (full run 7): S5 FAIL, the shadow control was the newly installed r25 → control = the live node's build (354a8e0).
+- `pipeline_20261103T182557` (full, `--no-install`; registry `pipeline_full`): PASS; flaky 88 ×3, 0 flaky; mutations 1271/1271; race 26 packages 0 races; shadow 120 blocks, 240 treehashes, 0 mismatches; S7 KATs 35/35, harness mutations 34/34, gates 24/27 (+3 PAUSED, miner).
+- `pipeline_20261104T052308` (project-only, run 9): FAIL only G7 (the src-arch forensic dataset line overflowed at 480 px) → fixed at its source (6bc7d0b).
+- `pipeline_20261104T053904` (project-only, closing run after the R25 artifacts commit): PASS, KATs 35/35, harness mutations 34/34, gates 27/30 (+3 PAUSED, miner); G23–G30 PASS, coherence 0 drifts.
+
+**Installed** `bin/derod`, `bin/dero-miner`, `bin/dero-wallet-cli` installed as +22102026.r25 (run 3, atomic rename;
+backups `bin/*.22102026.r24-backup`). No new derod flag or environment variable; derod will write `reorg_monitor.json`
+and `ban_reasons.json` in its datadir. The running derod is still the r24 build until the user restarts it (rft §11,
+derod only); the miner stays stopped (paused).
+
+**Live measurement:** pending (the r25 derod restart). Readings taken during R25 were from the r24 binary and are
+booked to r24: B51 GetRandomAddress 25.1–40.9 ms CPU/call; B39 75 min, 0 slow windows; B22 20,000 of 20,000 blocks one
+final.
+
+**Measured live (2026-11-04, rft §13 R25).** The user restarted derod onto r25 at 06:57:28 (pid 34438); read-only
+window to 08:00:18, 60 samples (`harness/runtime/r25_live_window_20261104.txt`). 60/60 synced, lag 0, 14–15 out / 0 in; 0 ERROR / 0 WARN since the
+restart (G15 clear), 0 recovered panics, 0 bans. 195 blocks, 4 txs, 7 side blocks, 2 reorgs (depth 1). CONFIRMED live:
+DERO.GetConsensusStats, the B55 refusal counters, B56/B59 fees and first-seen fields, B58 alt_blocks_count 7 = 7 in 60/60
+samples, B60 INFO reorg lines + `reorg_monitor.json`, peer_intel evidence_mode counter, `ban_reasons.json`, B80 typed
+−32032, txs_status, total_supply_basis, B38 415, and B18 (first live event: `block_tx_roundtrip_observed_total` 4).
+Emission 227 audited, 0 alerts, payees 1,451/1,451; disclosure `--live` S1–S4 PASS, census 15,440 scalars 0 non-canonical;
+G28 PASS on the measured build. Unit-proven, live pending-no-event: B85 −32031 (never probed, by rule), B47, B48, B57,
+B61. New: B103 (insert_failed 834 counts concurrent duplicate deliveries, PLAUSIBLE by code path), B104 (one
+self-inflicted malformed probe: wrong GetBlockHeadersRange param names read topoheight 0, −32098, no log line), B105
+(area_intel treats network KPIs as node regressions). No derod error to fix in code; no new binary.
+
+**Open after Round 25:**
+- Live reads that need an event: B47 hold, B48 lane quota, B57 rejected-block attribution, B60 across a restart, B61; B103–B105 (R26).
+- Forensics R26: (a2) state replay with the end-state check against our treehash `ca11cc21…` at 7,498,540 (B95, binds
+  A10c); the pending-fee blocks via the archive's bodies under check (iii) (B96); a second proof verifier and the
+  duplicate-body census (B97); the genesis replay to wall 1 (not run).
+- Harness: a failed S5 leaves its shadow clone (B98); log_intel DST sort and the paused-miner clean-clone project run
+  (B101); pubscrub's 3 of 5 planted-secret misses and the src-arch build time that breaks double-run byte-exactness (B93).
+- Node residuals: B47 strikes never decay and Offenders() holds penalty_mu ~23 ms (B99); NameToAddress untyped −32098 and
+  GetEncryptedBalance without topoheight (B100); two invalid_pow offences never ban (B102, policy); B32 partial-history
+  residual; B51 weight decision; B19 guard decision (user); B43 root cause.
+- Live reads after the restart: B36 24 h emission (from 2026-11-05 06:57, the r25 restart reset the segment), B39 24 h flips; B35 launchd install (user).
+- Carried: B1 UDP 11011 (user); report-only B11/B30/B31/B45/B46; C1 upstream (B8); the paused miner rows.

@@ -10,7 +10,7 @@
    "anchor": {
     "file": "artifacts/src/gen_ledger.py",
     "quote": "('pipeline_20261029T094741', 'PASS: 93 new tests",
-    "line": 687
+    "line": 697
    }
   },
   {
@@ -20,7 +20,7 @@
    "anchor": {
     "file": "artifacts/src/gen_ledger.py",
     "quote": "('pipeline_20261030T043422', 'new tests 116",
-    "line": 814
+    "line": 824
    }
   },
   {
@@ -45,12 +45,23 @@
   },
   {
    "id": "r24",
-   "pipeline_full": "pending",
-   "pipeline_project": "pending",
+   "pipeline_full": "pipeline_20261102T110200",
+   "pipeline_project": "pipeline_20261102T224348",
    "anchor": {
     "file": "harness/round.json",
     "quote": "\"evidence\": \"R24 opened 2026-11-02 from the r23c measured head cf89e78",
     "line": 55
+   },
+   "pinned_why": "r25 (B52): pinned to the registry full run and the last r24 PASS project run (the tree of the r24 GitHub sync target cbaf664); unpinned, the r24 records moved to every later run labelled r24 (the R25 plan runs of 2026-11-03, which carry the self-caused G15 FAIL of B85)"
+  },
+  {
+   "id": "r25",
+   "pipeline_full": "pending",
+   "pipeline_project": "pending",
+   "anchor": {
+    "file": "harness/round.json",
+    "quote": "\"evidence\": \"R25 opened 2026-11-03 from 629b8de (R24 measure",
+    "line": 81
    }
   }
  ],
@@ -71,7 +82,8 @@
     "harness/areas.json",
     "harness/intel/go_mutate.py",
     "harness/intel/area_intel.py",
-    "harness/miners/mine_areas.py"
+    "harness/miners/mine_areas.py",
+    "harness/kit/stateguard.py"
    ],
    "metrics": [
     {
@@ -193,7 +205,15 @@
     "harness/kat/test_area_rows_r24.py",
     "harness/kat/test_new_tests_registered_r24.py",
     "harness/kat/test_area_record_r24.py",
-    "harness/kat/test_evolution_order_r24.py"
+    "harness/kat/test_evolution_order_r24.py",
+    "harness/kat/test_pruneguard_r25.py",
+    "harness/kat/test_area_r25.py",
+    "harness/kat/test_stateguard_r25.py",
+    "harness/kat/test_harness_r25.py",
+    "harness/kat/test_benchlock_qos_r25.py",
+    "harness/kat/test_install_tag_r25.py",
+    "harness/kat/test_triage_pseud_r25.py",
+    "harness/kat/test_peerkit_glyph_r25.py"
    ],
    "gates": [
     "G3",
@@ -242,20 +262,54 @@
       }
      },
      "kats": {
-      "value": "13/13",
+      "value": "14/14",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261102T103606.jsonl",
+       "file": "harness/loop/runs/pipeline_20261102T224348.jsonl",
        "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
-       "line": 14
-      }
+       "line": 23
+      },
+      "corrections": [
+       {
+        "date": "2026-11-03",
+        "was": "13/13",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261102T103606.jsonl",
+         "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
+         "line": 14
+        },
+        "why": "r25 (B52): booked by record r24 at c4cebe6 from pipeline_20261102T103606, before G24-G27 and the later R24 KATs existed; the pinned r24 records (pipeline_20261102T110200 + pipeline_20261102T224348) compute this value",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261102T224348.jsonl",
+         "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
+         "line": 23
+        }
+       }
+      ]
      },
      "gates": {
-      "value": "4/4",
+      "value": "5/5",
       "anchor": {
        "file": "harness/loop/GATES.md",
-       "quote": "| pipeline-20261102T103606 | G3 corpus current",
-       "line": 1196
-      }
+       "quote": "| pipeline-20261102T224348 | G3 corpus current",
+       "line": 1603
+      },
+      "corrections": [
+       {
+        "date": "2026-11-03",
+        "was": "4/4",
+        "was_anchor": {
+         "file": "harness/loop/GATES.md",
+         "quote": "| pipeline-20261102T103606 | G3 corpus current",
+         "line": 1196
+        },
+        "why": "r25 (B52): booked by record r24 at c4cebe6 from pipeline_20261102T103606, before G24-G27 and the later R24 KATs existed; the pinned r24 records (pipeline_20261102T110200 + pipeline_20261102T224348) compute this value",
+        "evidence": {
+         "file": "harness/loop/GATES.md",
+         "quote": "| pipeline-20261102T224348 | G3 corpus current",
+         "line": 1603
+        }
+       }
+      ]
      },
      "project_kats": {
       "value": "35/35",
@@ -274,12 +328,29 @@
       }
      },
      "project_gates": {
-      "value": "19/22 (+3 PAUSED, miner)",
+      "value": "24/27 (+3 PAUSED, miner)",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261102T103606.jsonl",
+       "file": "harness/loop/runs/pipeline_20261102T224348.jsonl",
        "quote": "\"stage\": \"project\", \"status\": \"PASS\"",
-       "line": 43
-      }
+       "line": 60
+      },
+      "corrections": [
+       {
+        "date": "2026-11-03",
+        "was": "19/22 (+3 PAUSED, miner)",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261102T103606.jsonl",
+         "quote": "\"stage\": \"project\", \"status\": \"PASS\"",
+         "line": 43
+        },
+        "why": "r25 (B52): booked by record r24 at c4cebe6 from pipeline_20261102T103606, before G24-G27 and the later R24 KATs existed; the pinned r24 records (pipeline_20261102T110200 + pipeline_20261102T224348) compute this value",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261102T224348.jsonl",
+         "quote": "\"stage\": \"project\", \"status\": \"PASS\"",
+         "line": 60
+        }
+       }
+      ]
      },
      "flaky_new_tests": {
       "value": 120,
@@ -673,6 +744,113 @@
        "line": 18
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "3/3",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "kats": {
+      "value": "22/22",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
+       "line": 31
+      }
+     },
+     "gates": {
+      "value": "5/5",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G3 corpus current",
+       "line": 1792
+      }
+     },
+     "project_kats": {
+      "value": "35/35",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"stage\": \"project\", \"status\": \"PASS\"",
+       "line": 75
+      }
+     },
+     "harness_mutations": {
+      "value": "34/34",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"stage\": \"project\", \"status\": \"PASS\"",
+       "line": 75
+      }
+     },
+     "project_gates": {
+      "value": "27/30 (+3 PAUSED, miner)",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261104T061335.jsonl",
+       "quote": "\"stage\": \"project\", \"status\": \"PASS\"",
+       "line": 81
+      },
+      "corrections": [
+       {
+        "date": "2026-11-04",
+        "was": "24/27 (+3 PAUSED, miner)",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+         "quote": "\"stage\": \"project\", \"status\": \"PASS\"",
+         "line": 75
+        },
+        "why": "R25 measured 2026-11-04: G28-G30 were added to the gate set after the value was booked (24/27 at pipeline_20261103T164836; the closing run pipeline_20261104T061335 computes 27/30)",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261104T061335.jsonl",
+         "quote": "\"stage\": \"project\", \"status\": \"PASS\"",
+         "line": 81
+        }
+       }
+      ]
+     },
+     "flaky_new_tests": {
+      "value": 88,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"flaky\", \"status\": \"PASS\"",
+       "line": 8
+      }
+     },
+     "flaky": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"flaky\", \"status\": \"PASS\"",
+       "line": 8
+      }
+     },
+     "go_mutations_all": {
+      "value": "1271/1271",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "race_packages": {
+      "value": 26,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"race\", \"status\": \"PASS\"",
+       "line": 18
+      }
+     }
     }
    }
   },
@@ -788,7 +966,7 @@
       "anchor": {
        "file": "artifacts/dero-rft.md",
        "quote": "pass 4,800/4,800 probes",
-       "line": 736
+       "line": 1425
       },
       "display": "4,800/4,800",
       "note": "B28 as written after R23c (verify-p2psec)"
@@ -961,6 +1139,56 @@
        "file": "harness/loop/GATES.md",
        "quote": "| pipeline-20261030T233916 | G13 consensus guard: every consensus-package change is logging-only",
        "line": 1017
+      }
+     }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 101,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "169/169",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "gates": {
+      "value": "1/1",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G13 consensus guard: every consensus-package change is logging-only",
+       "line": 1816
+      }
+     },
+     "rpc_abuse_bans": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "rpc_abuse_bans_total 0",
+       "line": 23
+      }
+     },
+     "p2p_bans": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "p2p_bans_total 0",
+       "line": 12
+      }
+     },
+     "p2p_aggregate_refusals": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "p2p_inbound_aggregate_refusals_total 0",
+       "line": 13
       }
      }
     }
@@ -1292,6 +1520,56 @@
        "line": 1016
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 99,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "143/143",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "gates": {
+      "value": "2/2",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G22 the soundness page is backed",
+       "line": 1810
+      }
+     },
+     "emission_alerts": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "dero_emission_audit_alerts_total 0",
+       "line": 6
+      }
+     },
+     "emission_consistent": {
+      "value": 1.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "dero_emission_audit_consistent 1",
+       "line": 7
+      }
+     },
+     "roundtrip_broken": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "block_tx_roundtrip_broken_total 0",
+       "line": 3
+      }
+     }
     }
    }
   },
@@ -1378,6 +1656,7 @@
     "gm-r23f-getwork",
     "gm-r23m-gw",
     "gm-r24-getworkops",
+    "gm-r25-perfops",
     "gm-r23b-launchd",
     "gm-r23b-absence",
     "gm-r21-job"
@@ -1565,6 +1844,32 @@
        "file": "harness/loop/GATES.md",
        "quote": "| pipeline-20261030T233916 | G9 the live daemon still agrees",
        "line": 1004
+      }
+     }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 85,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "134/134",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "gates": {
+      "value": "1/1",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G9 the live daemon still agrees",
+       "line": 1798
       }
      }
     }
@@ -1799,6 +2104,32 @@
        "line": 2
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 63,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "87/87",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "pool_count": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "mempool_count 0",
+       "line": 11
+      }
+     }
     }
    }
   },
@@ -1996,6 +2327,33 @@
        "line": 2
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 23,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "50/50",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "prewarm_per_block": {
+      "value": 10.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "p2p_sync_pow_prewarmed_total 10",
+       "line": 17
+      },
+      "display": "10.0 (10 / 1)"
+     }
     }
    }
   },
@@ -2096,7 +2454,10 @@
     "B17",
     "B29",
     "B38",
-    "B40"
+    "B40",
+    "B80",
+    "B85",
+    "B86"
    ],
    "history": {
     "r23c": {
@@ -2227,6 +2588,40 @@
        "line": 2
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 151,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "202/202",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "ws_push_skipped": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "rpc_ws_push_skipped_total 0",
+       "line": 37
+      }
+     },
+     "rpc_recovered_panics": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "rpc_recovered_panics_total 0",
+       "line": 24
+      }
+     }
     }
    }
   },
@@ -2284,13 +2679,17 @@
     },
     {
      "id": "compact_observed",
-     "what": "compact-block txs observed by txcanon (B18; 0 on r23c)",
+     "what": "compact-block txs observed by txcanon (B18; 0 on r23c); r25 (B54): a 0 is a reading only once blockchain_tx_total > 0",
      "unit": "txs",
      "better": "higher",
      "noise_rel": 0.0,
      "source": {
       "kind": "prom",
-      "name": "block_tx_roundtrip_observed_total"
+      "name": "block_tx_roundtrip_observed_total",
+      "needs_event": {
+       "name": "blockchain_tx_total",
+       "what": "a tx-carrying block added to the chain"
+      }
      }
     },
     {
@@ -2415,14 +2814,27 @@
       "note": "candidate, shadow; x1.114 paired"
      },
      "compact_observed": {
-      "value": 0.0,
-      "anchor": {
-       "file": "harness/runtime/area_prom_20261102T163520.txt",
-       "quote": "block_tx_roundtrip_observed_total 0",
-       "line": 4
-      },
-      "display": "0 (no tx in the 217 blocks 7,847,516-7,847,732: B18 pending)",
-      "note": "live r24 derod 2026-11-02; harness/runtime/r24_live_txcount_20261102.txt: blocks 217 tx_total 0"
+      "value": "pending",
+      "why": "r25 (B54): pending: no event. The r24 reading 0 counted block txs over 217 blocks that carried 0 txs, so it is not a reading; B18 stays pending until blockchain_tx_total > 0",
+      "corrections": [
+       {
+        "date": "2026-11-03",
+        "was": 0.0,
+        "was_anchor": {
+         "file": "harness/runtime/area_prom_20261102T163520.txt",
+         "quote": "block_tx_roundtrip_observed_total 0",
+         "line": 4
+        },
+        "was_display": "0 (no tx in the 217 blocks 7,847,516-7,847,732: B18 pending)",
+        "why": "r25 (B54): pending: no event. The r24 reading 0 counted block txs over 217 blocks that carried 0 txs, so it is not a reading; B18 stays pending until blockchain_tx_total > 0",
+        "evidence": {
+         "file": "harness/runtime/r24_live_txcount_20261102.txt",
+         "quote": "blocks 217 tx_total 0 blocks_with_tx 0",
+         "line": 220
+        },
+        "was_note": "live r24 derod 2026-11-02; harness/runtime/r24_live_txcount_20261102.txt: blocks 217 tx_total 0"
+       }
+      ]
      },
      "r24_mutations": {
       "value": "17/17",
@@ -2556,6 +2968,64 @@
        "file": "harness/loop/GATES.md",
        "quote": "| pipeline-20261030T233916 | G9 the live daemon still agrees",
        "line": 1004
+      }
+     }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 201,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "238/238",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "gates": {
+      "value": "2/2",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G9 the live daemon still agrees",
+       "line": 1798
+      }
+     },
+     "peers_out": {
+      "value": 14.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "p2p_peer_outgoing_count 14",
+       "line": 15
+      }
+     },
+     "peers_in": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "p2p_peer_incoming_count 0",
+       "line": 14
+      }
+     },
+     "sync_lag": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "dero_sync_lag_blocks 0",
+       "line": 8
+      }
+     },
+     "compact_observed": {
+      "value": 4.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "block_tx_roundtrip_observed_total 4",
+       "line": 4
       }
      }
     }
@@ -2731,6 +3201,32 @@
        "line": 13632
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 71,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "60/60",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "upstream_red_tests": {
+      "value": 3,
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"upstream_failures\"",
+       "line": 15600
+      }
+     }
     }
    }
   },
@@ -2903,6 +3399,32 @@
        "line": 1206
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "8/8",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "gates": {
+      "value": "1/1",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G14 datadir integrity",
+       "line": 1802
+      }
+     }
     }
    }
   },
@@ -2949,7 +3471,9 @@
      }
     }
    ],
-   "kat_files": [],
+   "kat_files": [
+    "harness/kat/test_error_census_r25.py"
+   ],
    "gates": [
     "G9",
     "G15"
@@ -3107,6 +3631,57 @@
        "file": "harness/runtime/area_prom_20261102T163520.txt",
        "quote": "recovered_panics_total{level=\"0\"} 0",
        "line": 17
+      },
+      "display": "0 (sum of 5 labelled series in the capture)"
+     }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 23,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "47/47",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "kats": {
+      "value": "1/1",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/kat/test_error_census_r25.py\"",
+       "line": 26
+      }
+     },
+     "gates": {
+      "value": "2/2",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G9 the live daemon still agrees",
+       "line": 1798
+      }
+     },
+     "log_errors_at_tip": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/logintel_20261104T080042.json",
+       "quote": "\"errors_at_tip\": 0",
+       "line": 60
+      }
+     },
+     "recovered_panics": {
+      "value": 0.0,
+      "anchor": {
+       "file": "harness/runtime/area_prom_20261104T080146.txt",
+       "quote": "recovered_panics_total{level=\"0\"} 0",
+       "line": 18
       },
       "display": "0 (sum of 5 labelled series in the capture)"
      }
@@ -3365,20 +3940,54 @@
       }
      },
      "kats": {
-      "value": "1/1",
+      "value": "2/2",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261102T103606.jsonl",
+       "file": "harness/loop/runs/pipeline_20261102T224348.jsonl",
        "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
-       "line": 40
-      }
+       "line": 55
+      },
+      "corrections": [
+       {
+        "date": "2026-11-03",
+        "was": "1/1",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261102T103606.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 40
+        },
+        "why": "r25 (B52): booked by record r24 at c4cebe6 from pipeline_20261102T103606, before G24-G27 and the later R24 KATs existed; the pinned r24 records (pipeline_20261102T110200 + pipeline_20261102T224348) compute this value",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261102T224348.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 55
+        }
+       }
+      ]
      },
      "gates": {
-      "value": "9/9",
+      "value": "10/10",
       "anchor": {
        "file": "harness/loop/GATES.md",
-       "quote": "| pipeline-20261102T103606 | G1 every rendered anchor resolved",
-       "line": 1194
-      }
+       "quote": "| pipeline-20261102T224348 | G1 every rendered anchor resolved",
+       "line": 1601
+      },
+      "corrections": [
+       {
+        "date": "2026-11-03",
+        "was": "9/9",
+        "was_anchor": {
+         "file": "harness/loop/GATES.md",
+         "quote": "| pipeline-20261102T103606 | G1 every rendered anchor resolved",
+         "line": 1194
+        },
+        "why": "r25 (B52): booked by record r24 at c4cebe6 from pipeline_20261102T103606, before G24-G27 and the later R24 KATs existed; the pinned r24 records (pipeline_20261102T110200 + pipeline_20261102T224348) compute this value",
+        "evidence": {
+         "file": "harness/loop/GATES.md",
+         "quote": "| pipeline-20261102T224348 | G1 every rendered anchor resolved",
+         "line": 1601
+        }
+       }
+      ]
      },
      "refused_rows": {
       "value": 0,
@@ -3394,6 +4003,56 @@
        "file": "harness/loop/runs/pipeline_20261102T125906.jsonl",
        "quote": "\"step\": \"harness/intel/coherence.py --record\"",
        "line": 51
+      }
+     }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "0/0",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "kats": {
+      "value": "2/2",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+       "line": 71
+      }
+     },
+     "gates": {
+      "value": "10/10",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G1 every rendered anchor resolved",
+       "line": 1790
+      }
+     },
+     "refused_rows": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/gen_deroarch.py build\"",
+       "line": 69
+      }
+     },
+     "coherence_drifts": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/intel/coherence.py --record\"",
+       "line": 74
       }
      }
     }
@@ -3566,11 +4225,62 @@
       }
      },
      "gates": {
-      "value": "1/1",
+      "value": "2/2",
       "anchor": {
        "file": "harness/loop/GATES.md",
-       "quote": "| pipeline-20261102T103606 | G22 the soundness page is backed",
-       "line": 1214
+       "quote": "| pipeline-20261102T224348 | G22 the soundness page is backed",
+       "line": 1621
+      },
+      "corrections": [
+       {
+        "date": "2026-11-03",
+        "was": "1/1",
+        "was_anchor": {
+         "file": "harness/loop/GATES.md",
+         "quote": "| pipeline-20261102T103606 | G22 the soundness page is backed",
+         "line": 1214
+        },
+        "why": "r25 (B52): booked by record r24 at c4cebe6 from pipeline_20261102T103606, before G24-G27 and the later R24 KATs existed; the pinned r24 records (pipeline_20261102T110200 + pipeline_20261102T224348) compute this value",
+        "evidence": {
+         "file": "harness/loop/GATES.md",
+         "quote": "| pipeline-20261102T224348 | G22 the soundness page is backed",
+         "line": 1621
+        }
+       }
+      ]
+     }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 16,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "5/5",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "kats": {
+      "value": "1/1",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
+       "line": 25
+      }
+     },
+     "gates": {
+      "value": "2/2",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G22 the soundness page is backed",
+       "line": 1810
       }
      }
     }
@@ -3586,7 +4296,7 @@
    "paused_why": {
     "file": "artifacts/dero-rft.md",
     "quote": "**State: PAUSED until the user explicitly asks to resume.**",
-    "line": 112
+    "line": 128
    },
    "code_paths": [
     "cmd/dero-miner/",
@@ -3857,6 +4567,40 @@
        "line": 1011
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 208,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "249/249",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "kats": {
+      "value": "2/2",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/kat/test_intel_r21_splitpipe.py\"",
+       "line": 34
+      }
+     },
+     "gates": {
+      "value": "2/5",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G17 the live miner is healthy",
+       "line": 1805
+      }
+     }
     }
    }
   },
@@ -3869,7 +4613,12 @@
     "harness/intel/consensus_intel.py",
     "harness/miners/mine_consensus.py",
     "harness/kit/consensuskit.py",
-    "harness/kat/test_consensus_intel_r24.py"
+    "harness/kat/test_consensus_intel_r24.py",
+    "harness/kat/test_consensus_intel_r25.py",
+    "p2p/consensus_obs_r25.go",
+    "p2p/r25_consensus_obs_test.go",
+    "cmd/derod/rpc/consensus_stats_r25.go",
+    "cmd/derod/rpc/r25_consensus_test.go"
    ],
    "metrics": [
     {
@@ -4015,12 +4764,15 @@
     }
    ],
    "kat_files": [
-    "harness/kat/test_consensus_intel_r24.py"
+    "harness/kat/test_consensus_intel_r24.py",
+    "harness/kat/test_consensus_intel_r25.py"
    ],
    "gates": [
     "G26"
    ],
-   "gomut_prefixes": [],
+   "gomut_prefixes": [
+    "gm-r25-consensus-"
+   ],
    "backlog": [
     "B55",
     "B56",
@@ -4129,6 +4881,128 @@
        "line": 85
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 11,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "36/36",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "kats": {
+      "value": "2/2",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/kat/test_consensus_intel_r24.py\"",
+       "line": 23
+      }
+     },
+     "gates": {
+      "value": "1/1",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G26 the chain-consensus observatory is fresh, graded and anchored",
+       "line": 1814
+      }
+     },
+     "block_time_mean_s": {
+      "value": 18.504,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi block_time_mean_s = 18.504",
+       "line": 18
+      }
+     },
+     "block_time_p95_s": {
+      "value": 36.898,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi block_time_p95_s = 36.898",
+       "line": 20
+      }
+     },
+     "nakamoto_regular": {
+      "value": 4,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi nakamoto_regular = 4",
+       "line": 59
+      }
+     },
+     "nakamoto_final": {
+      "value": 3,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi nakamoto_final = 3",
+       "line": 60
+      }
+     },
+     "top1_final_share": {
+      "value": 0.3193,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi top1_final_share = 0.3193",
+       "line": 55
+      }
+     },
+     "integrator_only_final_share": {
+      "value": 0.375,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi integrator_only_final_share = 0.375",
+       "line": 65
+      }
+     },
+     "difficulty_rule_mismatches": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi difficulty_rule_mismatches = 0",
+       "line": 35
+      }
+     },
+     "finality_final_violations": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi finality_final_violations = 0",
+       "line": 82
+      }
+     },
+     "side_block_lines_window": {
+      "value": 76,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi side_block_lines_window = 76",
+       "line": 75
+      }
+     },
+     "detectors_observed": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi detectors_observed = 0",
+       "line": 100
+      }
+     },
+     "detectors_anomaly": {
+      "value": 3,
+      "anchor": {
+       "file": "harness/runtime/consensus_capture_20261104T160043Z.txt",
+       "quote": "kpi detectors_anomaly = 3",
+       "line": 101
+      }
+     }
     }
    },
    "detector_feeds": [
@@ -4153,6 +5027,7 @@
     "harness/kit/peerkit.py",
     "harness/kit/privkit.py",
     "harness/kat/test_peer_intel_r24.py",
+    "harness/kat/test_peer_intel_r25.py",
     "harness/kat/test_privkit_r24.py"
    ],
    "metrics": [
@@ -4240,6 +5115,7 @@
    ],
    "kat_files": [
     "harness/kat/test_peer_intel_r24.py",
+    "harness/kat/test_peer_intel_r25.py",
     "harness/kat/test_privkit_r24.py"
    ],
    "gates": [
@@ -4331,6 +5207,96 @@
        "line": 164
       }
      }
+    },
+    "r25": {
+     "new_tests": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "0/0",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "kats": {
+      "value": "3/3",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/kat/test_peer_intel_r24.py\"",
+       "line": 41
+      }
+     },
+     "gates": {
+      "value": "1/1",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261103T164836 | G27 the peer observatory is fresh, private and anchored",
+       "line": 1815
+      }
+     },
+     "peers_active": {
+      "value": 14,
+      "anchor": {
+       "file": "harness/runtime/peer_capture_20261104T080126.jsonl",
+       "quote": "\"peers_active\": 14",
+       "line": 197
+      }
+     },
+     "netgroups": {
+      "value": 14,
+      "anchor": {
+       "file": "harness/runtime/peer_capture_20261104T080126.jsonl",
+       "quote": "\"netgroups\": 14",
+       "line": 197
+      }
+     },
+     "lag_max": {
+      "value": 82442,
+      "anchor": {
+       "file": "harness/runtime/peer_capture_20261104T080126.jsonl",
+       "quote": "\"lag_max\": 82442",
+       "line": 197
+      }
+     },
+     "first_relay_top_share": {
+      "value": 0.656,
+      "anchor": {
+       "file": "harness/runtime/peer_capture_20261104T080126.jsonl",
+       "quote": "\"first_relay_top_share\": 0.656",
+       "line": 197
+      }
+     },
+     "observed": {
+      "value": 2,
+      "anchor": {
+       "file": "harness/runtime/peer_capture_20261104T080126.jsonl",
+       "quote": "\"observed\": 2",
+       "line": 197
+      }
+     },
+     "anomaly": {
+      "value": 3,
+      "anchor": {
+       "file": "harness/runtime/peer_capture_20261104T080126.jsonl",
+       "quote": "\"anomaly\": 3",
+       "line": 197
+      }
+     },
+     "v2_seen_7d": {
+      "value": 1,
+      "anchor": {
+       "file": "harness/runtime/peer_capture_20261104T080126.jsonl",
+       "quote": "\"v2_seen_7d\": 1",
+       "line": 197
+      }
+     }
     }
    },
    "detector_feeds": [
@@ -4343,6 +5309,728 @@
      ]
     }
    ]
+  },
+  {
+   "id": "tooling",
+   "title": "Tooling & assets (non-core): harness tools, KAT suites, generators, scrub/sync, skills, memory control and mirror, scripts (dero-rft §0.9)",
+   "owner_dim": "tooling",
+   "status": "active",
+   "code_paths": [
+    ".skills/",
+    "memory-mirror/",
+    "*.sh",
+    "tools/",
+    "tools/memory-mirror/",
+    "harness/intel/tooling_intel.py",
+    "harness/loop/STALE_MEMORY_CLAIMS.json",
+    "harness/loop/meta_review.py",
+    "harness/kat/test_tooling_intel_r25.py",
+    "harness/kat/test_meta_review_r25.py",
+    "harness/intel/round_checkpoint.py",
+    "harness/kat/test_round_checkpoint_r25.py"
+   ],
+   "metrics": [
+    {
+     "id": "kat_mutation_kill_pct",
+     "what": "KAT mutation proofs caught / total over every KAT step of the newest S7 (INVALID never counts)",
+     "unit": "%",
+     "better": "higher",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "kat_mutation_kill_pct"
+     }
+    },
+    {
+     "id": "project_wall_s",
+     "what": "wall time of the newest S7 (project) stage",
+     "unit": "s",
+     "better": "lower",
+     "noise_rel": 0.25,
+     "source": {
+      "kind": "tooling",
+      "field": "project_wall_s"
+     }
+    },
+    {
+     "id": "flaky",
+     "what": "flaky tests in the newest full run (S3a); target 0",
+     "unit": "tests",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "flaky"
+     }
+    },
+    {
+     "id": "memory_index_bytes",
+     "what": "MEMORY.md size (index hygiene, §0.9 rule 4)",
+     "unit": "B",
+     "better": "lower",
+     "noise_rel": 0.02,
+     "source": {
+      "kind": "tooling",
+      "field": "memory_index_bytes"
+     }
+    },
+    {
+     "id": "memory_index_longest",
+     "what": "longest MEMORY.md line (target <= 300)",
+     "unit": "chars",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "memory_index_longest"
+     }
+    },
+    {
+     "id": "memory_index_over_300",
+     "what": "MEMORY.md lines over 300 chars (target 0)",
+     "unit": "lines",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "memory_index_over_300"
+     }
+    },
+    {
+     "id": "memory_stale_claims",
+     "what": "registered refuted claims still in the memory without a dated correction (target 0)",
+     "unit": "claims",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "memory_stale_claim_count"
+     }
+    },
+    {
+     "id": "mirror_drift",
+     "what": "in-repo memory mirror drift vs the memory dir (target 0)",
+     "unit": "files",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "mirror_drift"
+     }
+    },
+    {
+     "id": "skill_fresh",
+     "what": "every skill records the current round (1 = yes)",
+     "unit": "",
+     "better": "higher",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "skill_fresh"
+     }
+    },
+    {
+     "id": "defect_classes_without_kat",
+     "what": "R24/R25 tooling defect classes without a KAT (target 0)",
+     "unit": "classes",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "defect_classes_without_kat_count"
+     }
+    },
+    {
+     "id": "order_gaps",
+     "what": "non-planned rounds missing from the evolution ORDER (target 0, B90)",
+     "unit": "rounds",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "order_gaps_count"
+     }
+    },
+    {
+     "id": "gate_id_duplicates",
+     "what": "gate ids used by two different gates (target 0)",
+     "unit": "ids",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "gate_id_duplicate_count"
+     }
+    },
+    {
+     "id": "determinism_mismatches",
+     "what": "generated pages whose double run is not byte-exact (target 0; --determinism)",
+     "unit": "pages",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "determinism_mismatches"
+     }
+    },
+    {
+     "id": "scrub_false_negatives",
+     "what": "planted secrets left by pubscrub on the control (target 0; --scrub-control)",
+     "unit": "plants",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "scrub_false_negatives"
+     }
+    },
+    {
+     "id": "scrub_false_positives",
+     "what": "clean control lines pubscrub changed (counted; --scrub-control)",
+     "unit": "lines",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "scrub_false_positives"
+     }
+    },
+    {
+     "id": "scripts_ok",
+     "what": "repo-root *.sh passing bash -n and tools/* building (--scripts)",
+     "unit": "scripts",
+     "better": "higher",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "scripts_ok"
+     }
+    },
+    {
+     "id": "checkpoint_age",
+     "what": "seconds since the round's resume checkpoint (harness/intel/round_checkpoint.py --loop 600, dero-rft §0.10; target <= 1200 while a round is open)",
+     "unit": "s",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "tooling",
+      "field": "checkpoint_age_s"
+     }
+    }
+   ],
+   "kat_files": [
+    "harness/kat/test_tooling_intel_r25.py",
+    "harness/kat/test_meta_review_r25.py",
+    "harness/kat/test_round_checkpoint_r25.py"
+   ],
+   "gates": [],
+   "gomut_prefixes": [
+    "gm-r25-harnesstool-"
+   ],
+   "backlog": [
+    "B81",
+    "B87",
+    "B88",
+    "B89",
+    "B90",
+    "B91",
+    "B92",
+    "B93",
+    "B94"
+   ],
+   "history": {
+    "r25": {
+     "new_tests": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "2/2",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "kats": {
+      "value": "3/3",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "quote": "\"step\": \"harness/kat/test_tooling_intel_r25.py\"",
+       "line": 50
+      }
+     },
+     "kat_mutation_kill_pct": {
+      "value": 100.0,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"kat_mutation_kill_pct\": 100.0",
+       "line": 19
+      }
+     },
+     "project_wall_s": {
+      "value": 512,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"project_wall_s\": 512",
+       "line": 20
+      }
+     },
+     "flaky": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"flaky\": 0",
+       "line": 28
+      }
+     },
+     "memory_index_bytes": {
+      "value": 15483,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"memory_index_bytes\": 15483",
+       "line": 33
+      }
+     },
+     "memory_index_longest": {
+      "value": 2269,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"memory_index_longest\": 2269",
+       "line": 34
+      }
+     },
+     "memory_index_over_300": {
+      "value": 12,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"memory_index_over_300\": 12",
+       "line": 35
+      }
+     },
+     "memory_stale_claims": {
+      "value": 1,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"memory_stale_claim_count\": 1",
+       "line": 42
+      }
+     },
+     "mirror_drift": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"mirror_drift\": 0",
+       "line": 43
+      }
+     },
+     "skill_fresh": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"skill_fresh\": 0",
+       "line": 52
+      }
+     },
+     "defect_classes_without_kat": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"defect_classes_without_kat_count\": 0",
+       "line": 71
+      }
+     },
+     "order_gaps": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"order_gaps_count\": 0",
+       "line": 72
+      }
+     },
+     "gate_id_duplicates": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"gate_id_duplicate_count\": 0",
+       "line": 67
+      }
+     },
+     "scrub_false_negatives": {
+      "value": 3,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"scrub_false_negatives\": 3",
+       "line": 63
+      }
+     },
+     "scrub_false_positives": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"scrub_false_positives\": 0",
+       "line": 64
+      }
+     },
+     "checkpoint_age": {
+      "value": 237,
+      "anchor": {
+       "file": "harness/runtime/tooling_20261103T195720.json",
+       "quote": "\"checkpoint_age_s\": 237",
+       "line": 58
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "forensics",
+   "title": "Monetary forensics engine: the HF3-window dataset, replay, independent audit, ledger frontend (dero-rft §0.8)",
+   "owner_dim": "forensics",
+   "status": "active",
+   "code_paths": [
+    "harness/forensics/",
+    "tools/forensics/",
+    "forensics/",
+    "artifacts/src/forensics_section.py",
+    "harness/kat/test_forensics_r25.py",
+    "harness/kat/test_forensics_g30_r25.py",
+    "harness/runtime/forensics_replay.json",
+    "harness/runtime/forensics_intel.json"
+   ],
+   "metrics": [
+    {
+     "id": "window_heights_raw",
+     "what": "window heights held RAW with checks (i)-(ii) (derived/summary.json window_rows)",
+     "unit": "heights",
+     "better": "higher",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "window_heights_raw"
+     }
+    },
+    {
+     "id": "window_heights_missing",
+     "what": "window heights missing (raw/missing.json; target 0)",
+     "unit": "heights",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "window_heights_missing"
+     }
+    },
+    {
+     "id": "tx_bodies_raw",
+     "what": "HF3 table tx bodies RAW (derived/hf3.json counts.bodies_raw; target 75)",
+     "unit": "bodies",
+     "better": "higher",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "tx_bodies_raw"
+     }
+    },
+    {
+     "id": "replay_byte_exact",
+     "what": "two recorded full replays byte-exact (1 = yes; G28)",
+     "unit": "",
+     "better": "higher",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "replay_byte_exact"
+     }
+    },
+    {
+     "id": "replay_full_runs",
+     "what": "full PASS replay runs bound to the current manifest (G28 needs >= 2)",
+     "unit": "runs",
+     "better": "higher",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "replay_full_runs"
+     }
+    },
+    {
+     "id": "audit_holds",
+     "what": "independent audit challenges that HOLD (audit/audit_report.json)",
+     "unit": "challenges",
+     "better": "none",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "audit_holds"
+     }
+    },
+    {
+     "id": "audit_fails",
+     "what": "audit challenges that FAIL in the current audit run (overturned, not yet corrected)",
+     "unit": "challenges",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "audit_fails"
+     }
+    },
+    {
+     "id": "audit_unresolved",
+     "what": "audit challenges UNRESOLVED (each downgrades its verdict)",
+     "unit": "challenges",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "audit_unresolved"
+     }
+    },
+    {
+     "id": "audit_overturned_all_runs",
+     "what": "overturns over all audit runs of the newest version (history kept)",
+     "unit": "claims",
+     "better": "none",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "audit_overturned_all_runs"
+     }
+    },
+    {
+     "id": "grade_not_decidable",
+     "what": "verdicts NOT-DECIDABLE-FROM-PUBLIC-DATA (the HF3 TXIDs)",
+     "unit": "verdicts",
+     "better": "none",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "grade_not_decidable"
+     }
+    },
+    {
+     "id": "grade_proven_in_scope",
+     "what": "verdicts PROVEN-NO-INFLATION-IN-SCOPE",
+     "unit": "verdicts",
+     "better": "none",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "grade_proven_in_scope"
+     }
+    },
+    {
+     "id": "grade_proven_inflation",
+     "what": "verdicts PROVEN-INFLATION",
+     "unit": "verdicts",
+     "better": "none",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "grade_proven_inflation"
+     }
+    },
+    {
+     "id": "grade_speculation",
+     "what": "verdicts SPECULATION (EXT only)",
+     "unit": "verdicts",
+     "better": "none",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "grade_speculation"
+     }
+    },
+    {
+     "id": "grade_pending",
+     "what": "verdicts pending",
+     "unit": "verdicts",
+     "better": "lower",
+     "noise_rel": 0.0,
+     "source": {
+      "kind": "forensics",
+      "field": "grade_pending"
+     }
+    }
+   ],
+   "kat_files": [
+    "harness/kat/test_forensics_r25.py",
+    "harness/kat/test_forensics_g30_r25.py"
+   ],
+   "gates": [
+    "G28",
+    "G29",
+    "G30"
+   ],
+   "gomut_prefixes": [],
+   "backlog": [
+    "B73",
+    "B74",
+    "B75",
+    "B76",
+    "B77",
+    "B78",
+    "B79",
+    "B82",
+    "B83",
+    "B84",
+    "B95",
+    "B96",
+    "B97"
+   ],
+   "history": {
+    "r25": {
+     "new_tests": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261103T182557.jsonl",
+       "quote": "\"stage\": \"test\", \"status\": \"PASS\"",
+       "line": 10
+      }
+     },
+     "mutations": {
+      "value": "0/0",
+      "anchor": {
+       "file": "harness/runtime/gomut_20261103T182557.json",
+       "quote": "\"caught\": 1271,",
+       "line": 2
+      }
+     },
+     "window_heights_raw": {
+      "value": 82477,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"window_heights_raw\": 82477",
+       "line": 10145
+      }
+     },
+     "window_heights_missing": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"window_heights_missing\": 0",
+       "line": 10144
+      }
+     },
+     "tx_bodies_raw": {
+      "value": 75,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"tx_bodies_raw\": 75",
+       "line": 10142
+      }
+     },
+     "replay_byte_exact": {
+      "value": 1,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"replay_byte_exact\": 1",
+       "line": 10140
+      }
+     },
+     "replay_full_runs": {
+      "value": 2,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"replay_full_runs\": 2",
+       "line": 10141
+      }
+     },
+     "audit_holds": {
+      "value": 24,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"audit_holds\": 24",
+       "line": 10130
+      }
+     },
+     "audit_fails": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"audit_fails\": 0",
+       "line": 10129
+      }
+     },
+     "audit_unresolved": {
+      "value": 1,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"audit_unresolved\": 1",
+       "line": 10132
+      }
+     },
+     "audit_overturned_all_runs": {
+      "value": 1,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"audit_overturned_all_runs\": 1",
+       "line": 10131
+      }
+     },
+     "grade_not_decidable": {
+      "value": 75,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"grade_not_decidable\": 75",
+       "line": 10135
+      }
+     },
+     "grade_proven_in_scope": {
+      "value": 1,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"grade_proven_in_scope\": 1",
+       "line": 10137
+      }
+     },
+     "grade_proven_inflation": {
+      "value": 0,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"grade_proven_inflation\": 0",
+       "line": 10138
+      }
+     },
+     "grade_speculation": {
+      "value": 2,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"grade_speculation\": 2",
+       "line": 10139
+      }
+     },
+     "grade_pending": {
+      "value": 1,
+      "anchor": {
+       "file": "harness/runtime/forensics_intel.json",
+       "quote": "\"grade_pending\": 1",
+       "line": 10136
+      }
+     },
+     "kats": {
+      "value": "2/2",
+      "anchor": {
+       "file": "harness/loop/runs/pipeline_20261104T061335.jsonl",
+       "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
+       "line": 32
+      }
+     },
+     "gates": {
+      "value": "3/3",
+      "anchor": {
+       "file": "harness/loop/GATES.md",
+       "quote": "| pipeline-20261104T061335 | G28 the forensic dataset is reproducible",
+       "line": 1960
+      }
+     }
+    }
+   }
   }
  ]
 }

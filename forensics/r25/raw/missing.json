@@ -1,0 +1,9 @@
+{
+ "missing": [],
+ "missing_count": 0,
+ "reason_lookup": "rejections are keyed by the source topo; topo_ext == height is assumed for the lookup (see summary rows_topo_ext_ne_height)",
+ "window": [
+  7415466,
+  7497942
+ ]
+}

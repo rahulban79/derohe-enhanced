@@ -169,6 +169,7 @@ func (connection *Connection) feed_chunk(chunk *Block_Chunk, sent int64) error {
 		// peer (feed_chunk runs under chunk_lock, and this branch runs once per block). See first_relay.go.
 		if blid := bl.GetHash(); !chain.Is_Block_Topological_order(blid) && !chain.Is_Block_Tip(blid) {
 			record_first_relay(connection, bl.Miner_TX.MinerAddress[:], sent)
+			note_block_seen(connection, blid, int64(bl.Height)) // r25 (CO24-C5): the first chunk is the first sighting
 		}
 
 		chunks_per_block.Created = time.Now()

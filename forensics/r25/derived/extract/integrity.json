@@ -1,0 +1,8 @@
+{
+ "blocks_from_dataset_blobs": 605,
+ "blocks_from_store": 82471,
+ "blocks_rechecked": 83076,
+ "checks": "SHA-256(blob) == content address and == headerchain sha256; SHA3-256(blob) == block id",
+ "failures": 0,
+ "tx_bodies_rechecked": 94
+}

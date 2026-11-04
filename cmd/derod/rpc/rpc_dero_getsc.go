@@ -58,7 +58,16 @@ func GetSC(ctx context.Context, p rpc.GetSC_Params) (result rpc.GetSC_Result, er
 		topoheight = p.TopoHeight
 	}
 
+	// r25 B85: a pruned topoheight read the bootstrap snapshot and answered it under the requested topoheight
+	if err = check_state_topo("GetSC", topoheight); err != nil {
+		return
+	}
+
 	toporecord, err := chain.Store.Topo_store.Read(topoheight)
+	if err == nil && crypto.Hash(toporecord.BLOCK_ID).IsZero() { // r25 B85: a record that names no block
+		err = check_state_record("GetSC", topoheight, crypto.Hash(toporecord.BLOCK_ID))
+		return
+	}
 	// we must now fill in compressed ring members
 	if err == nil {
 		var ss *graviton.Snapshot

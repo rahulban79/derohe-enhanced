@@ -34,7 +34,8 @@ func init() {
 const LAGGING_PEER_BLOCKS = 25
 
 // lagging_peer_count counts handshaken connections outside the relay window. Live r20 (GetPeerInfo 13:23): 2 of the 14
-// outgoing peers (203.0.113.20 at 7,472,150 on top_version 2, 203.0.113.19 at 7,537,830) were ~286k-351k blocks
+// [r25 B70: RFC 5737 stand-ins for the observed addresses]
+// outgoing peers (203.0.113.166 at 7,472,150 on top_version 2, 203.0.113.167 at 7,537,830) were ~286k-351k blocks
 // behind, so p2p_peer_count 14 overstated the useful relay fan-out (12; miniblock_ours_broadcast_peers 36 for 3 shares).
 func lagging_peer_count(conns []*Connection, our_height int64) (n int) {
 	for _, c := range conns {

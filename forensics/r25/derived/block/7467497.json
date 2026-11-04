@@ -1,0 +1,43 @@
+{
+ "base_reward": 30750,
+ "base_reward_python_eq": true,
+ "blid": "7783f36ce0f24404343f20ce9a9f3276a55efda52683ea993b94ff858f8ab137",
+ "class": "RAW (checks i-ii); row DERIVED",
+ "coinbase": {
+  "formula_only": true,
+  "miner_tx_type": "COINBASE",
+  "miner_tx_value": 0
+ },
+ "fees": 0,
+ "full_reward": 30750,
+ "height": 7467497,
+ "hf3_carrier": false,
+ "hf3_txids": [],
+ "integrator_leftover": 0,
+ "major_version": 2,
+ "miniblock_share": 3075,
+ "miniblocks": 10,
+ "miniblocks_final": 1,
+ "minor_version": 2,
+ "proof_field_nonzero": false,
+ "public_burns": 0,
+ "reward_ext": 30750,
+ "reward_ext_eq_formula": true,
+ "reward_rule": "blockchain/transaction_execute.go:126-160: (base + fees) split equally over the miniblocks, leftover to the integrator; base = CalcBlockReward (blockchain/transaction_execute.go:60-62)",
+ "sha256": "d78685dada75120d8642898ff8dc5ba14d677849cae1f0ff1c4e0cf2d7deb282",
+ "sha3_256": "7783f36ce0f24404343f20ce9a9f3276a55efda52683ea993b94ff858f8ab137",
+ "state_root_post": "fd0a031cd5622910a527045e1dacd34853a7ff71a8695749050fc411bf4d3f02",
+ "state_root_pre": "3014ec141e6718adb8e306d3842a5052ca86ac88751fb8716cd1ad0f038a8aea",
+ "supply_after": 1673272703100,
+ "supply_before": 1673272672350,
+ "supply_identity_ok": true,
+ "tier": "A",
+ "timestamp_ms": 1786610268592,
+ "tips": [
+  "ec6583001f9820968b85da53afb90e44c65ddfda1ab1f6a9b2bb66811bbfa9d3"
+ ],
+ "topo": 7467497,
+ "tx_count": 0,
+ "tx_hashes": [],
+ "txs": []
+}

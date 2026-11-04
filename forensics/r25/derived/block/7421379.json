@@ -1,0 +1,52 @@
+{
+ "base_reward": 30750,
+ "base_reward_python_eq": true,
+ "blid": "4c7d808dc45829d7d5c103d45bc6b9260b8af2cc127248367a018e9bc4eb9ce1",
+ "class": "RAW (checks i-ii); row DERIVED",
+ "coinbase": {
+  "formula_only": true,
+  "miner_tx_type": "COINBASE",
+  "miner_tx_value": 0
+ },
+ "fees": 0,
+ "full_reward": 30750,
+ "height": 7421379,
+ "hf3_carrier": false,
+ "hf3_txids": [],
+ "integrator_leftover": 0,
+ "major_version": 2,
+ "miniblock_share": 3075,
+ "miniblocks": 10,
+ "miniblocks_final": 1,
+ "minor_version": 2,
+ "proof_field_nonzero": false,
+ "public_burns": 0,
+ "reward_ext": 30750,
+ "reward_ext_eq_formula": true,
+ "reward_rule": "blockchain/transaction_execute.go:126-160: (base + fees) split equally over the miniblocks, leftover to the integrator; base = CalcBlockReward (blockchain/transaction_execute.go:60-62)",
+ "sha256": "3074479ee45c0eaee3a3c7899f6c0615941cefaefb586455db6776366a3e4519",
+ "sha3_256": "4c7d808dc45829d7d5c103d45bc6b9260b8af2cc127248367a018e9bc4eb9ce1",
+ "state_root_post": "not reconstructable: no held state for this topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "state_root_pre": "not reconstructable: no held state for this topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "supply_after": 1671854574600,
+ "supply_before": 1671854543850,
+ "supply_identity_ok": true,
+ "tier": "A",
+ "timestamp_ms": 1785755215510,
+ "tips": [
+  "78ad0d9536bcce0fb8905a7bf38bba4877c1f5680d3955908c24721dfa6f9c65"
+ ],
+ "topo": 7421379,
+ "tx_count": 1,
+ "tx_hashes": [
+  "00000072cad098e71fc2f09b4855a52a0624649655395706966353174e67ba98"
+ ],
+ "txs": [
+  {
+   "fee": 0,
+   "hf3": false,
+   "tx_type": "REGISTRATION",
+   "txid": "00000072cad098e71fc2f09b4855a52a0624649655395706966353174e67ba98"
+  }
+ ]
+}

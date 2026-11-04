@@ -122,8 +122,16 @@ type fate_block struct {
 	regular int // miniblocks that are not the final one
 }
 
+// chain_swap_mu orders the fate resolver's reads of the package-global chain against a test that swaps it
+// (r25 B41: TestR19MethodsOnSimulatorChain wrote `chain = c` while the resolver goroutine, started by an earlier
+// test's record_submission, read it at mining_outcome.go:127: a -race report in 1 of 12 full runs). In derod the
+// chain is set once at start-up (websocket_server.go RPCServer_Start), so the read lock is uncontended.
+var chain_swap_mu sync.RWMutex
+
 func resolve_pending() {
 	defer func() { recover() }() // a missing block on a pruned node must not take the resolver down
+	chain_swap_mu.RLock()
+	defer chain_swap_mu.RUnlock()
 	st := chain.Get_Stable_Height()
 	if st < 0 {
 		return
@@ -181,11 +189,20 @@ func resolve_pending() {
 
 var fate_once sync.Once
 
+// fate_tick_pass is one periodic resolver pass (the ticker body of start_fate_resolver). r25 (B41, merge of
+// rpcrobust + harnesstool verify): resolve_pending itself holds chain_swap_mu.RLock, which the test-side swap
+// (swap_global_chain) takes for writing, so the ticker body and every direct caller share one lock. It is a function
+// of its own so the -race test drives it directly: a tick period set before start_fate_resolver is a no-op once an
+// earlier test in the package has fired fate_once, so a ticker-driven test proved nothing in the full-package run.
+func fate_tick_pass() {
+	resolve_pending()
+}
+
 func start_fate_resolver() {
 	fate_once.Do(func() {
 		go func() {
 			for range time.Tick(18 * time.Second) { // one block time
-				resolve_pending()
+				fate_tick_pass()
 			}
 		}()
 	})

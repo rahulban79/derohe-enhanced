@@ -1,0 +1,52 @@
+{
+ "base_reward": 30750,
+ "base_reward_python_eq": true,
+ "blid": "a9e678661145df9aab2f76c57036d1fcc1c5b8299f5cc8d4814ee0af0d4949db",
+ "class": "RAW (checks i-ii); row DERIVED",
+ "coinbase": {
+  "formula_only": true,
+  "miner_tx_type": "COINBASE",
+  "miner_tx_value": 0
+ },
+ "fees": 121,
+ "full_reward": 30871,
+ "height": 7468304,
+ "hf3_carrier": false,
+ "hf3_txids": [],
+ "integrator_leftover": 1,
+ "major_version": 2,
+ "miniblock_share": 3087,
+ "miniblocks": 10,
+ "miniblocks_final": 1,
+ "minor_version": 2,
+ "proof_field_nonzero": false,
+ "public_burns": 0,
+ "reward_ext": 30750,
+ "reward_ext_eq_formula": true,
+ "reward_rule": "blockchain/transaction_execute.go:126-160: (base + fees) split equally over the miniblocks, leftover to the integrator; base = CalcBlockReward (blockchain/transaction_execute.go:60-62)",
+ "sha256": "9c7cc8bb6bca95aabada47d9670705a5d5632bee1b22462880b29ed5020cabe4",
+ "sha3_256": "a9e678661145df9aab2f76c57036d1fcc1c5b8299f5cc8d4814ee0af0d4949db",
+ "state_root_post": "not reconstructable: no held state for this topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "state_root_pre": "not reconstructable: no held state for this topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "supply_after": 1673297518350,
+ "supply_before": 1673297487600,
+ "supply_identity_ok": true,
+ "tier": "A",
+ "timestamp_ms": 1786625471444,
+ "tips": [
+  "b2b5767e21a9f4c133101febd34a341b773c60bf4ff72379424010ce172622fd"
+ ],
+ "topo": 7468304,
+ "tx_count": 1,
+ "tx_hashes": [
+  "7046a75c65eb402733021fe7234d09e3d027dcaca7e080cabd505ca73465b21d"
+ ],
+ "txs": [
+  {
+   "fee": 121,
+   "hf3": false,
+   "tx_type": "NORMAL",
+   "txid": "7046a75c65eb402733021fe7234d09e3d027dcaca7e080cabd505ca73465b21d"
+  }
+ ]
+}

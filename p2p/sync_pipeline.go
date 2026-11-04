@@ -160,7 +160,7 @@ func fetch_pipelined_peek(ids []crypto.Hash, shape func() (batch, depth int),
 			return fetched, r.err
 		}
 		if len(r.resp.CBlocks) != len(p.ids) {
-			return fetched, fmt.Errorf("peer answered %d blocks for %d requested", len(r.resp.CBlocks), len(p.ids))
+			return fetched, short_answer_error{got: len(r.resp.CBlocks), want: len(p.ids)} // r25: typed (peer_observe.go), same text
 		}
 		// keep the pipe full before spending time on verification
 		inflight = fill(inflight)

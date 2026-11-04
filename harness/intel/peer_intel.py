@@ -41,7 +41,7 @@ METRICS = 'http://127.0.0.1:10102/metrics'
 PRIVATE = Path.home() / 'derohe-persist' / 'peer_intel_private'
 PRIVATE_KEEP = int(os.environ.get('DERO_PRIVATE_KEEP') or 24)                # r24: private raw runs kept
 PRIVATE_MAX_BYTES = int(os.environ.get('DERO_PRIVATE_MAX_BYTES') or 64 * 1024 * 1024)
-DATADIR_FILES = ('peers.json', 'first_relay.json', 'v2_offences.json', 'ban_list.json')
+DATADIR_FILES = ('peers.json', 'first_relay.json', 'v2_offences.json', 'ban_list.json', 'ban_reasons.json')   # r25: + ban sources (CO24-N4)
 RPC_METHODS = ('GetPeerInfo', 'GetSyncInfo', 'GetInfo')
 FRESH_H = 24
 CURRENT_VERSION_RX = re.compile(r'^3\.6\.0-153\.')                     # this tree's release line (config/version.go)
@@ -56,6 +56,9 @@ FIRST_RELAY_CONC = 0.50       # one peer delivering more than half of all first 
 NETGROUP_SHARE = 0.25         # one /16 holding more than a quarter of the active peers: eclipse-risk indicator
 MIN_NETGROUPS = 4             # fewer distinct /16s than this among the active peers: eclipse-risk indicator
 REMOTE_UNSERVED_MULT = 5.0    # a peer with > 5x the median per-peer 'could not serve' count (and >= 20 lines)
+CHAIN_REQ_PER_MIN = 6.0       # r25 (D13): served Chain requests per connected minute above this (one per 10 s) is unusual:
+                              # a peer asks for our chain only when it is behind (one request covers up to 512 blocks)
+REASON_RX = re.compile(r'^[a-z0-9_]{1,40}$')        # r25: an offence reason or ban source is rendered only when it is a plain token
 
 # Every detector names the code line its rule lives on; the line is re-found at run time (no line, no verdict).
 RULES = {
@@ -63,7 +66,7 @@ RULES = {
     'v2_ban': ('p2p/penalty.go', 'const V2_BAN_BASE = 3600'),
     'lagging': ('p2p/metrics_preregister.go', 'const LAGGING_PEER_BLOCKS = 25'),
     'stuck_evict': ('p2p/stuck_peer.go', 'v.c.logger.V(1).Info("evicting stuck peer", "peer_height", v.height, "our_height", our, "hold", until.Sub(now).String())'),
-    'short_answer': ('p2p/sync_pipeline.go', 'return fetched, fmt.Errorf("peer answered %d blocks for %d requested", len(r.resp.CBlocks), len(p.ids))'),
+    'short_answer': ('p2p/sync_pipeline.go', 'return fetched, short_answer_error{got: len(r.resp.CBlocks), want: len(p.ids)} // r25: typed (peer_observe.go), same text'),
     'remote_unserved': ('p2p/object_errors.go', 'logger.V(1).Info(msg+": peer could not serve the object", append([]interface{}{"peer_error", err.Error()}, keysAndValues...)...)'),
     'clock_future': ('blockchain/blockchain.go', 'if bl.Timestamp > (uint64(globals.Time().UTC().UnixMilli() + 50)) { // give 50 millisec passing'),
     'penalty_ban': ('p2p/penalty.go', 'c.logger.Info("peer banned for misbehaviour", "ip", ip, "last_reason", reason, "seconds", secs)'),
@@ -75,7 +78,18 @@ RULES = {
     'peer_info': ('p2p/peer_info.go', 'ClockOffsetMs   float64 `json:"clock_offset_ms"`'),
     'call_timeout': ('p2p/call.go', 'metrics.Set.GetOrCreateCounter(fmt.Sprintf(`p2p_call_timeouts_total{method="%s"}`, method)).Inc()'),
     'fingerprint': ('cmd/derod/rpc/rpc_dero_explorer.go', 'const HF3_V3_HASH = "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5"'),
+    # r25 (peers): the counters and GetPeerInfo fields of CO24-N1..N7 and B47 (p2p/peer_observe.go); a detector reads
+    # them instead of log lines when the capture carries them (evidence 'counter'), else it falls back to the log
+    'ctr_unserved': ('p2p/peer_observe.go', 'c.obs.objects_unserved.Add(1)'),
+    'ctr_short': ('p2p/peer_observe.go', 'c.obs.short_answers.Add(1)'),
+    'ctr_offence': ('p2p/penalty.go', 'm.note(reason, now) // r25 (CO24-N1)'),
+    'ctr_chain': ('p2p/peer_observe.go', 'chain_requests_served.Inc()'),
+    'ctr_inv_clip': ('p2p/inv_budget.go', 'c.obs.inv_clipped.Add(uint64(len(list) - n)) // r25 (CO24-N5): attributable to this connection'),
+    'ctr_ban_source': ('p2p/bans.go', 'ban_meta[address] = ban_info{Source: source, Reason: trim64(reason), At: time.Now().Unix()} // r25'),
+    'ctr_stuck_list': ('p2p/peer_observe.go', 'func StuckHolds(now time.Time) (out []StuckHold) {'),
+    'sync_hold': ('p2p/peer_observe.go', 'c.obs.sync_hold_until.Store(now.Add(d).UnixNano())'),
 }
+R25_PEER_FIELDS = ('penalty_score', 'objects_unserved', 'short_answers', 'chain_requests_served', 'inv_txids_clipped')
 HF3_HEIGHT = 7504640          # config/config.go MAJOR_HF3_HEIGHT (mainnet)
 STABLE_LIMIT = 8              # config/config.go STABLE_LIMIT
 LAGGING = 25                  # p2p/metrics_preregister.go LAGGING_PEER_BLOCKS
@@ -413,6 +427,14 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
                'mb_first': mb_f, 'mb_total': mb_t, 'mb_first_share': round(mb_f / mb_t, 4) if mb_t else None,
                'relay_delay_ms': round(f['delay_sum_us'] / f['delay_n'] / 1000, 1) if f.get('delay_n') else None,
                'builders': len(f.get('builders') or {}), 'pruned': p.get('pruned'), 'has_tag': bool(p.get('tag'))}
+        if all(k in p for k in R25_PEER_FIELDS):            # r25 build: the node's own per-connection counters
+            row.update({'penalty_score': num(p.get('penalty_score'), 2), 'penalty_bans': p.get('penalty_bans'),
+                        'penalty_events': p.get('penalty_events'),
+                        'last_offences': [o.get('reason') for o in (p.get('last_offences') or []) if REASON_RX.match(str(o.get('reason', '')))],
+                        'chain_requests_served': p.get('chain_requests_served'), 'chain_blocks_served': p.get('chain_blocks_served'),
+                        'inv_txids_clipped': p.get('inv_txids_clipped'), 'objects_unserved': p.get('objects_unserved'),
+                        'short_answers': p.get('short_answers'), 'sync_failures': p.get('sync_failures'),
+                        'sync_hold_s': p.get('sync_hold_seconds')})
         row['line'] = C.add({k: v for k, v in row.items()})
         peers.append(row)
     # ── first relays (block builders that reached us first through each peer)
@@ -439,7 +461,9 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
         name = ps.entry(k) if scope == 'cidr' else ps.peer(k)
         ban_rows.append({'src': 'ban_list.json', 'entry': name, 'scope': scope + (('/' + str(k).split('/')[1]) if scope == 'cidr' else ''),
                          'until': until, 'remaining_s': int(until - now_s) if isinstance(until, (int, float)) else None,
-                         'v2_offender': scope == 'ip' and k in v2o})
+                         'v2_offender': scope == 'ip' and k in v2o,
+                         # r25 (CO24-N4): the ban's source from the ban_reasons.json sidecar (None on a pre-r25 node)
+                         'source': next((x for x in [((cap.get('ban_reasons.json') or {}).get(k) or {}).get('source')] if x and REASON_RX.match(str(x))), None)})
         ban_rows[-1]['line'] = C.add({kk: vv for kk, vv in ban_rows[-1].items()})
     pl_rows = []
     for ip, r in pj.items():
@@ -462,6 +486,31 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
         if name == 'p2p_first_relay_total' and 'peer' in lab:
             fr_metric[lab['peer']] = (v, ln)
     M = lambda k, d=None: mt.get(k, d)
+    # r25: counter mode = the capture carries the CO24-N* fields (an r25+ derod); a detector then grades from them
+    ctr = bool(peers) and all(k in (pi.get('peers') or [{}])[0] for k in R25_PEER_FIELDS)
+    # r25 (CO24-N1/N4/N7): the node's own lists, pseudonymised as they are read
+    def scope_name(k):
+        return ps.entry(k) if '/' in str(k) else ps.peer(k)
+    off_rows = []
+    for o in pi.get('offenders') or []:
+        off_rows.append({'src': 'GetPeerInfo.offenders', 'scope': scope_name(o.get('scope')), 'score': num(o.get('score'), 2),
+                         'bans': o.get('bans'), 'events': o.get('events'), 'banned_for_s': o.get('banned_for_seconds'),
+                         'reasons': [x.get('reason') for x in (o.get('last_offences') or []) if REASON_RX.match(str(x.get('reason', '')))]})
+        off_rows[-1]['line'] = C.add(dict(off_rows[-1]))
+    held_rows = []
+    for h in pi.get('stuck_held') or []:
+        held_rows.append({'src': 'GetPeerInfo.stuck_held', 'peer': ps.peer(h.get('address')), 'strikes': h.get('strikes'),
+                          'held_s': h.get('held_seconds'), 'height': h.get('height')})
+        held_rows[-1]['line'] = C.add(dict(held_rows[-1]))
+    reasons = cap.get('ban_reasons.json') or {}
+    bsrc = pi.get('ban_sources') if isinstance(pi.get('ban_sources'), dict) else None
+    if bsrc is None and reasons:
+        bsrc = {}
+        for k in bans:
+            sname = (reasons.get(k) or {}).get('source') or 'unattributed'
+            bsrc[sname] = bsrc.get(sname, 0) + 1
+    bsrc_line = C.add({'src': 'ban_sources', 'by_source': {k: v for k, v in (bsrc or {}).items() if REASON_RX.match(str(k))},
+                       'ban_count': pi.get('ban_count', len(bans)) if bsrc is not None else None}) if bsrc is not None else None
     # ── log
     ev = logscan.get('events') or {}
     cur = logscan.get('current_start')
@@ -516,17 +565,40 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
     det('D2', 'Lagging or over-advertising peers (live)', 'lagging', f_lag, f'test: |our height − peer height| > {LAGGING} (LAGGING_PEER_BLOCKS)')
 
     def f_stuck(d):
+        for h in held_rows:                                      # r25 (CO24-N7): the node lists its holds itself
+            d['evidence'] = 'counter'
+            d['findings'].append({'peer': h['peer'], 'grade': 'OBSERVED', 'source': 'GetPeerInfo.stuck_held',
+                                  'what': f"held after a stuck eviction: strike {h['strikes']}, {h['held_s']} s left, at height {h['height']}", 'cap_line': h['line']})
         for peer, e in (per_kind.get('stuck_evict') or {}).items():
             d['findings'].append({'peer': peer, 'grade': 'OBSERVED', 'what': f"evicted as stuck {e['n']}x in the log since {str(e['first_T'])[:10]} ({e['n_current']} in the current run; height not advancing while > {LAGGING} behind)", 'logx_lines': e['logx_lines']})
     det('D3', 'Stuck peers evicted (log)', 'stuck_evict', f_stuck, 'rule: a peer > LAGGING_PEER_BLOCKS behind whose height does not move for STUCK_PEER_WINDOW (10 min) is evicted and held')
 
     def f_short(d):
+        if ctr:                                                  # r25 (CO24-N6): the counter, per connection
+            d['evidence'] = 'counter'
+            for p in peers:
+                if p.get('short_answers'):
+                    d['findings'].append({'peer': p['peer'], 'grade': 'OBSERVED', 'source': 'GetPeerInfo.short_answers',
+                                          'what': f"answered {p['short_answers']} sync fetch(es) with fewer blocks than requested on this connection (short_answers)", 'cap_line': p['line']})
         for peer, e in (per_kind.get('short_answer') or {}).items():
-            d['findings'].append({'peer': peer, 'grade': 'OBSERVED', 'what': f"answered fewer blocks than requested {e['n']}x in the log since {str(e['first_T'])[:10]} ({e['n_current']} in the current run): announced a chain it then did not serve", 'logx_lines': e['logx_lines']})
+            # r25: with the counter, a log line from before the current run is history, not this run's observation
+            g = 'OBSERVED' if not ctr or e['n_current'] else 'NORMAL'
+            d['findings'].append({'peer': peer, 'grade': g, 'source': 'log' if g == 'OBSERVED' else 'log-history', 'what': f"answered fewer blocks than requested {e['n']}x in the log since {str(e['first_T'])[:10]} ({e['n_current']} in the current run): announced a chain it then did not serve", 'logx_lines': e['logx_lines']})
     det('D4', "Peers advertising blocks they cannot serve ('answered 0 blocks for N requested')", 'short_answer', f_short, 'rule: a sync fetch whose reply carries fewer blocks than requested fails with this error')
 
     def f_unserved(d):
         u = per_kind.get('remote_unserved') or {}
+        if ctr:                                                  # r25 (CO24-N6): the counter, per connection
+            d['evidence'] = 'counter'
+            cu = {p['peer']: p for p in peers if p.get('objects_unserved')}
+            cmed = statistics.median([p['objects_unserved'] for p in cu.values()]) if len(cu) > 1 else None
+            for peer, p in cu.items():
+                n = p['objects_unserved']
+                g = 'ANOMALY' if n >= 20 and (cmed is None or n > REMOTE_UNSERVED_MULT * max(cmed, 1)) else 'NORMAL'
+                d['findings'].append({'peer': peer, 'grade': g, 'source': 'GetPeerInfo.objects_unserved',
+                                      'what': f"{n} GetObject call(s) answered with its own error on this connection ({len(cu)} peer(s) with any, median {'n/a' if cmed is None else f'{cmed:g}'}; ANOMALY if >= 20 and > {REMOTE_UNSERVED_MULT:g}x the median, or the only one)", 'cap_line': p['line']})
+            # the log stays the history; its pre-run lines are not graded again
+            u = {k: e for k, e in u.items() if e['n_current']}
         if not u:
             return
         med = statistics.median([e['n'] for e in u.values()]) if len(u) > 1 else None
@@ -545,10 +617,34 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
             if isinstance(o, (int, float)) and abs(o) - rtt / 2 > CLOCK_FUTURE_MS:
                 side = ('its clock is ahead of ours: blocks it stamps can be rejected here by the 50 ms future rule' if o > 0 else
                         'its clock is behind ours: blocks we stamp can be more than 50 ms in its future')
-                d['findings'].append({'peer': p['peer'], 'grade': 'ANOMALY', 'what': f"clock offset {o:+.1f} ms at {rtt:.1f} ms RTT (|offset| - RTT/2 = {abs(o) - rtt / 2:.1f} ms > {CLOCK_FUTURE_MS} ms; {side})", 'cap_line': p['line']})
-    det('D6', 'Clock skew of peers', 'clock_future', f_clock, f'test: |clock_offset_ms| - latency_ms/2 > {CLOCK_FUTURE_MS} (the consensus future-timestamp allowance, beyond the +/- RTT/2 measurement uncertainty of the offset)')
+                # r25 (B72): one host has one clock. If the SAME node id reads within the bound through another address
+                # of this capture, the two paths disagree: path asymmetry on this one, not a clock fault -> NORMAL
+                others = [q for q in peers if q.get('node') and q['node'] == p.get('node') and q['peer'] != p['peer']
+                          and isinstance(q.get('clock_offset_ms'), (int, float))]
+                calm = [q for q in others if abs(q['clock_offset_ms']) - (q.get('latency_ms') or 0.0) / 2 <= CLOCK_FUTURE_MS]
+                if calm:
+                    q = calm[0]
+                    d['findings'].append({'peer': p['peer'], 'grade': 'NORMAL', 'what': f"clock offset {o:+.1f} ms at {rtt:.1f} ms RTT on this path, but the same node ({p['node']}) reads {q['clock_offset_ms']:+.1f} ms at {q.get('latency_ms') or 0.0:.1f} ms RTT through {q['peer']}: a path-asymmetry candidate, not a clock fault (B72 cross-check)", 'cap_line': p['line'], 'cross_line': q['line']})
+                    continue
+                d['findings'].append({'peer': p['peer'], 'grade': 'ANOMALY', 'what': f"clock offset {o:+.1f} ms at {rtt:.1f} ms RTT (|offset| - RTT/2 = {abs(o) - rtt / 2:.1f} ms > {CLOCK_FUTURE_MS} ms; {side})" + (f"; the same node reads beyond the bound on all {len(others) + 1} of its addresses" if others else ''), 'cap_line': p['line']})
+    det('D6', 'Clock skew of peers', 'clock_future', f_clock, f'test: |clock_offset_ms| - latency_ms/2 > {CLOCK_FUTURE_MS} (the consensus future-timestamp allowance, beyond the +/- RTT/2 measurement uncertainty of the offset), on every address of the same node id (r25, B72)')
 
     def f_pen(d):
+        if ctr:                                                  # r25 (CO24-N1/N2/N4): the node's offence records
+            d['evidence'] = 'counter'
+            for p in peers:
+                if p.get('penalty_events'):
+                    d['findings'].append({'peer': p['peer'], 'grade': 'OBSERVED', 'source': 'GetPeerInfo.penalty_*',
+                                          'what': f"{p['penalty_events']} offence(s) scored, score {p['penalty_score']} of 100, {p['penalty_bans']} ban(s); last: {', '.join(p['last_offences']) or 'n/a'}", 'cap_line': p['line']})
+            for o in off_rows:
+                if o['scope'] not in {f['peer'] for f in d['findings']}:
+                    d['findings'].append({'peer': o['scope'], 'grade': 'OBSERVED', 'source': 'GetPeerInfo.offenders',
+                                          'what': f"{o['events']} offence(s), score {o['score']}, {o['bans']} ban(s), {o['banned_for_s']} s of ban left; last: {', '.join(o['reasons']) or 'n/a'}", 'cap_line': o['line']})
+            for key in sorted(k for k in mt if k.startswith(('p2p_penalty_events_total{', 'p2p_penalty_bans_by_reason_total{'))):
+                if mt[key]:
+                    d['findings'].append({'peer': '(node-wide)', 'grade': 'OBSERVED', 'source': 'metrics', 'what': f'{key} = {mt[key]:g}', 'cap_line': mt_line[key]})
+            if bsrc_line:
+                d['ban_sources_line'] = bsrc_line
         for peer, e in (per_kind.get('penalty_ban') or {}).items():
             d['findings'].append({'peer': peer, 'grade': 'OBSERVED', 'what': f"score-banned {e['n']}x for misbehaviour ({e['n_current']} in the current run)", 'logx_lines': e['logx_lines']})
         for key in ('p2p_penalty_bans_total', 'p2p_penalty_aggregate_bans_total', 'p2p_penalty_evictions_total'):
@@ -592,6 +688,12 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
     det('D9', 'First-relay concentration (topology dependence)', 'first_relay', f_conc, f'test: one peer > {FIRST_RELAY_CONC:.0%} of p2p_first_relay_total')
 
     def f_inv(d):
+        if ctr:                                                  # r25 (CO24-N5): which connection was clipped
+            d['evidence'] = 'counter'
+            for p in peers:
+                if p.get('inv_txids_clipped'):
+                    d['findings'].append({'peer': p['peer'], 'grade': 'OBSERVED', 'source': 'GetPeerInfo.inv_txids_clipped',
+                                          'what': f"{p['inv_txids_clipped']} announced txid(s) beyond its INV budget on this connection", 'cap_line': p['line']})
         for key in ('p2p_inv_txids_over_budget_total', 'p2p_unrequested_txs_dropped_total', 'p2p_frame_budget_refusals_total'):
             if key in mt:
                 d['findings'].append({'peer': '(node-wide)', 'grade': 'OBSERVED' if mt[key] > 0 else 'NORMAL', 'what': f'{key} = {mt[key]:g} (must stay 0 on honest traffic)', 'cap_line': mt_line[key]})
@@ -609,11 +711,23 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
     det('D12', 'Chunks building on tips we do not have', 'chunk_tip', f_chunk, 'rule: such a chunk is dropped (not penalised); counted as information')
 
     def f_chain(d):
+        if ctr:                                                  # r25 (CO24-N3): Chain requests are counted per connection
+            d['evidence'] = 'counter'
+            for p in peers:
+                n, mins = p.get('chain_requests_served') or 0, max((p.get('connected_s') or 0) / 60.0, 1.0)
+                if n:
+                    g = 'ANOMALY' if n / mins > CHAIN_REQ_PER_MIN else 'NORMAL'
+                    d['findings'].append({'peer': p['peer'], 'grade': g, 'source': 'GetPeerInfo.chain_requests_served',
+                                          'what': f"{n} Chain request(s) served ({p.get('chain_blocks_served')} block ids) in {mins:.0f} min connected ({n / mins:.2f}/min; ANOMALY if > {CHAIN_REQ_PER_MIN:g}/min)", 'cap_line': p['line']})
+            key = 'p2p_chain_requests_served_total'
+            if key in mt:
+                d['findings'].append({'peer': '(node-wide)', 'grade': 'NORMAL', 'source': 'metrics', 'what': f"{key} = {mt[key]:g}, blocks {M('p2p_chain_request_blocks_total', 0):g}, refused {M('p2p_chain_requests_refused_total', 0):g}", 'cap_line': mt_line[key]})
+            return
         inc = pi.get('incoming') or 0
         d['findings'].append({'peer': '(node-wide)', 'grade': 'pending' if inc else 'NORMAL',
                               'what': (f'{inc} inbound peer(s) could send Chain requests, and no counter of served Chain requests exists (CO24-N3)' if inc else
                                        'no inbound connection: no peer can send us Chain requests (GetSyncInfo inbound unreachable)'), 'cap_line': sync_l})
-    det('D13', 'Chain-request amplification (inbound)', 'chain_request', f_chain, 'test: needs inbound peers and a served-request counter')
+    det('D13', 'Chain-request amplification (inbound)', 'chain_request', f_chain, f'test: served Chain requests per connected minute > {CHAIN_REQ_PER_MIN:g} on one connection (r25 counter, CO24-N3); before r25 it needed inbound peers and a counter')
 
     def f_ver(d):
         for p in peers:
@@ -621,6 +735,17 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
                 d['findings'].append({'peer': p['peer'], 'grade': 'ANOMALY' if p['version_class'] == 'custom' else 'NORMAL',
                                       'what': f"version class {p['version_class']} ({p['version']})", 'cap_line': p['line']})
     det('D14', 'Version mix (outdated / custom builds)', 'fingerprint', f_ver, 'test: daemon_version is a plain release string; current = 3.6.0-153 (this tree); outdated is NORMAL (still on the v3 chain)')
+    def f_hold(d):
+        if not ctr:
+            d['grade'] = 'pending'
+            d['why'] = 'the capture carries no sync_failures field (a pre-r25 derod)'
+            return
+        d['evidence'] = 'counter'
+        for p in peers:
+            if p.get('sync_failures') or p.get('sync_hold_s'):
+                d['findings'].append({'peer': p['peer'], 'grade': 'OBSERVED', 'source': 'GetPeerInfo.sync_failures',
+                                      'what': f"{p['sync_failures']} consecutive failed sync(s) that were its own (error or short answer); sync with it held {p['sync_hold_s']} s more", 'cap_line': p['line']})
+    det('D15', 'Sync held from peers that answer with nothing (B47)', 'sync_hold', f_hold, 'rule: a sync fetch the peer fails (its own error or fewer blocks than asked) holds sync with it 30 s, doubling to 10 min; a sync that adds blocks forgives (r25)')
     # ── churn and series
     act = sorted(p['peer'] for p in peers)
     churn = None
@@ -643,9 +768,12 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
            'builders_seen': len(builders), 'observed': sum(1 for d in D if d['grade'] == 'OBSERVED'),
            'anomaly': sum(1 for d in D if d['grade'] == 'ANOMALY'), 'pending': sum(1 for d in D if d['grade'] == 'pending'),
            'handshake_failures': M('p2p_handshake_failures_total'), 'stuck_evictions': M('p2p_stuck_peer_evictions_total'),
-           'chain_fingerprint': si.get('chain_fingerprint'), 'sync_status': si.get('status')}
+           'chain_fingerprint': si.get('chain_fingerprint'), 'sync_status': si.get('status'),
+           'evidence_mode': 'counter' if ctr else 'log',                                  # r25: CO24-N* counters read
+           'counter_detectors': sorted(d['id'] for d in D if d.get('evidence') == 'counter'),
+           'ban_sources': (bsrc or None), 'offenders': len(off_rows), 'stuck_held': len(held_rows)}
     kpi_line = C.add({'src': 'kpis', **kpi})
-    census = {'bans': ban_rows, 'v2_offences': v2_rows, 'peer_list': pl_rows, 'first_relay': fr_rows,
+    census = {'bans': ban_rows, 'offenders': off_rows, 'stuck_held': held_rows, 'v2_offences': v2_rows, 'peer_list': pl_rows, 'first_relay': fr_rows,
               'log_kinds': {k: {'peers': len(v), 'lines': sum(e['n'] for e in v.values())} for k, v in sorted(per_kind.items())},
               'handshake_kinds': {k.split('kind=')[1].rstrip('}'): v for k, v in mt.items() if k.startswith('p2p_handshake_failures_by_kind_total{')},
               'call_timeouts': {k.split('method=')[1].rstrip('}'): v for k, v in mt.items() if k.startswith('p2p_call_timeouts_total{')}}
@@ -695,16 +823,40 @@ GAPS = (
 )
 
 
+# r25 (peers): the line that closes each gap. When it is in the tree the gap is 'implemented (r25)' and its anchor moves
+# to that line, so area_intel stops proposing it; it is CONFIRMED only by a live read of the restarted build (§0.7.3).
+IMPLEMENTED = {
+    'CO24-N1': ('p2p/penalty.go', 'm.note(reason, now) // r25 (CO24-N1)'),
+    'CO24-N2': ('p2p/peer_observe.go', 'metrics.Set.GetOrCreateCounter(fmt.Sprintf(`p2p_penalty_events_total{reason="%s"}`, reason))'),
+    'CO24-N3': ('p2p/peer_observe.go', 'chain_requests_served.Inc()'),
+    'CO24-N4': ('p2p/bans.go', 'ban_meta[address] = ban_info{Source: source, Reason: trim64(reason), At: time.Now().Unix()} // r25'),
+    'CO24-N5': ('p2p/inv_budget.go', 'c.obs.inv_clipped.Add(uint64(len(list) - n)) // r25 (CO24-N5): attributable to this connection'),
+    'CO24-N6': ('p2p/peer_observe.go', 'c.obs.objects_unserved.Add(1)'),
+    'CO24-N7': ('p2p/peer_observe.go', 'func StuckHolds(now time.Time) (out []StuckHold) {'),
+}
+
+
+def _line_of(root, f, q):
+    try:
+        lines = (Path(root) / f).read_text(errors='replace').splitlines()
+    except OSError:
+        return None
+    return next((i + 1 for i, l in enumerate(lines) if q in l), None)
+
+
 def proposals(rep, ra, root):
     out = []
     for pid, title, f, q, gap, fix in GAPS:
-        try:
-            lines = (Path(root) / f).read_text(errors='replace').splitlines()
-            ln = next((i + 1 for i, l in enumerate(lines) if q in l), None)
-        except OSError:
-            ln = None
-        out.append({'id': pid, 'title': title, 'anchor': {'file': f, 'quote': q, 'line': ln}, 'gap': gap, 'proposal': fix,
-                    'status': 'open' if ln else 'pending (anchor not in this tree)', 'target': 'R25', 'area': 'peers'})
+        ln = _line_of(root, f, q)
+        g = {'id': pid, 'title': title, 'anchor': {'file': f, 'quote': q, 'line': ln}, 'gap': gap, 'proposal': fix,
+             'status': 'open' if ln else 'pending (anchor not in this tree)', 'target': 'R25', 'area': 'peers'}
+        imp = IMPLEMENTED.get(pid)
+        il = _line_of(root, *imp) if imp else None
+        if il:
+            g['status'] = 'implemented (r25)'
+            g['gap_anchor'] = g['anchor']
+            g['anchor'] = {'file': imp[0], 'quote': imp[1], 'line': il}
+        out.append(g)
     return out
 
 

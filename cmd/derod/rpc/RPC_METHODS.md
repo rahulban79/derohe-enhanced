@@ -11,7 +11,7 @@ original methods live in `rpc/daemon_rpc.go` (consensus-listed, frozen); types f
 | Method | Alias | Params | Notes |
 |---|---|---|---|
 | DERO.Echo / DERO.Ping | | `[]string` / - | liveness |
-| DERO.GetInfo | getinfo, get_info | - | `averageblocktime50` is timestamp-derived; use GetSyncInfo to know if the node is at the tip |
+| DERO.GetInfo | getinfo, get_info | - | `averageblocktime50` is timestamp-derived; use GetSyncInfo to know if the node is at the tip; r25: `alt_blocks_count` is assigned (settled alt blocks since start, GetConsensusStats) |
 | DERO.GetBlock | getblock | `{hash}` or `{height}` (topoheight) | header + blob + json |
 | DERO.GetBlockHeaderByTopoHeight | getblockheaderbytopoheight | `{topoheight}` | |
 | DERO.GetBlockHeaderByHash | getblockheaderbyhash | `{hash}` | |
@@ -35,8 +35,9 @@ original methods live in `rpc/daemon_rpc.go` (consensus-listed, frozen); types f
 | DERO.GetMiningOutcome | r13 | - | bounded ring | paid / orphaned / pending miniblocks this node submitted |
 | DERO.GetSupplyAudit | r18 | - | one walker (waiters honour their ctx); answer cached per chain tip (topoheight + block id), so it always audits the tip read when the call started (r19) | plaintext SC-held DERO vs formula supply; r19 fields `cached`, `compute_ms` |
 | DERO.GetEmissionAudit | r23 | - | O(1): a copy of the background auditor's state; the audit itself runs once per block (glue/emission, ~5 ms CPU/block measured offline); `DERO_EMISSION_AUDIT=0` disables it | per-block verdicts (`ok`, `ok_sc`, `sc_unexplained`, `skipped`, `error`, `ALERT`), the emission segment (`segment_from/to`, `verified_heights`, `observed_emission` vs `formula_emission`, `emission_consistent`), fees redistributed, SC deposits/payouts, payees verified, cpu, last alerts, notable plaintext flows (>= 100 ppm of formula supply), recent reports. Proves only that no plaintext value moved outside the published (C, D) deltas, the emission formula, registrations and SC accounting; value inside encrypted amounts is invisible |
-| DERO.GetBlockHeadersRange | r19 | `{start_topoheight, end_topoheight}` inclusive | <= 100 headers; end clipped to top; 2 range calls node-wide | `headers[]` (same objects as GetBlockHeaderByTopoHeight) |
-| DERO.GetMiniBlocks | r19 | `{hash}` or `{topoheight}` | one block (<= 10 miniblocks) | per miniblock: hash, final, highdiff, past, `timestamp16`, `time_ms_estimate`, `ms_before_block`, keyhash, miner address (resolved against the block's own topoheight state), integrator flag |
+| DERO.GetBlockHeadersRange | r19 | `{start_topoheight, end_topoheight}` inclusive | <= 100 headers; end clipped to top; 2 range calls node-wide | `headers[]` (same objects as GetBlockHeaderByTopoHeight); r25: plus `fees` (sum of the txs' fee fields, null if a tx is unreadable), `first_seen_ms` (this node's clock at the first chunk/offer; 0 = not seen live) and `first_seen_local`; `miners[]` keeps an unresolved key "unknown" in its own slot (CO24-C7) |
+| DERO.GetMiniBlocks | r19 | `{hash}` or `{topoheight}` | one block (<= 10 miniblocks) | per miniblock: hash, final, highdiff, past, `timestamp16`, `time_ms_estimate`, `ms_before_block`, keyhash, miner address (resolved against the block's own topoheight state), integrator flag; r25: `first_seen_ms` (first accepted notification; finals are never propagated alone, so 0 unless mined here) |
+| DERO.GetConsensusStats | r25 | `{block_hashes, miniblock_hashes}` (optional, hex) | <= 100 hashes of each kind; foreign-socket cost 4 | `counters` (miniblock refusals and block rejections by reason since start, duplicate offers), `alt_blocks` (settled alt blocks: count = GetInfo `alt_blocks_count`, unsettled, tracked, newest 256 listed with height and first-seen), `reorg` (the reorg monitor incl. `lifetime`, persisted in `<datadir>/reorg_monitor.json` across restarts), `first_seen[]` per requested hash. No peer is named; the log lines name the sender by its peer_id. Read-only, not consensus-visible |
 | DERO.GetDifficultyHistory | r19 | `{count, end_topoheight}` (0 = top; default 100) | <= 1000 points; 2 range calls node-wide | ascending points {topoheight, height, hash, difficulty, timestamp_ms} + mean difficulty, mean block time, hashrate estimate (= mean difficulty, as GetInfo) |
 | DERO.GetTxPoolDetail | r19 | `{limit}` (default 100) | <= 1000 entries | per tx: pool, type, size, fee, fee_per_kb, payloads, ring size, height built, sc, burn; mempool by fee/KB first |
 | DERO.GetPeerInfo | r19 | - | <= 256 peers, ACTIVE connections only; served on a loopback `--rpc-bind` only unless `ENABLE_PUBLIC_PEER_INFO=1` (it lists peer IPs) | address, direction, heights, top version, latency, clock offset, connected time, bytes, first-relay score, miniblock first/total, version, tag, pruned; `v2_chain_peers_seen_7d` |
@@ -114,6 +115,24 @@ notification already sent for the same miniblock count and height (`getwork_jobs
 gets its first job at once, only that connection (`getwork_first_jobs_total`). A miner that stops reading is closed by
 nbio once its kernel and 32 KiB write buffers are full and a 100 ms write deadline passes (measured: after 1,801 jobs of
 ~330 bytes, about 10 minutes at the live 3.1 jobs/s); other miners are not delayed.
+
+Typed errors and additive fields (r25, r25_rpcrobust.go; compat: every change is either an error where the call
+used to panic or answer wrongly, or an additive JSON field that old clients ignore):
+
+| Call | Before r25 | From r25 |
+|---|---|---|
+| GetEncryptedBalance / GetSC at a topoheight below `prunedheight` (GetInfo) | GetEncryptedBalance: -32098 `internal error: file does not exist` + an ERROR line with a stack; GetSC: status OK with the state of the prune point under the requested topoheight | `-32031 state not available: topoheight N is below pruned topoheight P`, refused before any read; one rate-limited `WARNING:` line per method per minute (no stack); `rpc_state_unavailable_total{method}`. Note: GetEncryptedBalance takes `topoheight` 0 (the JSON default when the field is omitted) as genesis: send `-1` for the tip |
+| GetEncryptedBalance with an unparsable address | -32098 `internal error: ...` + ERROR + stack | `-32602 invalid address: ...`, `rpc_input_refused_total{method,kind="address"}` |
+| GetEncryptedBalance / GetRandomAddress with an SCID whose first byte is 0x3a (`:`) | -32098 `internal error: Bucket cannot start with ':'` + ERROR + stack | `-32602 invalid scid: ...`, `kind="scid"` |
+| NameToAddress whose stored value is not a key | nil dereference inside the recover (-32098, ERROR + stack) | `-32602 invalid name_value: ...` |
+| GetBlockHeaderByHash for an unknown or pruned hash | no error, status `""`, an all-zero header (the handler shadowed its named `err`) | `-32032 block not found: <hash>`, `rpc_block_not_found_total{method}` |
+| GetTransaction for a txid the node does not hold | status OK, `as_hex` `""`, `block_height` 0 (unchanged) | the same, plus `txs_status` (`in_chain` / `in_pool` / `not_found`, index-aligned with `txs`); `rpc_tx_not_found_total` |
+| GetInfo | `total_supply` = CalcSupply(height) / 100000, unlabelled | unchanged value, plus `total_supply_basis`: the emission formula, not a count of coins (disclosure FX-N9) |
+
+The other `panic(err)` sites in these handlers are store or start-up invariants and keep the loud ERROR + stack
+(audit: r25 rpcrobust evidence `b86_panic_audit.txt`). The wallet RPC server's `/json_rpc` (walletapi/rpcserver,
+r25 B40) now accepts `application/json; charset=utf-8` and answers a wrong method or media type with a JSON-RPC
+-32600 body (405 / 415), as derod's has since r24.
 
 Example:
 

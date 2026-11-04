@@ -32,6 +32,19 @@ type PeerInfo struct {
 	DaemonVersion   string  `json:"daemon_version"`
 	Tag             string  `json:"tag"`
 	Pruned          int64   `json:"pruned"`
+
+	// r25 (peers, CO24-N1/N3/N5/N6, B47; peer_observe.go): what the observatory read from log lines before
+	PenaltyScore        float64       `json:"penalty_score"`  // decayed misbehaviour score of its scope (ban at 100)
+	PenaltyBans         int           `json:"penalty_bans"`   // score bans of its scope so far
+	PenaltyEvents       uint32        `json:"penalty_events"` // offences scored against its scope
+	LastOffences        []OffenceMark `json:"last_offences"`  // newest first, at most PENALTY_LAST_REASONS
+	ChainRequestsServed uint64        `json:"chain_requests_served"`
+	ChainBlocksServed   uint64        `json:"chain_blocks_served"`
+	InvTxidsClipped     uint64        `json:"inv_txids_clipped"`
+	ObjectsUnserved     uint64        `json:"objects_unserved"` // GetObject calls it answered with its own error
+	ShortAnswers        uint64        `json:"short_answers"`    // sync replies with fewer blocks than asked
+	SyncFailures        int32         `json:"sync_failures"`    // consecutive failed syncs (B47)
+	SyncHoldSeconds     int64         `json:"sync_hold_seconds"`
 }
 
 // trim64 bounds peer-supplied strings (the handshake already caps them at 128 bytes).
@@ -46,6 +59,11 @@ func trim64(s string) string {
 func peer_info_of(c *Connection, now time.Time) PeerInfo {
 	first, dup := c.mbl_first.Load(), c.mbl_dup.Load()
 	ip := Address(c)
+	score, bans, events, last := penalty_view(penalty_scope(ip), now) // r25 (CO24-N1)
+	hold := int64(0)
+	if u := c.obs.sync_hold_until.Load(); u > now.UnixNano() && !c.SyncNode {
+		hold = (u - now.UnixNano() + int64(time.Second) - 1) / int64(time.Second)
+	}
 	return PeerInfo{
 		Address:         ip,
 		Incoming:        c.Incoming,
@@ -65,6 +83,18 @@ func peer_info_of(c *Connection, now time.Time) PeerInfo {
 		DaemonVersion:   trim64(c.DaemonVersion),
 		Tag:             trim64(c.Tag),
 		Pruned:          c.Pruned,
+
+		PenaltyScore:        score,
+		PenaltyBans:         bans,
+		PenaltyEvents:       events,
+		LastOffences:        last,
+		ChainRequestsServed: c.obs.chain_served.Load(),
+		ChainBlocksServed:   c.obs.chain_blocks.Load(),
+		InvTxidsClipped:     c.obs.inv_clipped.Load(),
+		ObjectsUnserved:     c.obs.objects_unserved.Load(),
+		ShortAnswers:        c.obs.short_answers.Load(),
+		SyncFailures:        c.obs.sync_strikes.Load(),
+		SyncHoldSeconds:     hold,
 	}
 }
 

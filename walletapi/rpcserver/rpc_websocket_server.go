@@ -175,13 +175,7 @@ func (rpcserver *RPCServer) Run(wallet *walletapi.Wallet_Disk) {
 	// Bridge HTTP to the JSON-RPC server.
 	var bridge = jhttp.NewBridge(WalletHandler, &jhttp.BridgeOptions{Server: options})
 
-	translate_http_to_jsonrpc_and_vice_versa := func(w http.ResponseWriter, r *http.Request) {
-
-		if hasbasicauthfailed(rpcserver, w, r) {
-			return
-		}
-		bridge.ServeHTTP(w, r)
-	}
+	translate_http_to_jsonrpc_and_vice_versa := wallet_json_rpc_handler(rpcserver, bridge) // r25 B40 (r25_content_type.go)
 
 	ws_handler := func(w http.ResponseWriter, r *http.Request) {
 		var ws_server *jrpc2.Server

@@ -110,6 +110,17 @@ def main():
                      'test': d.get('test'), 'rule': f"{d['rule']['file']}:{d['rule'].get('line')}" if d.get('rule') else None,
                      'findings': fs, 'diversity': d.get('diversity'), 'why': d.get('why'),
                      'claim': f"{d['id']} {d['title']}: {d['grade']} ({len(fs)} finding(s)).", 'evidence': ev})
+    # r25 (pipeline run 5, G16): CO24-N4 moved the ban body into Ban_Address_Reason; Ban_Address stays as the pre-r25
+    # entry point (the startup self-test ban, the inbound-guard tests) and books its bans 'unattributed'. Said here so
+    # the page keeps covering it (riskmap ratchet: 'lost p2p/bans.go::Ban_Address')
+    la = M.anchor('p2p/bans.go', 'return Ban_Address_Reason(address, ban_seconds, BAN_SOURCE_UNATTRIBUTED, "")')
+    if la:
+        rows.append({**base, 'class': 'SRC', 'id': 'peers-ban-legacy-entry', 'kind': 'code', 'title': 'Ban_Address: the pre-r25 ban entry point',
+                     'claim': 'Ban_Address keeps its signature and places the ban exactly as before through Ban_Address_Reason, '
+                              'with source "unattributed" and no reason (CO24-N4); the console ban command and the score bans '
+                              'name their source.', 'evidence': [la]})
+    else:
+        unv.append({'title': 'Ban_Address legacy entry', 'why': 'the delegation line is not in p2p/bans.go'})
     # census: bans, v2 offences, first relays, log kinds, builders
     c = rep.get('census') or {}
     for b in c.get('bans') or []:

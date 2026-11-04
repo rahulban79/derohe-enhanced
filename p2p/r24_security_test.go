@@ -17,14 +17,15 @@ import (
 
 func reset_proven(t testing.TB) {
 	proven_mu.Lock()
-	saved_m, saved_l := proven_map, proven_lane
+	saved_m, saved_l, saved_pg := proven_map, proven_lane, proven_groups // r25: the netgroup counts too
 	proven_map, proven_lane = map[string]*proven_rec{}, rate.NewLimiter(PROVEN_LANE_RATE, PROVEN_LANE_BURST)
+	proven_groups = map[string]*int{}
 	proven_mu.Unlock()
 	saved_g := inbound_group_limiters
 	inbound_group_limiters = &group_limiters{m: map[string]*rate.Limiter{}}
 	t.Cleanup(func() {
 		proven_mu.Lock()
-		proven_map, proven_lane = saved_m, saved_l
+		proven_map, proven_lane, proven_groups = saved_m, saved_l, saved_pg
 		proven_mu.Unlock()
 		inbound_group_limiters = saved_g
 	})
@@ -122,15 +123,15 @@ func TestR24ProvenLaneSurvivesSpoofDrain(t *testing.T) {
 func TestR24ProvenLaneBounded(t *testing.T) {
 	reset_proven(t)
 	now := time.Unix(1700000000, 0)
-	for i := 0; i < 200; i++ {
-		note_proven(fmt.Sprintf("198.18.%d.%d", i/100, i%100), now)
+	for i := 0; i < 200; i++ { // r25 (B48): 50 per /16, under the netgroup quota, so every proof is kept
+		note_proven(fmt.Sprintf("198.%d.0.%d", 18+i/50, i%50), now)
 	}
 	admitted := 0
 	for s := 0; s < 10; s++ { // 10 s of forging every proven address 10 times a second
 		for r := 0; r < 10; r++ {
 			at := now.Add(time.Duration(s)*time.Second + time.Duration(r)*100*time.Millisecond)
 			for i := 0; i < 200; i++ {
-				if proven_lane_allow(fmt.Sprintf("198.18.%d.%d", i/100, i%100), at) {
+				if proven_lane_allow(fmt.Sprintf("198.%d.0.%d", 18+i/50, i%50), at) {
 					admitted++
 				}
 			}

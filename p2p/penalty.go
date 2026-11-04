@@ -57,6 +57,54 @@ type misbehaviour struct {
 	at           time.Time
 	offences     int
 	banned_until time.Time // r23c: end of the latest score ban (prune keeps a record while its ban runs)
+	// r25 (peers, CO24-N1): offences scored on this record (saturating), and the newest PENALTY_LAST_REASONS of them
+	// in a ring whose next slot is head (the newest is last[(head+PENALTY_LAST_REASONS-1)%PENALTY_LAST_REASONS])
+	events uint32
+	head   uint8
+	kept   uint8
+	last   [PENALTY_LAST_REASONS]OffenceMark
+}
+
+// r25 (peers, CO24-N1 / §7 B63): the latest offences of a scope, for DERO.GetPeerInfo. Before r25 an offence below
+// the ban score left no trace outside the decaying number: GetPeerInfo had no score field and only the ban itself was
+// logged ("peer banned for misbehaviour"), so which rule a peer was breaking was invisible until it was banned. A
+// fixed ring of PENALTY_LAST_REASONS marks per record (24 B each): at the PENALTY_MAX_ENTRIES bound that is at most
+// 65,536 x 96 B = 6.3 MB (ESTIMATE, upper bound; live r24 /metrics: 0 offences since the 2026-11-03 restart).
+const PENALTY_LAST_REASONS = 4
+
+type OffenceMark struct {
+	Reason string `json:"reason"`
+	At     int64  `json:"at"` // unix seconds
+}
+
+// note records one offence: one slot of the ring is written, nothing is shifted.
+func (m *misbehaviour) note(reason string, now time.Time) {
+	m.last[m.head] = OffenceMark{Reason: reason, At: now.Unix()}
+	m.head = (m.head + 1) % PENALTY_LAST_REASONS
+	if m.kept < PENALTY_LAST_REASONS {
+		m.kept++
+	}
+	if m.events < math.MaxUint32 {
+		m.events++
+	}
+}
+
+// recent returns the ring newest first (at most PENALTY_LAST_REASONS marks).
+func (m *misbehaviour) recent() []OffenceMark {
+	out := make([]OffenceMark, 0, m.kept)
+	for i := 1; i <= int(m.kept); i++ {
+		out = append(out, m.last[(int(m.head)+PENALTY_LAST_REASONS-i)%PENALTY_LAST_REASONS])
+	}
+	return out
+}
+
+// PENALTY_LOG_FIRST: the first offences of a record are each logged; after that one line per PENALTY_LOG_EVERY, so a
+// peer that keeps tripping a cheap rule ("busy", 2 points) cannot turn the file log into its own channel (r25).
+const PENALTY_LOG_FIRST = 8
+const PENALTY_LOG_EVERY = 64
+
+func penalty_should_log(events uint32) bool {
+	return events <= PENALTY_LOG_FIRST || events%PENALTY_LOG_EVERY == 0
 }
 
 // r23c (p2psec): the penalty table is pruned at most once per PENALTY_PRUNE_INTERVAL, and records of banned peers
@@ -162,6 +210,13 @@ func never_ban(ip string) bool {
 
 // add_penalty records a fault against ip and returns the ban length in seconds (0 when the peer is not banned).
 func add_penalty(ip string, reason string, now time.Time) (ban_seconds uint64) {
+	ban_seconds, _, _ = add_penalty_scored(ip, reason, now)
+	return
+}
+
+// add_penalty_scored is add_penalty that also returns the score after this fault (0 after a ban resets it) and the
+// offences scored on the record so far. r25.
+func add_penalty_scored(ip string, reason string, now time.Time) (ban_seconds uint64, score float64, events uint32) {
 	points, ok := PENALTY_POINTS[reason]
 	if !ok {
 		panic(fmt.Sprintf("unknown penalty reason %q", reason)) // a typo must fail the tests, not score 0
@@ -180,8 +235,9 @@ func add_penalty(ip string, reason string, now time.Time) (ban_seconds uint64) {
 	}
 	m.score = m.score*math.Pow(0.5, now.Sub(m.at).Seconds()/PENALTY_HALF_LIFE.Seconds()) + points
 	m.at = now
+	m.note(reason, now) // r25 (CO24-N1)
 	if m.score < PENALTY_BAN_SCORE || never_ban(ip) {
-		return 0
+		return 0, m.score, m.events
 	}
 	m.offences++
 	m.score = 0
@@ -190,7 +246,7 @@ func add_penalty(ip string, reason string, now time.Time) (ban_seconds uint64) {
 		ban_seconds = PENALTY_BAN_MAX
 	}
 	m.banned_until = now.Add(time.Duration(ban_seconds) * time.Second)
-	return ban_seconds
+	return ban_seconds, 0, m.events
 }
 
 const V2_BAN_BASE = 3600             // first drop of a v2-remnant peer: an hour, in case it upgrades
@@ -200,7 +256,8 @@ const V2_OFFENCES_MAX_ENTRIES = 4096 // bound on the map (and on v2_offences.jso
 // v2_record is one peer's v2-drop history. It is persisted (v2_offences.go) because the ban list cannot carry it:
 // ban_clean_up deletes a ban the moment it expires, and a banned peer can only re-offend after that, so at every
 // re-offence the ban list holds nothing about it. Before this, every derod restart reset the escalation
-// (203.0.113.13: 3600 s at 05:12, 7200 s at 06:12 under r15, then 3600 s again at 08:12 after the r16 restart).
+// [r25 B70: RFC 5737 stand-ins for the observed addresses]
+// (203.0.113.168: 3600 s at 05:12, 7200 s at 06:12 under r15, then 3600 s again at 08:12 after the r16 restart).
 type v2_record struct {
 	N    int   `json:"n"`    // drops so far
 	Last int64 `json:"last"` // unix seconds of the latest drop
@@ -285,10 +342,17 @@ func (c *Connection) penalize(reason string) {
 	if ip == "" {
 		return
 	}
-	if secs := add_penalty(ip, reason, time.Now()); secs > 0 {
+	secs, score, events := add_penalty_scored(ip, reason, time.Now())
+	// r25 (CO24-N1): an offence below the ban score leaves a line with its reason (file log only; bounded per record)
+	if secs == 0 && penalty_should_log(events) {
+		c.logger.V(1).Info("peer offence", "reason", reason, "score", math.Round(score*10)/10, "ban_score", PENALTY_BAN_SCORE, "offences", events)
+	}
+	if secs > 0 {
 		c.logger.Info("peer banned for misbehaviour", "ip", ip, "last_reason", reason, "seconds", secs)
-		Ban_Address(ip, secs)
+		Ban_Address_Reason(ip, secs, BAN_SOURCE_SCORE, reason) // r25 (CO24-N4): the ban list knows why
 		metrics.Set.GetOrCreateCounter("p2p_penalty_bans_total").Inc()
+		// r25 (CO24-N2): which rule the banned peer broke last, per reason
+		metrics.Set.GetOrCreateCounter(fmt.Sprintf(`p2p_penalty_bans_by_reason_total{reason="%s"}`, reason)).Inc()
 		if d := note_score_ban(ip, time.Now()); d > 0 { // r23c: rotating identities inside one /24 or /48
 			c.logger.Info("inbound sessions from this address block refused", "aggregate", penalty_aggregate(ip), "seconds", int64(d/time.Second))
 		}

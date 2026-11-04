@@ -117,7 +117,7 @@ func TestRelayDialHonoursBackoff(t *testing.T) {
 	defer reset_unlisted()()
 	now := time.Now()
 
-	stale := "203.0.113.23:42151" // not in the peer list: the unlisted back-off applies
+	stale := "203.0.113.165:42151" // not in the peer list: the unlisted back-off applies
 	if !relay_dial_allowed(stale, now) {
 		t.Fatal("a fresh ranked address must be dialable")
 	}
@@ -154,14 +154,14 @@ func TestStickyDialTargetsSkipBackingOff(t *testing.T) {
 	defer reset_unlisted()()
 	first_relay.Lock()
 	saved := first_relay.Peers
-	first_relay.Peers = map[string]*RelayStat{"203.0.113.23": {Address: "203.0.113.23:42151", Firsts: 10, Builders: map[string]uint64{}}}
+	first_relay.Peers = map[string]*RelayStat{"203.0.113.165": {Address: "203.0.113.165:42151", Firsts: 10, Builders: map[string]uint64{}}}
 	first_relay.Unlock()
 	defer func() { first_relay.Lock(); first_relay.Peers = saved; first_relay.Unlock() }()
 
 	if got := sticky_dial_targets(time.Now()); len(got) != 1 {
 		t.Fatalf("targets %v, want the ranked address", got)
 	}
-	addr, _ := net.ResolveUDPAddr("udp", "203.0.113.23:42151")
+	addr, _ := net.ResolveUDPAddr("udp", "203.0.113.165:42151")
 	for i := 0; i < 4; i++ {
 		(&Connection{Addr: addr}).note_handshake_failure()
 	}

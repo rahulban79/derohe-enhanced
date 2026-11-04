@@ -13,8 +13,18 @@ GPU-split 'restarts' counter before and after, waits one stats period (65 s), an
 restarted (whatever the command returned): STOP ALL GPU EXPERIMENTS. r23c: --gpu FAILS (exit 98) when the counter cannot be read before the run,
 because a check that cannot see the live GPU cannot say it was left alone. The log is $DERO_MINER_LOG, else bin/dero-miner.log of
 this checkout.
+
+r25 (perfops, B20): --qos=utility|background|none (default none, or $DERO_BENCH_QOS) also runs the command under macOS
+`taskpolicy` (`-c utility` / `-b`) on top of nice 15. Measured 2026-11-03 (20 spinning threads, 6 interleaved windows
+per arm, a nice-0 10 ms sleep probe standing in for derod's timers; evidence in the r25 perfops dimension): nice 15 alone
+let the probe's p99 overshoot rise 1.95 -> 5.60 ms (max 12.4 ms) while the load got 0.789 of 20 cores; utility kept
+p99 at 1.13 ms with 0.769 of 20 cores; background starved the load (0.052). The default stays none: a CPU-time A/B
+under a QoS clamp may run on E-cores, so the bench numbers would change meaning. An unknown value, or a clamp on a
+system without taskpolicy, is refused (exit 2), never silently dropped.
+
+  python3 -I harness/pipeline/benchlock.py [--gpu] [--qos=utility] -- cmd args...
 """
-import fcntl, json, os, subprocess, sys, time
+import fcntl, json, os, shutil, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,14 +59,46 @@ def restarts(log):
     return last
 
 
-def main(argv):
-    gpu = bool(argv) and argv[0] == '--gpu'
-    if gpu:
+QOS = {'none': [], 'utility': ['taskpolicy', '-c', 'utility'], 'background': ['taskpolicy', '-b']}   # r25 (B20)
+
+
+def parse_opts(argv):
+    """r25: leading --gpu / --qos=X options, then an optional '--'. Returns (gpu, qos, cmd). Pure."""
+    gpu, qos = False, os.environ.get('DERO_BENCH_QOS') or 'none'
+    while argv and argv[0] != '--' and argv[0].startswith('--'):
+        if argv[0] == '--gpu':
+            gpu = True
+        elif argv[0].startswith('--qos='):
+            qos = argv[0][len('--qos='):]
+        else:
+            break
         argv = argv[1:]
     if argv and argv[0] == '--':
         argv = argv[1:]
+    return gpu, qos, argv
+
+
+def child_argv(cmd, qos, have_taskpolicy=None):
+    """r25: the argv benchlock runs: the QoS clamp (if any) around nice 15 around cmd; None = refuse. Pure apart from
+    the taskpolicy lookup (injected by tests)."""
+    if qos not in QOS:
+        return None
+    if QOS[qos]:
+        if have_taskpolicy is None:
+            have_taskpolicy = shutil.which('taskpolicy') is not None
+        if not have_taskpolicy:
+            return None
+    return QOS[qos] + ['nice', '-n', '15'] + list(cmd)
+
+
+def main(argv):
+    gpu, qos, argv = parse_opts(argv)
     if not argv:
         print(__doc__, file=sys.stderr)
+        return 2
+    child = child_argv(argv, qos)
+    if child is None:
+        print(f'[benchlock] --qos={qos}: unknown (use {"|".join(QOS)}) or taskpolicy is missing: refusing', file=sys.stderr)
         return 2
     lp = lock_path()
     if not lp:
@@ -71,7 +113,7 @@ def main(argv):
         if gpu and r0 is None:
             print(f'[benchlock] --gpu: no GPU split restarts counter in {log}: refusing (set DERO_MINER_LOG)', file=sys.stderr, flush=True)
             return 98
-        rc = subprocess.call(['nice', '-n', '15'] + argv)
+        rc = subprocess.call(child)
         if gpu:
             time.sleep(65)                       # one GPU split stats period
             r1 = restarts(log)

@@ -1,0 +1,3487 @@
+{
+ "binding": {
+  "data_sha256": "f470de2a0c0a8c0227d1b499c989a688493d39846dd3681955c3d69373f79508",
+  "files_bound": 1421,
+  "manifest_sha256_at_audit": "d320dc8b7e0799dda749e7f81d3fea7ecf43ba0daf6e77c24f5b87ac1f6e9390"
+ },
+ "counts": {
+  "challenges": 25,
+  "claims_corrected": 0,
+  "downgraded": 1,
+  "holds": 24,
+  "overturned": 0,
+  "overturned_all_runs": 1,
+  "unresolved": 1,
+  "verdicts": 79
+ },
+ "dataset": "r25",
+ "history": [
+  {
+   "binding": {
+    "data_sha256": "93b32021107f210b7208a6a81e4186c8ebff4ae7600beaaa24dfb72252bbbe3d",
+    "files_bound": 1421,
+    "manifest_sha256_at_audit": "fa37dd59a98e64aea19349bab95af071e3d387d84c5f5921e5282074408a3710"
+   },
+   "claim_corrections": {
+    "V-HF3-0045a6d4": [
+     "Overturned wording. Supported reading: \"a node running the pinned code accepts it only through the exemption (today's verifier rejects the proof)\". How the network accepted these blocks in 2026-08 is not determined by this dataset."
+    ]
+   },
+   "counts": {
+    "challenges": 25,
+    "claims_corrected": 1,
+    "downgraded": 1,
+    "holds": 23,
+    "overturned": 1,
+    "unresolved": 1,
+    "verdicts": 79
+   },
+   "overturned": [
+    "A4b"
+   ],
+   "report_sha256": "36221cf34c9684684f3e6592a75718f2b920263ffab961cc8d09bbdda7e03a36",
+   "run": "audit-1",
+   "unresolved": [
+    "A10c"
+   ]
+  }
+ ],
+ "implementation": {
+  "file": "harness/forensics/audit_check.py",
+  "name": "audit-check-1",
+  "own": [
+   "Keccak-f[1600] (constants generated from FIPS 202)",
+   "block/tx/miniblock/statement/proof-length decoders",
+   "HF3 table parser",
+   "emission constants and CalcSupply",
+   "tips walk",
+   "exception-path rules"
+  ],
+  "reused": [
+   "the node's own proof verifier (tools/forensics verify) for A11 only, by design (rft \u00a70.8.5)"
+  ],
+  "shares_code_with_builder": false
+ },
+ "inputs_outside_dataset": {
+  "archive_topo_records_sha256": "43642760f80b8180bb81323a8ae4b7c5bd840505938de6166df28bfa3f9f229f",
+  "live_blocks_index_sha256": "c1ede5b349d850d314dbc18cd606eb744b3d6ae279123fb6c13d62ad24f0bd3c",
+  "live_topo_records_sha256": "00c1f34dab1071947e2ac3755d01bff0004787e7e5d7e4a86c33c72f5d1f2e5c",
+  "note": "APFS clones/copies in the scratchpad of our own live node and replaywall archive; read-only, never in place; not in the dataset (paths withheld)",
+  "tierB_store_index_sha256": "22680e91cd2b521048dcab07713c12d107f5a0e80745532a0f9a89a8e4a6668f"
+ },
+ "proof_rerun": [
+  {
+   "checks": [
+    [
+     "version",
+     "pass"
+    ],
+    [
+     "statement_sanity",
+     "pass"
+    ],
+    [
+     "reference_state",
+     "pass"
+    ],
+    [
+     "statement_roothash",
+     "pass"
+    ],
+    [
+     "ring_expansion",
+     "pass"
+    ],
+    [
+     "proof_verify",
+     "fail"
+    ]
+   ],
+   "failed_check": "Recover key failed B^w * A",
+   "state_root": "c209d3c0a0d163dc7fb5fd4e1ab19012cf2f46f06b186c8523ca0f80ec95a6b3",
+   "txid": "0045a6d4c51a8578b6c97f2b376415653583505f21032eb6a808cd1643a300a7",
+   "verdict": "fail:proof_verify"
+  },
+  {
+   "checks": [
+    [
+     "version",
+     "pass"
+    ],
+    [
+     "statement_sanity",
+     "pass"
+    ],
+    [
+     "reference_state",
+     "pass"
+    ],
+    [
+     "statement_roothash",
+     "pass"
+    ],
+    [
+     "ring_expansion",
+     "pass"
+    ],
+    [
+     "proof_verify",
+     "pass"
+    ]
+   ],
+   "failed_check": "not applicable: passed",
+   "state_root": "15f02822aa5624bed33b1cb2b603a364f0c68a7082ffec2937e5bf63a79ab58f",
+   "txid": "414f79b8ff3c862eaa5727c6591542218881c751ba4fe052c9aaeeec0cfedfcd",
+   "verdict": "pass"
+  }
+ ],
+ "rerun": {
+  "anchor": {
+   "blob_present": true,
+   "height": 7498540,
+   "id": "e18be51e716a746c6a98a32dbc2a0420745945ffb933d1b6582489a33c1e743e",
+   "live_blocks_index_sha256": "c1ede5b349d850d314dbc18cd606eb744b3d6ae279123fb6c13d62ad24f0bd3c",
+   "live_topo_record_at_anchor_eq_id": true,
+   "live_topo_record_height_field": 7498540,
+   "live_topo_records_sha256": "00c1f34dab1071947e2ac3755d01bff0004787e7e5d7e4a86c33c72f5d1f2e5c",
+   "live_walk_hf3_to_anchor": {
+    "fork_block_major_version": 3,
+    "fork_id_prefix_v3_fingerprint": true,
+    "from_height": 7504640,
+    "from_id": "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5",
+    "reached_anchor": true,
+    "steps": 6100
+   }
+  },
+  "archive": {
+   "block_file_name_eq_sha3": 14724,
+   "block_files": 14724,
+   "block_files_off_chain": 498,
+   "block_files_on_raw_chain": 14226,
+   "committed_records": 14226,
+   "files_above_last_committed": 406,
+   "files_above_last_committed_on_raw_chain": 0,
+   "hf3_bodies_bytes_eq_raw": 1,
+   "hf3_bodies_in_archive": 1,
+   "last_committed_height": 7467515,
+   "on_chain_bytes_eq_raw": 14226,
+   "records_eq_raw_chain": 14226,
+   "records_ne_raw_chain": 0,
+   "ref_state": {
+    "0045a6d4": {
+     "archive_record_eq_ref_blid": true,
+     "ref_height": 7467512,
+     "roothash": "c209d3c0a0d163dc7fb5fd4e1ab19012cf2f46f06b186c8523ca0f80ec95a6b3",
+     "state_version": 18957
+    },
+    "414f79b8": {
+     "archive_record_eq_ref_blid": true,
+     "ref_height": 7467492,
+     "roothash": "15f02822aa5624bed33b1cb2b603a364f0c68a7082ffec2937e5bf63a79ab58f",
+     "state_version": 18518
+    }
+   },
+   "topo_records_sha256": "43642760f80b8180bb81323a8ae4b7c5bd840505938de6166df28bfa3f9f229f",
+   "tx_files": 210
+  },
+  "archive_tx_witness": {
+   "bodies": 210,
+   "distinct_ref_topos_witnessed": 190,
+   "fills_pending_fee_blocks": 192,
+   "in_raw_chain_block": 210,
+   "ref_in_held_range": 199,
+   "ref_on_raw_chain": 199,
+   "roothash_eq_claimed_root": 199,
+   "roothash_ne_claimed_root": 0,
+   "txid_eq_name": 210,
+   "undecodable": 0
+  },
+  "binding": {
+   "data_sha256": "f470de2a0c0a8c0227d1b499c989a688493d39846dd3681955c3d69373f79508",
+   "files_bound": 1421,
+   "manifest_sha256_at_audit": "d320dc8b7e0799dda749e7f81d3fea7ecf43ba0daf6e77c24f5b87ac1f6e9390"
+  },
+  "blobs": {
+   "content_address_failures": [],
+   "distinct_blobs": 83171,
+   "tierA_blocks": 606,
+   "tierA_files": 700,
+   "tierA_txs": 94,
+   "tierB_blocks": 83077,
+   "tierB_count_eq_manifest": true,
+   "tierB_files": 83171,
+   "tierB_index_eq_manifest": true,
+   "tierB_index_sha256": "22680e91cd2b521048dcab07713c12d107f5a0e80745532a0f9a89a8e4a6668f",
+   "tierB_txs": 94,
+   "undecodable": []
+  },
+  "claims": {
+   "emission": {
+    "fees_known_blocks_eq": true,
+    "fees_known_sum_eq": true,
+    "fees_pending_eq": true,
+    "grade": "PROVEN-NO-INFLATION-IN-SCOPE",
+    "scope_mentions_distribution": false,
+    "window_emission_eq": true
+   },
+   "grades": {
+    "claims_chain_accepted_only_through_exemption": 0,
+    "grades": [
+     "NOT-DECIDABLE-FROM-PUBLIC-DATA"
+    ],
+    "per_txid": 75
+   },
+   "hf3_carrier_rows_compared": 142,
+   "hf3_json_present": true,
+   "hf3_mismatch": {},
+   "hf3_records_compared": 75,
+   "proof_checks_claimed": {
+    "0045a6d4": {
+     "result": "fail",
+     "state_root": "c209d3c0a0d163dc7fb5fd4e1ab19012cf2f46f06b186c8523ca0f80ec95a6b3"
+    },
+    "00c6c9a7": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "0511f2b2": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "09d0260e": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "0a0671cf": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "0e75ae66": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "17cd5710": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "1877ddc3": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "1e8c9c77": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "1eb43df8": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "21108295": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "2aabb168": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "2e2b49f2": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "2f39de57": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "337677e2": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "3478d883": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "364538c7": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "3659ae2b": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "37df7602": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "3ccf648d": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "404180f8": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "411012a7": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "414f79b8": {
+     "result": "pass",
+     "state_root": "15f02822aa5624bed33b1cb2b603a364f0c68a7082ffec2937e5bf63a79ab58f"
+    },
+    "42f2876c": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "4ad3ef9a": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "4d56a1a1": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "556d78cf": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "5a14d851": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "6034f404": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "60bfbd73": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "60e4547d": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "62fa2cc6": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "6843437e": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "6aa20567": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "6d882984": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "6e59f6b5": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "71588148": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "74b79178": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "85d52fe6": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "8692d178": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "86a15dad": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "879f99d2": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "912dbaf8": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "92dce2c5": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "94f8ced9": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "9b75eb3b": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "9becfdff": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "9eba39af": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "9fba85d0": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "a16a9d93": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "a70950ff": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "a86a316b": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "a9b0c1d1": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "aa0faf67": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "ab1da121": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "ab6cca96": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "b43be652": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "b6cf0ef1": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "b9c2b724": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "ba3834ef": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "bba77f85": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "d81f2d39": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "d856184d": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "d9d7e7de": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "e0a6f890": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "e0d83b72": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "e2fdb507": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "e42eb301": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "e53ea2a8": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "e5676c4e": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "ea445f18": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "ed09fcce": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "f00cc25c": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "f389f4b6": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    },
+    "fd79549a": {
+     "result": "not_decidable",
+     "state_root": "not applicable: no held state"
+    }
+   },
+   "proof_checks_claimed_counts": {
+    "fail": 1,
+    "not_decidable": 73,
+    "pass": 1
+   },
+   "window_mismatch": {},
+   "window_rows_compared": 82477,
+   "window_rows_total": 82477
+  },
+  "code_anchors": [
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 232,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 233,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 236,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 237,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 90,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 94,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 433,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 434,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 438,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_verify.go",
+    "line": 454,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_execute.go",
+    "line": 213,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_execute.go",
+    "line": 244,
+    "present": true
+   },
+   {
+    "file": "blockchain/transaction_execute.go",
+    "line": 245,
+    "present": true
+   },
+   {
+    "file": "blockchain/blockchain.go",
+    "line": 826,
+    "present": true
+   },
+   {
+    "file": "blockchain/blockchain.go",
+    "line": 858,
+    "present": true
+   },
+   {
+    "file": "p2p/hf3_parity.go",
+    "line": 74,
+    "present": true
+   },
+   {
+    "file": "p2p/hf3_parity.go",
+    "line": 77,
+    "present": true
+   },
+   {
+    "file": "glue/txprecheck/window.go",
+    "line": 140,
+    "present": true
+   }
+  ],
+  "constants": {
+   "BLOCK_TIME": 18,
+   "BaseReward": 123000,
+   "MAJOR_HF3_HEIGHT": 7504640,
+   "PREMINE": 1228125400000,
+   "RRI": 7000000,
+   "formulas_match_source": true,
+   "grant": 271739600
+  },
+  "dataset": "r25",
+  "emission": {
+   "blocks": 82477,
+   "burn_known_sum": 0,
+   "calc_supply_delta": 2536167750,
+   "coinbase_type_ok": 82477,
+   "distribution_identity_ok": 82477,
+   "exactly_one_final_miniblock": 82477,
+   "fees_known_blocks": 80902,
+   "fees_known_sum": 16800,
+   "fees_pending_blocks": 1575,
+   "major_versions": {
+    "2": 82477
+   },
+   "miner_value_field_absent": 82477,
+   "proof_field_nonzero": 0,
+   "reward_sum": 2536167750,
+   "reward_sum_eq_supply_delta": true,
+   "reward_values": [
+    30750
+   ],
+   "supply_step_eq_reward": 82477,
+   "tx_bearing_blocks": 1726,
+   "txs": 1835
+  },
+  "hf3": {
+   "bl_tips_is_earliest_itself": 1,
+   "bl_tips_is_tip_of_earliest": 74,
+   "bodies_raw": 75,
+   "carrier_before_table_commit": 75,
+   "carrier_gap_heights": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "carriers": 142,
+   "dual": 67,
+   "first_table_commits": {
+    "4712b7b67c5b": 60,
+    "6c33c1c33354": 1,
+    "f7a56db69495": 14
+   },
+   "height_is_earliest_carrier": 75,
+   "min_margin_hours": 39.8,
+   "nonce_bypass_carriers": 74,
+   "nonce_full_carriers": 68,
+   "parity_changes_carriers": 73,
+   "proof_skip_carriers": 142,
+   "public_value_nonzero": 0,
+   "ref_blid_eq_bl_tips": 0,
+   "ref_blid_on_raw_chain_at_ref_height": 74,
+   "ref_block_not_on_raw_chain": 0,
+   "ref_block_outside_raw_range": 1,
+   "sanity_rawcheckable_pass": 75,
+   "single": 8,
+   "table_commit_known": 75,
+   "tx_height_below_hf3": 75,
+   "types": {
+    "NORMAL": 75
+   }
+  },
+  "hf3_per_txid_sha256": "6caa18e07b3444323e6ca33ff500fcfb27e19c5f8ea1b6f8af51b98343d62ae1",
+  "hf3_table": {
+   "entries": 75,
+   "groups": {
+    "duplicates": 67,
+    "no duplicates, but false parity": 8
+   },
+   "max_height": 7497942,
+   "min_height": 7415466,
+   "parity_literal_set": 0,
+   "sha256": "467db1b30b0ff16c1e85003db1eba1c8c7e93eec2e64bf28ae8153558c5c5ea0",
+   "sha256_eq_manifest": true,
+   "tx_parity_true": 17
+  },
+  "impl": "audit-check-1",
+  "scan": {
+   "binary_skipped": [],
+   "files_scanned": 722,
+   "hits": [],
+   "patterns": 15,
+   "private_terms_loaded": 25,
+   "scope": "every text file of the dataset outside audit/ (audit/ is scanned by G29 after it is written)"
+  },
+  "selftest": {
+   "failures": [],
+   "hash_kats": 6
+  },
+  "store_present": true,
+  "txs": {
+   "blob_names_eq_sha256": true,
+   "bodies": 94,
+   "txid_in_verified_block": 94
+  },
+  "walk": {
+   "blocks_not_reached": 0,
+   "blocks_reached": 83077,
+   "bottom_height": 7415464,
+   "contiguous_heights": true,
+   "multi_tip_blocks": 0,
+   "ok": true,
+   "top_height": 7498540,
+   "topo_eq_height_derived": true,
+   "window_heights_reached": 82477,
+   "window_heights_total": 82477
+  }
+ },
+ "rerun_sha256": "ca245902730f88d164696c39013fea160dcf07fc75a6d2dad492778c5b6b16ce",
+ "verdicts": [
+  {
+   "audit_grade": "PROVEN-NO-INFLATION-IN-SCOPE",
+   "builder_grade": "PROVEN-NO-INFLATION-IN-SCOPE",
+   "challenges": [
+    "A1",
+    "A14",
+    "A15",
+    "A17",
+    "A19",
+    "A3",
+    "A5",
+    "A6",
+    "A8",
+    "A8b",
+    "A8c"
+   ],
+   "id": "V-EMISSION",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "82,477 window blocks, checks (i)-(ii) by the audit"
+    },
+    {
+     "class": "DERIVED",
+     "what": "coinbase type, value field, final-miniblock and payout census (A8b)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "reward per block and the CalcSupply identity from the source constants (A8)"
+    }
+   ],
+   "question": "was value created beyond the emission formula by the window's coinbase?",
+   "rules": [
+    "blockchain/transaction_execute.go:60-62,126-160",
+    "blockchain/supply.go:5-27"
+   ],
+   "scope": "the formula coinbase of the 82,477 window blocks 7,415,466..7,497,942 and its payout: each block has one COINBASE miner tx with no value field, exactly one Final miniblock, a payout equal to base + fees, and base rewards summing to CalcSupply(7,497,943) - CalcSupply(7,415,466). Says nothing about hidden (encrypted) amounts, the fee deductions inside them, or burns/SC payouts of the 1,575 blocks whose bodies are pending",
+   "source": "derived/emission.json"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A10a",
+    "A11",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A4b",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "correction_history": [
+    "audit-1: Overturned wording. Supported reading: \"a node running the pinned code accepts it only through the exemption (today's verifier rejects the proof)\". How the network accepted these blocks in 2026-08 is not determined by this dataset. (corrected at source)"
+   ],
+   "deciding_fact_missing": "the hidden (ElGamal) amounts; a proof result cannot settle them (C1, rft \u00a70.5)",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-0045a6d4",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/0045a6d4c51a8578b6c97f2b376415653583505f21032eb6a808cd1643a300a7.json grade",
+   "txid": "0045a6d4c51a8578b6c97f2b376415653583505f21032eb6a808cd1643a300a7"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-00c6c9a7",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/00c6c9a78c4b40a03dc08e3637ee4e34103b39cfe2c6efaa803829509f0506d6.json grade",
+   "txid": "00c6c9a78c4b40a03dc08e3637ee4e34103b39cfe2c6efaa803829509f0506d6"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-0511f2b2",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/0511f2b2a8ee9408b216cb1db6129937119fb76e99a1dcd1544f49462da58a38.json grade",
+   "txid": "0511f2b2a8ee9408b216cb1db6129937119fb76e99a1dcd1544f49462da58a38"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-09d0260e",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/09d0260ea572349c4869b58cb59638348e1ed4bc57c511619d36fd1fd484211f.json grade",
+   "txid": "09d0260ea572349c4869b58cb59638348e1ed4bc57c511619d36fd1fd484211f"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-0a0671cf",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/0a0671cf132cc2c353df8d28631581c762acefac200123c84dd039c34e7cd336.json grade",
+   "txid": "0a0671cf132cc2c353df8d28631581c762acefac200123c84dd039c34e7cd336"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-0e75ae66",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/0e75ae6662c08627470a7ea97d2115830f2b0e392efdba3c58ace068adc99aa6.json grade",
+   "txid": "0e75ae6662c08627470a7ea97d2115830f2b0e392efdba3c58ace068adc99aa6"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-17cd5710",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/17cd5710eee2cb27cdb1a68dfe63e955260ea8dc3e59e234a20bed14cb409970.json grade",
+   "txid": "17cd5710eee2cb27cdb1a68dfe63e955260ea8dc3e59e234a20bed14cb409970"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-1877ddc3",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/1877ddc33990d521dbd1702f8872441c642641cbb528042432da8d22b722fdbe.json grade",
+   "txid": "1877ddc33990d521dbd1702f8872441c642641cbb528042432da8d22b722fdbe"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-1e8c9c77",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/1e8c9c7764ea63e39a9b5fa59013578bf3a7cdf00edfa059cf5f1da6dc08b0d9.json grade",
+   "txid": "1e8c9c7764ea63e39a9b5fa59013578bf3a7cdf00edfa059cf5f1da6dc08b0d9"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-1eb43df8",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/1eb43df8ab1abd8934c74cc0d08b5d9fef02604ca6500a7cf947d263b882cafe.json grade",
+   "txid": "1eb43df8ab1abd8934c74cc0d08b5d9fef02604ca6500a7cf947d263b882cafe"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-21108295",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/211082955f1fda468ba0cd604e14dc5d84f4eb096f3c349f4ad05757c979dce6.json grade",
+   "txid": "211082955f1fda468ba0cd604e14dc5d84f4eb096f3c349f4ad05757c979dce6"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-2aabb168",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/2aabb168b2b7210bc2d1620ddbbd038de4ae45847cc77a27be4389aea388a5e9.json grade",
+   "txid": "2aabb168b2b7210bc2d1620ddbbd038de4ae45847cc77a27be4389aea388a5e9"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-2e2b49f2",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/2e2b49f284f9d206fdb6dcf4a9ac9259426c61036bdf52036f1baf24b21269ac.json grade",
+   "txid": "2e2b49f284f9d206fdb6dcf4a9ac9259426c61036bdf52036f1baf24b21269ac"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-2f39de57",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/2f39de57b82f02787fc15537a29da2e4cdd8c350d2d2bc7f96b0d49ac57fcbaa.json grade",
+   "txid": "2f39de57b82f02787fc15537a29da2e4cdd8c350d2d2bc7f96b0d49ac57fcbaa"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-337677e2",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/337677e2cad7c2633099ab65b5f5ce5a099b9c76a5cc7846c587d189f55ad95d.json grade",
+   "txid": "337677e2cad7c2633099ab65b5f5ce5a099b9c76a5cc7846c587d189f55ad95d"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-3478d883",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/3478d883230b579a88607d5f5d1a52aadd4355b38ba794352d54a829f45f5656.json grade",
+   "txid": "3478d883230b579a88607d5f5d1a52aadd4355b38ba794352d54a829f45f5656"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-364538c7",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/364538c7073f9c5e3b99eeec33a9bfb830a5d3d0cefb6c44d63b22b90c82a655.json grade",
+   "txid": "364538c7073f9c5e3b99eeec33a9bfb830a5d3d0cefb6c44d63b22b90c82a655"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-3659ae2b",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/3659ae2be646c4384bcc4adc94bdf9cfc23b366faa128a88f9ea5522e3d08d61.json grade",
+   "txid": "3659ae2be646c4384bcc4adc94bdf9cfc23b366faa128a88f9ea5522e3d08d61"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-37df7602",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/37df76020e1823aade3b130fe53571b93d6c5c34e35d1d522c7c5cd449e84370.json grade",
+   "txid": "37df76020e1823aade3b130fe53571b93d6c5c34e35d1d522c7c5cd449e84370"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-3ccf648d",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/3ccf648db6d26295d68ec1c88cdc736a10caa35ad83b856cb9bb304f893c5043.json grade",
+   "txid": "3ccf648db6d26295d68ec1c88cdc736a10caa35ad83b856cb9bb304f893c5043"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-404180f8",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/404180f833143669d3b347f4d8ceb1067b7a1ed057efcad7abcd7ad539745138.json grade",
+   "txid": "404180f833143669d3b347f4d8ceb1067b7a1ed057efcad7abcd7ad539745138"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-411012a7",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/411012a7711794d2c641acbd4e1cd14dfd5e20d6085ab4748af28e7d6a3a5b99.json grade",
+   "txid": "411012a7711794d2c641acbd4e1cd14dfd5e20d6085ab4748af28e7d6a3a5b99"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A10a",
+    "A11",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the hidden (ElGamal) amounts; a proof result cannot settle them (C1, rft \u00a70.5)",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-414f79b8",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/414f79b8ff3c862eaa5727c6591542218881c751ba4fe052c9aaeeec0cfedfcd.json grade",
+   "txid": "414f79b8ff3c862eaa5727c6591542218881c751ba4fe052c9aaeeec0cfedfcd"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-42f2876c",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/42f2876c90522812085556e7f6e0f51ef7edd84f1f99fba48acc84b52321f30d.json grade",
+   "txid": "42f2876c90522812085556e7f6e0f51ef7edd84f1f99fba48acc84b52321f30d"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-4ad3ef9a",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/4ad3ef9af337b1e92d895f9342ad9a9235d601291cb42fb6b726fbda35933fe7.json grade",
+   "txid": "4ad3ef9af337b1e92d895f9342ad9a9235d601291cb42fb6b726fbda35933fe7"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-4d56a1a1",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/4d56a1a150063b6bd810a33fc669df8e2698475f0b3c17d96cab738b25ba8393.json grade",
+   "txid": "4d56a1a150063b6bd810a33fc669df8e2698475f0b3c17d96cab738b25ba8393"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-556d78cf",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/556d78cfc579c2897be7d875e08a702860b867e63650ad2d07c393e50e1e484c.json grade",
+   "txid": "556d78cfc579c2897be7d875e08a702860b867e63650ad2d07c393e50e1e484c"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-5a14d851",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/5a14d8516288648133b8cea98afa1b9a2f783a3ea345b191e57d388b64ca5ecf.json grade",
+   "txid": "5a14d8516288648133b8cea98afa1b9a2f783a3ea345b191e57d388b64ca5ecf"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-6034f404",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/6034f404619a7fa7bad529eb6758a6ba30184b100a5f8a8f921c99bebe309514.json grade",
+   "txid": "6034f404619a7fa7bad529eb6758a6ba30184b100a5f8a8f921c99bebe309514"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-60bfbd73",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/60bfbd73a60060d6502b13871f55a47ebfb732bcb8f5685602688f7eae36fa3e.json grade",
+   "txid": "60bfbd73a60060d6502b13871f55a47ebfb732bcb8f5685602688f7eae36fa3e"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-60e4547d",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/60e4547d48b624555081cb8f7c97f8583234c3a112bb586c868ad5ff00eddaa4.json grade",
+   "txid": "60e4547d48b624555081cb8f7c97f8583234c3a112bb586c868ad5ff00eddaa4"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-62fa2cc6",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/62fa2cc6f10da7275d54f0448bd7028a1d1d7a92a99e204c3f4e2c08571032f7.json grade",
+   "txid": "62fa2cc6f10da7275d54f0448bd7028a1d1d7a92a99e204c3f4e2c08571032f7"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-6843437e",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/6843437e70503ed702d5adad3d29e7aa0ed8427dd98eda0e42b77d24e7567bc8.json grade",
+   "txid": "6843437e70503ed702d5adad3d29e7aa0ed8427dd98eda0e42b77d24e7567bc8"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-6aa20567",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/6aa20567ff23705aa91a4c607e8387d147b309f8eeb9f8198149c21c439c3692.json grade",
+   "txid": "6aa20567ff23705aa91a4c607e8387d147b309f8eeb9f8198149c21c439c3692"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-6d882984",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/6d882984bad971d4becb9ac15ecd8cb3e3e0ee783d6d6c1d1ce95df12625732f.json grade",
+   "txid": "6d882984bad971d4becb9ac15ecd8cb3e3e0ee783d6d6c1d1ce95df12625732f"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-6e59f6b5",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/6e59f6b56453219ab9722a47870c4b2d76b29ddda068c069dcf59ba14e3e98aa.json grade",
+   "txid": "6e59f6b56453219ab9722a47870c4b2d76b29ddda068c069dcf59ba14e3e98aa"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-71588148",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/71588148dade214248f46fb912ac933fc60f2a0ba7d69b3b7317067c366e8312.json grade",
+   "txid": "71588148dade214248f46fb912ac933fc60f2a0ba7d69b3b7317067c366e8312"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-74b79178",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/74b79178426990bcd071cd26829900027e78b6d36e77b57e050a0bba4398ed1f.json grade",
+   "txid": "74b79178426990bcd071cd26829900027e78b6d36e77b57e050a0bba4398ed1f"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-85d52fe6",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/85d52fe6f310f4af1d11611ef3577d477b76af3c0d050e2f4493e16822f68a18.json grade",
+   "txid": "85d52fe6f310f4af1d11611ef3577d477b76af3c0d050e2f4493e16822f68a18"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-8692d178",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/8692d178675b0ab019f765ab8b8f5b739c0668f36151931223c4e3b63883f89a.json grade",
+   "txid": "8692d178675b0ab019f765ab8b8f5b739c0668f36151931223c4e3b63883f89a"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-86a15dad",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/86a15dad0a5ca6b8b317398a56113e95850a1628868fb3284963e30e046aac5d.json grade",
+   "txid": "86a15dad0a5ca6b8b317398a56113e95850a1628868fb3284963e30e046aac5d"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-879f99d2",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/879f99d24bde3eaadd0ee348d3eef5e61b13b11bc9ab7c554ef6fc1a679b7de6.json grade",
+   "txid": "879f99d24bde3eaadd0ee348d3eef5e61b13b11bc9ab7c554ef6fc1a679b7de6"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-912dbaf8",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/912dbaf8980086dd5627193c4ae3264da9bba2167637f078380f5b0f06a24520.json grade",
+   "txid": "912dbaf8980086dd5627193c4ae3264da9bba2167637f078380f5b0f06a24520"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-92dce2c5",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/92dce2c52528732ef76ba717f582b784a50bca61bc839426838cc641d28f545a.json grade",
+   "txid": "92dce2c52528732ef76ba717f582b784a50bca61bc839426838cc641d28f545a"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-94f8ced9",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/94f8ced9b3cd40993173c53ea0bffc99d1db3a8d7a8cfea2cbed7a7fba524684.json grade",
+   "txid": "94f8ced9b3cd40993173c53ea0bffc99d1db3a8d7a8cfea2cbed7a7fba524684"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-9b75eb3b",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/9b75eb3bc2c2f10cb84977e4648e5a9f4bebcfb73075dd27a1fa1a14d0f6dfb0.json grade",
+   "txid": "9b75eb3bc2c2f10cb84977e4648e5a9f4bebcfb73075dd27a1fa1a14d0f6dfb0"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-9becfdff",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/9becfdff8e750fcd741f240ae701ca134fd54b1c3d1db9dbf9f0254f5a794046.json grade",
+   "txid": "9becfdff8e750fcd741f240ae701ca134fd54b1c3d1db9dbf9f0254f5a794046"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-9eba39af",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/9eba39af652ee2a0d4835d964cffcd0be4ac6f103138e87c80953902e4ce0026.json grade",
+   "txid": "9eba39af652ee2a0d4835d964cffcd0be4ac6f103138e87c80953902e4ce0026"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-9fba85d0",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/9fba85d0ed98249e9b36ffbbaf15f6ae9bf9be061f3200b2f572c3e2f34b39ea.json grade",
+   "txid": "9fba85d0ed98249e9b36ffbbaf15f6ae9bf9be061f3200b2f572c3e2f34b39ea"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-a16a9d93",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/a16a9d939518fc4ad2a1f1ac3a878ca35d9d819e0dd3086e495f3c2f4a089db1.json grade",
+   "txid": "a16a9d939518fc4ad2a1f1ac3a878ca35d9d819e0dd3086e495f3c2f4a089db1"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-a70950ff",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/a70950ff17747e3b347d30b3db5631a5f97cd967a937eac2dcc11763c7685490.json grade",
+   "txid": "a70950ff17747e3b347d30b3db5631a5f97cd967a937eac2dcc11763c7685490"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-a86a316b",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/a86a316b2d9f33e5e8552925e7cd504999033b38c4e2aba6aa3a25f7a2eba003.json grade",
+   "txid": "a86a316b2d9f33e5e8552925e7cd504999033b38c4e2aba6aa3a25f7a2eba003"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-a9b0c1d1",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/a9b0c1d112958534b5f3eec186832cce85986278afe1729937469fff18c1684a.json grade",
+   "txid": "a9b0c1d112958534b5f3eec186832cce85986278afe1729937469fff18c1684a"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-aa0faf67",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/aa0faf67a2856ee30ed4e275c1079d1572b1bcb03d4a9ca682bd825e11d81a43.json grade",
+   "txid": "aa0faf67a2856ee30ed4e275c1079d1572b1bcb03d4a9ca682bd825e11d81a43"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-ab1da121",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/ab1da121afe17852ee24f19b836e602d3389b569048838223acd754247d7ff91.json grade",
+   "txid": "ab1da121afe17852ee24f19b836e602d3389b569048838223acd754247d7ff91"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-ab6cca96",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/ab6cca96748292825e8188550f3fadcd43734d4a1e73514c03702adb456f8926.json grade",
+   "txid": "ab6cca96748292825e8188550f3fadcd43734d4a1e73514c03702adb456f8926"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-b43be652",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/b43be6528061e4eb1ca6e7bcfcd419e42839bbeec5cdcbf7e664be2fd501dad2.json grade",
+   "txid": "b43be6528061e4eb1ca6e7bcfcd419e42839bbeec5cdcbf7e664be2fd501dad2"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-b6cf0ef1",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/b6cf0ef15e9af69d7b2f040ba2e0a75f41a414201069187fdec994584298e8f7.json grade",
+   "txid": "b6cf0ef15e9af69d7b2f040ba2e0a75f41a414201069187fdec994584298e8f7"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-b9c2b724",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/b9c2b724a684eb1b278bb3f185a807e46b3ef22a87c5cb8ed694a32df1661df0.json grade",
+   "txid": "b9c2b724a684eb1b278bb3f185a807e46b3ef22a87c5cb8ed694a32df1661df0"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-ba3834ef",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/ba3834ef15b7d714836e9944c46c8795066b328ff678c5cc44c7cdf0a3fa5ebd.json grade",
+   "txid": "ba3834ef15b7d714836e9944c46c8795066b328ff678c5cc44c7cdf0a3fa5ebd"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-bba77f85",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/bba77f85c72d2b896e1fca1e39327a3a57eca4d722326a524db2042df04766ee.json grade",
+   "txid": "bba77f85c72d2b896e1fca1e39327a3a57eca4d722326a524db2042df04766ee"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-d81f2d39",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/d81f2d3911e388f88b2e427d3f6cc8ddc272c69aa80fe84e15ce865462071328.json grade",
+   "txid": "d81f2d3911e388f88b2e427d3f6cc8ddc272c69aa80fe84e15ce865462071328"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-d856184d",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/d856184d636c3ef8545979c902df15d6a1bf41b4a4b81d81762f519a6acfb689.json grade",
+   "txid": "d856184d636c3ef8545979c902df15d6a1bf41b4a4b81d81762f519a6acfb689"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-d9d7e7de",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/d9d7e7de41ca9c81693eca4e3ea56ae02b6680887c35fc1b1b2da71967335404.json grade",
+   "txid": "d9d7e7de41ca9c81693eca4e3ea56ae02b6680887c35fc1b1b2da71967335404"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-e0a6f890",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/e0a6f89071b89ee8f479845399e78c17d31f3dbc8e1c4370e22ec5a4fcd214bc.json grade",
+   "txid": "e0a6f89071b89ee8f479845399e78c17d31f3dbc8e1c4370e22ec5a4fcd214bc"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-e0d83b72",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/e0d83b72e7ab11213f78ca7994598d2b988799d36786e94a2018c76513339ba8.json grade",
+   "txid": "e0d83b72e7ab11213f78ca7994598d2b988799d36786e94a2018c76513339ba8"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-e2fdb507",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/e2fdb507438dc80667e73d60a17658811a1181234e9bbddcf81ec05de1c7a51d.json grade",
+   "txid": "e2fdb507438dc80667e73d60a17658811a1181234e9bbddcf81ec05de1c7a51d"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-e42eb301",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/e42eb301e2f0863de346ada3a531cdf70ca224a90dae2e861a21407a0c76bfc5.json grade",
+   "txid": "e42eb301e2f0863de346ada3a531cdf70ca224a90dae2e861a21407a0c76bfc5"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-e53ea2a8",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/e53ea2a813bdccbff19ef24010e7e5bef0bf2408423eb71a86dbca3cbca22530.json grade",
+   "txid": "e53ea2a813bdccbff19ef24010e7e5bef0bf2408423eb71a86dbca3cbca22530"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-e5676c4e",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/e5676c4e2cc98429c890a30bdc1db231935dd52c91d17aa077a24a87a2dc35f9.json grade",
+   "txid": "e5676c4e2cc98429c890a30bdc1db231935dd52c91d17aa077a24a87a2dc35f9"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-ea445f18",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/ea445f18926af580fe8bf95466f3f7b9eea3eea0295a791323ee1d0ab4eddb0c.json grade",
+   "txid": "ea445f18926af580fe8bf95466f3f7b9eea3eea0295a791323ee1d0ab4eddb0c"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-ed09fcce",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/ed09fcce52484862a01fcb0e03d6799ba16d7304e4b0af1d60cde4ce399c1207.json grade",
+   "txid": "ed09fcce52484862a01fcb0e03d6799ba16d7304e4b0af1d60cde4ce399c1207"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-f00cc25c",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/f00cc25c28947e52c48b450d259b5a06daf9bce580bb5503e978087d236d4f90.json grade",
+   "txid": "f00cc25c28947e52c48b450d259b5a06daf9bce580bb5503e978087d236d4f90"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-f389f4b6",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/f389f4b63e9256d052445589ca06eee694bac0eefda658add5d4dbd37b29d60c.json grade",
+   "txid": "f389f4b63e9256d052445589ca06eee694bac0eefda658add5d4dbd37b29d60c"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "challenges": [
+    "A1",
+    "A12",
+    "A13",
+    "A16",
+    "A18",
+    "A19",
+    "A2",
+    "A2b",
+    "A3",
+    "A4a",
+    "A7"
+   ],
+   "claim_corrections": [],
+   "deciding_fact_missing": "the ring state at the reference block (proof not re-runnable) and the hidden amounts",
+   "downgrade_note": "",
+   "downgraded": false,
+   "id": "V-HF3-fd79549a",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body and carriers (A3, A7)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "exception path (A12), public fields (A13)"
+    }
+   ],
+   "question": "did this tx create value beyond the emission formula?",
+   "source": "derived/tx/fd79549ad416cbec243d9ce54014b26f888f1cfd0cfe1aed5dde978a11dcaeab.json grade",
+   "txid": "fd79549ad416cbec243d9ce54014b26f888f1cfd0cfe1aed5dde978a11dcaeab"
+  },
+  {
+   "audit_grade": "pending",
+   "builder_grade": "held for 14,226 topos (DERIVED, not end-state-checked); 68,251 not reconstructable",
+   "challenges": [
+    "A10b",
+    "A10c",
+    "A9"
+   ],
+   "downgrade_note": "pending: the 14,226 roots are shown as the archive node's own roots (DERIVED from an unverified fastsync base), witnessed by RAW Statement.Roothash at the A10b topos only, until the R26 end-state check",
+   "downgraded": true,
+   "id": "V-STATE-ROOTS",
+   "inputs": [
+    {
+     "class": "DERIVED",
+     "what": "archive roots (our replaywall store), witnessed at the topos of A10b"
+    }
+   ],
+   "question": "what were the pre/post balance-tree roots of the window's blocks?",
+   "source": "derived/state_roots.json"
+  },
+  {
+   "audit_grade": "SPECULATION",
+   "builder_grade": "not graded (not_in_scope)",
+   "challenges": [],
+   "downgraded": false,
+   "id": "V-EXT-23886517",
+   "inputs": [
+    {
+     "class": "EXT",
+     "what": "23,886,517.3 DERO: press/disclosure claim"
+    }
+   ],
+   "question": "the external figure 23,886,517.3 DERO (Foundation disclosure)",
+   "reason": "EXT only: no RAW or DERIVED input in this dataset reproduces or refutes it (rft \u00a70.8.2)",
+   "source": "derived/emission.json not_in_scope"
+  },
+  {
+   "audit_grade": "SPECULATION",
+   "builder_grade": "not graded (not_in_scope)",
+   "challenges": [],
+   "downgraded": false,
+   "id": "V-EXT-5000000",
+   "inputs": [
+    {
+     "class": "EXT",
+     "what": "5,000,000 DERO: press/disclosure claim"
+    }
+   ],
+   "question": "the external figure 5,000,000 DERO (Foundation disclosure)",
+   "reason": "EXT only: no RAW or DERIVED input in this dataset reproduces or refutes it (rft \u00a70.8.2)",
+   "source": "derived/emission.json not_in_scope"
+  }
+ ]
+}

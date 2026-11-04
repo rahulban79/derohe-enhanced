@@ -117,9 +117,15 @@ def build(root):
       '<tr><td>Miner</td><td>PAUSED</td><td>miner</td></tr>\n</tbody></table></section>\n'
       '<p>Live r23c window 01:08–01:28: 94,273 H/s TOTAL mean, 5,435 H/cpu-s, GPU busy 95.6 % (baseline r23b 09:27–09:37: 5,164 H/cpu-s).</p>\n'
       '</body></html>\n')
-    w(root, 'artifacts/dero-soundness-r23.html', '<html><body><p>soundness</p></body></html>\n')
+    w(root, 'harness/kit/soundpage.py', (HARNESS / 'kit/soundpage.py').read_text())   # r25: the tree's soundness-page helper
+    _sps = __import__('importlib.util').util.spec_from_file_location('soundpage_for_coherence_kat', root / 'harness/kit/soundpage.py')
+    _spm = __import__('importlib.util').util.module_from_spec(_sps)
+    _sps.loader.exec_module(_spm)
+    snd = _spm.name(root)   # r25: the planted tree's current-round soundness page, named by the helper (KAT SP4)
+    w(root, f'artifacts/{snd}', '<html><body><p>soundness</p></body></html>\n')
     w(root, 'artifacts/index.html', '<html><body><p class="file"><code>artifacts/dero-src-arch.html</code></p>'
-      '<p class="file"><code>artifacts/dero-r1-r24.html</code></p><p class="file"><code>artifacts/dero-soundness-r23.html</code></p></body></html>\n')
+      '<p class="file"><code>artifacts/dero-r1-r24.html</code></p>'
+      f'<p class="file"><code>artifacts/{snd}</code></p></body></html>\n')
     w(root, 'RUN_REPORT.md', '# Run report\n\n## Round 24 (2026-11-02) — node-only round; installed as +22102026.r24\n\n'
       f'- Pipeline: {pipe} PASS, race 26 packages 0 races, shadow 120 blocks, 240 treehashes, 0 mismatches.\n'
       '- B18 (compact-block Observe) is CLOSED in r24.\n\n**Open after Round 24:** pending.\n')

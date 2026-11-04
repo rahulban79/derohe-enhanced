@@ -35,7 +35,7 @@ from pathlib import Path
 HARNESS = Path(__file__).resolve().parent.parent
 MOD = 'intel/area_intel.py'
 REQ = ('harness', 'security', 'cryptosupply', 'getworkops', 'mempool', 'chainperf', 'rpcws', 'syncp2p',
-       'wallet', 'storage', 'observability', 'docs', 'disclosure', 'miner')
+       'wallet', 'storage', 'observability', 'docs', 'disclosure', 'miner', 'tooling')   # r25: tooling (§0.9)
 
 
 def load(base):
@@ -375,7 +375,7 @@ MUTATIONS = [
     ('AI6', "                if bef and bef[0] == 'PASS':", "                if False:", 'a newly failing gate is filed as an old failure'),
     ('AI6', "                if e is h and c and not is_pending(c.get('value')) and c.get('computed') and not same_value(c['value'], h['value']):",
      "                if False:", 'a recorded value that no longer recomputes is not reported'),
-    ('AI6', "                          and area_of(areas, f) == a['id'] and (d, n) not in ran)",
+    ('AI6', "                          and area_of(areas, f) == a['id'] and (d, n) not in ran and (d, n) not in opt)",
      "                          and area_of(areas, f) == a['id'] and False)", 'tests the round never ran are not reported'),
     ('AI7', "    if age >= FRESH_H:", "    if False:", 'a stale scorecard passes G23'),
     ('AI7', "    if doc.get('registry', {}).get('sha') != sha(P['reg']):", "    if False:", 'areas.json edited after the run passes G23'),

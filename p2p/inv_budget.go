@@ -79,6 +79,7 @@ func (c *Connection) clip_inv_txs(list [][32]byte, now time.Time) [][32]byte {
 	n := c.inv_budget.take(len(list), now)
 	if n < len(list) {
 		inv_txids_over_budget.Add(len(list) - n)
+		c.obs.inv_clipped.Add(uint64(len(list) - n)) // r25 (CO24-N5): attributable to this connection
 		return list[:n]
 	}
 	return list

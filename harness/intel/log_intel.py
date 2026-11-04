@@ -266,6 +266,15 @@ def write_atomic(path, text):
             pass
         raise
 
+def privacy_scrub(report, salt=None):
+    """r25 (peers, §7 B71): the snapshot is tracked evidence, so every non-reserved IPv4 in it (backing-off endpoints,
+    priority nodes, logger names) is pseudonymised at the source with the peer observatory's salt (kit/privkit.py),
+    the same 'peer-' name peer_intel and minelib.emit use; anchors still match through privkit.mask."""
+    sys.path.insert(0, str(HARNESS / 'kit'))
+    import privkit
+    return privkit.pseudonymise_obj(report, salt or privkit.load_salt())
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--files', nargs='*')
@@ -311,6 +320,7 @@ def main():
         except Exception as e:                               # noqa: BLE001 — node down: record why, never guess
             report['metrics'] = {'error': f'{type(e).__name__}: {e}'}
     out = HARNESS / f"runtime/logintel_{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.json"
+    report = privacy_scrub(report)                                       # r25 (B71): no peer address in the snapshot
     write_atomic(out, json.dumps(report, indent=1, ensure_ascii=False))   # verbatim UTF-8; R22: atomic
     if not a.json_only:
         for p in report['runs']:

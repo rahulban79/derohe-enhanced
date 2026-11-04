@@ -558,6 +558,19 @@ DT_FCOL = {'implemented': 'var(--ok)', 'implemented-earlier': 'var(--ok)', 'desi
            'feasible-not-implemented': 'var(--warn)', 'infeasible': 'var(--mut)', 'pending': 'var(--mut)'}
 
 
+def fx_dataset_line():
+    """r25 (rft §0.8.6): the "Forensic dataset" line of section 10, rendered by artifacts/src/forensics_section.fx_line from
+    the newest forensics/<version>/ (every figure a dataset fact span; G30 checks it between <!--fxline:begin/end-->)."""
+    import html as _h, importlib.util as _iu
+    p = ROOT / 'artifacts' / 'src' / 'forensics_section.py'
+    if not p.exists():
+        return ''
+    sp = _iu.spec_from_file_location(f'fx_section_for_deroarch_{id(p)}', p)
+    m = _iu.module_from_spec(sp)
+    sp.loader.exec_module(m)
+    return m.fx_line(_h.escape)
+
+
 def disclosure_track_html(by):
     rows = by.get('disclosure', [])
     if not rows:
@@ -567,7 +580,7 @@ def disclosure_track_html(by):
     fx = [r for r in rows if r.get('kind') == 'track-fix']
     rounds = (cl[0].get('rounds') if cl else []) or []
     cur = rounds[-1] if rounds else ''
-    o = ['<!--disclosure-track:begin-->']
+    o = [fx_dataset_line(), '<!--disclosure-track:begin-->']
     retested = sum(1 for r in cl if cur in (r.get('history') or {}))
     o.append('<h3>Round history: every claim, re-tested each round</h3>')
     o.append(kpis([(f'{retested}/{len(cl)}', f'claims re-tested in {cur}'),

@@ -1,0 +1,27 @@
+[
+ {
+  "cross_check": "live topo.map record 7498540 (discovery line 118) == GetBlock id == sha3-256(blob) == decoder id",
+  "fetch_time": "2026-11-03T18:07:12Z",
+  "height": 7498540,
+  "id": "e18be51e716a746c6a98a32dbc2a0420745945ffb933d1b6582489a33c1e743e",
+  "kind": "block",
+  "sha256": "4f8151eada8297513d718773283d5045bced11c1a38bd62c2de29db58fda1709",
+  "source": "live-rpc",
+  "tips": [
+   "51da0a78c9d303ef2e05df144ad24f95f1fb4be0fec7e208eae71972b0ac86ee"
+  ],
+  "topo": 7498540
+ },
+ {
+  "count": 14226,
+  "first": "a57d146e9eaa6335d77f3a8c9a8047c854f55d3b4cef9ecb3ffc3fc61512150a",
+  "kind": "archive_topo_records",
+  "last": "5460bce958ff0642dcbabbade30fee81589c69bee6d1a1e987df99768d2b2579",
+  "source": "archive:replaywall-20260819 (copy)",
+  "topo_range": [
+   7453290,
+   7467515
+  ],
+  "used_as": "corroboration of the tips chain (every committed record compared by id at its topo)"
+ }
+]

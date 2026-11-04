@@ -89,7 +89,7 @@ func (c *Connection) NotifyINV(request ObjectList, response *Dummy) (err error) 
 		var oresponse Objects
 		fill_common(&need.Common) // fill common info
 		if err = c.call("Peer.GetObject", need, &oresponse); err != nil {
-			kind := log_call_failure(c.logger, err, "Call failed GetObject", "need_objects", need)
+			kind := c.call_failed(err, "Call failed GetObject", "need_objects", need) // r25 (CO24-N6): counted per connection
 			// a peer that announced a transaction and then could not serve it (typically mined or
 			// evicted in between) keeps the connection; blocks, chunks and other failures do not
 			if kind == call_failure_remote && is_tx_only(need) && c.keep_after_tx_fetch_failure() {
@@ -161,7 +161,7 @@ func (c *Connection) NotifyMiniBlock(request Objects, response *Dummy) (err erro
 		c.logger.V(3).Error(err, "Should be banned")
 		c.penalize("malformed_request")
 		c.exit()
-		return err
+		return c.refuse_miniblock(MBL_REFUSED_TOO_MANY, 0, err) // r25 (CO24-C1): counted by reason
 	}
 	fill_common_T1(&request.Common)
 	c.update(&request.Common) // update common information
@@ -172,12 +172,12 @@ func (c *Connection) NotifyMiniBlock(request Objects, response *Dummy) (err erro
 	for i := range request.MiniBlocks {
 		var mbl block.MiniBlock
 		if err = mbl.Deserialize(request.MiniBlocks[i]); err != nil {
-			return err
+			return c.refuse_miniblock(MBL_REFUSED_UNDECODABLE, 0, err) // r25 (CO24-C1)
 		}
 		if height > 4 { // activate check a bit after genesis, thanks Slixe
 			if height-2 <= int64(mbl.Height) && int64(mbl.Height) <= (height+1) {
 			} else {
-				return fmt.Errorf("Stale Miniblock")
+				return c.refuse_miniblock(MBL_REFUSED_STALE, mbl.Height, fmt.Errorf("Stale Miniblock")) // r25 (CO24-C1)
 			}
 		}
 		mbls = append(mbls, mbl)
@@ -189,7 +189,7 @@ func (c *Connection) NotifyMiniBlock(request Objects, response *Dummy) (err erro
 		var ok bool
 
 		if mbl.Final {
-			return fmt.Errorf("final blocks are not propagted")
+			return c.refuse_miniblock(MBL_REFUSED_FINAL, mbl.Height, fmt.Errorf("final blocks are not propagted")) // r25 (CO24-C1)
 		}
 
 		// track miniblock propagation
@@ -207,7 +207,7 @@ func (c *Connection) NotifyMiniBlock(request Objects, response *Dummy) (err erro
 		var miner_hash crypto.Hash
 		copy(miner_hash[:], mbl.KeyHash[:])
 		if !chain.IsAddressHashValid(false, miner_hash) { // this will use cache
-			return fmt.Errorf("unregistered miner")
+			return c.refuse_miniblock(MBL_REFUSED_UNREGISTERED, mbl.Height, fmt.Errorf("unregistered miner")) // r25 (CO24-C1)
 		}
 
 		var bl block.Block
@@ -226,7 +226,7 @@ func (c *Connection) NotifyMiniBlock(request Objects, response *Dummy) (err erro
 			if ehash, ok := chain.ExpandMiniBlockTip(tip); ok {
 				bl.Tips[i] = ehash
 			} else {
-				return fmt.Errorf("tip could not be expanded")
+				return c.refuse_miniblock(MBL_REFUSED_TIP, mbl.Height, fmt.Errorf("tip could not be expanded")) // r25 (CO24-C1)
 			}
 		}
 
@@ -235,13 +235,14 @@ func (c *Connection) NotifyMiniBlock(request Objects, response *Dummy) (err erro
 		// lets get the difficulty at tips
 		if !chain.VerifyMiniblockPoW(&bl, mbl) {
 			c.penalize("invalid_pow_miniblock")
-			return errormsg.ErrInvalidPoW
+			return c.refuse_miniblock(MBL_REFUSED_POW, mbl.Height, errormsg.ErrInvalidPoW) // r25 (CO24-C1)
 		}
 
 		if err, ok = chain.InsertMiniBlock(mbl); !ok {
-			return err
+			return c.refuse_miniblock(MBL_REFUSED_INSERT, mbl.Height, err) // r25 (CO24-C1)
 		} else { // rebroadcast miniblock
 			valid_found = true
+			note_miniblock_seen(c, mbl) // r25 (CO24-C5): first-seen time of an accepted miniblock
 			c.note_miniblock_delivery(true)
 			if valid_found {
 				broadcast_MiniBlock(mbl, c.Peer_ID, request.Sent) // do not send back to the original peer
@@ -306,13 +307,16 @@ func (c *Connection) processChunkedBlock(request Objects, data_shard_count, pari
 	// make sure connection does not timeout and be killed while processing huge blocks
 	c.LastObjectRequestTime.Store(time.Now().Unix())
 	// check if we can add ourselves to chain
+	note_block_seen(c, blid, int64(bl.Height))              // r25 (CO24-C5): a complete block offered by this peer
 	if err, ok := Add_Complete_Block_HF3(chain, &cbl); ok { // if block addition was successfil (HF3 table: hf3_parity.go)
+		note_block_result(c, &cbl, err, ok) // r25 (CO24-C3/C4): attributed verdict (consensus_obs_r25.go)
 		// notify all peers
 		Broadcast_Block(&cbl, c.Peer_ID) // do not send back to the original peer
 		if len(bl.Tx_hashes) == len(request.CBlocks[0].Txs) {
 			observe_block_txs(request.CBlocks[0].Txs, cbl.Txs) // r23: only txs of an accepted block are observed
 		}
 	} else { // ban the peer for sometime
+		note_block_result(c, &cbl, err, ok) // r25 (CO24-C3): counted by reason, the sender named by its peer_id
 		if err == errormsg.ErrInvalidPoW {
 			c.logger.Error(err, "This peer should be banned and terminated")
 			c.penalize("invalid_pow")

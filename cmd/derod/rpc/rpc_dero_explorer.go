@@ -135,8 +135,58 @@ type GetBlockHeadersRange_Params struct {
 }
 
 type GetBlockHeadersRange_Result struct {
-	Headers []rpc.BlockHeader_Print `json:"headers"`
-	Status  string                  `json:"status"`
+	Headers []BlockHeader_Range `json:"headers"`
+	Status  string              `json:"status"`
+}
+
+// BlockHeader_Range is a header of GetBlockHeadersRange: the same object as GetBlockHeaderByTopoHeight (embedded, so
+// its JSON fields are unchanged) plus two r25 fields the chain observatory needed (dero-rft §7 B56, B59). The
+// rpc package is consensus-guarded (harness/consensus_guard.py), so BlockHeader_Print itself gains no field.
+type BlockHeader_Range struct {
+	rpc.BlockHeader_Print
+	Fees           *uint64 `json:"fees"`             // r25 (CO24-C2): sum of the fee fields of the block's txs; null if one is unreadable
+	FirstSeenMs    int64   `json:"first_seen_ms"`    // r25 (CO24-C5): this node's clock when it first saw the block (0 = not seen live)
+	FirstSeenLocal bool    `json:"first_seen_local"` // r25: mined here (true) or received from a peer (false)
+}
+
+// block_fees sums Fees() over the block's txs as stored (r25, CO24-C2). A tx that cannot be read or decoded makes the
+// sum unknown (nil): a partial sum is never reported as the block's fees.
+func block_fees(tx_hashes []crypto.Hash, read func(crypto.Hash) ([]byte, error), fee_of func([]byte) (uint64, error)) *uint64 {
+	var sum uint64
+	for _, h := range tx_hashes {
+		raw, err := read(h)
+		if err != nil {
+			return nil
+		}
+		f, err := fee_of(raw)
+		if err != nil {
+			return nil
+		}
+		sum += f
+	}
+	return &sum
+}
+
+// tx_fee decodes a stored tx and returns its fee field (transaction.Fees: the zero-SCID payloads' statement fees).
+func tx_fee(raw []byte) (uint64, error) {
+	var tx transaction.Transaction
+	if err := tx.Deserialize(raw); err != nil {
+		return 0, err
+	}
+	return tx.Fees(), nil
+}
+
+func range_header(hash crypto.Hash) (h BlockHeader_Range, err error) {
+	if h.BlockHeader_Print, err = GetBlockHeader(chain, hash); err != nil {
+		return
+	}
+	if bl, err1 := chain.Load_BL_FROM_ID(hash); err1 == nil {
+		h.Fees = block_fees(bl.Tx_hashes, func(t crypto.Hash) ([]byte, error) { return chain.Store.Block_tx_store.ReadTX(t) }, tx_fee)
+	}
+	if fs, ok := p2p.Block_First_Seen(hash); ok {
+		h.FirstSeenMs, h.FirstSeenLocal = fs.Ms, fs.Local
+	}
+	return
 }
 
 func GetBlockHeadersRange(ctx context.Context, p GetBlockHeadersRange_Params) (result GetBlockHeadersRange_Result, err error) {
@@ -154,7 +204,7 @@ func GetBlockHeadersRange(ctx context.Context, p GetBlockHeadersRange_Params) (r
 	if err != nil {
 		return
 	}
-	result.Headers = make([]rpc.BlockHeader_Print, 0, end-start+1)
+	result.Headers = make([]BlockHeader_Range, 0, end-start+1)
 	for t := start; t <= end; t++ {
 		if err = ctx.Err(); err != nil {
 			return
@@ -163,8 +213,8 @@ func GetBlockHeadersRange(ctx context.Context, p GetBlockHeadersRange_Params) (r
 		if hash, err = block_id_at_topo(t); err != nil {
 			return
 		}
-		var h rpc.BlockHeader_Print
-		if h, err = GetBlockHeader(chain, hash); err != nil {
+		var h BlockHeader_Range
+		if h, err = range_header(hash); err != nil { // r25: + fees, first_seen_ms
 			err = fmt.Errorf("topoheight %d: %s", t, err)
 			return
 		}
@@ -197,6 +247,7 @@ type MiniBlock_Print struct {
 	Miner      string   `json:"miner"`                // address, "unknown" if not registered in that block's state
 	Integrator bool     `json:"integrator,omitempty"` // the final miniblock pays the block's integrator address
 	Flags      uint32   `json:"flags"`
+	FirstSeen  int64    `json:"first_seen_ms"` // r25 (CO24-C5): this node's clock when it first accepted it (0 = not seen live)
 }
 
 type GetMiniBlocks_Result struct {
@@ -308,6 +359,9 @@ func print_miniblock(i int, mbl *block.MiniBlock, block_ms uint64, resolve func(
 	m.Timestamp = mbl.Timestamp
 	m.TimeMs = mbl_time_ms(block_ms, mbl.Timestamp)
 	m.BeforeMs = int64(block_ms) - int64(m.TimeMs)
+	if fs, ok := p2p.MiniBlock_First_Seen(mbl.GetHash()); ok { // r25 (CO24-C5)
+		m.FirstSeen = fs.Ms
+	}
 	m.KeyHash = hex.EncodeToString(mbl.KeyHash[:16])
 	m.Flags = mbl.Flags
 	if mbl.Final {
@@ -532,8 +586,17 @@ type GetPeerInfo_Result struct {
 	V2PeersSeen7d int            `json:"v2_chain_peers_seen_7d"` // distinct IPs dropped for following the v2 remnant chain
 	OurHeight     int64          `json:"our_height"`
 	OurTopoHeight int64          `json:"our_topoheight"`
-	Status        string         `json:"status"`
+	// r25 (peers, CO24-N1/N4/N7): offence records, the ban list with its sources, the stuck-peer holds
+	Offenders  []p2p.OffenderInfo `json:"offenders"`   // at most MAX_PEER_OFFENDERS, newest offence first
+	Bans       []p2p.BanEntry     `json:"bans"`        // at most MAX_PEER_BANS, most recently placed first
+	BanCount   int                `json:"ban_count"`   // all running bans
+	BanSources map[string]int     `json:"ban_sources"` // all running bans by source
+	StuckHeld  []p2p.StuckHold    `json:"stuck_held"`
+	Status     string             `json:"status"`
 }
+
+const MAX_PEER_OFFENDERS = 32 // r25: bounded answers (the penalty table holds up to 65,536 records)
+const MAX_PEER_BANS = 64
 
 // rpc_bind_address is the --rpc-bind the server listens on (set by RPCServer_Start; loopback until then).
 var rpc_bind_address = "127.0.0.1:0"
@@ -562,8 +625,16 @@ func GetPeerInfo(ctx context.Context) (result GetPeerInfo_Result, err error) {
 	result.V2PeersSeen7d = p2p.V2OffendersSeen(time.Now().Unix())
 	result.OurHeight = chain.Get_Height()
 	result.OurTopoHeight = chain.Load_TOPO_HEIGHT()
+	fill_peer_observatory(&result, time.Now()) // r25
 	result.Status = "OK"
 	return
+}
+
+// fill_peer_observatory adds the r25 (peers, CO24-N1/N4/N7) lists: offence records, bans with their sources, stuck holds.
+func fill_peer_observatory(result *GetPeerInfo_Result, now time.Time) {
+	result.Offenders = p2p.Offenders(MAX_PEER_OFFENDERS, now)
+	result.Bans, result.BanCount, result.BanSources = p2p.BanInfos(MAX_PEER_BANS, now)
+	result.StuckHeld = p2p.StuckHolds(now)
 }
 
 // ---------------------------------------------------------------- chain fingerprint (exposed by GetSyncInfo)

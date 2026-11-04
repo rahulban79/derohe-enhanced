@@ -108,6 +108,7 @@ type Connection struct {
 	tx_asked           tx_ask_set    // txids recently requested from this peer (tx_ask.go)
 	tx_known           tx_known_set  // txids this peer announced to us; broadcast_Tx skips it for them (tx_known.go)
 	inv_budget         inv_budget    // r22: announced-txid budget of NotifyINV (inv_budget.go)
+	obs                conn_observe  // r25 (peers, CO24-N3/N5/N6, B47): per-connection counters for GetPeerInfo (peer_observe.go)
 	traffic            *conn_traffic // payload bytes read/written by the codec (traffic.go)
 
 	clock_index   int
@@ -784,6 +785,10 @@ func trigger_sync() {
 
 	for _, connection := range clist {
 
+		if connection.sync_held(time.Now()) { // r25 (B47): it answered our last sync with nothing; ask the others first
+			continue
+		}
+
 		height := chain.Get_Height()
 
 		//connection.Lock()   recursive mutex are not suported
@@ -823,6 +828,9 @@ func trigger_sync() {
 							before := chain.Get_Height()
 							connection.sync_chain()
 							connection.logger.V(1).Info("sync done")
+							if chain.Get_Height() > before { // r25 (B47): it served blocks, so its earlier failures are forgiven
+								connection.sync_succeeded()
+							}
 							if !sync_should_continue(round, before, chain.Get_Height(), connection.Height.Load(), connection.exited.Load() == 1) {
 								break
 							}

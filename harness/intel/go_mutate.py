@@ -178,6 +178,18 @@ def relabel(cmp_, known, rerun):
     return cmp_
 
 
+def flaky_target_result(counts, test):
+    """r25 (B49): the verdict of a mutation whose guarding test is listed flaky, from its -count=FLAKY_RERUNS re-runs
+    UNDER the mutation: CAUGHT only when at least FLAKY_MIN_PASS of them fail (the mirror of the flaky rule: a listed
+    flaky test passes 2 of 3 to be excused, a mutant must fail 2 of 3 to count as caught); otherwise MISSED, because
+    the first red run may have been the flake. Pure."""
+    c = counts or {}
+    if c.get('fail', 0) >= FLAKY_MIN_PASS:
+        return 'CAUGHT', f"{test} is listed flaky: the mutant failed {c.get('fail', 0)}/{FLAKY_RERUNS} re-runs"
+    return 'MISSED', (f"{test} is listed flaky: the mutant failed only {c.get('fail', 0)}/{FLAKY_RERUNS} re-runs, so the "
+                      'first failure may have been the flake (harness/loop/KNOWN_TEST_FAILURES.json)')
+
+
 def rerun_here(pkg, tests, cwd=ROOT, timeout=1800):
     r = subprocess.run(['go', 'test', pkg, '-run', '^(' + '|'.join(tests) + ')$', f'-count={FLAKY_RERUNS}', '-json'],
                        cwd=cwd, capture_output=True, text=True, timeout=timeout)
@@ -229,6 +241,7 @@ def main():
     if restored:
         print(f'  RESTORED {restored}: a previous run was killed while it was mutated (journal)')
     spec = json.loads((HERE / 'go_mutations.json').read_text())
+    known = load_known()                                  # r25 (B49): mutations that target a listed-flaky test
     if a.only:
         spec['mutations'] = [m for m in spec['mutations'] if m['id'].startswith(a.only)]
     res = []
@@ -246,8 +259,15 @@ def main():
             r = subprocess.run(['go', 'test', m['pkg'], '-run', f"^{m['test']}$", '-count=1', '-timeout', '120s']
                                + (['-race'] if m.get('race') else []), cwd=ROOT,
                                capture_output=True, text=True, timeout=900)
-            res.append({**m, 'result': mutation_result(r.returncode, r.stdout + r.stderr),
-                        'why': (r.stdout + r.stderr).strip().splitlines()[-1:] if (r.stdout + r.stderr).strip() else ''})
+            result = mutation_result(r.returncode, r.stdout + r.stderr)
+            why = (r.stdout + r.stderr).strip().splitlines()[-1:] if (r.stdout + r.stderr).strip() else ''
+            if result == 'CAUGHT' and m['test'] in (known.get('flaky', {}).get(m['pkg']) or set()):
+                # r25 (B49): a listed-flaky test can fail by itself, so one red run does not prove the mutation is caught
+                rr = subprocess.run(['go', 'test', m['pkg'], '-run', f"^{m['test']}$", f'-count={FLAKY_RERUNS}', '-timeout',
+                                     '360s', '-json'] + (['-race'] if m.get('race') else []), cwd=ROOT,
+                                    capture_output=True, text=True, timeout=1800)
+                result, why = flaky_target_result(rerun_counts(rr.stdout + rr.stderr)[0].get(m['test']), m['test'])
+            res.append({**m, 'result': result, 'why': why})
         except subprocess.TimeoutExpired:
             res.append({**m, 'result': 'CAUGHT', 'why': 'the test hung under the mutation (a hang is a failure)'})
         finally:

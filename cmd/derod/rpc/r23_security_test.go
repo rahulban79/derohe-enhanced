@@ -46,7 +46,7 @@ func TestR23AbuseKeyIPv6Slash64(t *testing.T) {
 }
 
 func TestR23RateBucketWeighted(t *testing.T) {
-	tb := new_abuse_table(10, 20, 100)
+	tb := new_abuse_table(10, 20/ABUSE_FRESH_BURST_FRAC, 100) // r25 (B48): a fresh key holds 20 tokens, as this test assumes
 	now := time.Unix(1000, 0)
 	for i := 0; i < 2; i++ { // cost 8 each: 16 of 20 tokens
 		if v, _ := tb.admit("k", "DERO.GetBlockHeadersRange", false, now); v != abuse_ok {
@@ -259,7 +259,7 @@ func TestR23RemoteHTTPParamFuzzScoredFromReply(t *testing.T) {
 
 func TestR23RemoteHTTPRateLimited(t *testing.T) {
 	tb := fresh_abuse(t)
-	tb.rate, tb.burst = 1, 16
+	tb.rate, tb.burst = 1, 16/ABUSE_FRESH_BURST_FRAC // r25 (B48): a fresh key holds 16 tokens, as this test assumes
 	batch := `[` + strings.Repeat(`{"jsonrpc":"2.0","id":1,"method":"DERO.GetBlockHeadersRange","params":{}},`, 2) +
 		`{"jsonrpc":"2.0","id":3,"method":"DERO.Ping"}]` // 8+8+1 = 17 > 16
 	w := post_from("198.51.100.10:1000", batch)

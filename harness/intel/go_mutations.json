@@ -4451,8 +4451,8 @@
    "file": "glue/txcanon/txcanon.go",
    "pkg": "./glue/txcanon/",
    "test": "TestNonCanonicalXRejected",
-   "find": "\tif bytes.Equal(raw, ser) {\n\t\treturn true, nil\n\t}",
-   "replace": "\tif true {\n\t\treturn true, nil\n\t}"
+   "find": "\tif bytes.Equal(raw, ser) {\n\t\treturn true, ser, nil\n\t}",
+   "replace": "\tif true {\n\t\treturn true, ser, nil\n\t}"
   },
   {
    "id": "gm-r22-txcanon-roundtrip",
@@ -7754,9 +7754,9 @@
    "id": "gm-r24-security-proven-bound",
    "file": "p2p/proven_lane.go",
    "pkg": "./p2p/",
-   "test": "TestR24ProvenSetBounded",
-   "find": "\t\tif len(proven_map) >= PROVEN_MAX && oldest != \"\" {",
-   "replace": "\t\tif false && oldest != \"\" {"
+   "test": "TestR25ProvenFullSetEvictsLargestNetgroup",
+   "find": "\t\tif len(proven_map) >= PROVEN_MAX {\n\t\t\tif pick == \"\" {",
+   "replace": "\t\tif false {\n\t\t\tif pick == \"\" {"
   },
   {
    "id": "gm-r24-security-proven-hook",
@@ -8347,8 +8347,8 @@
    "file": "glue/txpolicy/txpolicy.go",
    "pkg": "./glue/txpolicy/",
    "test": "TestR24PoolFullRefusesLowFeeBeforeVerification",
-   "find": "\tif _, ok := p.victims(fee, size, p.sum_size+size-p.cap); !ok {\n\t\treturn ErrPoolFull\n\t}",
-   "replace": "\tif _, ok := p.victims(fee, size, p.sum_size+size-p.cap); !ok {\n\t\treturn nil\n\t}"
+   "find": "\tif _, ok := p.victims(fee, size, p.sum_size+p.inflight+size-p.cap); !ok {\n\t\treturn ErrPoolFull\n\t}",
+   "replace": "\tif _, ok := p.victims(fee, size, p.sum_size+p.inflight+size-p.cap); !ok {\n\t\treturn nil\n\t}"
   },
   {
    "id": "gm-r24-txpool-gate-tie",
@@ -8395,7 +8395,7 @@
    "file": "glue/txpolicy/txpolicy.go",
    "pkg": "./glue/txpolicy/",
    "test": "TestR24SummaryCachedBetweenAdmissions",
-   "find": "\tif !force && !p.sum_at.IsZero() && p.now().Sub(p.sum_at) < SUMMARY_TTL {",
+   "find": "\tif !force && !p.sum_at.IsZero() && p.now().Sub(p.sum_at) < SUMMARY_TTL && map_id(mined) == p.sum_mined {",
    "replace": "\tif false {"
   },
   {
@@ -8869,6 +8869,1314 @@
    "test": "TestR24VerifyPanickedOverlapNotCovered",
    "find": "\to := &prewarm_overlap{stop: make(chan struct{}), done: make(chan struct{})}\n",
    "replace": "\to := &prewarm_overlap{stop: make(chan struct{}), done: make(chan struct{}), ran: PREWARM_MINIBLOCKS}\n"
+  },
+  {
+   "id": "gm-r25-rpcrobust-encbal-precheck",
+   "file": "cmd/derod/rpc/rpc_dero_getencryptedbalance.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25EncryptedBalancePrunedTopoTypedError",
+   "find": "\tif err = check_state_topo(\"GetEncryptedBalance\", topoheight); err != nil {\n\t\treturn result, err\n\t}\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-rpcrobust-encbal-record",
+   "file": "cmd/derod/rpc/rpc_dero_getencryptedbalance.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25PrunedRecordShapeRefused",
+   "find": "\tif err = check_state_record(\"GetEncryptedBalance\", topoheight, crypto.Hash(toporecord.BLOCK_ID)); err != nil {\n",
+   "replace": "\tif err = check_state_record(\"GetEncryptedBalance\", topoheight, crypto.Hash(toporecord.BLOCK_ID)); err != nil && false {\n"
+  },
+  {
+   "id": "gm-r25-rpcrobust-record-zero",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25StateRecordZeroBlockRefused",
+   "find": "\tif blid.IsZero() {\n",
+   "replace": "\tif blid.IsZero() && false {\n"
+  },
+  {
+   "id": "gm-r25-rpcrobust-floor-offbyone",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25EncryptedBalancePrunedTopoTypedError",
+   "find": "floor > 0 && topoheight < floor {",
+   "replace": "floor > 0 && topoheight <= floor {"
+  },
+  {
+   "id": "gm-r25-rpcrobust-getsc-precheck",
+   "file": "cmd/derod/rpc/rpc_dero_getsc.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25GetSCPrunedTopoTypedError",
+   "find": "\tif err = check_state_topo(\"GetSC\", topoheight); err != nil {\n\t\treturn\n\t}\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-rpcrobust-getsc-record",
+   "file": "cmd/derod/rpc/rpc_dero_getsc.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25PrunedRecordShapeRefused",
+   "find": "if err == nil && crypto.Hash(toporecord.BLOCK_ID).IsZero() {",
+   "replace": "if err == nil && crypto.Hash(toporecord.BLOCK_ID).IsZero() && false {"
+  },
+  {
+   "id": "gm-r25-rpcrobust-warn-ratelimit",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25StateRefusalLogRateLimited",
+   "find": "if last, ok := w.last[key]; ok && t.Sub(last) < STATE_UNAVAILABLE_LOG_EVERY {",
+   "replace": "if last, ok := w.last[key]; ok && t.Sub(last) < 0 {"
+  },
+  {
+   "id": "gm-r25-rpcrobust-warn-stack",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25StateRefusalLogRateLimited",
+   "find": "\"suppressed_since_last\", suppressed)",
+   "replace": "\"suppressed_since_last\", suppressed, \"stack\", \"x\")"
+  },
+  {
+   "id": "gm-r25-rpcrobust-address-typed",
+   "file": "cmd/derod/rpc/rpc_dero_getencryptedbalance.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25EncryptedBalanceBadAddressTypedError",
+   "find": "\t\treturn result, refuse_input(\"GetEncryptedBalance\", \"address\", err.Error())\n",
+   "replace": "\t\tpanic(err)\n"
+  },
+  {
+   "id": "gm-r25-rpcrobust-scid-encbal",
+   "file": "cmd/derod/rpc/rpc_dero_getencryptedbalance.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ScidColonRefused",
+   "find": "\tif err = check_scid_tree(\"GetEncryptedBalance\", p.SCID); err != nil { // r25 B86: was a panic at GetTree below\n\t\treturn result, err\n\t}\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-rpcrobust-scid-randaddr",
+   "file": "cmd/derod/rpc/rpc_dero_getrandomaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ScidColonRefused",
+   "find": "\tif err = check_scid_tree(\"GetRandomAddress\", p.SCID); err != nil { // r25 B86: was a panic at ss.GetTree below\n\t\treturn\n\t}\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-rpcrobust-scid-colon-byte",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ScidColonRefused",
+   "find": "if !scid.IsZero() && scid[0] == ':' {",
+   "replace": "if !scid.IsZero() && scid[0] == ';' {"
+  },
+  {
+   "id": "gm-r25-rpcrobust-name-value",
+   "file": "cmd/derod/rpc/rpc_dero_nametoaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25NameValueNotAKeyIsTyped",
+   "find": "\tif err != nil {\n\t\treturn \"\", refuse_input(\"NameToAddress\", \"name_value\", err.Error())\n",
+   "replace": "\tif err != nil && false {\n\t\treturn \"\", refuse_input(\"NameToAddress\", \"name_value\", err.Error())\n"
+  },
+  {
+   "id": "gm-r25-rpcrobust-b80-shadow",
+   "file": "cmd/derod/rpc/rpc_dero_getblockheaderbyhash.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25BlockHeaderByHashUnknownIsError",
+   "find": "\t\terr = &NotFoundError{What: \"block\", ID: hash.String()}\n",
+   "replace": "\t\t_ = hash\n"
+  },
+  {
+   "id": "gm-r25-rpcrobust-txstatus-notfound",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25TxLookupStatesForged",
+   "find": "\t\tcase r.Txs_as_hex[i] == \"\":\n",
+   "replace": "\t\tcase false:\n"
+  },
+  {
+   "id": "gm-r25-rpcrobust-txstatus-wired",
+   "file": "cmd/derod/rpc/websocket_server.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25GetTransactionStatusOverJSONRPC",
+   "find": "\t\t\"GetTransaction\":             handler.New(GetTransactionR25), // r25: + txs_status",
+   "replace": "\t\t\"GetTransaction\":             handler.New(GetTransaction), // r25: + txs_status"
+  },
+  {
+   "id": "gm-r25-rpcrobust-txstatus-alias",
+   "file": "cmd/derod/rpc/websocket_server.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25GetTransactionStatusOverJSONRPC",
+   "find": "\t\"gettransactions\":            handler.New(GetTransactionR25), // r25: + txs_status",
+   "replace": "\t\"gettransactions\":            handler.New(GetTransaction), // r25: + txs_status"
+  },
+  {
+   "id": "gm-r25-rpcrobust-getinfo-wired",
+   "file": "cmd/derod/rpc/websocket_server.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25GetInfoTotalSupplyBasis",
+   "find": "\t\t\"GetInfo\":                    handler.New(GetInfoR25), // r25 BD6",
+   "replace": "\t\t\"GetInfo\":                    handler.New(GetInfo), // r25 BD6"
+  },
+  {
+   "id": "gm-r25-rpcrobust-getinfo-alias",
+   "file": "cmd/derod/rpc/websocket_server.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25GetInfoTotalSupplyBasis",
+   "find": "\t\"get_info\":                   handler.New(GetInfoR25), // this is just an alias to above",
+   "replace": "\t\"get_info\":                   handler.New(GetInfo), // this is just an alias to above"
+  },
+  {
+   "id": "gm-r25-rpcrobust-chain-swap-lock",
+   "file": "cmd/derod/rpc/mining_outcome.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ResolverChainSwapRaceFree",
+   "race": true,
+   "find": "\tchain_swap_mu.RLock()\n\tdefer chain_swap_mu.RUnlock()\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-rpcrobust-wallet-shape",
+   "file": "walletapi/rpcserver/r25_content_type.go",
+   "pkg": "./walletapi/rpcserver/",
+   "test": "TestR25WalletContentTypeVariantsServed",
+   "find": "\t\tif !wallet_http_shape_ok(w, r) { // r25 B40\n\t\t\treturn\n\t\t}\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-rpcrobust-wallet-normalise",
+   "file": "walletapi/rpcserver/r25_content_type.go",
+   "pkg": "./walletapi/rpcserver/",
+   "test": "TestR25WalletContentTypeVariantsServed",
+   "find": "\t\t\treq.Header.Set(\"Content-Type\", \"application/json\")\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-rpcrobust-wallet-body",
+   "file": "walletapi/rpcserver/r25_content_type.go",
+   "pkg": "./walletapi/rpcserver/",
+   "test": "TestR25WalletRefusalsCarryJSONRPCBody",
+   "find": "\tw.WriteHeader(status)\n\tw.Write(body)\n",
+   "replace": "\tw.WriteHeader(status)\n\t_ = body\n"
+  },
+  {
+   "id": "gm-r25-rpcrobust-wallet-wired",
+   "file": "walletapi/rpcserver/rpc_websocket_server.go",
+   "pkg": "./walletapi/rpcserver/",
+   "test": "TestR25WalletJSONRPCWired",
+   "find": "\ttranslate_http_to_jsonrpc_and_vice_versa := wallet_json_rpc_handler(rpcserver, bridge) // r25 B40 (r25_content_type.go)\n",
+   "replace": "\ttranslate_http_to_jsonrpc_and_vice_versa := bridge.ServeHTTP\n\t_ = wallet_json_rpc_handler\n"
+  },
+  {
+   "id": "gm-r25-verify-rpcrobust-getinfo-legacy",
+   "file": "cmd/derod/rpc/websocket_server.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25GetInfoTotalSupplyBasis",
+   "find": "var historical_apis = handler.Map{\"getinfo\": handler.New(GetInfoR25),",
+   "replace": "var historical_apis = handler.Map{\"getinfo\": handler.New(GetInfo),"
+  },
+  {
+   "id": "gm-r25-verify-rpcrobust-b80-errcheck",
+   "file": "cmd/derod/rpc/rpc_dero_getblockheaderbyhash.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25BlockHeaderByHashUnknownIsError",
+   "find": "\tif err1 != nil {\n",
+   "replace": "\tif err1 != nil && false {\n"
+  },
+  {
+   "id": "gm-r25-verify-rpcrobust-txstatus-inpool",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25TxLookupStatesForged",
+   "find": "\t\tcase i < len(r.Txs) && r.Txs[i].In_pool:\n",
+   "replace": "\t\tcase false:\n"
+  },
+  {
+   "id": "gm-r25-verify-rpcrobust-swap-r23b",
+   "file": "cmd/derod/rpc/r23b_rpcws_test.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25NoUnlockedGlobalChainSwap",
+   "find": "\tdefer func() { reorg_state = old_state }()\n",
+   "replace": "\tdefer func() { chain, reorg_state = chain, old_state }()\n"
+  },
+  {
+   "id": "gm-r25-verify-rpcrobust-swap-detector",
+   "file": "cmd/derod/rpc/r25_verify_chainswap_test.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25NoUnlockedGlobalChainSwap",
+   "find": "chain\\s*(,\\s*\\w+\\s*)*=[^=]`)",
+   "replace": "chain\\s*=[^=]`)"
+  },
+  {
+   "id": "gm-r25-consensus-refusal-not-counted",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25MiniblockRefusalCountedAndRateLimited",
+   "find": "\tr.counts[reason]++\n",
+   "replace": "\n"
+  },
+  {
+   "id": "gm-r25-consensus-refusal-log-not-rate-limited",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25MiniblockRefusalCountedAndRateLimited",
+   "find": "if t, ok := r.last_log[reason]; ok && now.Sub(t) < OBS_LOG_EVERY {",
+   "replace": "if t, ok := r.last_log[reason]; ok && now.Sub(t) < 0 {"
+  },
+  {
+   "id": "gm-r25-consensus-refusal-peer-is-address",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25MiniblockRefusalCountedAndRateLimited",
+   "find": "logger.V(1).Info(\"Miniblock refused\", \"reason\", reason, \"height\", height, \"peer_id\", peer_label(conn_peer(c)), \"suppressed\", held)",
+   "replace": "c.logger.V(1).Info(\"Miniblock refused\", \"reason\", reason, \"height\", height, \"peer_id\", \"203.0.113.9\", \"suppressed\", held)"
+  },
+  {
+   "id": "gm-r25-consensus-duplicate-counted-as-rejection",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25BlockRejectReason",
+   "find": "\tcase errors.Is(err, errormsg.ErrAlreadyExists):\n\t\treturn \"\"",
+   "replace": "\tcase errors.Is(err, errormsg.ErrAlreadyExists):\n\t\treturn \"already_exists\""
+  },
+  {
+   "id": "gm-r25-consensus-future-timestamp-unnamed",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25BlockRejectReason",
+   "find": "\t\treturn \"future_timestamp\"",
+   "replace": "\t\treturn \"invalid_block\""
+  },
+  {
+   "id": "gm-r25-consensus-rejection-not-logged-at-console",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25BlockRejectionAttributed",
+   "find": "\tv := 0\n",
+   "replace": "\tv := 1\n"
+  },
+  {
+   "id": "gm-r25-consensus-accepted-block-not-tracked",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25BlockRejectionAttributed",
+   "find": "\tif ok {\n\t\talt_track.note(blid, int64(cbl.Bl.Height))\n\t\treturn\n\t}",
+   "replace": "\tif ok {\n\t\treturn\n\t}"
+  },
+  {
+   "id": "gm-r25-consensus-first-seen-overwritten",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SeenTableFirstWinsAndBounded",
+   "find": "\tif _, ok := t.m[h]; ok {\n\t\treturn false\n\t}\n\tif len(t.order)",
+   "replace": "\tif len(t.order)"
+  },
+  {
+   "id": "gm-r25-consensus-seen-table-unbounded",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SeenTableFirstWinsAndBounded",
+   "find": "\tif len(t.order) < t.keep {",
+   "replace": "\tif true {"
+  },
+  {
+   "id": "gm-r25-consensus-alt-settled-inside-stable-limit",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25AltTrackerSettles",
+   "find": "if !e.settled && tip_height-e.height > config.STABLE_LIMIT {",
+   "replace": "if !e.settled && tip_height-e.height >= 0 {"
+  },
+  {
+   "id": "gm-r25-consensus-alt-main-never-recognised",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25AltTrackerSettles",
+   "find": "\t\t\tif id == e.blid {\n\t\t\t\tv.alt = false",
+   "replace": "\t\t\tif id == e.blid && false {\n\t\t\t\tv.alt = false"
+  },
+  {
+   "id": "gm-r25-consensus-alt-tracker-unbounded",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25AltTrackerSettles",
+   "find": "\tif len(a.entries) > ALT_TRACK_KEEP {",
+   "replace": "\tif len(a.entries) > 10*ALT_TRACK_KEEP {"
+  },
+  {
+   "id": "gm-r25-consensus-stale-miniblock-not-counted",
+   "file": "p2p/rpc_notifications.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ConsensusObsOnSimulatorChain",
+   "find": "return c.refuse_miniblock(MBL_REFUSED_STALE, mbl.Height, fmt.Errorf(\"Stale Miniblock\"))",
+   "replace": "return fmt.Errorf(\"Stale Miniblock\")"
+  },
+  {
+   "id": "gm-r25-consensus-unregistered-miniblock-not-counted",
+   "file": "p2p/rpc_notifications.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ConsensusObsOnSimulatorChain",
+   "find": "return c.refuse_miniblock(MBL_REFUSED_UNREGISTERED, mbl.Height, fmt.Errorf(\"unregistered miner\"))",
+   "replace": "return fmt.Errorf(\"unregistered miner\")"
+  },
+  {
+   "id": "gm-r25-consensus-miniblock-first-seen-not-recorded",
+   "file": "p2p/rpc_notifications.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ConsensusObsOnSimulatorChain",
+   "find": "\t\t\tnote_miniblock_seen(c, mbl) // r25",
+   "replace": "\t\t\t_ = mbl // r25"
+  },
+  {
+   "id": "gm-r25-consensus-add-block-unattributed",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ConsensusObsOnSimulatorChain",
+   "find": "\terr, ok := Add_Complete_Block_HF3(chain, cbl)\n\tnote_block_result(c, cbl, err, ok)",
+   "replace": "\terr, ok := Add_Complete_Block_HF3(chain, cbl)"
+  },
+  {
+   "id": "gm-r25-consensus-header-miners-shift",
+   "file": "cmd/derod/rpc/blockheader.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25HeaderMinersKeepSlots",
+   "find": "\t\t} else {\n\t\t\tminers = append(miners, \"unknown\")\n\t\t}",
+   "replace": "\t\t}"
+  },
+  {
+   "id": "gm-r25-consensus-header-integrator-dropped",
+   "file": "cmd/derod/rpc/blockheader.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25HeaderMinersKeepSlots",
+   "find": "\tif has_integrator && len(miners) >= 10 {",
+   "replace": "\tif has_integrator && len(miners) > 10 {"
+  },
+  {
+   "id": "gm-r25-consensus-fees-partial-sum",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25BlockFees",
+   "find": "\t\tf, err := fee_of(raw)\n\t\tif err != nil {\n\t\t\treturn nil\n\t\t}",
+   "replace": "\t\tf, _ := fee_of(raw)"
+  },
+  {
+   "id": "gm-r25-consensus-fees-missing-tx-ignored",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25BlockFees",
+   "find": "\t\traw, err := read(h)\n\t\tif err != nil {\n\t\t\treturn nil\n\t\t}",
+   "replace": "\t\traw, err := read(h)\n\t\tif err != nil {\n\t\t\tcontinue\n\t\t}"
+  },
+  {
+   "id": "gm-r25-consensus-getinfo-alt-unassigned",
+   "file": "cmd/derod/rpc/rpc_dero_getinfo.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ConsensusRPCOnSimulatorChain",
+   "find": "\tresult.Alt_Blocks_Count = p2p.Alt_Blocks(chain.Get_Height(), chain.Get_Blocks_At_Height).Count",
+   "replace": "\t_ = p2p.Alt_Blocks"
+  },
+  {
+   "id": "gm-r25-consensus-range-first-seen-dropped",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ConsensusRPCOnSimulatorChain",
+   "find": "\t\th.FirstSeenMs, h.FirstSeenLocal = fs.Ms, fs.Local",
+   "replace": "\t\t_ = fs"
+  },
+  {
+   "id": "gm-r25-consensus-range-fees-dropped",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ConsensusRPCOnSimulatorChain",
+   "find": "\t\th.Fees = block_fees(",
+   "replace": "\t\t_ = block_fees("
+  },
+  {
+   "id": "gm-r25-consensus-reorg-lifetime-not-summed",
+   "file": "cmd/derod/rpc/reorg_events.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ReorgLifetimePersistsAcrossRestarts",
+   "find": "\t\t\tr.life.Reorgs++\n",
+   "replace": "\n"
+  },
+  {
+   "id": "gm-r25-consensus-reorg-starts-not-counted",
+   "file": "cmd/derod/rpc/reorg_events.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ReorgLifetimePersistsAcrossRestarts",
+   "find": "\tlife.Starts++\n",
+   "replace": "\n"
+  },
+  {
+   "id": "gm-r25-consensus-reorg-corrupt-file-not-kept",
+   "file": "cmd/derod/rpc/reorg_events.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ReorgLifetimePersistsAcrossRestarts",
+   "find": "\t\t\t_ = os.Rename(path, path+\".corrupt\")\n",
+   "replace": "\n"
+  },
+  {
+   "id": "gm-r25-consensus-reorg-not-logged",
+   "file": "cmd/derod/rpc/reorg_events.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ReorgLifetimePersistsAcrossRestarts",
+   "find": "\tif ev != nil {\n\t\tlog_reorg(ev)\n\t}",
+   "replace": "\tif ev != nil {\n\t}"
+  },
+  {
+   "id": "gm-r25-consensus-reorg-file-world-readable",
+   "file": "cmd/derod/rpc/reorg_events.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ReorgLifetimePersistsAcrossRestarts",
+   "find": "os.WriteFile(tmp, raw, 0600)",
+   "replace": "os.WriteFile(tmp, raw, 0644)"
+  },
+  {
+   "id": "gm-r25-consensus-stats-hash-limit-removed",
+   "file": "cmd/derod/rpc/consensus_stats_r25.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ConsensusStatsParams",
+   "find": "\tif len(list) > CONSENSUS_STATS_MAX_HASHES {",
+   "replace": "\tif len(list) > 10*CONSENSUS_STATS_MAX_HASHES {"
+  },
+  {
+   "id": "gm-r25-consensus-stats-foreign-cost-dropped",
+   "file": "cmd/derod/rpc/ws_foreign_rate.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ConsensusStatsParams",
+   "find": "\t\"DERO.GetConsensusStats\":    4,",
+   "replace": "\t\"DERO.GetConsensusStatsX\":   4,"
+  },
+  {
+   "id": "gm-r25-consensus-reasons-not-preregistered",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25BlockRejectReason",
+   "find": "\tfor _, r := range block_reject_reasons {\n\t\tmetrics.Set.GetOrCreateCounter(fmt.Sprintf(`blockchain_block_rejected_total{reason=\"%s\"}`, r))\n\t}",
+   "replace": "\tfor _, r := range block_reject_reasons[:1] {\n\t\tmetrics.Set.GetOrCreateCounter(fmt.Sprintf(`blockchain_block_rejected_total{reason=\"%s\"}`, r))\n\t}"
+  },
+  {
+   "id": "gm-r25-consensus-reorg-flush-noop",
+   "file": "cmd/derod/rpc/reorg_events.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ReorgLifetimePersistsAcrossRestarts",
+   "find": "\tdefer r.Unlock()\n\treturn r.save_locked()\n}",
+   "replace": "\tdefer r.Unlock()\n\treturn nil\n}"
+  },
+  {
+   "id": "gm-r25-verify-consensus-settle-reads-under-lock",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25AltSettleReadsOutsideLock",
+   "find": "\ta.Unlock()\n\n\ttype verdict struct {",
+   "replace": "\ttype verdict struct {"
+  },
+  {
+   "id": "gm-r25-verify-consensus-settle-double-count",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25AltSettleConcurrentOnce",
+   "find": "\t\tif e.settled {\n\t\t\tcontinue // a concurrent settle judged it first",
+   "replace": "\t\tif false && e.settled {\n\t\t\tcontinue // a concurrent settle judged it first"
+  },
+  {
+   "id": "gm-r25-verify-consensus-advance-block-on-console",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25RoutineRejectionsStayOffConsole",
+   "find": "\tcase \"past_missing\", \"advance_block\", \"previous_block\":",
+   "replace": "\tcase \"past_missing\":"
+  },
+  {
+   "id": "gm-r25-verify-consensus-rule-refusal-off-console",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR25RoutineRejectionsStayOffConsole",
+   "find": "\tif block_reject_routine(reason) {\n\t\tv = 1",
+   "replace": "\tif true || block_reject_routine(reason) {\n\t\tv = 1"
+  },
+  {
+   "id": "gm-r25-cryptodisc-bd9-parity-reduced",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR25ScalarReencodeVerifies",
+   "find": "\tif anonsupport.w.Cmp(proof.f.vector[0]) == 0 || anonsupport.w.Cmp(proof.f.vector[m]) == 0 {\n",
+   "replace": "\tif anonsupport.w.Cmp(new(big.Int).Mod(proof.f.vector[0], bn256.Order)) == 0 || anonsupport.w.Cmp(new(big.Int).Mod(proof.f.vector[m], bn256.Order)) == 0 {\n"
+  },
+  {
+   "id": "gm-r25-cryptodisc-bd9-c-reduced",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR25ScalarReencodeVerifies",
+   "find": "if reducedhash(input).Text(16) != proof.c.Text(16) { // we must fail here",
+   "replace": "if reducedhash(input).Text(16) != new(big.Int).Mod(proof.c, bn256.Order).Text(16) { // we must fail here"
+  },
+  {
+   "id": "gm-r25-cryptodisc-bd9-ip-a-decode-reduced",
+   "file": "cryptography/crypto/proof_innerproduct.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR25ScalarReencodeVerifies",
+   "find": "ip.a = new(big.Int).SetBytes(buf[:])",
+   "replace": "ip.a = new(big.Int).Mod(new(big.Int).SetBytes(buf[:]), bn256.Order)"
+  },
+  {
+   "id": "gm-r25-cryptodisc-bd9-s-sk-decode-reduced",
+   "file": "cryptography/crypto/proof_generate.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR25ScalarReencodeVerifies",
+   "find": "\t\tproof.s_sk = new(big.Int).SetBytes(buf[:])\n",
+   "replace": "\t\tproof.s_sk = new(big.Int).Mod(new(big.Int).SetBytes(buf[:]), bn256.Order)\n"
+  },
+  {
+   "id": "gm-r25-cryptodisc-b22-softhf-count",
+   "file": "blockchain/miniblocks_consensus.go",
+   "pkg": "./blockchain/",
+   "test": "TestR25ExactlyOneFinalMiniblock",
+   "find": "\tif bl.Height >= 399000 { // soft HF\n",
+   "replace": "\tif bl.Height >= 399000 && bl.Height < 7000000 { // soft HF\n"
+  },
+  {
+   "id": "gm-r25-cryptodisc-b22-final-insert",
+   "file": "block/miniblockdag.go",
+   "pkg": "./blockchain/",
+   "test": "TestR25ExactlyOneFinalMiniblock",
+   "find": "\tif mbl.Final {\n\t\treturn fmt.Errorf(\"Final cannot be inserted\"), false\n\t}\n",
+   "replace": "\tif mbl.Final && mbl.Height < 7000000 {\n\t\treturn fmt.Errorf(\"Final cannot be inserted\"), false\n\t}\n"
+  },
+  {
+   "id": "gm-r25-cryptodisc-b22-final-count",
+   "file": "blockchain/miniblocks_consensus.go",
+   "pkg": "./blockchain/",
+   "test": "TestR25ExactlyOneFinalMiniblock",
+   "find": "\tif final_count < 1 {\n",
+   "replace": "\tif final_count < 0 {\n"
+  },
+  {
+   "id": "gm-r25-verify-cryptodisc-bd9-s-r-refuse-nonreduced",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR25ScalarReencodeVerifies",
+   "find": "\tsigmasupport.A_D = new(bn256.G1).Add(new(bn256.G1).ScalarMult(gparams.G, proof.s_r), new(bn256.G1).ScalarMult(s.D, proof_c_neg))\n",
+   "replace": "\tsigmasupport.A_D = new(bn256.G1).Add(new(bn256.G1).ScalarMult(gparams.G, new(big.Int).Add(proof.s_r, big.NewInt(int64(proof.s_r.Cmp(bn256.Order)+1)/2))), new(bn256.G1).ScalarMult(s.D, proof_c_neg))\n"
+  },
+  {
+   "id": "gm-r25-harnesstool-b41-resolver-unlocked",
+   "file": "cmd/derod/rpc/mining_outcome.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ChainSwapIsRaceFreeWithResolver",
+   "race": true,
+   "find": "\tchain_swap_mu.RLock()\n\tdefer chain_swap_mu.RUnlock()\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-harnesstool-b41-swap-unlocked",
+   "file": "cmd/derod/rpc/r25_rpcrobust_test.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ChainSwapIsRaceFreeWithResolver",
+   "race": true,
+   "find": "\tchain_swap_mu.Lock()\n\told := chain\n\tchain = c\n\tchain_swap_mu.Unlock()\n",
+   "replace": "\told := chain\n\tchain = c\n"
+  },
+  {
+   "id": "gm-r25-verify-harnesstool-b41-pass-unlocks-early",
+   "file": "cmd/derod/rpc/mining_outcome.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25ChainSwapIsRaceFreeWithResolver",
+   "race": true,
+   "find": "\tchain_swap_mu.RLock()\n\tdefer chain_swap_mu.RUnlock()\n",
+   "replace": "\tchain_swap_mu.RLock()\n\tchain_swap_mu.RUnlock()\n"
+  },
+  {
+   "id": "gm-r25-secpool-proven-quota-gate",
+   "file": "p2p/proven_lane.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ProvenQuotaOneNetgroupCannotEvictHonest",
+   "find": "\tif gn := proven_groups[g]; g != \"\" && gn != nil && *gn >= PROVEN_PER_NETGROUP { // r25 (B48): a full netgroup replaces its own oldest proof",
+   "replace": "\tif gn := proven_groups[g]; false && gn != nil {"
+  },
+  {
+   "id": "gm-r25-secpool-proven-quota-own-group",
+   "file": "p2p/proven_lane.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ProvenQuotaKeepsNewestOfGroup",
+   "find": "proven_oldest_locked(func(r *proven_rec) bool { return r.group == g }, now)",
+   "replace": "proven_oldest_locked(func(r *proven_rec) bool { return true }, now)"
+  },
+  {
+   "id": "gm-r25-secpool-proven-largest-group",
+   "file": "p2p/proven_lane.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ProvenFullSetEvictsLargestNetgroup",
+   "find": "\t\t\tif r.gn != nil && *r.gn == big_n && r.at.Before(pick_at) {",
+   "replace": "\t\t\tif r.at.Before(pick_at) {"
+  },
+  {
+   "id": "gm-r25-secpool-proven-count-delete",
+   "file": "p2p/proven_lane.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ProvenQuotaOneNetgroupCannotEvictHonest",
+   "find": "\t\tif *r.gn--; *r.gn <= 0 {",
+   "replace": "\t\tif false {"
+  },
+  {
+   "id": "gm-r25-secpool-proven-exempt",
+   "file": "p2p/proven_lane.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ProvenQuotaExemptsNonPublic",
+   "find": "\tg := netgroup(ip)\n",
+   "replace": "\tg := netgroup(ip)\n\tif g == \"\" {\n\t\tg = \"lan\"\n\t}\n"
+  },
+  {
+   "id": "gm-r25-secpool-sync-trigger-filter",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR25TriggerSyncSkipsHeldPeer",
+   "find": "\t\tif connection.sync_held(time.Now()) {",
+   "replace": "\t\tif false && connection.sync_held(time.Now()) {"
+  },
+  {
+   "id": "gm-r25-secpool-sync-held-cmp",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncUnservableAttemptsPerHour",
+   "find": "\treturn now.UnixNano() < c.obs.sync_hold_until.Load()",
+   "replace": "\treturn false"
+  },
+  {
+   "id": "gm-r25-secpool-rebroadcast-mined",
+   "file": "p2p/tx_flow.go",
+   "pkg": "./p2p/",
+   "test": "TestR25RebroadcastSkipsMinedTx",
+   "find": "\treturn func(h crypto.Hash) bool { return exist(h) && !mined[h] }",
+   "replace": "\treturn func(h crypto.Hash) bool { return exist(h) }"
+  },
+  {
+   "id": "gm-r25-secpool-rebroadcast-wired",
+   "file": "cmd/derod/main.go",
+   "pkg": "./p2p/",
+   "test": "TestR25DerodSetsP2PMinedSource",
+   "find": "\tp2p.SetMinedSource(derodrpc.RecentlyMined)\n",
+   "replace": "\t_ = derodrpc.RecentlyMined\n"
+  },
+  {
+   "id": "gm-r25-secpool-cap-gate-inflight",
+   "file": "glue/txpolicy/txpolicy.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR25CapHoldsUnderConcurrentAdmissions",
+   "find": "\tif p.sum_size+p.inflight+size <= p.cap { // r25 (B44): admissions still verifying hold their bytes",
+   "replace": "\tif p.sum_size+size <= p.cap {"
+  },
+  {
+   "id": "gm-r25-secpool-cap-reserve",
+   "file": "glue/txpolicy/txpolicy.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR25CapHoldsUnderConcurrentAdmissions",
+   "find": "\tp.inflight += size // r25 (B44): reserved until leave",
+   "replace": "\t_ = size"
+  },
+  {
+   "id": "gm-r25-secpool-cap-release",
+   "file": "glue/txpolicy/txpolicy.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR25ReservationReleasedOnFailure",
+   "find": "\t\tif f.size <= p.inflight { // r25 (B44); a re-Attach while this flight ran reset inflight to 0\n\t\t\tp.inflight -= f.size",
+   "replace": "\t\tif f.size <= p.inflight { // r25 (B44); a re-Attach while this flight ran reset inflight to 0\n\t\t\tp.inflight -= 0"
+  },
+  {
+   "id": "gm-r25-secpool-fee-to-enter-inflight",
+   "file": "glue/txpolicy/txpolicy.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR25FeeToEnterCountsReserved",
+   "find": "\tif p.sum_size+p.inflight+size <= p.cap { // r25 (B44): bytes still verifying count, as in gate",
+   "replace": "\tif p.sum_size+size <= p.cap {"
+  },
+  {
+   "id": "gm-r25-secpool-summary-mined-id",
+   "file": "glue/txpolicy/txpolicy.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR25SummaryFollowsMinedSet",
+   "find": "SUMMARY_TTL && map_id(mined) == p.sum_mined {",
+   "replace": "SUMMARY_TTL {"
+  },
+  {
+   "id": "gm-r25-secpool-scalar-check-wired",
+   "file": "glue/txcanon/txcanon.go",
+   "pkg": "./glue/txcanon/",
+   "test": "TestR25NonReducedProofScalarRefused",
+   "find": "\tif reduced, judged := proof_scalars_reduced(ser, tx); !reduced { // r25 (BD5 / FX-N4)",
+   "replace": "\tif reduced, judged := proof_scalars_reduced(ser, tx); !reduced && false { // r25 (BD5 / FX-N4)"
+  },
+  {
+   "id": "gm-r25-secpool-scalar-cmp",
+   "file": "glue/txcanon/txcanon.go",
+   "pkg": "./glue/txcanon/",
+   "test": "TestR25NonReducedProofScalarRefused",
+   "find": "\t\t\tif bytes.Compare(pb[o:o+32], orderBytes[:]) >= 0 {",
+   "replace": "\t\t\tif bytes.Compare(pb[o:o+32], orderBytes[:]) > 0 {"
+  },
+  {
+   "id": "gm-r25-secpool-scalar-za",
+   "file": "glue/txcanon/txcanon.go",
+   "pkg": "./glue/txcanon/",
+   "test": "TestR25ProofScalarOffsetsMatchSynth",
+   "find": "\toffs = append(offs, za)\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-secpool-scalar-rest-offset",
+   "file": "glue/txcanon/txcanon.go",
+   "pkg": "./glue/txcanon/",
+   "test": "TestR25MainnetTxsReducedAndJudged",
+   "find": "\trest := za + 32 + 2*33",
+   "replace": "\trest := za + 32 + 33"
+  },
+  {
+   "id": "gm-r25-secpool-scalar-observe",
+   "file": "glue/txcanon/txcanon.go",
+   "pkg": "./glue/txcanon/",
+   "test": "TestR25ObserveCountsNonReducedBlockTx",
+   "find": "\t\t\tblockScalarNonRd.Inc()\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-secpool-fresh-burst-cap",
+   "file": "cmd/derod/rpc/rpc_abuse.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25FreshKeyBurstQuarter",
+   "find": "\t} else if !trusted { // r25 (B48): a fresh key holds a quarter of the burst until it is trusted\n\t\tburst *= ABUSE_FRESH_BURST_FRAC",
+   "replace": "\t} else if !trusted { // r25 (B48): a fresh key holds a quarter of the burst until it is trusted\n\t\tburst *= 1"
+  },
+  {
+   "id": "gm-r25-secpool-fresh-burst-trusted-full",
+   "file": "cmd/derod/rpc/rpc_abuse.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25FreshKeyBurstQuarter",
+   "find": "\t} else if !trusted { // r25 (B48)",
+   "replace": "\t} else if true { // r25 (B48)"
+  },
+  {
+   "id": "gm-r25-secpool-scalar-tail-start",
+   "file": "glue/txcanon/txcanon.go",
+   "pkg": "./glue/txcanon/",
+   "test": "TestR25MainnetTxsReducedAndJudged",
+   "find": "\tat := len(ser) - total\n",
+   "replace": "\tat := 0\n"
+  },
+  {
+   "id": "gm-r25-secpool-scalar-short-failopen",
+   "file": "glue/txcanon/txcanon.go",
+   "pkg": "./glue/txcanon/",
+   "test": "TestR25ProofScalarOffsetsMatchSynth",
+   "find": "\tif total > len(ser) {\n\t\treturn true, false\n\t}",
+   "replace": "\tif total > len(ser) {\n\t\treturn false, true\n\t}"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-same-store-ignored",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRunningDerodSameStore",
+   "find": "if same_dir(dd, c.DataDir) {",
+   "replace": "if same_dir(dd, c.DataDir) && false {"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-self-not-skipped",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRunningDerodSameStore",
+   "find": "if q.Pid == p.self || !is_derod(q.Argv) {",
+   "replace": "if !is_derod(q.Argv) {"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-derod-prefix-match",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRunningDerodSameStore",
+   "find": "return b == \"derod\" || strings.HasPrefix(b, \"derod-\") || strings.HasPrefix(b, \"derod.\")",
+   "replace": "return strings.Contains(b, \"derod\")"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-dir-no-clean",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRunningDerodSameStore",
+   "find": "return a != \"\" && b != \"\" && filepath.Clean(a) == filepath.Clean(b)",
+   "replace": "return a != \"\" && b != \"\" && a == b"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-parity-drops-silent",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRunningDerodSameStore",
+   "find": "\t\t\t\t\tdiffs = append(diffs, \"plist drops \"+n)\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r25-perfops-preflight-parity-integrator-silent",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRunningDerodSameStore",
+   "find": "ri != c.Integrator {",
+   "replace": "ri != c.Integrator && false {"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-p2p-probed-tcp",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightPorts",
+   "find": "\t\t\tprobe = p.listen_udp\n",
+   "replace": "\t\t\tprobe = p.listen_tcp\n"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-port-busy-passes",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightPorts",
+   "find": "add(PF_FAIL, b.flag, \"%s/%s cannot be bound now",
+   "replace": "add(PF_WARN, b.flag, \"%s/%s cannot be bound now"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-logdir-warn-only",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightFilesystem",
+   "find": "add(PF_FAIL, \"log-dir\", \"%s is not a directory",
+   "replace": "add(PF_WARN, \"log-dir\", \"%s is not a directory"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-exec-bit-unchecked",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightFilesystem",
+   "find": " || fi.Mode().Perm()&0o111 == 0 {",
+   "replace": " {"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-testnet-ignored",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightFilesystem",
+   "find": "\t\tnetwork = \"testnet\"\n",
+   "replace": "\t\tnetwork = \"mainnet\"\n"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-no-chain-fails",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightFilesystem",
+   "find": "add(PF_WARN, \"data-dir\", \"%s has no %s/ yet",
+   "replace": "add(PF_FAIL, \"data-dir\", \"%s has no %s/ yet"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-ps-error-passes",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRefusalsAndLint",
+   "find": "add(PF_FAIL, \"running-derod\", \"cannot list processes",
+   "replace": "add(PF_WARN, \"running-derod\", \"cannot list processes"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-installed-never-same",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRefusalsAndLint",
+   "find": "string(old) == string(rendered)",
+   "replace": "string(old) == string(rendered)+\"x\""
+  },
+  {
+   "id": "gm-r25-perfops-preflight-fail-exit-zero",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRunningDerodSameStore",
+   "find": "\tif nf > 0 {\n\t\treturn 1\n",
+   "replace": "\tif false {\n\t\treturn 1\n"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-flag-prints-plist",
+   "file": "tools/launchd-derod/main.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRunFlag",
+   "find": "\t\treturn pf_report(out, preflight(c, probes_for_run(), *installed))\n",
+   "replace": "\t\tpf_report(out, preflight(c, probes_for_run(), *installed))\n"
+  },
+  {
+   "id": "gm-r25-perfops-preflight-real-tcp-always-free",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25PreflightRealProbes",
+   "find": "\t\tl, err := net.Listen(\"tcp\", a)\n\t\tif err == nil {\n\t\t\tl.Close()\n\t\t}\n\t\treturn err\n",
+   "replace": "\t\treturn nil\n"
+  },
+  {
+   "id": "gm-r25-perfops-probe-delta-restart-accepted",
+   "file": "tools/getworkprobe/node_counters.go",
+   "pkg": "./tools/getworkprobe/",
+   "test": "TestR25ProbeFlipDelta",
+   "find": "\t\tif g(n) < 0 {\n",
+   "replace": "\t\tif false {\n"
+  },
+  {
+   "id": "gm-r25-perfops-probe-delta-cond-over-flips",
+   "file": "tools/getworkprobe/node_counters.go",
+   "pkg": "./tools/getworkprobe/",
+   "test": "TestR25ProbeFlipDelta",
+   "find": "d.CondMeanMs = 1000 * g(\"getwork_final_flip_delay_seconds_sum\") / d.DeadWindows",
+   "replace": "d.CondMeanMs = 1000 * g(\"getwork_final_flip_delay_seconds_sum\") / d.Flips"
+  },
+  {
+   "id": "gm-r25-perfops-probe-delta-zero-guard",
+   "file": "tools/getworkprobe/node_counters.go",
+   "pkg": "./tools/getworkprobe/",
+   "test": "TestR25ProbeFlipDelta",
+   "find": "\tif d.L9N > 0 {\n",
+   "replace": "\tif true {\n"
+  },
+  {
+   "id": "gm-r25-perfops-probe-prom-keeps-labels",
+   "file": "tools/getworkprobe/node_counters.go",
+   "pkg": "./tools/getworkprobe/",
+   "test": "TestR25ProbeParseProm",
+   "find": " || strings.ContainsRune(l, '{') {",
+   "replace": " {"
+  },
+  {
+   "id": "gm-r25-perfops-probe-counters-any-page",
+   "file": "tools/getworkprobe/node_counters.go",
+   "pkg": "./tools/getworkprobe/",
+   "test": "TestR25ProbeReadCounters",
+   "find": "\tif _, ok := m[\"getwork_final_flips_total\"]; !ok {\n",
+   "replace": "\tif false {\n"
+  },
+  {
+   "id": "gm-r25-verify-perfops-preflight-release-name-ignored",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25VerifyPreflightDerodNames",
+   "find": "return b == \"derod\" || strings.HasPrefix(b, \"derod-\") || strings.HasPrefix(b, \"derod.\")",
+   "replace": "return b == \"derod\""
+  },
+  {
+   "id": "gm-r25-verify-perfops-preflight-unresolved-silent",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25VerifyPreflightUnresolvedDataDir",
+   "find": "if !filepath.IsAbs(dd) {",
+   "replace": "if false && !filepath.IsAbs(dd) {"
+  },
+  {
+   "id": "gm-r25-verify-perfops-preflight-unresolved-still-pass",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25VerifyPreflightUnresolvedDataDir",
+   "find": "if len(same) == 0 && len(unresolved) == 0 {",
+   "replace": "if len(same) == 0 {"
+  },
+  {
+   "id": "gm-r25-verify-perfops-preflight-absolute-unresolved",
+   "file": "tools/launchd-derod/preflight.go",
+   "pkg": "./tools/launchd-derod/",
+   "test": "TestR25VerifyPreflightUnresolvedDataDir",
+   "find": "if !filepath.IsAbs(dd) {",
+   "replace": "if true || !filepath.IsAbs(dd) {"
+  },
+  {
+   "id": "gm-r25-peers-penalty-note-dropped",
+   "file": "p2p/penalty.go",
+   "pkg": "./p2p/",
+   "test": "TestR25PenaltyLastReasonsAndScore",
+   "find": "\tm.note(reason, now) // r25 (CO24-N1)\n",
+   "replace": "\t// r25 mutated: no note\n"
+  },
+  {
+   "id": "gm-r25-peers-penalty-note-order",
+   "file": "p2p/penalty.go",
+   "pkg": "./p2p/",
+   "test": "TestR25OffenceRingOrderAndSaturation",
+   "find": "\t\tout = append(out, m.last[(int(m.head)+PENALTY_LAST_REASONS-i)%PENALTY_LAST_REASONS])",
+   "replace": "\t\tout = append(out, m.last[(i-1)%PENALTY_LAST_REASONS])"
+  },
+  {
+   "id": "gm-r25-peers-penalty-events-lazy",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25PenaltySeriesRegisteredEagerly",
+   "find": "\t\tmetrics.Set.GetOrCreateCounter(fmt.Sprintf(`p2p_penalty_events_total{reason=\"%s\"}`, reason))\n",
+   "replace": "\t\t_ = reason\n"
+  },
+  {
+   "id": "gm-r25-peers-score-ban-unattributed",
+   "file": "p2p/penalty.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ScoreBanCarriesSourceAndReason",
+   "find": "Ban_Address_Reason(ip, secs, BAN_SOURCE_SCORE, reason)",
+   "replace": "Ban_Address(ip, secs)"
+  },
+  {
+   "id": "gm-r25-peers-ban-meta-outlives-expiry",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR25BanMetaLifetimeAndLoad",
+   "find": "\t\t\tdelete(ban_meta, k) // r25: same keys, same lifetime\n",
+   "replace": "\t\t\t// r25 mutated\n"
+  },
+  {
+   "id": "gm-r25-peers-ban-meta-load-unfiltered",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR25BanMetaLifetimeAndLoad",
+   "find": "\t\tif _, ok := ban_map[k]; ok {\n\t\t\tban_meta[k] = v",
+   "replace": "\t\tif true {\n\t\t\tban_meta[k] = v"
+  },
+  {
+   "id": "gm-r25-peers-chain-refused-uncounted",
+   "file": "p2p/rpc_chain_request.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ChainRequestsCounted",
+   "find": "\t\tchain_requests_refused.Inc() // r25 (CO24-N3)\n\t\tc.logger.V(3).Info(\"malformed chain request",
+   "replace": "\t\tc.logger.V(3).Info(\"malformed chain request"
+  },
+  {
+   "id": "gm-r25-peers-chain-served-not-per-conn",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ChainRequestsCounted",
+   "find": "\tc.obs.chain_blocks.Add(uint64(blocks))",
+   "replace": "\tc.obs.chain_blocks.Add(0)"
+  },
+  {
+   "id": "gm-r25-peers-inv-clip-not-per-conn",
+   "file": "p2p/inv_budget.go",
+   "pkg": "./p2p/",
+   "test": "TestR25InvClipsPerConnection",
+   "find": "c.obs.inv_clipped.Add(uint64(len(list) - n))",
+   "replace": "c.obs.inv_clipped.Add(0)"
+  },
+  {
+   "id": "gm-r25-peers-short-answer-untyped",
+   "file": "p2p/object_errors.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ShortAnswerTypedLoggedCounted",
+   "find": "\tif is_short_answer(err) {",
+   "replace": "\tif false && is_short_answer(err) {"
+  },
+  {
+   "id": "gm-r25-peers-short-answer-error-text",
+   "file": "p2p/sync_pipeline.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ShortAnswerTypedLoggedCounted",
+   "find": "short_answer_error{got: len(r.resp.CBlocks), want: len(p.ids)}",
+   "replace": "fmt.Errorf(\"peer answered %d blocks for %d requested\", len(r.resp.CBlocks), len(p.ids))"
+  },
+  {
+   "id": "gm-r25-peers-unserved-uncounted",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ShortAnswerTypedLoggedCounted",
+   "find": "\t\tc.obs.objects_unserved.Add(1)\n",
+   "replace": "\n"
+  },
+  {
+   "id": "gm-r25-peers-sync-hold-short-ignored",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldEscalatesAndForgives",
+   "find": "\tif kind != call_failure_remote && kind != call_failure_short {",
+   "replace": "\tif kind != call_failure_remote {"
+  },
+  {
+   "id": "gm-r25-peers-sync-hold-closed-holds",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldEscalatesAndForgives",
+   "find": "\tif kind != call_failure_remote && kind != call_failure_short {\n\t\treturn\n\t}",
+   "replace": "\tif kind == call_failure_other {\n\t\treturn\n\t}"
+  },
+  {
+   "id": "gm-r25-peers-sync-hold-no-doubling",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldEscalatesAndForgives",
+   "find": "\t\td *= 2\n",
+   "replace": "\t\td *= 1\n"
+  },
+  {
+   "id": "gm-r25-peers-sync-hold-uncapped",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldEscalatesAndForgives",
+   "find": "\tif d > SYNC_HOLD_MAX {\n\t\td = SYNC_HOLD_MAX\n\t}\n\treturn d",
+   "replace": "\treturn d"
+  },
+  {
+   "id": "gm-r25-peers-sync-hold-syncnode",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldEscalatesAndForgives",
+   "find": "\tif c.SyncNode {\n\t\treturn false\n\t}\n\treturn now.UnixNano() < c.obs.sync_hold_until.Load()",
+   "replace": "\treturn now.UnixNano() < c.obs.sync_hold_until.Load()"
+  },
+  {
+   "id": "gm-r25-peers-sync-hold-not-forgiven",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldEscalatesAndForgives",
+   "find": "\tc.obs.sync_strikes.Store(0)\n\tc.obs.sync_hold_until.Store(0)",
+   "replace": "\tc.obs.sync_strikes.Store(0)"
+  },
+  {
+   "id": "gm-r25-peers-trigger-sync-ignores-hold",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldWiring",
+   "find": "\t\tif connection.sync_held(time.Now()) {",
+   "replace": "\t\tif false && connection.sync_held(time.Now()) {"
+  },
+  {
+   "id": "gm-r25-peers-trigger-sync-never-forgives",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldWiring",
+   "find": "\t\t\t\t\t\t\t\tconnection.sync_succeeded()\n",
+   "replace": "\t\t\t\t\t\t\t\t_ = 0\n"
+  },
+  {
+   "id": "gm-r25-peers-v2-ban-unattributed",
+   "file": "p2p/common.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldWiring",
+   "find": "Ban_Address_Reason(Address(connection), secs, BAN_SOURCE_V2, \"top_version<3 past HF3\")",
+   "replace": "Ban_Address(Address(connection), secs)"
+  },
+  {
+   "id": "gm-r25-peers-peerinfo-score-zero",
+   "file": "p2p/peer_info.go",
+   "pkg": "./p2p/",
+   "test": "TestR25PeerInfoCarriesPenaltyAndCounters",
+   "find": "\t\tPenaltyScore:        score,",
+   "replace": "\t\tPenaltyScore:        score * 0,"
+  },
+  {
+   "id": "gm-r25-peers-peerinfo-unserved-zero",
+   "file": "p2p/peer_info.go",
+   "pkg": "./p2p/",
+   "test": "TestR25PeerInfoCarriesPenaltyAndCounters",
+   "find": "\t\tObjectsUnserved:     c.obs.objects_unserved.Load(),",
+   "replace": "\t\tObjectsUnserved:     0,"
+  },
+  {
+   "id": "gm-r25-peers-stuck-list-expired",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25StuckHoldsListed",
+   "find": "\t\tif now.Before(e.until) {\n\t\t\tout = append(out, StuckHold",
+   "replace": "\t\tif true {\n\t\t\tout = append(out, StuckHold"
+  },
+  {
+   "id": "gm-r25-peers-offenders-no-filter",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25OffendersListed",
+   "find": "\t\tif m.events == 0 {\n\t\t\tcontinue\n\t\t}",
+   "replace": "\t\tif false {\n\t\t\tcontinue\n\t\t}"
+  },
+  {
+   "id": "gm-r25-peers-rpc-bans-unbounded",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25GetPeerInfoObservatoryLists",
+   "find": "p2p.BanInfos(MAX_PEER_BANS, now)",
+   "replace": "p2p.BanInfos(-1, now)"
+  },
+  {
+   "id": "gm-r25-peers-rpc-lists-not-filled",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR25GetPeerInfoObservatoryLists",
+   "find": "\tfill_peer_observatory(&result, time.Now()) // r25\n",
+   "replace": "\t_ = 0\n"
+  },
+  {
+   "id": "gm-r25-peers-offence-log-unbounded",
+   "file": "p2p/penalty.go",
+   "pkg": "./p2p/",
+   "test": "TestR25OffenceLogBounded",
+   "find": "\treturn events <= PENALTY_LOG_FIRST || events%PENALTY_LOG_EVERY == 0",
+   "replace": "\treturn true"
+  },
+  {
+   "id": "gm-r25-peers-offence-ring-head",
+   "file": "p2p/penalty.go",
+   "pkg": "./p2p/",
+   "test": "TestR25OffenceRingOrderAndSaturation",
+   "find": "\tm.head = (m.head + 1) % PENALTY_LAST_REASONS",
+   "replace": "\tm.head = 0"
+  },
+  {
+   "id": "gm-r25-verify-peers-ban-reasons-not-saved",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR25VerifyBanSidecarSavedAndSourceCounted",
+   "find": "\tif err := write_json_atomic(filepath.Join(globals.GetDataDirectory(), \"ban_reasons.json\"), &ban_meta); err != nil {\n",
+   "replace": "\tif err := error(nil); err != nil { // r25 mutated: sidecar never saved\n"
+  },
+  {
+   "id": "gm-r25-verify-peers-ban-source-label-open",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25VerifyBanSidecarSavedAndSourceCounted",
+   "find": "\treturn BAN_SOURCE_UNATTRIBUTED\n}\n\n// ---- CO24-N6",
+   "replace": "\treturn s // r25 mutated: open label set\n}\n\n// ---- CO24-N6"
+  },
+  {
+   "id": "gm-r25-verify-peers-ban-source-metric-dropped",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR25VerifyBanSidecarSavedAndSourceCounted",
+   "find": "\tmetrics.Set.GetOrCreateCounter(fmt.Sprintf(`p2p_bans_by_source_total{source=\"%s\"}`, ban_source_label(source))).Inc()\n",
+   "replace": "\t_ = ban_source_label // r25 mutated: by-source counter not incremented\n"
+  },
+  {
+   "id": "gm-r25-verify-peers-baninfos-keeps-expired",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25VerifyBanSidecarSavedAndSourceCounted",
+   "find": "\t\t\tcontinue // expired, not yet cleaned up\n",
+   "replace": "\t\t\t// r25 mutated: expired kept\n"
+  },
+  {
+   "id": "gm-r25-verify-peers-offenders-oldest-first",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25OffendersListed",
+   "find": "\t\t\treturn ai > aj\n",
+   "replace": "\t\t\treturn ai < aj // r25 mutated\n"
+  },
+  {
+   "id": "gm-r25-verify-peers-peerinfo-hold-syncnode",
+   "file": "p2p/peer_info.go",
+   "pkg": "./p2p/",
+   "test": "TestR25VerifyPeerInfoHoldMatchesSkip",
+   "find": "u > now.UnixNano() && !c.SyncNode {",
+   "replace": "u > now.UnixNano() { // r25 mutated"
+  },
+  {
+   "id": "gm-r25-verify-peers-remote-not-held",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR25SyncHoldEscalatesAndForgives",
+   "find": "\tif kind != call_failure_remote && kind != call_failure_short {\n",
+   "replace": "\tif kind != call_failure_short { // r25 mutated\n"
+  },
+  {
+   "id": "gm-r25-verify-peers-unban-keeps-meta",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR25BanMetaLifetimeAndLoad",
+   "find": "\tdelete(ban_meta, address) // r25\n",
+   "replace": "\t// r25 mutated: unban keeps meta\n"
+  },
+  {
+   "id": "gm-r25-verify-peers-short-logged-error",
+   "file": "p2p/object_errors.go",
+   "pkg": "./p2p/",
+   "test": "TestR25ShortAnswerTypedLoggedCounted",
+   "find": "\t\tlogger.V(1).Info(msg, append([]interface{}{\"error\", err.Error()}, keysAndValues...)...)\n",
+   "replace": "\t\tlogger.Error(err, msg, keysAndValues...) // r25 mutated\n"
   }
  ]
 }

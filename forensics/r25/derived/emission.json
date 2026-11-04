@@ -1,0 +1,55 @@
+{
+ "base_reward_per_block_atomic": [
+  30750
+ ],
+ "calc_supply_after_window": 1674208886850,
+ "calc_supply_at_window_start": 1671672719100,
+ "constants_python": {
+  "BLOCK_TIME": 18,
+  "BaseReward": 123000,
+  "PREMINE": 1228125400000,
+  "RewardReductionInterval": 7000000,
+  "claim_grant_total": 271739600
+ },
+ "fees": {
+  "known_blocks": 80902,
+  "known_sum_atomic": 16800,
+  "pending_blocks": 1575,
+  "pending_reason": "tx bodies of these blocks are not in raw/ (acquire fetched tier A bodies only); a later stage can fetch them under checks (iii)"
+ },
+ "grade": {
+  "scope": "the formula coinbase of the 82,477 window blocks: each has one COINBASE miner tx with value 0, the base reward is the formula (node and Python agree on every row), and the sum equals CalcSupply(end+1) - CalcSupply(start). It says nothing about hidden (encrypted) amounts, and nothing about fees, burns or SC payouts of blocks whose bodies are pending",
+  "status": "builder grade, written before the audit; the audited grade is audit/audit_report.json verdicts (G29)",
+  "verdict_grade": "PROVEN-NO-INFLATION-IN-SCOPE"
+ },
+ "identity_sum_rewards_eq_supply_delta": true,
+ "not_in_scope": [
+  "hidden transfer amounts (ElGamal; range-proof soundness C1, rft \u00a70.5)",
+  "fees/burns/SC payouts of the blocks with pending bodies",
+  "EXT figures (23,886,517.3; 5,000,000): no DERIVED input here reproduces or refutes them"
+ ],
+ "per_block": {
+  "base_reward_sum_node": 2536167750,
+  "base_reward_sum_python": 2536167750,
+  "blocks": 82477,
+  "burn_known_sum": 0,
+  "coinbase_ok": 82477,
+  "fees_known_blocks": 80902,
+  "fees_known_sum": 16800,
+  "fees_pending_blocks": 1575,
+  "node_eq_python_reward": 82477,
+  "reward_ext_eq_formula": 82477,
+  "supply_identity_ok": 82477,
+  "tx_free_blocks": 80751
+ },
+ "rules": {
+  "coinbase": "blockchain/transaction_execute.go:126-160",
+  "registrations": "blockchain/transaction_execute.go:194-196 (mainnet grant only below height 144,000)",
+  "reward": "blockchain/transaction_execute.go:60-62",
+  "rpc_reward": "cmd/derod/rpc/blockheader.go:50 (RPC reward = CalcBlockReward(height), base reward only)",
+  "supply": "blockchain/supply.go:5-27"
+ },
+ "scope": "window 7,415,466..7,497,942 (82,477 blocks); public emission only",
+ "window_emission_atomic": 2536167750,
+ "window_emission_dero": "25361.67750"
+}

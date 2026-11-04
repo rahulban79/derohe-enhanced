@@ -1,0 +1,2149 @@
+{
+ "b82_semantics": "Height = the inclusion height of one carrier, and Bl_Tips = that carrier's single tip, except where bl_tips_is_carrier_itself (counts above; the audit stage re-tests it)",
+ "b83_proof_field": {
+  "blocks": 83076,
+  "nonzero": 0,
+  "rule": "block/block.go:42 (serialized at :120, read by no blockchain code; disc:119)"
+ },
+ "counts": {
+  "bl_tips_is_carrier_itself": 1,
+  "bl_tips_is_carrier_tip": 74,
+  "bodies_raw": 75,
+  "carriers_nonce_bypassed": 74,
+  "carriers_parity_override_changes_execution": 73,
+  "carriers_total": 142,
+  "dual_carrier": 67,
+  "height_is_carrier_height": 75,
+  "proof_current_verifier": {
+   "fail": 1,
+   "not decidable: ring state unavailable": 73,
+   "pass": 1
+  },
+  "ref_blid_eq_bl_tips": 0,
+  "single_carrier": 8,
+  "table_carrier_is_earliest": 75
+ },
+ "missing": [],
+ "paths": {
+  "admission": "glue/txprecheck/window.go:136-145",
+  "checks_before_cache": "blockchain/transaction_verify.go:256-322, :327-338, :341-431",
+  "coinbase": "blockchain/transaction_execute.go:126-160",
+  "execute_all": "blockchain/blockchain.go:994-1024 (every Tx_hashes entry of each block in topological order is executed)",
+  "height_gate": "config/config.go:110; p2p/hf3_parity.go:49,66",
+  "nonce_cache_fill": "blockchain/transaction_verify.go:234-237",
+  "nonce_cache_hit": "blockchain/transaction_verify.go:94-96",
+  "nonce_cache_key": "blockchain/transaction_verify.go:90-93",
+  "nonce_full": "blockchain/transaction_verify.go:98-196",
+  "parity_default": "blockchain/transaction_execute.go:213",
+  "parity_set": "p2p/hf3_parity.go:77",
+  "parity_use": "blockchain/transaction_execute.go:243-246",
+  "proof_field": "block/block.go:42 (serialized at :120, read by no blockchain code; disc:119)",
+  "proof_verify": "blockchain/transaction_verify.go:450-461",
+  "reg_grant": "blockchain/transaction_execute.go:194-196 (mainnet grant only below height 144,000)",
+  "reward": "blockchain/transaction_execute.go:60-62",
+  "rpc_reward": "cmd/derod/rpc/blockheader.go:50 (RPC reward = CalcBlockReward(height), base reward only)",
+  "supply": "blockchain/supply.go:5-27",
+  "sync_verify_first": "p2p/hf3_parity.go:74-76 (verify before add); blockchain/blockchain.go:826 (nonce), :858 (verify)",
+  "verify_cache_fill": "blockchain/transaction_verify.go:232-233",
+  "verify_cache_hit": "blockchain/transaction_verify.go:438-441",
+  "verify_cache_key": "blockchain/transaction_verify.go:433-436"
+ },
+ "rows": [
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "dac0126145be6c04c4765be9d04753d28eb4ff0facce0263fad0bc220c23d853",
+   "carriers": [
+    7467516
+   ],
+   "evidence_grade": "E1",
+   "fee": 121,
+   "group": "no duplicates, but false parity",
+   "height_is_carrier_height": true,
+   "line": 103,
+   "nonce_bypassed_carriers": [
+    7467516
+   ],
+   "parity_override_changes_execution": [],
+   "proof_current_verifier": "fail",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7467516,
+   "tx_parity": true,
+   "txid": "0045a6d4c51a8578b6c97f2b376415653583505f21032eb6a808cd1643a300a7"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "2e99ec301344656a564ad3b2b7ec94d107c18cd6fd781781491780ec21546fcd",
+   "carriers": [
+    7470648,
+    7470651
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 69,
+   "nonce_bypassed_carriers": [
+    7470648
+   ],
+   "parity_override_changes_execution": [
+    7470648
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470648,
+   "tx_parity": false,
+   "txid": "00c6c9a78c4b40a03dc08e3637ee4e34103b39cfe2c6efaa803829509f0506d6"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "9944addb6549c7deff85de15fde2be2aae67c9c051797b341139f256ee860389",
+   "carriers": [
+    7467585
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "no duplicates, but false parity",
+   "height_is_carrier_height": true,
+   "line": 101,
+   "nonce_bypassed_carriers": [
+    7467585
+   ],
+   "parity_override_changes_execution": [
+    7467585
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7467585,
+   "tx_parity": false,
+   "txid": "0511f2b2a8ee9408b216cb1db6129937119fb76e99a1dcd1544f49462da58a38"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "75d3aa164a2e8a6c330e1494648344470db5bc927e4f52a3a8f315f8c6288898",
+   "carriers": [
+    7470943
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "no duplicates, but false parity",
+   "height_is_carrier_height": true,
+   "line": 99,
+   "nonce_bypassed_carriers": [
+    7470943
+   ],
+   "parity_override_changes_execution": [
+    7470943
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470943,
+   "tx_parity": false,
+   "txid": "09d0260ea572349c4869b58cb59638348e1ed4bc57c511619d36fd1fd484211f"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "f544e5f684c83db0c963316f249227130a2b9ea146ffb2da1c3bd47820ead1d7",
+   "carriers": [
+    7470386,
+    7470387
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 75,
+   "nonce_bypassed_carriers": [
+    7470386
+   ],
+   "parity_override_changes_execution": [
+    7470386
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470386,
+   "tx_parity": false,
+   "txid": "0a0671cf132cc2c353df8d28631581c762acefac200123c84dd039c34e7cd336"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "a4eb324a10cacaa548ad2007c6f1a70c553d4ce7cee8828797d9582d5209c6ff",
+   "carriers": [
+    7415466,
+    7415470
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 95,
+   "nonce_bypassed_carriers": [
+    7415466
+   ],
+   "parity_override_changes_execution": [
+    7415466
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7415466,
+   "tx_parity": true,
+   "txid": "0e75ae6662c08627470a7ea97d2115830f2b0e392efdba3c58ace068adc99aa6"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "1ac98a6ba44aa80d56bc11e0788531565e9d123979fc67a9c2710979f39378b6",
+   "carriers": [
+    7493772,
+    7493778
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 43,
+   "nonce_bypassed_carriers": [
+    7493772
+   ],
+   "parity_override_changes_execution": [
+    7493772
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493772,
+   "tx_parity": false,
+   "txid": "17cd5710eee2cb27cdb1a68dfe63e955260ea8dc3e59e234a20bed14cb409970"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "3c802e1c8367d9751ae94175852063e0ae95507cb0b906b1440b879bfbd7ffe8",
+   "carriers": [
+    7470452,
+    7470455
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 73,
+   "nonce_bypassed_carriers": [
+    7470452
+   ],
+   "parity_override_changes_execution": [
+    7470452
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470452,
+   "tx_parity": false,
+   "txid": "1877ddc33990d521dbd1702f8872441c642641cbb528042432da8d22b722fdbe"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "5dc2122ebd05e3affc75ea23474474d555cc7518593ca2eca2f1b4c3947c8596",
+   "carriers": [
+    7470896,
+    7470897
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 65,
+   "nonce_bypassed_carriers": [
+    7470896
+   ],
+   "parity_override_changes_execution": [
+    7470896
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470896,
+   "tx_parity": true,
+   "txid": "1e8c9c7764ea63e39a9b5fa59013578bf3a7cdf00edfa059cf5f1da6dc08b0d9"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "f57035534775dbc0d23737103fcc21993fbaaa60cf3e509c8d78c69d8b9632ca",
+   "carriers": [
+    7493600,
+    7493606
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 47,
+   "nonce_bypassed_carriers": [
+    7493600
+   ],
+   "parity_override_changes_execution": [
+    7493600
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493600,
+   "tx_parity": false,
+   "txid": "1eb43df8ab1abd8934c74cc0d08b5d9fef02604ca6500a7cf947d263b882cafe"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "ee068a98b58590853cab6df5adb99025e864888dcfa2ef24ce3979fe87ab1ef6",
+   "carriers": [
+    7493898,
+    7493903
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 41,
+   "nonce_bypassed_carriers": [
+    7493898
+   ],
+   "parity_override_changes_execution": [
+    7493898
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493898,
+   "tx_parity": false,
+   "txid": "211082955f1fda468ba0cd604e14dc5d84f4eb096f3c349f4ad05757c979dce6"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "6fe412813fc983c6821eac90ef5a9d5f0bc34e382ea1cd91d93f7f99477057a7",
+   "carriers": [
+    7497921,
+    7497926
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 30,
+   "nonce_bypassed_carriers": [
+    7497921
+   ],
+   "parity_override_changes_execution": [
+    7497921
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497921,
+   "tx_parity": false,
+   "txid": "2aabb168b2b7210bc2d1620ddbbd038de4ae45847cc77a27be4389aea388a5e9"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "348842bca3f6eab5d0e61b8090367964d6fbf1a0e8c440591c194efd782845a0",
+   "carriers": [
+    7471053,
+    7471055
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 60,
+   "nonce_bypassed_carriers": [
+    7471053
+   ],
+   "parity_override_changes_execution": [
+    7471053
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7471053,
+   "tx_parity": true,
+   "txid": "2e2b49f284f9d206fdb6dcf4a9ac9259426c61036bdf52036f1baf24b21269ac"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "c06547a9360d3ce8d46ac3046e823f50fc6a999f25714d3dcada2c792ec2cf07",
+   "carriers": [
+    7470879,
+    7470883
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 66,
+   "nonce_bypassed_carriers": [
+    7470879
+   ],
+   "parity_override_changes_execution": [
+    7470879
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470879,
+   "tx_parity": false,
+   "txid": "2f39de57b82f02787fc15537a29da2e4cdd8c350d2d2bc7f96b0d49ac57fcbaa"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "364cb755f0be67ed417fa387d94ab92b6e776c3046eb90636e74c391c0eeae5e",
+   "carriers": [
+    7497568,
+    7497569
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 37,
+   "nonce_bypassed_carriers": [
+    7497568
+   ],
+   "parity_override_changes_execution": [
+    7497568
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497568,
+   "tx_parity": false,
+   "txid": "337677e2cad7c2633099ab65b5f5ce5a099b9c76a5cc7846c587d189f55ad95d"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "7ad44d439ac1244c72b15a58e6f4c884ccaa3b48bcb7f80c35cb42d5318bf91e",
+   "carriers": [
+    7417631,
+    7417635
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 92,
+   "nonce_bypassed_carriers": [
+    7417631
+   ],
+   "parity_override_changes_execution": [
+    7417631
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7417631,
+   "tx_parity": false,
+   "txid": "3478d883230b579a88607d5f5d1a52aadd4355b38ba794352d54a829f45f5656"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "406a7b2fa1f33809be90d5a7b02ee1271c10cd14935ac4c8015870823d54cfd8",
+   "carriers": [
+    7471828,
+    7471832
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 57,
+   "nonce_bypassed_carriers": [
+    7471828
+   ],
+   "parity_override_changes_execution": [
+    7471828
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7471828,
+   "tx_parity": false,
+   "txid": "364538c7073f9c5e3b99eeec33a9bfb830a5d3d0cefb6c44d63b22b90c82a655"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "c98b986968f17a58e9fb4c4f240f0dddf977e1765b65f513f0b717299e616860",
+   "carriers": [
+    7467538,
+    7467544
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 81,
+   "nonce_bypassed_carriers": [
+    7467538
+   ],
+   "parity_override_changes_execution": [
+    7467538
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7467538,
+   "tx_parity": true,
+   "txid": "3659ae2be646c4384bcc4adc94bdf9cfc23b366faa128a88f9ea5522e3d08d61"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "d384e02eac3987cb71e3e773a15655a4b8e2cab0e89b689dbf2b65834c0c9abc",
+   "carriers": [
+    7471805
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "no duplicates, but false parity",
+   "height_is_carrier_height": true,
+   "line": 98,
+   "nonce_bypassed_carriers": [
+    7471805
+   ],
+   "parity_override_changes_execution": [
+    7471805
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7471805,
+   "tx_parity": false,
+   "txid": "37df76020e1823aade3b130fe53571b93d6c5c34e35d1d522c7c5cd449e84370"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "0a5cc921a88260f0950aaf314c30616d4f9e6ec2a437a4d20e5b16b91f02d6b2",
+   "carriers": [
+    7483214,
+    7483220
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 53,
+   "nonce_bypassed_carriers": [
+    7483214
+   ],
+   "parity_override_changes_execution": [
+    7483214
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7483214,
+   "tx_parity": false,
+   "txid": "3ccf648db6d26295d68ec1c88cdc736a10caa35ad83b856cb9bb304f893c5043"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "ddd9aaf8a62b8b8a46b243ffa9d506a6612c38c26c057842ec07879448862803",
+   "carriers": [
+    7467569,
+    7467572
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 80,
+   "nonce_bypassed_carriers": [
+    7467569
+   ],
+   "parity_override_changes_execution": [
+    7467569
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7467569,
+   "tx_parity": false,
+   "txid": "404180f833143669d3b347f4d8ceb1067b7a1ed057efcad7abcd7ad539745138"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "26e5be03027bfdeb61892d0573de8cd3c8c01b8982b2ea8ec0613b19e8e599dc",
+   "carriers": [
+    7497675,
+    7497679
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 36,
+   "nonce_bypassed_carriers": [
+    7497675
+   ],
+   "parity_override_changes_execution": [
+    7497675
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497675,
+   "tx_parity": false,
+   "txid": "411012a7711794d2c641acbd4e1cd14dfd5e20d6085ab4748af28e7d6a3a5b99"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "7082101d7f3d60ff88fe0009a0356daf00979a8a7b36d4478e9feceb07f19190",
+   "carriers": [
+    7467498
+   ],
+   "evidence_grade": "E1",
+   "fee": 121,
+   "group": "no duplicates, but false parity",
+   "height_is_carrier_height": true,
+   "line": 102,
+   "nonce_bypassed_carriers": [
+    7467498
+   ],
+   "parity_override_changes_execution": [],
+   "proof_current_verifier": "pass",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7467498,
+   "tx_parity": true,
+   "txid": "414f79b8ff3c862eaa5727c6591542218881c751ba4fe052c9aaeeec0cfedfcd"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "30bba4568f3b6fc9670ca89dc415b4e37061253b1207a06185222594a45d9b7f",
+   "carriers": [
+    7416808,
+    7416813
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 94,
+   "nonce_bypassed_carriers": [
+    7416808
+   ],
+   "parity_override_changes_execution": [
+    7416808
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7416808,
+   "tx_parity": true,
+   "txid": "42f2876c90522812085556e7f6e0f51ef7edd84f1f99fba48acc84b52321f30d"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "49b5cca86188de6ff9c8575c838604ad8eaa005126902556cea01c77b4c8149f",
+   "carriers": [
+    7468150,
+    7468152
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 79,
+   "nonce_bypassed_carriers": [
+    7468150
+   ],
+   "parity_override_changes_execution": [
+    7468150
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7468150,
+   "tx_parity": false,
+   "txid": "4ad3ef9af337b1e92d895f9342ad9a9235d601291cb42fb6b726fbda35933fe7"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "d356a7bac214087732df237003dde2e21ba858ed6111b3f1789e6248cda32f18",
+   "carriers": [
+    7497836,
+    7497838
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 33,
+   "nonce_bypassed_carriers": [
+    7497836
+   ],
+   "parity_override_changes_execution": [
+    7497836
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497836,
+   "tx_parity": false,
+   "txid": "4d56a1a150063b6bd810a33fc669df8e2698475f0b3c17d96cab738b25ba8393"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "2327d2eb9b0361a313b5f748a3661ca73a80819085c8455d8abc2bba4074e3bb",
+   "carriers": [
+    7470582,
+    7470587
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 70,
+   "nonce_bypassed_carriers": [
+    7470582
+   ],
+   "parity_override_changes_execution": [
+    7470582
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470582,
+   "tx_parity": false,
+   "txid": "556d78cfc579c2897be7d875e08a702860b867e63650ad2d07c393e50e1e484c"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "ab76fb83405bbde5db439677b0cd8ff039e3138ba5043ab32892fefd716fb22e",
+   "carriers": [
+    7494167,
+    7494172
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 39,
+   "nonce_bypassed_carriers": [
+    7494167
+   ],
+   "parity_override_changes_execution": [
+    7494167
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7494167,
+   "tx_parity": false,
+   "txid": "5a14d8516288648133b8cea98afa1b9a2f783a3ea345b191e57d388b64ca5ecf"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "b911951d2b78401a297faaf217bcf2148fdf842b471e7ba8d1d8a9eebbab5083",
+   "carriers": [
+    7470924,
+    7470925
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 63,
+   "nonce_bypassed_carriers": [
+    7470924
+   ],
+   "parity_override_changes_execution": [
+    7470924
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470924,
+   "tx_parity": true,
+   "txid": "6034f404619a7fa7bad529eb6758a6ba30184b100a5f8a8f921c99bebe309514"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "a8b3d4bec8c08be4fbbb1c975166495e61e10fd5d08dbdc4d57b7f4007aee205",
+   "carriers": [
+    7417912
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "no duplicates, but false parity",
+   "height_is_carrier_height": true,
+   "line": 104,
+   "nonce_bypassed_carriers": [
+    7417912
+   ],
+   "parity_override_changes_execution": [
+    7417912
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7417912,
+   "tx_parity": true,
+   "txid": "60bfbd73a60060d6502b13871f55a47ebfb732bcb8f5685602688f7eae36fa3e"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "61c35cd0522c935279ca8bce9709d888e69bf0e55545e5ae8d9be0f85da3923b",
+   "carriers": [
+    7470802,
+    7470805
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 67,
+   "nonce_bypassed_carriers": [
+    7470802
+   ],
+   "parity_override_changes_execution": [
+    7470802
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470802,
+   "tx_parity": false,
+   "txid": "60e4547d48b624555081cb8f7c97f8583234c3a112bb586c868ad5ff00eddaa4"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "1257847d323d12b6ebda831b611136745b64c8d3d49311f31352d39942f2ea96",
+   "carriers": [
+    7470527,
+    7470529
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 71,
+   "nonce_bypassed_carriers": [
+    7470527
+   ],
+   "parity_override_changes_execution": [
+    7470527
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470527,
+   "tx_parity": false,
+   "txid": "62fa2cc6f10da7275d54f0448bd7028a1d1d7a92a99e204c3f4e2c08571032f7"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "c24fa2520503784efa9e4cf3f313750c448ebb3eb0c494324d1249d61010eaeb",
+   "carriers": [
+    7422487,
+    7422490
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 83,
+   "nonce_bypassed_carriers": [
+    7422487
+   ],
+   "parity_override_changes_execution": [
+    7422487
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7422487,
+   "tx_parity": true,
+   "txid": "6843437e70503ed702d5adad3d29e7aa0ed8427dd98eda0e42b77d24e7567bc8"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "fb7f584a3d1b4fcbdbb11ae789b738e8c0d7ebbcea0b6b1211e6102d03bdc953",
+   "carriers": [
+    7482968,
+    7482973
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 54,
+   "nonce_bypassed_carriers": [
+    7482968
+   ],
+   "parity_override_changes_execution": [
+    7482968
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7482968,
+   "tx_parity": false,
+   "txid": "6aa20567ff23705aa91a4c607e8387d147b309f8eeb9f8198149c21c439c3692"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "0c1dd499c748d9e7b5cdcc7eda719abce8d626edfb58c6110ad40d3b56f9cb2b",
+   "carriers": [
+    7470465
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "no duplicates, but false parity",
+   "height_is_carrier_height": true,
+   "line": 100,
+   "nonce_bypassed_carriers": [
+    7470465
+   ],
+   "parity_override_changes_execution": [
+    7470465
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470465,
+   "tx_parity": true,
+   "txid": "6d882984bad971d4becb9ac15ecd8cb3e3e0ee783d6d6c1d1ce95df12625732f"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "31e564c157073478bc9b77a95499dce44194984d2e6e5eac7cf872ab552002ed",
+   "carriers": [
+    7470910,
+    7470915
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 64,
+   "nonce_bypassed_carriers": [
+    7470910
+   ],
+   "parity_override_changes_execution": [
+    7470910
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470910,
+   "tx_parity": false,
+   "txid": "6e59f6b56453219ab9722a47870c4b2d76b29ddda068c069dcf59ba14e3e98aa"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "92569321e94c979e4f5cc2353912d7fc48cde6dc2f895e3354a85b46364538a7",
+   "carriers": [
+    7497519,
+    7497521
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 38,
+   "nonce_bypassed_carriers": [
+    7497519
+   ],
+   "parity_override_changes_execution": [
+    7497519
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497519,
+   "tx_parity": false,
+   "txid": "71588148dade214248f46fb912ac933fc60f2a0ba7d69b3b7317067c366e8312"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "c7bb8982d79d0f149aeff9f9426e1fff01703ae77ca62d6e34a253047b1222a8",
+   "carriers": [
+    7493663,
+    7493664
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 46,
+   "nonce_bypassed_carriers": [
+    7493663
+   ],
+   "parity_override_changes_execution": [
+    7493663
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493663,
+   "tx_parity": false,
+   "txid": "74b79178426990bcd071cd26829900027e78b6d36e77b57e050a0bba4398ed1f"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "9a84695300c0685b7938f025aafdff9edc9bd04bbd7196e1d722ac61470458a3",
+   "carriers": [
+    7494011,
+    7494017
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 40,
+   "nonce_bypassed_carriers": [
+    7494011
+   ],
+   "parity_override_changes_execution": [
+    7494011
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7494011,
+   "tx_parity": false,
+   "txid": "85d52fe6f310f4af1d11611ef3577d477b76af3c0d050e2f4493e16822f68a18"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "c6c0fb9a3fb2e65483269cf08e88eb988c572f1bbe6a4d4e848fdf0a3097c0de",
+   "carriers": [
+    7470403,
+    7470409
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 74,
+   "nonce_bypassed_carriers": [
+    7470403
+   ],
+   "parity_override_changes_execution": [
+    7470403
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470403,
+   "tx_parity": false,
+   "txid": "8692d178675b0ab019f765ab8b8f5b739c0668f36151931223c4e3b63883f89a"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "c40af1e4923431499fc4e861a62abdfc59b7b2d7b4197ba017b3edbc61248bd2",
+   "carriers": [
+    7422548,
+    7422553
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 82,
+   "nonce_bypassed_carriers": [
+    7422548
+   ],
+   "parity_override_changes_execution": [
+    7422548
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7422548,
+   "tx_parity": false,
+   "txid": "86a15dad0a5ca6b8b317398a56113e95850a1628868fb3284963e30e046aac5d"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "6d2b7a561559abefb723bb91bf13d6796215e67b75d060276e5ad1101991fe42",
+   "carriers": [
+    7471414,
+    7471415
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 59,
+   "nonce_bypassed_carriers": [
+    7471414
+   ],
+   "parity_override_changes_execution": [
+    7471414
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7471414,
+   "tx_parity": false,
+   "txid": "879f99d24bde3eaadd0ee348d3eef5e61b13b11bc9ab7c554ef6fc1a679b7de6"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "b587efe6dea6b0049308daa581ce8c8a9a343cec8a43e8198936a6bc2ad132c6",
+   "carriers": [
+    7418504,
+    7418510
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 90,
+   "nonce_bypassed_carriers": [
+    7418504
+   ],
+   "parity_override_changes_execution": [
+    7418504
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7418504,
+   "tx_parity": false,
+   "txid": "912dbaf8980086dd5627193c4ae3264da9bba2167637f078380f5b0f06a24520"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "1ec275ec7e097675db85835c1ec9213dae510976faecd7ca57a2f32799cefbc4",
+   "carriers": [
+    7470477,
+    7470480
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 72,
+   "nonce_bypassed_carriers": [
+    7470477
+   ],
+   "parity_override_changes_execution": [
+    7470477
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470477,
+   "tx_parity": true,
+   "txid": "92dce2c52528732ef76ba717f582b784a50bca61bc839426838cc641d28f545a"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "96068147636c0388f031a05486fdf1035323adb94cc69ad155e92d834a2bb8db",
+   "carriers": [
+    7497892,
+    7497897
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 31,
+   "nonce_bypassed_carriers": [
+    7497892
+   ],
+   "parity_override_changes_execution": [
+    7497892
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497892,
+   "tx_parity": false,
+   "txid": "94f8ced9b3cd40993173c53ea0bffc99d1db3a8d7a8cfea2cbed7a7fba524684"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "65206995da2b3e30ec2bd88053e9b753ea14cafb3cf5a83ce21f29460660400e",
+   "carriers": [
+    7470983,
+    7470986
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 62,
+   "nonce_bypassed_carriers": [
+    7470983
+   ],
+   "parity_override_changes_execution": [
+    7470983
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470983,
+   "tx_parity": false,
+   "txid": "9b75eb3bc2c2f10cb84977e4648e5a9f4bebcfb73075dd27a1fa1a14d0f6dfb0"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "6a2b0343decd3d0c38c6a6a7efa85165d3e3582b9385268d245a1d50f0ab7c2b",
+   "carriers": [
+    7482959,
+    7482960
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 55,
+   "nonce_bypassed_carriers": [
+    7482959
+   ],
+   "parity_override_changes_execution": [
+    7482959
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7482959,
+   "tx_parity": false,
+   "txid": "9becfdff8e750fcd741f240ae701ca134fd54b1c3d1db9dbf9f0254f5a794046"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "3370099f2d51a7af3a53187e8eb69142e65094abecb72d0f640cfa39195a9d56",
+   "carriers": [
+    7493588,
+    7493591
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 48,
+   "nonce_bypassed_carriers": [
+    7493588
+   ],
+   "parity_override_changes_execution": [
+    7493588
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493588,
+   "tx_parity": false,
+   "txid": "9eba39af652ee2a0d4835d964cffcd0be4ac6f103138e87c80953902e4ce0026"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "b8ccf6503eeca3ff36c37ba18e8d19c42ef1a0d593d2781b265395e1d3ff10de",
+   "carriers": [
+    7470282,
+    7470283
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 77,
+   "nonce_bypassed_carriers": [
+    7470282
+   ],
+   "parity_override_changes_execution": [
+    7470282
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470282,
+   "tx_parity": false,
+   "txid": "9fba85d0ed98249e9b36ffbbaf15f6ae9bf9be061f3200b2f572c3e2f34b39ea"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "7db0197116d8069b166ff848f2353e4989a6a0b9402e86cd304beb99299f4bec",
+   "carriers": [
+    7417290,
+    7417295
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 93,
+   "nonce_bypassed_carriers": [
+    7417290
+   ],
+   "parity_override_changes_execution": [
+    7417290
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7417290,
+   "tx_parity": true,
+   "txid": "a16a9d939518fc4ad2a1f1ac3a878ca35d9d819e0dd3086e495f3c2f4a089db1"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "1ba116617c99692108de6bf8dc49cc1d663c4434b740898c2c1f2c50117a9f83",
+   "carriers": [
+    7470706,
+    7470711
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 68,
+   "nonce_bypassed_carriers": [
+    7470706
+   ],
+   "parity_override_changes_execution": [
+    7470706
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470706,
+   "tx_parity": true,
+   "txid": "a70950ff17747e3b347d30b3db5631a5f97cd967a937eac2dcc11763c7685490"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "c753d027d4da4c8e0e21b158e0f72954bb0f472ba71baa99ff06c2c947695ffd",
+   "carriers": [
+    7497722,
+    7497728
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 34,
+   "nonce_bypassed_carriers": [
+    7497722
+   ],
+   "parity_override_changes_execution": [
+    7497722
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497722,
+   "tx_parity": false,
+   "txid": "a86a316b2d9f33e5e8552925e7cd504999033b38c4e2aba6aa3a25f7a2eba003"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "c7aae7bbecb20ba75175b47f968728c71e7daf211110fedc584b595061a8d050",
+   "carriers": [
+    7497847,
+    7497852
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 32,
+   "nonce_bypassed_carriers": [
+    7497847
+   ],
+   "parity_override_changes_execution": [
+    7497847
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497847,
+   "tx_parity": false,
+   "txid": "a9b0c1d112958534b5f3eec186832cce85986278afe1729937469fff18c1684a"
+  },
+  {
+   "bl_tips_is_carrier_itself": true,
+   "bl_tips_is_carrier_tip": false,
+   "body_sha256": "ba121e36b943083068a4747bf51fb953b25af30a7f1db28f225f2408fe81c92b",
+   "carriers": [
+    7493552
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "no duplicates, but false parity",
+   "height_is_carrier_height": true,
+   "line": 97,
+   "nonce_bypassed_carriers": [],
+   "parity_override_changes_execution": [
+    7493552
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493552,
+   "tx_parity": false,
+   "txid": "aa0faf67a2856ee30ed4e275c1079d1572b1bcb03d4a9ca682bd825e11d81a43"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "4856fb60e80dfdf735e95ff062d1db75d5e78bba4ea5216e9400a144494bfdf6",
+   "carriers": [
+    7497942,
+    7497948
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 29,
+   "nonce_bypassed_carriers": [
+    7497942
+   ],
+   "parity_override_changes_execution": [
+    7497942
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497942,
+   "tx_parity": false,
+   "txid": "ab1da121afe17852ee24f19b836e602d3389b569048838223acd754247d7ff91"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "af9dac8d2421f8e2d03c089b8ccb311b88f2fdc47b0526d0f038dedba699dfbb",
+   "carriers": [
+    7497706,
+    7497710
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 35,
+   "nonce_bypassed_carriers": [
+    7497706
+   ],
+   "parity_override_changes_execution": [
+    7497706
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7497706,
+   "tx_parity": false,
+   "txid": "ab6cca96748292825e8188550f3fadcd43734d4a1e73514c03702adb456f8926"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "5fc44c0273d591165bea3b6ff06ce612d1e2bbc8eeaa6abd74e0d9f0746c60ec",
+   "carriers": [
+    7493246,
+    7493249
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 50,
+   "nonce_bypassed_carriers": [
+    7493246
+   ],
+   "parity_override_changes_execution": [
+    7493246
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493246,
+   "tx_parity": false,
+   "txid": "b43be6528061e4eb1ca6e7bcfcd419e42839bbeec5cdcbf7e664be2fd501dad2"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "37ccbf0742efd7c4e25ed6f10177e235f421cacab09b477ab32b511b06f14956",
+   "carriers": [
+    7471011,
+    7471016
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 61,
+   "nonce_bypassed_carriers": [
+    7471011
+   ],
+   "parity_override_changes_execution": [
+    7471011
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7471011,
+   "tx_parity": false,
+   "txid": "b6cf0ef15e9af69d7b2f040ba2e0a75f41a414201069187fdec994584298e8f7"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "03a2acf4f4c2cbe449b6403ae917c6b018e92ecfe348b00a1017564c65fc7e2b",
+   "carriers": [
+    7421790,
+    7421793
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 84,
+   "nonce_bypassed_carriers": [
+    7421790
+   ],
+   "parity_override_changes_execution": [
+    7421790
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7421790,
+   "tx_parity": true,
+   "txid": "b9c2b724a684eb1b278bb3f185a807e46b3ef22a87c5cb8ed694a32df1661df0"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "c8e599dd090541e0fa8faed73bd06d49ad4e58da00037f4f8c695b3e4661f597",
+   "carriers": [
+    7493682,
+    7493683
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 45,
+   "nonce_bypassed_carriers": [
+    7493682
+   ],
+   "parity_override_changes_execution": [
+    7493682
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493682,
+   "tx_parity": false,
+   "txid": "ba3834ef15b7d714836e9944c46c8795066b328ff678c5cc44c7cdf0a3fa5ebd"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "787aa8dd03c5aaa17aba95490e93ce1a6e0fe172d9b7ad68917bcd8ffd1c38e5",
+   "carriers": [
+    7493238,
+    7493239
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 51,
+   "nonce_bypassed_carriers": [
+    7493238
+   ],
+   "parity_override_changes_execution": [
+    7493238
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493238,
+   "tx_parity": false,
+   "txid": "bba77f85c72d2b896e1fca1e39327a3a57eca4d722326a524db2042df04766ee"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "102551f9921abc9800b24b3cad6776c380bb91ee9dfc3736610b801216d5f75f",
+   "carriers": [
+    7421470,
+    7421476
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 85,
+   "nonce_bypassed_carriers": [
+    7421470
+   ],
+   "parity_override_changes_execution": [
+    7421470
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7421470,
+   "tx_parity": false,
+   "txid": "d81f2d3911e388f88b2e427d3f6cc8ddc272c69aa80fe84e15ce865462071328"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "426bb0d797d4aba947b07ac8fdf7bf7a9423d5db3afb0a2c8fdb294fdfa963d7",
+   "carriers": [
+    7483355,
+    7483358
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 52,
+   "nonce_bypassed_carriers": [
+    7483355
+   ],
+   "parity_override_changes_execution": [
+    7483355
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7483355,
+   "tx_parity": false,
+   "txid": "d856184d636c3ef8545979c902df15d6a1bf41b4a4b81d81762f519a6acfb689"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "edf64d781e8b62bb7e4caf1f05d5d566c16e663e6be72e123142ca4de6e8e1c5",
+   "carriers": [
+    7421416,
+    7421417
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 86,
+   "nonce_bypassed_carriers": [
+    7421416
+   ],
+   "parity_override_changes_execution": [
+    7421416
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7421416,
+   "tx_parity": false,
+   "txid": "d9d7e7de41ca9c81693eca4e3ea56ae02b6680887c35fc1b1b2da71967335404"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "17c4b9161c83ef6f85b690b8a98648859eee51674e29ec3738b42cb216d59af1",
+   "carriers": [
+    7471775,
+    7471779
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 58,
+   "nonce_bypassed_carriers": [
+    7471775
+   ],
+   "parity_override_changes_execution": [
+    7471775
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7471775,
+   "tx_parity": false,
+   "txid": "e0a6f89071b89ee8f479845399e78c17d31f3dbc8e1c4370e22ec5a4fcd214bc"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "e8f0e206561c68570ae6b3fc6585eaa859e5589ccda07c12f934434846fb9b8d",
+   "carriers": [
+    7418813,
+    7418817
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 89,
+   "nonce_bypassed_carriers": [
+    7418813
+   ],
+   "parity_override_changes_execution": [
+    7418813
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7418813,
+   "tx_parity": false,
+   "txid": "e0d83b72e7ab11213f78ca7994598d2b988799d36786e94a2018c76513339ba8"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "dc52920e998b10064bee13ee340307f2e22f8f895c6865695fac230c14b292ad",
+   "carriers": [
+    7421309,
+    7421312
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 88,
+   "nonce_bypassed_carriers": [
+    7421309
+   ],
+   "parity_override_changes_execution": [
+    7421309
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7421309,
+   "tx_parity": false,
+   "txid": "e2fdb507438dc80667e73d60a17658811a1181234e9bbddcf81ec05de1c7a51d"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "a86dc4404074660885fcfc20fa31d21f5a3b878e98b19474bc3cb9ca77d800d2",
+   "carriers": [
+    7482913,
+    7482919
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 56,
+   "nonce_bypassed_carriers": [
+    7482913
+   ],
+   "parity_override_changes_execution": [
+    7482913
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7482913,
+   "tx_parity": false,
+   "txid": "e42eb301e2f0863de346ada3a531cdf70ca224a90dae2e861a21407a0c76bfc5"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "94e61e43a3c0c5ca900d01c82d2ac984fcae38fc5f88e2d3caa94b65bcf46905",
+   "carriers": [
+    7421373,
+    7421377
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 87,
+   "nonce_bypassed_carriers": [
+    7421373
+   ],
+   "parity_override_changes_execution": [
+    7421373
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7421373,
+   "tx_parity": false,
+   "txid": "e53ea2a813bdccbff19ef24010e7e5bef0bf2408423eb71a86dbca3cbca22530"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "3e3fdf01c7301392b13267038ff75940af5ddbd9fe74a7bfac3dbd188ef0a156",
+   "carriers": [
+    7493786,
+    7493789
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 42,
+   "nonce_bypassed_carriers": [
+    7493786
+   ],
+   "parity_override_changes_execution": [
+    7493786
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493786,
+   "tx_parity": false,
+   "txid": "e5676c4e2cc98429c890a30bdc1db231935dd52c91d17aa077a24a87a2dc35f9"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "0b0d517a50767e0e49c2218d94dbaa2a806529abe94d0510e64ef124e61753b6",
+   "carriers": [
+    7470357,
+    7470361
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 76,
+   "nonce_bypassed_carriers": [
+    7470357
+   ],
+   "parity_override_changes_execution": [
+    7470357
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7470357,
+   "tx_parity": true,
+   "txid": "ea445f18926af580fe8bf95466f3f7b9eea3eea0295a791323ee1d0ab4eddb0c"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "71466ccbaeac46b68888baa6def7ee4652ba350e51f050ae837b75c26da17b78",
+   "carriers": [
+    7493752,
+    7493756
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 44,
+   "nonce_bypassed_carriers": [
+    7493752
+   ],
+   "parity_override_changes_execution": [
+    7493752
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493752,
+   "tx_parity": false,
+   "txid": "ed09fcce52484862a01fcb0e03d6799ba16d7304e4b0af1d60cde4ce399c1207"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "6df25fe192fbcfde2a92adbaa5437c1bd85a72351c5eea2ded4bcb57aca2f5cb",
+   "carriers": [
+    7417751,
+    7417757
+   ],
+   "evidence_grade": "E2",
+   "fee": 80,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 91,
+   "nonce_bypassed_carriers": [
+    7417751
+   ],
+   "parity_override_changes_execution": [
+    7417751
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    16
+   ],
+   "table_height": 7417751,
+   "tx_parity": false,
+   "txid": "f00cc25c28947e52c48b450d259b5a06daf9bce580bb5503e978087d236d4f90"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "2b9c0b886254adad70edf8857b7758483f106d10a77436a4510cea0795ca139e",
+   "carriers": [
+    7468300,
+    7468303
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 78,
+   "nonce_bypassed_carriers": [
+    7468300
+   ],
+   "parity_override_changes_execution": [
+    7468300
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7468300,
+   "tx_parity": true,
+   "txid": "f389f4b63e9256d052445589ca06eee694bac0eefda658add5d4dbd37b29d60c"
+  },
+  {
+   "bl_tips_is_carrier_itself": false,
+   "bl_tips_is_carrier_tip": true,
+   "body_sha256": "2cf6c1348c5a32faff819844a670882759b7ec9498505f55a88503d9912377d6",
+   "carriers": [
+    7493549,
+    7493551
+   ],
+   "evidence_grade": "E2",
+   "fee": 121,
+   "group": "duplicates",
+   "height_is_carrier_height": true,
+   "line": 49,
+   "nonce_bypassed_carriers": [
+    7493549
+   ],
+   "parity_override_changes_execution": [
+    7493549
+   ],
+   "proof_current_verifier": "not decidable: ring state unavailable",
+   "ref_blid_eq_bl_tips": false,
+   "ring_sizes": [
+    2
+   ],
+   "table_height": 7493549,
+   "tx_parity": false,
+   "txid": "fd79549ad416cbec243d9ce54014b26f888f1cfd0cfe1aed5dde978a11dcaeab"
+  }
+ ],
+ "table": {
+  "entries": 75,
+  "file": "blockchain/hardfork_fixes.go",
+  "groups": {
+   "duplicates": 67,
+   "no duplicates, but false parity": 8
+  },
+  "parity_literal_set": 0,
+  "sha256": "467db1b30b0ff16c1e85003db1eba1c8c7e93eec2e64bf28ae8153558c5c5ea0"
+ }
+}

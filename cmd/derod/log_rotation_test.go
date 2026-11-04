@@ -80,7 +80,7 @@ func TestLogRotationRejectsUnbounded(t *testing.T) {
 func TestUsageParsesLiveCommandLine(t *testing.T) {
 	args := parse_derod(t, "--data-dir=/d", "--getwork-bind=127.0.0.1:10100", "--rpc-bind=127.0.0.1:10102",
 		"--p2p-bind=0.0.0.0:11011", "--integrator-address=dero1x", "--fastsync", "--min-peers=40",
-		"--node-tag=my-node", "--lowlatency", "--add-priority-node=203.0.113.10:11011", "--log-dir=/l",
+		"--node-tag=test-node", "--lowlatency", "--add-priority-node=203.0.113.164:11011", "--log-dir=/l",
 		"--log-compress", "--log-max-size=50")
 	if args["--fastsync"] != true || args["--lowlatency"] != true || args["--log-compress"] != true {
 		t.Fatalf("boolean flags: fastsync=%v lowlatency=%v log-compress=%v", args["--fastsync"], args["--lowlatency"], args["--log-compress"])

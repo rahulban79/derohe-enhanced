@@ -701,6 +701,84 @@ for _pkg, _pat in {
                         '|TestR24V2ReceiverProofRepeatIsWithheld|TestR24V2ReceiverProofSameTxidIsNotARepeat',
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+# r25 (rpcrobust): typed RPC errors (B85 pruned state, B86 input panics, B80 header-by-hash), additive txs_status and
+# total_supply_basis (BD6), the chain-swap lock (B41), the wallet /json_rpc request shape (B40)
+for _pkg, _pat in {
+        './cmd/derod/rpc/': 'TestR25BlockHeaderByHashUnknownIsError|TestR25EncryptedBalanceBadAddressTypedError'
+                            '|TestR25EncryptedBalancePrunedOverJSONRPC|TestR25EncryptedBalancePrunedTopoTypedError'
+                            '|TestR25GetInfoTotalSupplyBasis|TestR25GetSCPrunedTopoTypedError'
+                            '|TestR25GetTransactionStatusOverJSONRPC|TestR25NameValueNotAKeyIsTyped'
+                            '|TestR25PrunedRecordShapeRefused|TestR25ResolverChainSwapRaceFree|TestR25ScidColonRefused'
+                            '|TestR25StateRecordZeroBlockRefused|TestR25StateRefusalLogRateLimited|TestR25TxLookupStatesForged'
+                            '|TestR25NoUnlockedGlobalChainSwap',  # r25 verify-rpcrobust (B41 completion)
+        './walletapi/rpcserver/': 'TestR25WalletContentTypeVariantsServed|TestR25WalletJSONRPCWired'
+                                  '|TestR25WalletRefusalsCarryJSONRPCBody',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 25, consensus dimension (CO24-C1..C7, dero-rft §7 B55-B61): the TestR25* of p2p/r25_consensus_obs_test.go and
+# cmd/derod/rpc/r25_consensus_test.go (none is env-gated).
+for _pkg, _pat in {
+        './p2p/': 'TestR25MiniblockRefusalCountedAndRateLimited|TestR25BlockRejectReason|TestR25BlockRejectionAttributed'
+                  '|TestR25SeenTableFirstWinsAndBounded|TestR25AltTrackerSettles|TestR25ConsensusObsOnSimulatorChain',
+        './cmd/derod/rpc/': 'TestR25HeaderMinersKeepSlots|TestR25BlockFees|TestR25ReorgLifetimePersistsAcrossRestarts'
+                            '|TestR25ConsensusStatsParams|TestR25ConsensusRPCOnSimulatorChain',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 25, consensus verifier (p2p/r25_verify_consensus_test.go): alt settle reads outside the tracker lock, settled
+# once under concurrency, routine skips (advance/previous block) off the console. None is env-gated.
+for _pkg, _pat in {
+        './p2p/': 'TestR25AltSettleReadsOutsideLock|TestR25AltSettleConcurrentOnce|TestR25RoutineRejectionsStayOffConsole',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# r25 (cryptodisc): BD9 non-reduced proof-scalar encodings (pinned accept table on honest proofs) and B22 (exactly one
+# final miniblock above 399,000); both pin consensus rules as they are, no behaviour change
+for _pkg, _pat in {
+        './blockchain/': 'TestR25ExactlyOneFinalMiniblock',
+        './cryptography/crypto/': 'TestR25HonestProofVerifies|TestR25ScalarReencodeVerifies',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# r25 secpool (security + mempool): B47 unservable-sync hold, B48 proven-lane netgroup quota and fresh-key burst,
+# B42 rebroadcast skips mined txs, B44 cap reservation and mined-set summary, BD5 non-reduced proof scalars
+for _pkg, _pat in {
+    './p2p/': 'TestR25ProvenQuotaOneNetgroupCannotEvictHonest|TestR25ProvenFullSetEvictsLargestNetgroup'
+              '|TestR25ProvenQuotaExemptsNonPublic|TestR25ProvenQuotaKeepsNewestOfGroup|TestR25ProvenQuotaAttackBound'
+              '|TestR25SyncUnservableAttemptsPerHour|TestR25TriggerSyncSkipsHeldPeer'  # r25 merge: on the peers B47 hold
+              '|TestR25RebroadcastSkipsMinedTx|TestR25DerodSetsP2PMinedSource',
+    './glue/txpolicy/': 'TestR25CapHoldsUnderConcurrentAdmissions|TestR25ReservationReleasedOnFailure'
+                        '|TestR25FeeToEnterCountsReserved|TestR25SummaryFollowsMinedSet'
+                        '|TestR25SummaryCachedWhileMinedSetUnchanged',
+    './glue/txcanon/': 'TestR25ProofScalarOffsetsMatchSynth|TestR25NonReducedProofScalarRefused'
+                       '|TestR25MainnetTxsReducedAndJudged|TestR25ObserveCountsNonReducedBlockTx',
+    './cmd/derod/rpc/': 'TestR25FreshKeyBurstQuarter|TestR25FreshKeysAcrossAggregates'
+                        '|TestR25FreshBurstHonestClientsUnaffected',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# r25 perfops (B35 launchd-derod -preflight dry run; B39 getworkprobe node-counter deltas)
+for _pkg, _pat in {
+        './tools/launchd-derod/': 'TestR25PreflightReady|TestR25PreflightRunningDerodSameStore|TestR25PreflightPorts'
+                                  '|TestR25PreflightFilesystem|TestR25PreflightRefusalsAndLint|TestR25PreflightRunFlag'
+                                  '|TestR25PreflightRealProbes|TestR25VerifyPreflightDerodNames|TestR25VerifyPreflightUnresolvedDataDir',
+        './tools/getworkprobe/': 'TestR25ProbeParseProm|TestR25ProbeFlipDelta|TestR25ProbeReadCounters',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 25 (peers dimension, CO24-N1..N7, B47, B70; artifacts/dero-rft.md §8 row 'peers'): every TestR25* it adds
+for _pkg, _pat in {
+        './p2p/': 'TestR25PenaltyLastReasonsAndScore|TestR25PeerInfoCarriesPenaltyAndCounters'
+                  '|TestR25PenaltySeriesRegisteredEagerly|TestR25ScoreBanCarriesSourceAndReason|TestR25BanMetaLifetimeAndLoad'
+                  '|TestR25ChainRequestsCounted|TestR25InvClipsPerConnection|TestR25ShortAnswerTypedLoggedCounted'
+                  '|TestR25SyncHoldEscalatesAndForgives|TestR25SyncHoldWiring|TestR25StuckHoldsListed|TestR25OffendersListed'
+                  '|TestR25NoObservedPeerAddressInSources|TestR25TwoInvalidPowDoNotBan|TestR25OffenceRingOrderAndSaturation'
+                  '|TestR25OffenceLogBounded'
+                  '|TestR25VerifyBanSidecarSavedAndSourceCounted|TestR25VerifyPeerInfoHoldMatchesSkip',  # r25 verify-peers
+        './cmd/derod/rpc/': 'TestR25GetPeerInfoObservatoryLists',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
 TS = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 # run logs live outside every corpus root: the log is appended to while S7 hashes the corpus, so a log under
@@ -893,6 +971,14 @@ def s3_retry(pkg, race, failed, unmatched, first=''):
     return s3_retry_verdict(names, listed, res, broken)
 
 
+# Round 25 (harnesstool dimension): the TestR25* tests this dimension adds (B41: the resolver / chain-swap race;
+# harness/kat/test_new_tests_registered_r24.py NT1 requires every TestR<current>* to be registered here).
+for _pkg, _pat in {
+    './cmd/derod/rpc/': 'TestR25ChainSwapIsRaceFreeWithResolver',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+
 UPSTREAM_BASE = 'bf274e5'           # pristine Release153 content (harness/baseline); rule #28 compares against it
 NEW_TESTS_BASE = 'HEAD'
 
@@ -1024,8 +1110,19 @@ MINER_TRACK = RT.track_state(ROUND_REG) if RT else ('active', 'kit/roundtracks.p
 
 def miner_sources_changed(base):
     """r24: the changed paths under the miner sources since `base` (tracked diff + untracked files), or None when git
-    cannot say (then a paused S4b/S4c runs anyway)"""
+    cannot say (then a paused S4b/S4c runs anyway). r25 (B49): plus the changed non-test sources of every first-party
+    package the miner binary is built from (`go list -deps ./cmd/dero-miner`, kit/roundtracks.miner_relevant); a
+    version-string-only config/version.go is exempt. go list failing = None (the stage runs)."""
     paths = list(RT.MINER_PATHS) if RT else ['cmd/dero-miner', 'astrobwt', 'gpu-miner-poc']
+    if RT and hasattr(RT, 'miner_relevant'):
+        rcd, deps_out, _ = sh(list(RT.MINER_DEPS_CMD), timeout=300)
+        rc, out, _ = sh(['git', 'diff', '--name-only', base], timeout=120)
+        rc2, out2, _ = sh(['git', 'ls-files', '--others', '--exclude-standard'], timeout=120)
+        if rcd != 0 or rc != 0 or rc2 != 0:
+            return None
+        rcv, vdiff, _ = sh(['git', 'diff', '-U0', base, '--', RT.VERSION_FILE], timeout=120)
+        return RT.miner_relevant(sorted(set(out.split()) | set(out2.split())), RT.miner_dep_dirs(deps_out, ROOT),
+                                 rcv == 0 and RT.version_only(vdiff))
     rc, out, _ = sh(['git', 'diff', '--name-only', base, '--', *paths], timeout=120)
     rc2, out2, _ = sh(['git', 'ls-files', '--others', '--exclude-standard', '--', *paths], timeout=120)
     if rc != 0 or rc2 != 0:
@@ -1908,7 +2005,13 @@ def s5_shadow(seconds):
     if not lan:
         event('shadow', 'FAIL', why='no LAN address for the candidate to reach the live node from a distinct IP')
         finish(9)
-    nodes = {'control': {'bin': BIN / 'derod', 'rpc': 'http://127.0.0.1:30102/json_rpc', 'ports': (30102, 30100, 31011),
+    try:
+        live_ver = (rpc(LIVE_RPC, 'DERO.GetInfo') or {}).get('version')
+    except Exception:                                                       # noqa: BLE001
+        live_ver = None
+    ctl_bin, ctl_why = control_binary(BIN, live_ver, known_suffixes(ROUND_REG))
+    event('shadow', 'INFO', control_bin=str(ctl_bin.relative_to(ROOT)), why=ctl_why)
+    nodes = {'control': {'bin': ctl_bin, 'rpc': 'http://127.0.0.1:30102/json_rpc', 'ports': (30102, 30100, 31011),
                          'via': '127.0.0.1:11011'},
              'candidate': {'bin': STAGE / 'derod', 'rpc': SHADOW_RPC, 'ports': (20102, 20100, 21011),
                            'via': f'{lan}:11011'}}
@@ -2133,6 +2236,45 @@ def build_provenance(version_m, head, dirty_paths=None):
     return True, None
 
 
+def known_suffixes(reg):
+    """every version_suffix the registry names (not 'pending'). Pure."""
+    return {r.get('version_suffix') for r in (reg or {}).get('rounds', []) if isinstance(r, dict)
+            and r.get('version_suffix') not in (None, PENDING)}
+
+
+def backup_tag(blob, known):
+    """the +suffix of the version string inside a Go binary, for the backup name. r25 (pipeline run 3): Go packs string
+    literals without a terminator, so the r23c pattern `\\.r\\d+[a-z]?` read the first letter of the NEXT literal: the r24
+    binaries were backed up as derod.22102026.r24i-backup ('invalid human-readable part') and dero-miner...r24p-backup.
+    A trailing letter is kept only when the registry names that suffix (r23b, r23c); otherwise it is the next literal.
+    Pure (KAT test_install_tag_r25.py)."""
+    m = re.search(rb'STARGATE\+(\d{8}(?:\.r\d+)?)([a-z]?)', blob)
+    if not m:
+        return 'unknown'
+    tag, letter = m.group(1).decode(), m.group(2).decode()
+    return tag + letter if letter and tag + letter in known else tag
+
+
+def control_binary(bin_dir, live_version, known):
+    """(path, why) of the CONTROL shadow's derod: the build the live node runs. r25 (pipeline run 7,
+    pipeline_20261103T165745): the control was always bin/derod, but after an install bin/derod is the NEW build while the
+    live node still runs the old inode, so a later --no-install run compared r25 with r25 and the new-method probe
+    (control must answer 'no such method') failed. Now: bin/derod when its tag is the live node's; else the backup named
+    by the live tag (bin/derod.<tag>-backup); else bin/derod, said so. Pure on the files (KAT test_install_tag_r25.py IT3)."""
+    cur = Path(bin_dir) / 'derod'
+    m = re.search(r'STARGATE\+(\d{8}(?:\.r\d+[a-z]?)?)$', (live_version or '').strip())
+    if not m:
+        return cur, 'live version unknown: bin/derod'
+    want = m.group(1)
+    have = backup_tag(cur.read_bytes(), known | {want}) if cur.exists() else None
+    if have == want:
+        return cur, f'bin/derod is the live build {want}'
+    bak = Path(bin_dir) / f'derod.{want}-backup'
+    if bak.exists():
+        return bak, f'bin/derod is {have}; the live node runs {want}: its backup'
+    return cur, f'bin/derod is {have}; no backup of the live build {want}'
+
+
 def s6_install():
     event('install', 'START')
     rc, head, _ = sh(['git', 'rev-parse', 'HEAD'], timeout=60)
@@ -2147,8 +2289,7 @@ def s6_install():
     done = {}
     for name in BINARIES:
         cur, new = BIN / name, STAGE / name
-        old_tag = re.search(rb'STARGATE\+(\d{8}(?:\.r\d+[a-z]?)?)', cur.read_bytes()).group(1).decode() \
-            if cur.exists() else 'none'
+        old_tag = backup_tag(cur.read_bytes(), known_suffixes(ROUND_REG)) if cur.exists() else 'none'
         bak = BIN / f'{name}.{old_tag}-backup'           # named by the build it replaces, so every round keeps its own
         # r23c: the tag kept no letter suffix (r23b read as 'r23'), so the r23 backup already existed and r23b was
         # replaced with no copy; the suffix is now part of the tag.
@@ -2170,7 +2311,16 @@ JUDGED = {'datadir_intel': ((0, 6), 'datadir_*.json'), 'miner_intel': ((0, 7), '
           # r24: exit 5 = an OBSERVED detector (a rule violation seen on the chain, e.g. v2-remnant peers): the capture is
           # still valid evidence and G26 judges it; any other code, or no new capture text, fails the step
           'consensus_intel': ((0, 5), 'consensus_capture_*.txt'),
-          'peer_intel': ((0,), 'peer_capture_*.jsonl')}          # r24: exit 0 AND a new pseudonymised capture (G27)
+          'peer_intel': ((0,), 'peer_capture_*.jsonl'),          # r24: exit 0 AND a new pseudonymised capture (G27)
+          # r25 (rpcrobust): the standing derod error census (rft §6 step 1a); exit 5 = a node-bug kind in the run is a
+          # valid census (G15 judges the ERRORs); any other code, or no new snapshot, fails the step
+          'error_census': ((0, 5), 'error_census_*.json'),
+          # r25 (§0.9 rule 3): exit 5 = a §0.9 rule-2 tooling target is violated; the record is still valid input for
+          # area `tooling` (area_intel turns the regressions into proposals); any other code or no new record fails
+          'tooling_intel': ((0, 5), 'tooling_*.json'),
+          # r25 (forensics): exit 0 AND a new record; a FAIL (5 / 9) fails the step
+          's7_replay': ((0,), 'forensics_s7_replay.json'),
+          'facts': ((0,), 'forensics_intel.json')}
 
 
 def judged_step(step, rc, before, after):
@@ -2192,6 +2342,7 @@ def judged_step(step, rc, before, after):
 def s7_project():
     event('project', 'START')
     steps = [[sys.executable, 'harness/intel/log_intel.py', '--json-only'],
+             [sys.executable, 'harness/intel/error_census.py', '--json-only'],   # r25: ERROR/WARNING kinds by class
              [sys.executable, 'harness/intel/datadir_intel.py'],
              [sys.executable, 'harness/intel/miner_intel.py', '--json-only'],
              [sys.executable, 'harness/intel/run_ledger.py'],          # R21: after miner_intel (it backfills from its snapshots)
@@ -2202,6 +2353,13 @@ def s7_project():
              # r24 (consensus-network): the pseudonymised network-peer observatory (G27); before area_intel, whose
              # 'peers' area reads harness/runtime/peer_intel.json
              [sys.executable, 'harness/intel/peer_intel.py', '--live'],
+             [sys.executable, 'harness/intel/tooling_intel.py', '--scrub-control'],   # r25: area tooling (§0.9), before area_intel
+             # r25 (rft §0.8.8, B84): every forensic dataset version re-verified byte for byte, the newest one replayed
+             # (full where the tier B store and the archive copy exist, else PARTIAL and labelled; never the G28 record),
+             # then its facts written for area `forensics` (before area_intel) and gate G30
+             [sys.executable, 'harness/forensics/verify_dataset.py', 'forensics'],
+             [sys.executable, 'harness/forensics/s7_replay.py'],
+             [sys.executable, 'harness/forensics/facts.py', '--write', 'harness/runtime/forensics_intel.json'],
              [sys.executable, 'harness/intel/area_intel.py', '--live']]   # r24: per-area scorecards + proposals (G23)
     # the stand-alone KAT files (harness/kat/test_*.py): before R19 test_guard_build_inputs.py existed but no stage ran it
     steps += [[sys.executable, str(p.relative_to(ROOT))] for p in sorted((HARNESS / 'kat').glob('test_*.py'))]
@@ -2253,6 +2411,25 @@ def s7_project():
         finish(10)
 
 
+def reexec_argv(argv, root, here):
+    """r25 (B49): the argv that runs `root`'s own fix_build_verify.py with the same arguments minus --root, or None when
+    --root is absent or names this file's repo. Pure."""
+    if not root or Path(root).resolve() == Path(here).resolve():
+        return None
+    rest, skip = [], False
+    for x in argv:
+        if skip:
+            skip = False
+            continue
+        if x == '--root':
+            skip = True
+            continue
+        if x.startswith('--root='):
+            continue
+        rest.append(x)
+    return [sys.executable, '-I', str(Path(root).resolve() / 'harness/pipeline/fix_build_verify.py'), *rest]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--shadow-seconds', type=int, default=1200)
@@ -2269,7 +2446,15 @@ def main():
     ap.add_argument('--gpu-bench-only', action='store_true', help='R23: run S4c alone (implies --gpu-bench): the GPU path end to end')
     ap.add_argument('--contended-ok', action='store_true', help='R23: a contended (REFUSED) A/B is recorded and the run goes on')
     ap.add_argument('--soundness-only', action='store_true', help='R23b: S1 + S3s alone (records harness/loop/SOUNDNESS_LAST.json)')
+    ap.add_argument('--root', default=None, help='r25 (B49): run this pipeline in another checkout (its own copy of this '
+                                                 'file, cwd = that root), e.g. a dimension clone; default: this file\'s repo')
     a = ap.parse_args()
+    rx = reexec_argv(sys.argv[1:], a.root, ROOT)
+    if rx is not None:                       # r25 (B49): every path here is module-level, so the other root runs its own copy
+        if not rx[2:3] or not Path(rx[2]).is_file():
+            print(f'fix_build_verify: --root {a.root}: no harness/pipeline/fix_build_verify.py there')
+            sys.exit(2)
+        sys.exit(subprocess.run(rx, cwd=Path(rx[2]).resolve().parents[2]).returncode)
     global BENCH_LOCK, NEW_TESTS_BASE, NO_BENCHLOCK, GPU_BENCH, CONTENDED_OK
     CONTENDED_OK = a.contended_ok
     if a.gpu_bench_only:

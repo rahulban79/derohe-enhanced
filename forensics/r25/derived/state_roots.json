@@ -1,0 +1,41 @@
+{
+ "corroboration_by_tx_statement_roothash": {
+  "equal": 2,
+  "rows": [
+   {
+    "equal": true,
+    "ref_topo": 7467512,
+    "txid": "0045a6d4c51a8578b6c97f2b376415653583505f21032eb6a808cd1643a300a7"
+   },
+   {
+    "equal": true,
+    "ref_topo": 7467492,
+    "txid": "414f79b8ff3c862eaa5727c6591542218881c751ba4fe052c9aaeeec0cfedfcd"
+   }
+  ],
+  "rule": "a tx's Statement.Roothash is the root its creator's node reported for the reference block; equality with our archive root at that topo is an independent witness of that root",
+  "total": 2
+ },
+ "held": {
+  "archive_blid_eq_raw_chain": 14226,
+  "archive_records": 14226,
+  "class": "DERIVED from our own archive store (node-computed roots of its 2026-08 replay; base tree from its fastsync at 7,453,290; not end-state-checked)",
+  "range": [
+   7453290,
+   7467515
+  ],
+  "source": "derived/archive_state/roots.jsonl.gz (our replaywall archive copy)",
+  "version_file_eq_topo_record": 14226,
+  "window_topos_with_post_root": 14226
+ },
+ "not_reconstructable": {
+  "ext_only": "raw/a2_feasibility.json carries 6 sources' treehash at 7,415,465 (EXT, unused as evidence)",
+  "proof_field_census": {
+   "blocks": 83076,
+   "nonzero": 0,
+   "rule": "block/block.go:42 (serialized at :120, read by no blockchain code; disc:119)"
+  },
+  "reason": "not reconstructable: no held state for this topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+  "window_topos": 68251
+ }
+}

@@ -56,33 +56,69 @@ func GetBlockHeader(chain *blockchain.Blockchain, hash crypto.Hash) (result rpc.
 	//result.Prev_Hash = bl.Prev_Hash.String()
 	result.Timestamp = bl.Timestamp
 
-	if toporecord, err1 := chain.Store.Topo_store.Read(result.Height); err1 == nil { // we must now fill in compressed ring members
-		if ss, err1 := chain.Store.Balance_store.LoadSnapshot(toporecord.State_Version); err1 == nil {
-			if balance_tree, err1 := ss.GetTree(config.BALANCE_TREE); err1 == nil {
-
-				for _, mbl := range bl.MiniBlocks {
-					bits, key, _, err1 := balance_tree.GetKeyValueFromHash(mbl.KeyHash[0:16])
-					if err1 != nil || bits >= 120 {
-						continue
-					}
-					if addr, err1 := rpc.NewAddressFromCompressedKeys(key); err1 == nil {
+	// r25 (CO24-C7, dero-rft §7 B61): resolve the miniblock key hashes against the state at the block's own
+	// TOPOheight (a side block: its highest tip's), as GetMiniBlocks does. Upstream read Topo_store at the block's
+	// HEIGHT, the same record only while topoheight == height. And an unresolved key now stays "unknown" in ITS slot:
+	// upstream skipped it (`continue`), padded "unknown" at the end and then overwrote slot 9 with the integrator, so
+	// the slots after an unresolved miniblock shifted by one and the observatory could not see it (consensus_intel
+	// unresolved_miniblocks_header). Report-only: no consensus code reads this.
+	state_topo := result.TopoHeight
+	if state_topo < 0 {
+		for i := range bl.Tips {
+			if t := chain.Load_Block_Topological_order(bl.Tips[i]); t > state_topo {
+				state_topo = t
+			}
+		}
+	}
+	resolve := func(keyhash []byte) (string, bool) { return "", false }
+	if state_topo >= 0 {
+		if toporecord, err1 := chain.Store.Topo_store.Read(state_topo); err1 == nil { // we must now fill in compressed ring members
+			if ss, err1 := chain.Store.Balance_store.LoadSnapshot(toporecord.State_Version); err1 == nil {
+				if balance_tree, err1 := ss.GetTree(config.BALANCE_TREE); err1 == nil {
+					resolve = func(keyhash []byte) (string, bool) {
+						bits, key, _, err1 := balance_tree.GetKeyValueFromHash(keyhash)
+						if err1 != nil || bits >= 120 {
+							return "", false
+						}
+						addr, err1 := rpc.NewAddressFromCompressedKeys(key)
+						if err1 != nil {
+							return "", false
+						}
 						addr.Mainnet = globals.IsMainnet()
-						result.Miners = append(result.Miners, addr.String())
+						return addr.String(), true
 					}
 				}
 			}
 		}
 	}
-	for len(bl.MiniBlocks) > len(result.Miners) {
-		result.Miners = append(result.Miners, "unknown")
+	integrator, has_integrator := "", false
+	if addr, err1 := rpc.NewAddressFromCompressedKeys(bl.Miner_TX.MinerAddress[:]); err1 == nil {
+		addr.Mainnet = globals.IsMainnet()
+		integrator, has_integrator = addr.String(), true
 	}
-
-	{ // last miniblock goes to intgretor
-		if addr, err1 := rpc.NewAddressFromCompressedKeys(bl.Miner_TX.MinerAddress[:]); err1 == nil && len(result.Miners) >= 10 {
-			addr.Mainnet = globals.IsMainnet()
-			result.Miners[9] = addr.String()
-		}
-	}
+	result.Miners = header_miners(len(bl.MiniBlocks), func(i int) (string, bool) { return resolve(bl.MiniBlocks[i].KeyHash[0:16]) },
+		integrator, has_integrator)
 
 	return
+}
+
+// header_miners builds the miners[] slots of a block header (r25, CO24-C7): slot i is miniblock i's miner, "unknown"
+// when its key does not resolve, and slot 9 (the final, last miniblock) is the integrator paid by the miner tx,
+// exactly as upstream wrote it once a block carries 10 miniblocks. Pure: unit tested.
+func header_miners(n int, resolve func(i int) (string, bool), integrator string, has_integrator bool) []string {
+	if n <= 0 {
+		return nil // as upstream: a block without miniblocks (genesis) has no miners[]
+	}
+	miners := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		if a, ok := resolve(i); ok {
+			miners = append(miners, a)
+		} else {
+			miners = append(miners, "unknown")
+		}
+	}
+	if has_integrator && len(miners) >= 10 { // last miniblock goes to intgretor
+		miners[9] = integrator
+	}
+	return miners
 }

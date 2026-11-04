@@ -24,6 +24,11 @@ in its scorecard's 'held' list.
   python3 -I harness/intel/area_intel.py fix-lines       # fill missing anchor 'line' fields (a quote found exactly once)
   python3 -I harness/intel/area_intel.py record <round>  # copy computed values of <round> into areas.json history
   python3 -I harness/intel/area_intel.py g23             # the gate G23 on its own (exit 0 / 3)
+  python3 -I harness/intel/area_intel.py correct <round> --why TEXT [--date YYYY-MM-DD]
+                                                         # r25 (B52): dated correction of every booked value the records
+                                                         # now recompute differently (the old value is kept in `corrections`)
+  python3 -I harness/intel/area_intel.py correct <round> <area>.<metric> --why TEXT (--pending | --value V --file F --quote Q)
+                                                         # r25: correct one booked value by hand (a superseded live reading)
 """
 import datetime, fnmatch, hashlib, json, re, sys, urllib.request
 from pathlib import Path
@@ -33,7 +38,7 @@ ROOT = HARNESS.parent
 PENDING = 'pending'
 STATUSES = ('active', 'paused')
 REQUIRED_AREAS = ('harness', 'security', 'cryptosupply', 'getworkops', 'mempool', 'chainperf', 'rpcws', 'syncp2p',
-                  'wallet', 'storage', 'observability', 'docs', 'disclosure', 'miner')
+                  'wallet', 'storage', 'observability', 'docs', 'disclosure', 'miner', 'tooling')   # r25: tooling (§0.9)
 AREA_FIELDS = ('id', 'title', 'owner_dim', 'status', 'code_paths', 'metrics', 'kat_files', 'gates', 'gomut_prefixes',
                'backlog', 'history')
 AUTO = ('new_tests', 'mutations', 'kats', 'gates')      # computed for every area from each round's records
@@ -227,6 +232,9 @@ def validate(reg, root):
         for m in a.get('metrics', []):
             if m.get('better', 'none') not in ('higher', 'lower', 'none'):
                 err.append(f"{aid}.{m.get('id')}: better must be higher|lower|none")
+            ne = (m.get('source') or {}).get('needs_event')
+            if ne is not None and not (isinstance(ne, dict) and isinstance(ne.get('name'), str) and ne['name']):
+                err.append(f"{aid}.{m.get('id')}: needs_event must be {{name: <prom counter>, what: <event>}}")
         for rid, vals in (a.get('history') or {}).items():
             if rid not in rids:
                 err.append(f'{aid}: history round {rid!r} is not in rounds')
@@ -236,6 +244,8 @@ def validate(reg, root):
                 if not isinstance(v, dict) or 'value' not in v:
                     err.append(f'{aid}.{mid}@{rid}: entry without a value')
                     continue
+                for cx in correction_problems(root, v.get('corrections')):      # r25 (B52)
+                    err.append(f'{aid}.{mid}@{rid}: {cx}')
                 if is_pending(v['value']):
                     if not v.get('why'):
                         warn.append(f'{aid}.{mid}@{rid}: pending without a why')
@@ -256,6 +266,17 @@ def validate(reg, root):
 
 def round_order(reg):
     return [r['id'] for r in reg.get('rounds', [])]
+
+
+def unpinned_rounds(reg, current):
+    """r25 (B52): rounds before `current` whose pipeline_full or pipeline_project is not pinned in the registry. Their
+    values are computed from 'the newest record whose BEGIN names the round', which moves whenever a later run is still
+    labelled with that round (r24: the R25 plan runs of 2026-11-03), so booked values then drift. Pure."""
+    order = round_order(reg)
+    if current not in order:
+        return []
+    return [r['id'] for r in reg.get('rounds', [])[:order.index(current)]
+            if any(not r.get(k) or is_pending(r.get(k)) for k in ('pipeline_full', 'pipeline_project'))]
 
 
 def current_round(root):
@@ -470,6 +491,41 @@ def num(v):
         return None
 
 
+def step_is(step, want):
+    """r25 (tooling class 'substring step match', c191245 / IK24): a pipeline step names `want` when it IS that
+    command, or that command followed by its arguments ('harness/gen_deroarch.py build' matches 'harness/gen_deroarch.py
+    build' and 'harness/gen_deroarch.py build --x', never 'harness/gen_deroarch.py builder'). Pure."""
+    st, w = str(step or ''), str(want or '')
+    return bool(w) and (st == w or st.startswith(w + ' '))
+
+
+OPT_IN_LINES = 4      # r25: as harness/kat/test_new_tests_registered_r24.py (NT1): an env-gated skip in the first lines
+
+
+def opt_in_body(body_lines):
+    """True when a Go test's first lines skip unless an environment variable is set (an opt-in harness). Pure."""
+    head = '\n'.join(body_lines[:OPT_IN_LINES])
+    return 'os.Getenv(' in head and 't.Skip' in head
+
+
+def opt_in_tests(root, tidx):
+    """{(pkgdir/, TestName)} of the opt-in tests among `tidx` (read from their files)."""
+    out, cache = set(), {}
+    for (d, n), f in tidx.items():
+        if f not in cache:
+            try:
+                cache[f] = (Path(root) / f).read_text(errors='replace').splitlines()
+            except OSError:
+                cache[f] = []
+        lines = cache[f]
+        for i, l in enumerate(lines):
+            if l.startswith(f'func {n}('):
+                if opt_in_body(lines[i + 1:]):
+                    out.add((d, n))
+                break
+    return out
+
+
 def auto_round(root, reg, rid, tidx):
     """{area id: {metric id: entry}} computed from one round's pipeline + go_mutate records and its gate cycle."""
     areas = reg['areas']
@@ -494,10 +550,11 @@ def auto_round(root, reg, rid, tidx):
                     cnt[aid] += 1
         anc = rec_anchor(root, full_file, ln, 'test', o.get('status'))
         ran = {(pkgdir(pkg), name) for pkg, v in o['new_tests'].items() for name in (v.get('passed') or []) + (v.get('failed') or [])}
+        opt = opt_in_tests(root, tidx)     # r25 (B52): env-gated opt-in harnesses are never registered (KAT NT1)
         for a in areas:                    # tests named for this round that exist in the tree but S3 never ran
             pre = 'Test' + rid[:1].upper() + rid[1:]
             miss = sorted(f'{d}{n}' for (d, n), f in tidx.items() if n.startswith(pre) and (n[len(pre):len(pre) + 1] or 'X') not in '0123456789'
-                          and area_of(areas, f) == a['id'] and (d, n) not in ran)
+                          and area_of(areas, f) == a['id'] and (d, n) not in ran and (d, n) not in opt)
             out[a['id']]['_unregistered'] = miss
         for aid, n in cnt.items():
             out[aid]['new_tests'] = {'value': n, 'anchor': anc, 'computed': True}
@@ -570,7 +627,7 @@ def auto_round(root, reg, rid, tidx):
             elif s.get('kind') == 'pipeline_step':
                 ev, f = (proj_ev, proj_file) if s.get('mode') == 'project' and proj_ev else (full_ev, full_file)
                 for ln, o in ev:
-                    if o.get('stage') == 'project' and str(o.get('step', '')).startswith(s['step']):
+                    if o.get('stage') == 'project' and step_is(o.get('step'), s['step']):
                         mm = re.search(s['regex'], ' '.join(o.get('last') or []))
                         if mm:
                             out[a['id']][m['id']] = {'value': int(mm.group(1)), 'computed': True,
@@ -606,11 +663,31 @@ def capture_round(text, order):
     return m.group(1) if m and m.group(1) in order else None
 
 
+UNKNOWN_ROUND = 'unknown'   # r25 (B89): a capture with no '# version' line, or a version no round names
+
+
+def event_gate(e, s, prom):
+    """r25 (B54): a count of 0 is a reading only when the event it counts happened. A source with
+    needs_event {name, what} books 0 as `pending: no event` when the event counter is 0 or missing from the capture
+    (r24: block_tx_roundtrip_observed_total 0 over 217 blocks that carried 0 txs was booked as a measured 0). A
+    non-zero value is itself the evidence that the event happened. Pure."""
+    ne = s.get('needs_event')
+    if not ne or not isinstance(e, dict) or is_pending(e.get('value')) or num(e.get('value')) != 0:
+        return e
+    ev = prom.get(ne.get('name'))
+    if ev and ev[0] > 0:
+        return {**e, 'display': e.get('display') or f"0 ({ne['name']} {ev[0]:g})"}
+    return {'value': PENDING, 'why': f"pending: no event ({ne.get('what') or 'the counted event'} never happened: "
+                                     f"{ne['name']} {'is 0' if ev else 'not in the capture'}); a 0 here is not a reading"}
+
+
 def prom_names(reg, summed_only=False):
     ns = set()
     for a in reg['areas']:
         for m in a.get('metrics', []):
             s = m.get('source') or {}
+            if (s.get('needs_event') or {}).get('name') and not summed_only:
+                ns.add(s['needs_event']['name'])
             if s.get('kind') == 'prom' and (s.get('sum_labels') or not summed_only):
                 ns.add(s['name'])
             elif s.get('kind') == 'prom_ratio' and not summed_only:
@@ -665,9 +742,10 @@ def current_values(root, reg):
             if k == 'prom':
                 if s['name'] in prom:
                     v, l, n = prom[s['name']]
-                    e = {'value': v, 'anchor': line_anchor(root, prel, l), 'live_round': prom_round}
+                    e = {'value': v, 'anchor': line_anchor(root, prel, l), 'live_round': prom_round or UNKNOWN_ROUND}
                     if n > 1:
                         e['display'] = f'{v:g} (sum of {n} labelled series in the capture)'
+                    e = event_gate(e, s, prom)                              # r25 (B54)
 
                 else:
                     e = {'value': PENDING, 'why': f"{s['name']} not in the newest /metrics capture" if pp else 'no /metrics capture (run with --live)'}
@@ -676,14 +754,17 @@ def current_values(root, reg):
                     v = prom[s['num']][0] / prom[s['den']][0] * s.get('scale', 1)
                     e = {'value': round(v, 4), 'display': f"{round(v, 4)} ({prom[s['num']][0]:g} / {prom[s['den']][0]:g})",
                          'anchor': line_anchor(root, prel, prom[s['num']][1]),
-                         'anchor2': line_anchor(root, prel, prom[s['den']][1]), 'live_round': prom_round}
+                         'anchor2': line_anchor(root, prel, prom[s['den']][1]), 'live_round': prom_round or UNKNOWN_ROUND}
                 else:
                     e = {'value': PENDING, 'why': f"{s['num']} / {s['den']} not both in the newest capture, or the denominator is 0"}
             elif k == 'logintel' and li:
                 d = json.loads(li.read_text())
                 cur = (d.get('runs') or [{}])[-1]
                 if s['field'] in cur:
-                    e = {'value': cur[s['field']], 'anchor': line_anchor(root, f'harness/runtime/{li.name}', f'"{s["field"]}": {json.dumps(cur[s["field"]])}')}
+                    # r25 (B89): a log_intel run is a reading of the derod binary that wrote the log (its 'version'),
+                    # so 4 ERRORs of the r24 run are not booked to r25 (the r25 scorecard showed 0 (r24) -> 4 (r25))
+                    e = {'value': cur[s['field']], 'anchor': line_anchor(root, f'harness/runtime/{li.name}', f'"{s["field"]}": {json.dumps(cur[s["field"]])}'),
+                         'live_round': capture_round(f"# version {cur.get('version')}\n", round_order(reg)) or UNKNOWN_ROUND}
             elif k == 'datadir_fail' and dd:
                 d = json.loads(dd.read_text())
                 n = sum(1 for c in d.get('checks', []) if c.get('result') == 'FAIL')
@@ -696,9 +777,18 @@ def current_values(root, reg):
                     cd = None
                 kv = (cd or {}).get('kpis') or {}
                 if s['field'] in kv and not is_pending(kv[s['field']]):
-                    e = {'value': kv[s['field']], 'anchor': line_anchor(root, 'harness/runtime/consensus_intel.json',
-                                                                      f'"{s["field"]}": {json.dumps(kv[s["field"]])}'),
-                         'live_round': cd.get('binary_round') if str(cd.get('binary_round', '')).startswith('r') else None}
+                    # r25 measured (rft §7 B106): anchor on the KPI line of the newest timestamped capture that states this
+                    # value; consensus_intel.json is rewritten by every run (S7 re-runs it), so an anchor there broke
+                    # (BROKEN) one run after `record`. The JSON stays the fallback when no capture states the value.
+                    anc = None
+                    for capf in sorted((Path(root) / 'harness/runtime').glob('consensus_capture_*.txt'), reverse=True)[:12]:
+                        anc = line_anchor(root, f'harness/runtime/{capf.name}', f"kpi {s['field']} = {kv[s['field']]}")
+                        if anc and capf.read_text(errors='replace').splitlines()[anc['line'] - 1].strip() == anc['quote']:
+                            break
+                        anc = None
+                    e = {'value': kv[s['field']], 'anchor': anc or line_anchor(root, 'harness/runtime/consensus_intel.json',
+                                                                             f'"{s["field"]}": {json.dumps(kv[s["field"]])}'),
+                         'live_round': cd.get('binary_round') if str(cd.get('binary_round', '')).startswith('r') else UNKNOWN_ROUND}
                 else:
                     e = {'value': PENDING, 'why': f"{s['field']} not in harness/runtime/consensus_intel.json" if cd else 'no consensus_intel.json (run harness/intel/consensus_intel.py)'}
             elif k == 'peerintel':          # r24 (consensus-network): a KPI of harness/runtime/peer_intel.json
@@ -714,7 +804,36 @@ def current_values(root, reg):
                     # anchored on the KPI line of the run's own timestamped capture (peer_intel.json is rewritten every run)
                     capr = f"harness/runtime/{pdoc.get('capture_file')}"
                     e = {'value': kv, 'anchor': line_anchor(root, capr, f'"{s["field"]}": {json.dumps(kv)}', max(0, (pdoc.get('kpi_line') or 1) - 1)),
-                         'live_round': capture_round(f"# version {pdoc.get('node_version')}\n", round_order(reg))}
+                         'live_round': capture_round(f"# version {pdoc.get('node_version')}\n", round_order(reg)) or UNKNOWN_ROUND}
+            elif k == 'tooling':            # r25 (§0.9 rule 3): a KPI of harness/runtime/tooling_intel.json (tooling_intel.py)
+                try:
+                    tdoc = json.loads((Path(root) / 'harness/runtime/tooling_intel.json').read_text())
+                except (OSError, ValueError):
+                    tdoc = None
+                kv = ((tdoc or {}).get('kpis') or {}).get(s['field'], PENDING)
+                if isinstance(kv, list):
+                    kv = len(kv)
+                if tdoc is None or kv is None or is_pending(kv) or isinstance(kv, dict):
+                    e = {'value': PENDING, 'why': 'no harness/runtime/tooling_intel.json (run harness/intel/tooling_intel.py)'
+                         if tdoc is None else f"tooling_intel.json has no scalar kpis.{s['field']}"}
+                else:
+                    capr = f"harness/runtime/{tdoc.get('capture_file')}"
+                    raw = (tdoc.get('kpis') or {}).get(s['field'])
+                    q = f'"{s["field"]}": {json.dumps(raw)}' if not isinstance(raw, list) else f'"{s["field"]}": ['
+                    e = {'value': kv, 'anchor': line_anchor(root, capr, q)}
+                    if isinstance(raw, list):
+                        e['display'] = f'{kv} (entries of the list)'
+            elif k == 'forensics':          # r25 (rft §0.8.8): a KPI of harness/runtime/forensics_intel.json (forensics/facts.py --write)
+                try:
+                    fdoc = json.loads((Path(root) / 'harness/runtime/forensics_intel.json').read_text())
+                except (OSError, ValueError):
+                    fdoc = None
+                kv = ((fdoc or {}).get('kpis') or {}).get(s['field'], PENDING)
+                if fdoc is None or kv is None or is_pending(kv) or isinstance(kv, (dict, list)):
+                    e = {'value': PENDING, 'why': 'no harness/runtime/forensics_intel.json (run harness/forensics/facts.py --write)'
+                         if fdoc is None else f"forensics_intel.json has no scalar kpis.{s['field']}"}
+                else:
+                    e = {'value': kv, 'anchor': line_anchor(root, 'harness/runtime/forensics_intel.json', f'"{s["field"]}": {json.dumps(kv)}')}
             elif k == 'raw_count':
                 try:
                     n = sum(1 for l in (Path(root) / s['file']).read_text().splitlines() if s['quote'] in l)
@@ -816,6 +935,8 @@ def evaluate(root, live=False, cur_override=None):
         cur = cur_override
     if cur not in order:
         warnings.append(f'current round {cur!r} is not in areas.json rounds')
+    for rid in unpinned_rounds(reg, cur):          # r25 (B52)
+        warnings.append(f'round {rid}: pipeline records not pinned in areas.json rounds (its values follow the newest run labelled {rid})')
     tidx = test_index(root)
     auto = {}
     rrecs = {}
@@ -875,7 +996,7 @@ def evaluate(root, live=False, cur_override=None):
                 continue
             pts = []
             cv = curv.get(aid, {}).get(m['id'])
-            live_r = (cv or {}).get('live_round') or cur
+            live_r = (cv or {}).get('live_round') or cur      # r25: 'unknown' matches no round, so it is shown nowhere
             for rid in order:
                 h = (a.get('history') or {}).get(rid, {}).get(m['id'])
                 c = auto[rid].get(aid, {}).get(m['id'])
@@ -988,7 +1109,8 @@ def evaluate(root, live=False, cur_override=None):
         except (OSError, ValueError):
             _pi = {}
         for g in _pi.get('proposals') or []:
-            if g.get('area') == aid and (g.get('anchor') or {}).get('line'):
+            # r25 (peers): a gap whose closing line is in the tree is implemented, no longer a proposal
+            if g.get('area') == aid and (g.get('anchor') or {}).get('line') and not str(g.get('status', '')).startswith('implemented'):
                 ga = line_anchor(root, g['anchor']['file'], g['anchor']['quote'])
                 if ga:
                     found.append(('node-gap', 'medium', f"{g['id']}: {g['title']} (for {g.get('target', 'R25')}: {g['proposal']})", [ga], g['id']))
@@ -1216,6 +1338,7 @@ def live_belongs(e, rid):
     belongs to the round of the binary it was read from). Pure (r24 merge: record r24 booked 12 values of the r23c
     derod's /metrics while the r24 binary was installed but not yet running)."""
     lr = e.get('live_round') if isinstance(e, dict) else None
+    # r25 (B89): a capture of an unknown binary carries live_round 'unknown' (UNKNOWN_ROUND), which equals no round id
     return lr is None or str(lr).lower() == str(rid).lower()
 
 
@@ -1264,7 +1387,111 @@ def record(root, rid):
     return added, kept
 
 
+# ───────────────────────────── r25 (B52): dated corrections ─────────────────────────────
+DATE_RX = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+
+
+def correction_problems(root, cs):
+    """registry errors of one entry's `corrections` list: each needs a date (YYYY-MM-DD), the superseded value
+    (`was`), a why, and an evidence anchor that resolves (no anchor, no correction). Pure but for the anchor read."""
+    if cs is None:
+        return []
+    if not isinstance(cs, list):
+        return ['corrections must be a list']
+    out = []
+    for i, c in enumerate(cs):
+        if not isinstance(c, dict):
+            out.append(f'correction {i} is not an object')
+            continue
+        if not DATE_RX.match(str(c.get('date', ''))):
+            out.append(f'correction {i}: date {c.get("date")!r} is not YYYY-MM-DD')
+        if 'was' not in c:
+            out.append(f'correction {i}: no superseded value (was)')
+        if not str(c.get('why', '')).strip():
+            out.append(f'correction {i}: no why')
+        if not resolved(resolve_anchor(root, c.get('evidence'))):
+            out.append(f'correction {i}: evidence anchor does not resolve')
+    return out
+
+
+def apply_correction(ent, new, date, why, evidence):
+    """r25 (B52): the history entry `ent` corrected to `new` (an entry {value, anchor[, display]} or {value: pending,
+    why}), with the superseded value kept, dated, in ent['corrections'] (oldest first). Never rewrites history
+    silently: the old value, its anchor and display stay readable. Returns the new entry. Pure."""
+    old = dict(ent or {})
+    prior = list(old.pop('corrections', []) or [])
+    prior.append({'date': date, 'was': old.get('value'), 'was_anchor': old.get('anchor'),
+                  **({'was_display': old['display']} if old.get('display') else {}),
+                  **({'was_note': old['note']} if old.get('note') else {}), 'why': why, 'evidence': evidence})
+    out = {k: v for k, v in new.items() if k in ('value', 'anchor', 'display', 'why', 'note')}
+    out['corrections'] = prior
+    return out
+
+
+def correct(root, rid, why, date=None, target=None, new=None):
+    """r25 (B52). Without `target`: every booked value of round `rid` whose records now recompute a different value
+    (the history-drift proposals of evaluate) is corrected to the recomputed value, dated, with the old one kept. With
+    `target` ('area.metric') and `new` (an entry): that one value. Returns (changed, problems)."""
+    date = date or now().strftime('%Y-%m-%d')
+    if not why or not why.strip():
+        return 0, ['a correction needs --why']
+    reg = load_registry(root)
+    vals, _ = auto_round(root, reg, rid, test_index(root))
+    changed, probs = 0, []
+    for a in reg['areas']:
+        h = (a.get('history') or {}).get(rid) or {}
+        for mid, ent in list(h.items()):
+            if target and target != f"{a['id']}.{mid}":
+                continue
+            if target:
+                ev = new.get('anchor') or new.get('evidence')
+                if not resolved(resolve_anchor(root, ev)):
+                    probs.append(f"{target}@{rid}: the new value's anchor/evidence does not resolve")
+                    continue
+                nn = {k: v for k, v in new.items() if k != 'evidence'}
+                h[mid] = apply_correction(ent, nn, date, why, ev)
+                changed += 1
+                continue
+            c = vals.get(a['id'], {}).get(mid)
+            if not (isinstance(ent, dict) and isinstance(c, dict) and c.get('computed') and not is_pending(c.get('value'))
+                    and not is_pending(ent.get('value')) and not same_value(ent['value'], c['value'])):
+                continue
+            h[mid] = apply_correction(ent, {'value': c['value'], 'anchor': {kk: c['anchor'][kk] for kk in ('file', 'quote', 'line')}},
+                                      date, why, {kk: c['anchor'][kk] for kk in ('file', 'quote', 'line')})
+            changed += 1
+    if target and not changed and not probs:
+        probs.append(f'{target}@{rid}: no booked value to correct')
+    paths(root)['reg'].write_text(json.dumps(reg, indent=1, ensure_ascii=False) + '\n')
+    return changed, probs
+
+
+def _opt(argv, name):
+    return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else None
+
+
 def main(argv):
+    if argv[:1] == ['correct']:                      # r25 (B52)
+        rest = [a for i, a in enumerate(argv[1:], 1) if not a.startswith('--') and argv[i - 1] not in
+                ('--why', '--date', '--value', '--file', '--quote')]
+        why, date = _opt(argv, '--why'), _opt(argv, '--date')
+        if not rest:
+            print('usage: correct <round> [<area>.<metric> (--pending | --value V --file F --quote Q)] --why TEXT')
+            return 2
+        new = None
+        if len(rest) > 1:
+            if '--pending' in argv:
+                ev = {'file': _opt(argv, '--file'), 'quote': _opt(argv, '--quote')}
+                new = {'value': PENDING, 'why': why, 'evidence': line_anchor(ROOT, ev['file'], ev['quote']) if ev['file'] else None}
+            else:
+                v = _opt(argv, '--value')
+                try:
+                    v = json.loads(v)
+                except (TypeError, ValueError):
+                    pass
+                new = {'value': v, 'anchor': line_anchor(ROOT, _opt(argv, '--file'), _opt(argv, '--quote') or '')}
+        n, probs = correct(ROOT, rest[0], why, date, rest[1] if len(rest) > 1 else None, new)
+        print(f'correct {rest[0]}: {n} value(s) corrected', *probs, sep='\n  ')
+        return 2 if probs else 0
     args = [a for a in argv if not a.startswith('--')]
     live = '--live' in argv
     cmd = args[0] if args else 'run'

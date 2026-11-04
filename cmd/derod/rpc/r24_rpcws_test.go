@@ -101,12 +101,13 @@ func TestR24ItemWeightedAdmission(t *testing.T) {
 			break
 		}
 	}
-	want := int(ABUSE_DEFAULT_BURST) / (foreign_cost("DERO.GetTransaction") + item_cost(MAX_REMOTE_TX_HASHES))
+	// r25 (B48): a fresh key holds ABUSE_FRESH_BURST_FRAC of the burst (500 tokens): 14 full calls
+	want := int(ABUSE_DEFAULT_BURST*ABUSE_FRESH_BURST_FRAC) / (foreign_cost("DERO.GetTransaction") + item_cost(MAX_REMOTE_TX_HASHES))
 	if n != want {
 		t.Fatalf("full calls admitted from one burst: %d, want %d", n, want)
 	}
-	// the refusal carries a retry hint sized for the item cost: 2,000 - 58 x 34 = 28 tokens left, 6 short at 200/s
-	if v, d := admit_http("192.0.2.82", []string{"DERO.GetTransaction"}, []int{MAX_REMOTE_TX_HASHES}, now); v != abuse_rate_limited || d != 30*time.Millisecond {
+	// the refusal carries a retry hint sized for the item cost: 500 - 14 x 34 = 24 tokens left, 10 short at 200/s (r25)
+	if v, d := admit_http("192.0.2.82", []string{"DERO.GetTransaction"}, []int{MAX_REMOTE_TX_HASHES}, now); v != abuse_rate_limited || d != 50*time.Millisecond {
 		t.Fatalf("after the burst: %v %v", v, d)
 	}
 	// a body with no item counts is charged as before
@@ -116,8 +117,8 @@ func TestR24ItemWeightedAdmission(t *testing.T) {
 			break
 		}
 	}
-	if n != int(ABUSE_DEFAULT_BURST)/6 {
-		t.Fatalf("wallet-sized calls from one burst: %d, want %d", n, int(ABUSE_DEFAULT_BURST)/6)
+	if fresh := int(ABUSE_DEFAULT_BURST*ABUSE_FRESH_BURST_FRAC) / 6; n != fresh { // r25 (B48): a fresh key's burst
+		t.Fatalf("wallet-sized calls from one burst: %d, want %d", n, fresh)
 	}
 }
 
@@ -315,7 +316,7 @@ func TestR24RemoteHTTPItemsCharged(t *testing.T) {
 	tab := fresh_abuse(t)
 	tab.rate = 1e-6 // no refill while the loop runs (-race is ~10x slower), so the count is exact
 	body := r24_body(1, MAX_REMOTE_TX_HASHES)
-	want := int(ABUSE_DEFAULT_BURST) / (foreign_cost("DERO.GetTransaction") + item_cost(MAX_REMOTE_TX_HASHES))
+	want := int(ABUSE_DEFAULT_BURST*ABUSE_FRESH_BURST_FRAC) / (foreign_cost("DERO.GetTransaction") + item_cost(MAX_REMOTE_TX_HASHES)) // r25 (B48)
 	for i := 0; i < 100; i++ {
 		rec := r24_post(body, "192.0.2.86:1", "application/json")
 		if rec.Code == http.StatusTooManyRequests {

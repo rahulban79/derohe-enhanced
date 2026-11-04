@@ -37,6 +37,7 @@ import (
 	"errors"
 	mrand "math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/deroproject/derohe/cryptography/crypto"
@@ -233,13 +234,34 @@ func eligible_tx_peers() (n int) {
 	return
 }
 
+// r25 (secpool, B42): a tx a recent block already carries is not re-announced. Nothing removes a mined tx from the
+// mempool before HouseKeeping (r24 TXP-2), so Mempool_TX_Exist alone kept re-announcing it up to REBROADCAST_MAX
+// times to every peer, each of which looks it up and drops it. MinedSource is the template's own notion of "already
+// mined" (cmd/derod/rpc.RecentlyMined, set by derod); nil (tests, simulator) keeps the r24 behaviour.
+var mined_source atomic.Value // func() map[crypto.Hash]bool
+
+// SetMinedSource names the txids the recent blocks carry (derod passes cmd/derod/rpc.RecentlyMined).
+func SetMinedSource(f func() map[crypto.Hash]bool) { mined_source.Store(f) }
+
+// rebroadcast_in_pool is the "still pending" predicate of the rebroadcast loop: in the pool and not mined.
+func rebroadcast_in_pool(exist func(crypto.Hash) bool, mined map[crypto.Hash]bool) func(crypto.Hash) bool {
+	if len(mined) == 0 {
+		return exist
+	}
+	return func(h crypto.Hash) bool { return exist(h) && !mined[h] }
+}
+
 func rebroadcast_announced_txs() {
 	defer globals.Recover(3)
 	if chain == nil {
 		return
 	}
 	now := globals.Time()
-	for _, tx := range due_announced_txs(now, chain.Mempool.Mempool_TX_Exist, eligible_tx_peers()) {
+	var mined map[crypto.Hash]bool
+	if f, _ := mined_source.Load().(func() map[crypto.Hash]bool); f != nil {
+		mined = f()
+	}
+	for _, tx := range due_announced_txs(now, rebroadcast_in_pool(chain.Mempool.Mempool_TX_Exist, mined), eligible_tx_peers()) {
 		broadcast_Tx(tx, 0, now.UTC().UnixMicro())
 	}
 }

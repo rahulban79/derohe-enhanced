@@ -1,0 +1,54 @@
+{
+ "base_reward": 30750,
+ "base_reward_python_eq": true,
+ "blid": "ca32b16eaed6403281e0c6657b0cb6dbcd01ff4f31cbee5c63daf13a502fad4a",
+ "class": "RAW (checks i-ii); row DERIVED",
+ "coinbase": {
+  "formula_only": true,
+  "miner_tx_type": "COINBASE",
+  "miner_tx_value": 0
+ },
+ "fees": 121,
+ "full_reward": 30871,
+ "height": 7482968,
+ "hf3_carrier": true,
+ "hf3_txids": [
+  "6aa20567ff23705aa91a4c607e8387d147b309f8eeb9f8198149c21c439c3692"
+ ],
+ "integrator_leftover": 1,
+ "major_version": 2,
+ "miniblock_share": 3087,
+ "miniblocks": 10,
+ "miniblocks_final": 1,
+ "minor_version": 2,
+ "proof_field_nonzero": false,
+ "public_burns": 0,
+ "reward_ext": 30750,
+ "reward_ext_eq_formula": true,
+ "reward_rule": "blockchain/transaction_execute.go:126-160: (base + fees) split equally over the miniblocks, leftover to the integrator; base = CalcBlockReward (blockchain/transaction_execute.go:60-62)",
+ "sha256": "0a30340267a22ddf77b98f79577f6261cdc4c1f88d3c147c6d8596ca3fa8d8e5",
+ "sha3_256": "ca32b16eaed6403281e0c6657b0cb6dbcd01ff4f31cbee5c63daf13a502fad4a",
+ "state_root_post": "not reconstructable: no held state for this topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "state_root_pre": "not reconstructable: no held state for this topo (live node state starts at prunedheight 7,498,540, disc:108-112; our archive holds committed state for topo 7,453,290..7,467,515 only; blocks commit to no checked root, disc:119-120; (a2) bootstrap is feasible, raw/a2_feasibility.json, R26)",
+ "supply_after": 1673748436350,
+ "supply_before": 1673748405600,
+ "supply_identity_ok": true,
+ "tier": "A",
+ "timestamp_ms": 1786898072078,
+ "tips": [
+  "e4d918937e0b60df9febe33e634378a5004334e9c3e794729a807ed7ed6e86b9"
+ ],
+ "topo": 7482968,
+ "tx_count": 1,
+ "tx_hashes": [
+  "6aa20567ff23705aa91a4c607e8387d147b309f8eeb9f8198149c21c439c3692"
+ ],
+ "txs": [
+  {
+   "fee": 121,
+   "hf3": true,
+   "tx_type": "NORMAL",
+   "txid": "6aa20567ff23705aa91a4c607e8387d147b309f8eeb9f8198149c21c439c3692"
+  }
+ ]
+}

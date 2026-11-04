@@ -249,9 +249,10 @@ func TestR23bReorgObserverOnSimulatorChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Shutdown()
-	old_chain, old_state := chain, reorg_state
-	chain, reorg_state = c, new_reorg_tracker()
-	defer func() { chain, reorg_state = old_chain, old_state }()
+	defer swap_global_chain(c)() // r25 verify-rpcrobust: B41 had 2 more unlocked swaps here; the 18 s fate resolver reads chain
+	old_state := reorg_state
+	reorg_state = new_reorg_tracker()
+	defer func() { reorg_state = old_state }()
 	miner := genesis_miner(t)
 	var cost time.Duration
 	for i := 0; i < 24; i++ {
@@ -342,9 +343,10 @@ func TestR23bFinalTxCacheOnSimulatorChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Shutdown()
-	old_chain, old_cache := chain, final_txs
-	chain, final_txs = c, new_final_tx_cache(true)
-	defer func() { chain, final_txs = old_chain, old_cache }()
+	defer swap_global_chain(c)() // r25 verify-rpcrobust: B41 had 2 more unlocked swaps here; the 18 s fate resolver reads chain
+	old_cache := final_txs
+	final_txs = new_final_tx_cache(true)
+	defer func() { final_txs = old_cache }()
 
 	walletapi.Initialize_LookupTable(1, 1<<12)
 	w, err := walletapi.Create_Encrypted_Wallet_Memory("", new(crypto.BNRed).SetBytes(big.NewInt(4000039).Bytes()))

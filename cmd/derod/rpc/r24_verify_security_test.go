@@ -12,15 +12,19 @@ import (
 func TestR24VerifyAggShortRetryFloodEndsBanned(t *testing.T) {
 	tb := new_abuse_table(ABUSE_DEFAULT_RATE, ABUSE_DEFAULT_BURST, ABUSE_MAX_ENTRIES)
 	now := time.Unix(1700000000, 0)
-	// 9 keys drain the aggregate (burst 8 x 2000) within one instant
-	for k := 0; k < 9; k++ {
-		for c := 0; c < 2000; c++ {
+	// keys drain the aggregate (burst 8 x 2000) within one instant; r25 (B48): a fresh key holds 500 tokens, so 33 keys
+	// spend their fresh bursts (16,500 >= 16,000) instead of 9 spending 2,000
+	per_key := int(ABUSE_DEFAULT_BURST * ABUSE_FRESH_BURST_FRAC)
+	for k := 0; k < int(ABUSE_DEFAULT_BURST*ABUSE_AGG_SCALE)/per_key+1; k++ {
+		for c := 0; c < per_key; c++ {
 			tb.admit(fmt.Sprintf("198.18.5.%d", k+1), "DERO.GetInfo", false, now)
 		}
 	}
-	// a 10th key, own bucket full, floods 20,000 calls in 1 s (100x its own 200/s rate)
+	// one more key, own bucket full, floods at 100x its own 200/s rate. r25 (B48): for 0.25 s (5,000 calls), because a
+	// fresh key's own bucket is 500 tokens: within 0.25 s the aggregate's own refill (1,600/s) cannot empty it, so only
+	// the debit of refused calls can make the key own_short (before r25: 20,000 calls in 1 s against 2,000 tokens)
 	limited, banned := 0, 0
-	for i := 0; i < 20000; i++ {
+	for i := 0; i < 5000; i++ {
 		v, _ := tb.admit("198.18.5.200", "DERO.GetInfo", false, now.Add(time.Duration(i)*50*time.Microsecond))
 		switch v {
 		case abuse_rate_limited:
@@ -29,7 +33,7 @@ func TestR24VerifyAggShortRetryFloodEndsBanned(t *testing.T) {
 			banned++
 		}
 	}
-	t.Logf("flooding key: %d rate-limited, %d banned of 20000", limited, banned)
+	t.Logf("flooding key: %d rate-limited, %d banned of 5000", limited, banned)
 	if banned == 0 {
 		t.Fatalf("a key retrying at 100x its own rate against a drained aggregate was never banned (%d unscored refusals)", limited)
 	}

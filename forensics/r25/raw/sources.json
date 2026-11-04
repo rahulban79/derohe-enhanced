@@ -1,0 +1,366 @@
+{
+ "answered_getinfo": 9,
+ "candidates_probed": 21,
+ "incidents": [
+  "src-4 answered one GetTransaction batch (10 tier A txids, 2026-11-03T19:35Z) with a recovered panic and stack trace on its side; the batch was re-asked from src-2 and verified; no further requests of that kind were sent to src-4"
+ ],
+ "note": "external DERO daemon RPC endpoints, by pseudonym only; hosts are kept privately. All data from them is EXT until checks (i)-(iii).",
+ "sources": {
+  "src-1": {
+   "a2_state_probe": [
+    {
+     "blockhash_ext": "0019bc7841d11b6ad03acc17eec89aa955d3b295333bbd08922ecdf45bab6ce8",
+     "returned_topoheight": 7415465,
+     "status": "OK",
+     "t": "2026-11-03T18:10:24Z",
+     "topoheight": 7415465,
+     "treehash_ext": "6d34a230c210cdc1a02b0b2427e4c61c43afd54bb1c1b75d649876151d5f91d1"
+    },
+    {
+     "blockhash_ext": "e18be51e716a746c6a98a32dbc2a0420745945ffb933d1b6582489a33c1e743e",
+     "returned_topoheight": 7498540,
+     "status": "OK",
+     "t": "2026-11-03T18:10:25Z",
+     "topoheight": 7498540,
+     "treehash_ext": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7"
+    }
+   ],
+   "getinfo": {
+    "height": 7851117,
+    "prunedheight": "absent",
+    "topoheight": 7851117,
+    "version": "3.6.0-152.DEROHE.STARGATE+14082026"
+   },
+   "getinfo_time": "2026-11-03T17:59:57Z",
+   "origin": "repo seed list (config/seed_nodes.go)",
+   "serves_window": true,
+   "v3_at_7504640": true,
+   "window_probe": {
+    "7415466": {
+     "id": "a8c4e55b7ceec11f433dbec34dac843a0d54b15e904ab1f5b8bd33065ff7c61e",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7497942": {
+     "id": "828d647ea8fe26fdcddbfa8b038d6b14d0d7502c93d6e53533d5c180ef0f4337",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7504640": {
+     "id": "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5",
+     "major_version": 3,
+     "sha3_256_equals_id": true
+    }
+   }
+  },
+  "src-2": {
+   "a2_state_probe": [
+    {
+     "blockhash_ext": "0019bc7841d11b6ad03acc17eec89aa955d3b295333bbd08922ecdf45bab6ce8",
+     "returned_topoheight": 7415465,
+     "status": "OK",
+     "t": "2026-11-03T18:10:27Z",
+     "topoheight": 7415465,
+     "treehash_ext": "6d34a230c210cdc1a02b0b2427e4c61c43afd54bb1c1b75d649876151d5f91d1"
+    },
+    {
+     "blockhash_ext": "e18be51e716a746c6a98a32dbc2a0420745945ffb933d1b6582489a33c1e743e",
+     "returned_topoheight": 7498540,
+     "status": "OK",
+     "t": "2026-11-03T18:10:28Z",
+     "topoheight": 7498540,
+     "treehash_ext": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7"
+    }
+   ],
+   "getinfo": {
+    "height": 7851117,
+    "prunedheight": 0,
+    "topoheight": 7851117,
+    "version": "3.6.0-152.DEROHE.STARGATE+14082026"
+   },
+   "getinfo_time": "2026-11-03T17:59:58Z",
+   "origin": "repo seed list (config/seed_nodes.go)",
+   "serves_window": true,
+   "v3_at_7504640": true,
+   "window_probe": {
+    "7415466": {
+     "id": "a8c4e55b7ceec11f433dbec34dac843a0d54b15e904ab1f5b8bd33065ff7c61e",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7497942": {
+     "id": "828d647ea8fe26fdcddbfa8b038d6b14d0d7502c93d6e53533d5c180ef0f4337",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7504640": {
+     "id": "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5",
+     "major_version": 3,
+     "sha3_256_equals_id": true
+    }
+   }
+  },
+  "src-3": {
+   "a2_state_probe": [],
+   "getinfo": {
+    "height": 7851117,
+    "prunedheight": "absent",
+    "topoheight": 7851117,
+    "version": "3.6.0-152.DEROHE.STARGATE+14082026"
+   },
+   "getinfo_time": "2026-11-03T18:00:00Z",
+   "origin": "repo seed list (config/seed_nodes.go)",
+   "serves_window": false,
+   "v3_at_7504640": false,
+   "window_probe": {
+    "7415466": {
+     "error": "{'code': -32098, 'message': 'file does not exist'}"
+    },
+    "7497942": {
+     "error": "{'code': -32098, 'message': 'file does not exist'}"
+    },
+    "7504640": {
+     "error": "{'code': -32098, 'message': 'file does not exist'}"
+    }
+   }
+  },
+  "src-4": {
+   "a2_state_probe": [
+    {
+     "blockhash_ext": "0019bc7841d11b6ad03acc17eec89aa955d3b295333bbd08922ecdf45bab6ce8",
+     "returned_topoheight": 7415465,
+     "status": "OK",
+     "t": "2026-11-03T18:10:29Z",
+     "topoheight": 7415465,
+     "treehash_ext": "6d34a230c210cdc1a02b0b2427e4c61c43afd54bb1c1b75d649876151d5f91d1"
+    },
+    {
+     "blockhash_ext": "e18be51e716a746c6a98a32dbc2a0420745945ffb933d1b6582489a33c1e743e",
+     "returned_topoheight": 7498540,
+     "status": "OK",
+     "t": "2026-11-03T18:10:30Z",
+     "topoheight": 7498540,
+     "treehash_ext": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7"
+    }
+   ],
+   "getinfo": {
+    "height": 7851119,
+    "prunedheight": 7310161,
+    "topoheight": 7851119,
+    "version": "3.6.0-152.DEROHE.STARGATE+14082026"
+   },
+   "getinfo_time": "2026-11-03T18:00:22Z",
+   "origin": "live node peer list (GetPeerInfo, loopback)",
+   "serves_window": true,
+   "v3_at_7504640": true,
+   "window_probe": {
+    "7415466": {
+     "id": "a8c4e55b7ceec11f433dbec34dac843a0d54b15e904ab1f5b8bd33065ff7c61e",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7497942": {
+     "id": "828d647ea8fe26fdcddbfa8b038d6b14d0d7502c93d6e53533d5c180ef0f4337",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7504640": {
+     "id": "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5",
+     "major_version": 3,
+     "sha3_256_equals_id": true
+    }
+   }
+  },
+  "src-5": {
+   "a2_state_probe": [],
+   "getinfo": {
+    "height": 7851120,
+    "prunedheight": 7683705,
+    "topoheight": 7851120,
+    "version": "3.6.0-153.DEROHE.STARGATE+21082026"
+   },
+   "getinfo_time": "2026-11-03T18:00:23Z",
+   "origin": "live node peer list (GetPeerInfo, loopback)",
+   "serves_window": false,
+   "v3_at_7504640": false,
+   "window_probe": {
+    "7415466": {
+     "error": "{'code': -32098, 'message': 'empty block'}"
+    },
+    "7497942": {
+     "error": "{'code': -32098, 'message': 'empty block'}"
+    },
+    "7504640": {
+     "error": "{'code': -32098, 'message': 'empty block'}"
+    }
+   }
+  },
+  "src-6": {
+   "a2_state_probe": [],
+   "getinfo": {
+    "height": 7851120,
+    "prunedheight": 7516413,
+    "topoheight": 7851120,
+    "version": "3.6.0-153.DEROHE.STARGATE+21082026"
+   },
+   "getinfo_time": "2026-11-03T18:00:24Z",
+   "origin": "live node peer list (GetPeerInfo, loopback)",
+   "serves_window": false,
+   "v3_at_7504640": false,
+   "window_probe": {
+    "7415466": {
+     "error": "{'code': -32098, 'message': 'empty block'}"
+    },
+    "7497942": {
+     "error": "{'code': -32098, 'message': 'empty block'}"
+    },
+    "7504640": {
+     "error": "{'code': -32098, 'message': 'empty block'}"
+    }
+   }
+  },
+  "src-7": {
+   "a2_state_probe": [
+    {
+     "blockhash_ext": "0019bc7841d11b6ad03acc17eec89aa955d3b295333bbd08922ecdf45bab6ce8",
+     "returned_topoheight": 7415465,
+     "status": "OK",
+     "t": "2026-11-03T18:10:32Z",
+     "topoheight": 7415465,
+     "treehash_ext": "6d34a230c210cdc1a02b0b2427e4c61c43afd54bb1c1b75d649876151d5f91d1"
+    },
+    {
+     "blockhash_ext": "e18be51e716a746c6a98a32dbc2a0420745945ffb933d1b6582489a33c1e743e",
+     "returned_topoheight": 7498540,
+     "status": "OK",
+     "t": "2026-11-03T18:10:33Z",
+     "topoheight": 7498540,
+     "treehash_ext": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7"
+    }
+   ],
+   "getinfo": {
+    "height": 7851120,
+    "prunedheight": "absent",
+    "topoheight": 7851120,
+    "version": "3.6.0-152.DEROHE.STARGATE+14082026"
+   },
+   "getinfo_time": "2026-11-03T18:00:26Z",
+   "origin": "live node peer list (GetPeerInfo, loopback)",
+   "serves_window": true,
+   "v3_at_7504640": true,
+   "window_probe": {
+    "7415466": {
+     "id": "a8c4e55b7ceec11f433dbec34dac843a0d54b15e904ab1f5b8bd33065ff7c61e",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7497942": {
+     "id": "828d647ea8fe26fdcddbfa8b038d6b14d0d7502c93d6e53533d5c180ef0f4337",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7504640": {
+     "id": "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5",
+     "major_version": 3,
+     "sha3_256_equals_id": true
+    }
+   }
+  },
+  "src-8": {
+   "a2_state_probe": [
+    {
+     "blockhash_ext": "0019bc7841d11b6ad03acc17eec89aa955d3b295333bbd08922ecdf45bab6ce8",
+     "returned_topoheight": 7415465,
+     "status": "OK",
+     "t": "2026-11-03T18:10:34Z",
+     "topoheight": 7415465,
+     "treehash_ext": "6d34a230c210cdc1a02b0b2427e4c61c43afd54bb1c1b75d649876151d5f91d1"
+    },
+    {
+     "blockhash_ext": "e18be51e716a746c6a98a32dbc2a0420745945ffb933d1b6582489a33c1e743e",
+     "returned_topoheight": 7498540,
+     "status": "OK",
+     "t": "2026-11-03T18:10:36Z",
+     "topoheight": 7498540,
+     "treehash_ext": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7"
+    }
+   ],
+   "getinfo": {
+    "height": 7851120,
+    "prunedheight": 7347121,
+    "topoheight": 7851120,
+    "version": "3.6.0-153.DEROHE.STARGATE+21082026"
+   },
+   "getinfo_time": "2026-11-03T18:00:28Z",
+   "origin": "live node peer list (GetPeerInfo, loopback)",
+   "serves_window": true,
+   "v3_at_7504640": true,
+   "window_probe": {
+    "7415466": {
+     "id": "a8c4e55b7ceec11f433dbec34dac843a0d54b15e904ab1f5b8bd33065ff7c61e",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7497942": {
+     "id": "828d647ea8fe26fdcddbfa8b038d6b14d0d7502c93d6e53533d5c180ef0f4337",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7504640": {
+     "id": "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5",
+     "major_version": 3,
+     "sha3_256_equals_id": true
+    }
+   }
+  },
+  "src-9": {
+   "a2_state_probe": [
+    {
+     "blockhash_ext": "0019bc7841d11b6ad03acc17eec89aa955d3b295333bbd08922ecdf45bab6ce8",
+     "returned_topoheight": 7415465,
+     "status": "OK",
+     "t": "2026-11-03T18:10:37Z",
+     "topoheight": 7415465,
+     "treehash_ext": "6d34a230c210cdc1a02b0b2427e4c61c43afd54bb1c1b75d649876151d5f91d1"
+    },
+    {
+     "blockhash_ext": "e18be51e716a746c6a98a32dbc2a0420745945ffb933d1b6582489a33c1e743e",
+     "returned_topoheight": 7498540,
+     "status": "OK",
+     "t": "2026-11-03T18:10:39Z",
+     "topoheight": 7498540,
+     "treehash_ext": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7"
+    }
+   ],
+   "getinfo": {
+    "height": 7851120,
+    "prunedheight": 0,
+    "topoheight": 7851120,
+    "version": "3.6.0-152.DEROHE.STARGATE+14082026"
+   },
+   "getinfo_time": "2026-11-03T18:00:29Z",
+   "origin": "live node peer list (GetPeerInfo, loopback)",
+   "serves_window": true,
+   "v3_at_7504640": true,
+   "window_probe": {
+    "7415466": {
+     "id": "a8c4e55b7ceec11f433dbec34dac843a0d54b15e904ab1f5b8bd33065ff7c61e",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7497942": {
+     "id": "828d647ea8fe26fdcddbfa8b038d6b14d0d7502c93d6e53533d5c180ef0f4337",
+     "major_version": 2,
+     "sha3_256_equals_id": true
+    },
+    "7504640": {
+     "id": "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5",
+     "major_version": 3,
+     "sha3_256_equals_id": true
+    }
+   }
+  }
+ },
+ "unreachable_detail": "config REMOTE_DAEMON (config/config.go:144) resolves to the loopback address and refuses; 3 hosts named in the config comment refuse; 5 seed hosts refuse or time out on the RPC default port 10102; 3 peer hosts refuse",
+ "unreachable_or_refused": 12
+}
