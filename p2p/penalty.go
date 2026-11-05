@@ -43,7 +43,11 @@ const PENALTY_BAN_MAX = 86400              // up to 24 hours
 
 // points per kind of fault; the reasons are a fixed set so the metric stays bounded
 var PENALTY_POINTS = map[string]float64{
-	"invalid_pow":           50, // a block whose proof of work fails: two in a short time ban
+	// a block whose proof of work fails. r26 (B102, decision: policy kept, comment corrected): the score decays
+	// continuously, so two offences ban only at the same instant (50 + 50*0.5^(dt/600 s) < 100 for any dt > 0); three
+	// within one half-life (10 min) always ban (>= 50*0.5 + 50*0.5 + 50). Pinned by TestR25TwoInvalidPowDoNotBan and
+	// TestR26ThreeInvalidPowWithinHalfLifeBan.
+	"invalid_pow":           50,
 	"invalid_pow_miniblock": 25, // a miniblock judged against our view of its tips: weaker evidence while we catch up
 	"undecodable":           50, // a block or tx that does not deserialize
 	"malformed_request":     20, // a request outside the protocol's bounds
@@ -87,6 +91,14 @@ func (m *misbehaviour) note(reason string, now time.Time) {
 	if m.events < math.MaxUint32 {
 		m.events++
 	}
+}
+
+// newest_at is the time of the newest offence in the ring (recent()[0].At), 0 when none is kept. r26 (B99).
+func (m *misbehaviour) newest_at() int64 {
+	if m.kept == 0 {
+		return 0
+	}
+	return m.last[(int(m.head)+PENALTY_LAST_REASONS-1)%PENALTY_LAST_REASONS].At
 }
 
 // recent returns the ring newest first (at most PENALTY_LAST_REASONS marks).

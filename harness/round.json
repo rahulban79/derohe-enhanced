@@ -1,6 +1,6 @@
 {
  "_doc": "r23c round registry: the one place a round's ids live (read by harness/pipeline/fix_build_verify.py and harness/pipeline/benchlock.py, checked by harness/kat/test_round_registry_r23c.py). The literal string 'pending' means not known yet: never replace it with a guess. Protocol: artifacts/dero-rft.md and harness/README.md.",
- "current": "r25",
+ "current": "r26",
  "upstream_base": "bf274e5",
  "benchlock": "~/derohe-persist/bench.lock",
  "rounds": [
@@ -72,7 +72,7 @@
    },
    "github_sync": {
     "base": "cbaf664",
-    "target": "pending"
+    "target": "a129f8c"
    },
    "tracks": {
     "miner": "paused",
@@ -82,6 +82,26 @@
   },
   {
    "id": "r26",
+   "status": "measured",
+   "version_suffix": "22102026.r26",
+   "new_tests_base": "3c84667f",
+   "merge_commit": "fea0206b",
+   "head_after": "63aab67e",
+   "pipeline_full": "pipeline_20261104T220624",
+   "go_mutations": "1329/1329",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "a129f8c",
+    "target": "pending"
+   },
+   "tracks": {
+    "miner": "paused",
+    "node": "active"
+   },
+   "evidence": "R26 opened 2026-11-04 from 3c84667f (rft §1 Round 26 prompt; R25 measured 0d6d63ec + rft §0.8.9/§0.8.10 plan 23f397a5); miner track paused (dero-rft §0.3); node + forensics classes/bounds (§0.8.9) + dataset v2 + tooling; derod r25 running since 2026-11-04 06:57:28 (pid 34438, user); Part A (round start, §6 steps 0-3a) by the R26 Part A agent: live reads, error census, observatories, area/coherence, drift fixes, r25 ledger freeze, G28 v1 re-verify; work list <scratch>/r26/plan.json; merged 2026-11-04 as fea0206b (6 verified open-loop patches, 117 files) + c802e4bc (audit2 + frontend2, frontend2.verified.patch md5 aa05d0cce08e0603f725ee40283e4f2e); version 5b631a01; no new RPC method (typed errors on existing methods only); pipeline: run1 pipeline_20261104T175125 S3b FAIL (2 STALE mutation anchors, B129, fixed d3189e1a), run2 pipeline_20261104T193301 S1-S6 PASS, installed +22102026.r26 by atomic rename (backups bin/*.22102026.r25-backup; bin/derod sha256 f6ff3b005872f1cd791310f769e7b67c9dc5d00e340b47c0ebae9fd12bcc5692) / S7 FAIL (r25 forensics area anchors, B130, fixed c643634f), run3 pipeline_20261104T213409 project-only PASS, run4 pipeline_20261104T220624 full PASS (--no-install): mutations 1329/1329, race 26 packages 0 races, shadow 120 blocks 240 treehashes 0 mismatches vs the live r25 build, gates 29/32 + 3 PAUSED (miner); round state: installed, awaiting restart (derod pid 34438 still runs r25) MEASURED live 2026-11-05 on the restarted r26 derod (user restart 07:48:21, pid 93240; window to 08:50, 55 samples): 55/55 synced, lag 0, 13-14 out / 0 in, 0 ERROR/WARN (G15 clear), 0 panics/bans; B103 duplicate_race 767 / insert_failed 0 (CONFIRMED), refusal lines carry the collision error; B100 -32032 and B104 -32602 CONFIRMED by harmless probes; B60 across a restart CONFIRMED (reorg lifetime starts 2); B99 decay/forgiveness pending-no-event (holds 0); emission 218 audited 0 alerts payees 1367/1367; B36 24 h r25 segment 4,846 blocks ok, 0 alerts, issued = formula 149,014,500 (offline archive re-audit); disclosure --live S1-S4 PASS, census 15,506 scalars 0 noncanonical; G28 PASS (harness/runtime/r26_live_window_20261105.txt; harness/runtime/r26_b36_emission24h_20261105.txt; artifacts/dero-rft.md section 13 R26)"
+  },
+  {
+   "id": "r27",
    "status": "planned",
    "version_suffix": "pending",
    "new_tests_base": "pending",

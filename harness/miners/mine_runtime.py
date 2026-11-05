@@ -47,6 +47,26 @@ def rpc(method, params=None):
         return json.loads(r.read())
 
 
+def scrub_process(lines, salt=None):
+    """the derod `ps` lines as a tracked snapshot may hold them (B119)"""
+    sys.path.insert(0, str(M.HARNESS / 'kit'))
+    import privkit
+    salt = salt or privkit.load_salt()
+    return [privkit.scrub_argv(l, salt) for l in lines]
+
+
+def argv_scrubbed(line):
+    """r26 verify (B119): is this snapshot line already scrubbed (kit/privkit.argv_scrubbed)? False on any doubt."""
+    sys.path.insert(0, str(M.HARNESS / 'kit'))
+    try:
+        import privkit
+        return privkit.argv_scrubbed(line)
+    except Exception:                                             # noqa: BLE001 — unknown = not claimed scrubbed
+        return False
+    finally:
+        sys.path.pop(0)
+
+
 def capture():
     RUNTIME.mkdir(exist_ok=True)
     snap = {'captured': datetime.datetime.now().astimezone().isoformat(timespec='seconds')}
@@ -74,7 +94,9 @@ def capture():
     except Exception as e:                                        # noqa: BLE001
         snap['tip_error'] = str(e)
     ps = subprocess.run(['ps', '-Ao', 'pid,etime,rss,command'], capture_output=True, text=True).stdout
-    snap['process'] = [l.strip() for l in ps.splitlines() if '/bin/derod' in l and 'grep' not in l]
+    # r26 B119: the argv is pseudonymised before it is written (kit/privkit.scrub_argv): the snapshot is tracked, and
+    # the raw line carried the priority peer's address, the node tag, the integrator address and the home path
+    snap['process'] = scrub_process([l.strip() for l in ps.splitlines() if '/bin/derod' in l and 'grep' not in l])
     lsof = subprocess.run(['lsof', '-nP', '-iUDP', '-iTCP', '-a', '-c', 'derod'], capture_output=True, text=True).stdout
     snap['sockets'] = {'udp': len([l for l in lsof.splitlines() if ' UDP ' in l]),
                        'tcp_listen': len([l for l in lsof.splitlines() if 'LISTEN' in l])}
@@ -134,9 +156,13 @@ def main():
         a = M.anchor(rel, line[:120], full_line=True) or M.anchor(rel, '/bin/derod', full_line=True)
         if a:
             pid, etime = (line.split() + ['', ''])[:2]
+            # r26 verify: the claim follows the snapshot it cites; a pre-B119 snapshot (no --capture since) is raw
+            how = ('recorded in the snapshot with its peer addresses pseudonymised and its node tag, address and home '
+                   'path withheld (B119).' if argv_scrubbed(line) else
+                   'recorded verbatim in this snapshot (taken before B119; the next --capture scrubs it).')
             rows.append({'id': f'rt-proc-{i}', 'section': 'runtime', 'title': 'derod process', 'class': 'HARNESS',
                          'claim': f'One derod process is running: pid {pid}, elapsed {etime}. The full argument '
-                                  f'vector is the operator’s own command line, recorded verbatim in the snapshot.',
+                                  f'vector is the operator’s own command line, {how}',
                          'field': 'process', 'value': f'pid {pid}', 'evidence': [a]})
     sk = d.get('sockets') or {}
     a = M.anchor(rel, '"udp":', full_line=True)

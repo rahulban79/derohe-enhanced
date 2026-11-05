@@ -9124,8 +9124,8 @@
    "file": "p2p/consensus_obs_r25.go",
    "pkg": "./p2p/",
    "test": "TestR25MiniblockRefusalCountedAndRateLimited",
-   "find": "logger.V(1).Info(\"Miniblock refused\", \"reason\", reason, \"height\", height, \"peer_id\", peer_label(conn_peer(c)), \"suppressed\", held)",
-   "replace": "c.logger.V(1).Info(\"Miniblock refused\", \"reason\", reason, \"height\", height, \"peer_id\", \"203.0.113.9\", \"suppressed\", held)"
+   "find": "logger.V(1).Info(\"Miniblock refused\", \"reason\", reason, \"height\", height, \"peer_id\", peer_label(conn_peer(c)), \"suppressed\", held,",
+   "replace": "c.logger.V(1).Info(\"Miniblock refused\", \"reason\", reason, \"height\", height, \"peer_id\", \"203.0.113.9\", \"suppressed\", held,"
   },
   {
    "id": "gm-r25-consensus-duplicate-counted-as-rejection",
@@ -9156,8 +9156,8 @@
    "file": "p2p/consensus_obs_r25.go",
    "pkg": "./p2p/",
    "test": "TestR25BlockRejectionAttributed",
-   "find": "\tif ok {\n\t\talt_track.note(blid, int64(cbl.Bl.Height))\n\t\treturn\n\t}",
-   "replace": "\tif ok {\n\t\treturn\n\t}"
+   "find": "\tif ok {\n\t\talt_track.note(blid, int64(cbl.Bl.Height))\n\t\tif c != nil && chain != nil {",
+   "replace": "\tif ok {\n\t\tif c != nil && chain != nil {"
   },
   {
    "id": "gm-r25-consensus-first-seen-overwritten",
@@ -10177,6 +10177,470 @@
    "test": "TestR25ShortAnswerTypedLoggedCounted",
    "find": "\t\tlogger.V(1).Info(msg, append([]interface{}{\"error\", err.Error()}, keysAndValues...)...)\n",
    "replace": "\t\tlogger.Error(err, msg, keysAndValues...) // r25 mutated\n"
+  },
+  {
+   "id": "gm-a2-guard-store",
+   "file": "tools/forensics/a2/guard.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2DatadirGuard",
+   "find": "\t\t\tif strings.HasPrefix(strings.ToLower(c), \"dero-data\") {\n",
+   "replace": "\t\t\tif false && strings.HasPrefix(strings.ToLower(c), \"dero-data\") {\n"
+  },
+  {
+   "id": "gm-a2-guard-confirm",
+   "file": "tools/forensics/a2/guard.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2DatadirGuard",
+   "find": "\tif os.Getenv(\"FORENSICS_A2_DATADIR_OK\") != clean {\n",
+   "replace": "\tif false && os.Getenv(\"FORENSICS_A2_DATADIR_OK\") != clean {\n"
+  },
+  {
+   "id": "gm-a2-guard-reuse",
+   "file": "tools/forensics/a2/guard.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2DatadirGuard",
+   "find": "\t\tif ents, err := os.ReadDir(clean); err == nil && len(ents) > 0 {\n",
+   "replace": "\t\tif ents, err := os.ReadDir(clean); err == nil && len(ents) > 99 {\n"
+  },
+  {
+   "id": "gm-a2-section-foreign",
+   "file": "tools/forensics/a2/net.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2SectionCheck",
+   "find": "\t\t\tif isbit(h[:], b) != isbit(section, b) {\n",
+   "replace": "\t\t\tif false && isbit(h[:], b) != isbit(section, b) {\n"
+  },
+  {
+   "id": "gm-a2-section-cap",
+   "file": "tools/forensics/a2/net.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2SectionCheck",
+   "find": "\tif len(resp.Keys) > maxSectionKeys {\n",
+   "replace": "\tif len(resp.Keys) > maxSectionKeys+1 {\n"
+  },
+  {
+   "id": "gm-a2-limiter-cap",
+   "file": "tools/forensics/a2/net.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2ChunksFor",
+   "find": "\tif rate <= 0 || rate > 4 {\n",
+   "replace": "\tif rate <= 0 {\n"
+  },
+  {
+   "id": "gm-a2-blob-sha",
+   "file": "tools/forensics/a2/replay.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2CompleteBlockChecks",
+   "find": "\t\tif hex.EncodeToString(got[:]) != sha {\n",
+   "replace": "\t\tif false && hex.EncodeToString(got[:]) != sha {\n"
+  },
+  {
+   "id": "gm-a2-blid",
+   "file": "tools/forensics/a2/replay.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2CompleteBlockChecks",
+   "find": "\tif hex.EncodeToString(h[:]) != r.BLID {\n",
+   "replace": "\tif false && hex.EncodeToString(h[:]) != r.BLID {\n"
+  },
+  {
+   "id": "gm-a2-txid",
+   "file": "tools/forensics/a2/replay.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2CompleteBlockChecks",
+   "find": "\t\tif hex.EncodeToString(th[:]) != t[0] || bl.Tx_hashes[i] != th {\n",
+   "replace": "\t\tif false && hex.EncodeToString(th[:]) != t[0] || bl.Tx_hashes[i] != th {\n"
+  },
+  {
+   "id": "gm-a2-plan-gap",
+   "file": "tools/forensics/a2/replay.go",
+   "pkg": "./tools/forensics/a2/",
+   "test": "TestR26A2PlanContiguous",
+   "find": "\t\tif len(rows) > 0 && r.Topo != rows[len(rows)-1].Topo+1 {\n",
+   "replace": "\t\tif false && len(rows) > 0 && r.Topo != rows[len(rows)-1].Topo+1 {\n"
+  },
+  {
+   "id": "gm-r26-classes-reserialize",
+   "file": "tools/forensics/classstats/main.go",
+   "pkg": "./tools/forensics/classstats/",
+   "test": "TestR26StructStatsDigestsEveryPayload",
+   "find": "\tif !bytes.Equal(tx.Serialize(), buf) {\n",
+   "replace": "\tif false && !bytes.Equal(tx.Serialize(), buf) { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-classes-d-digest",
+   "file": "tools/forensics/classstats/main.go",
+   "pkg": "./tools/forensics/classstats/",
+   "test": "TestR26StructStatsDigestsEveryPayload",
+   "find": "\t\t\td := sha256.Sum256(st.D.EncodeCompressed())\n",
+   "replace": "\t\t\td := sha256.Sum256(st.Roothash[:]) // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-classes-copy-guard",
+   "file": "tools/forensics/classstats/main.go",
+   "pkg": "./tools/forensics/classstats/",
+   "test": "TestR26CensusRefusesAnUnnamedStore",
+   "find": "\tif os.Getenv(\"FORENSICS_STORE_COPY_OK\") != abs {\n",
+   "replace": "\tif false && os.Getenv(\"FORENSICS_STORE_COPY_OK\") != abs { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-classes-sc-count",
+   "file": "tools/forensics/classstats/main.go",
+   "pkg": "./tools/forensics/classstats/",
+   "test": "TestR26CensusCountsEveryTree",
+   "find": "\t\to.SCTreeKeys += n\n",
+   "replace": "\t\to.SCTreeKeys += n / 2 // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-classes-root-xor",
+   "file": "tools/forensics/classstats/main.go",
+   "pkg": "./tools/forensics/classstats/",
+   "test": "TestR26CensusCountsEveryTree",
+   "find": "\t\troot[i] = bh[i] ^ mh[i]\n",
+   "replace": "\t\troot[i] = bh[i] ^ mh[i] ^ mh[i] // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-disc-fq4-bind-mu",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26TranscriptBindingPinned",
+   "find": "\t\tinput = append(input, sigmasupport.A_u.Marshal()...)\n",
+   "replace": "\t\tinput = append(input, sigmasupport.A_u.Marshal()...)\n\t\tinput = append(input, ConvertBigIntToByte(proof.mu)...) // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-disc-fq4-ip-base",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26TranscriptBindingPinned",
+   "find": "u_x := new(bn256.G1).ScalarMult(gparams.H, o)",
+   "replace": "u_x := new(bn256.G1).ScalarMult(gparams.G, o) // r26 mutated"
+  },
+  {
+   "id": "gm-r26-disc-fq4-ip-drop-rs",
+   "file": "cryptography/crypto/proof_innerproduct.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26TranscriptBindingPinned",
+   "find": "\t\tinput = append(input, ip.rs[i].Marshal()...)\n",
+   "replace": "\t\t// r26 mutated: ip.rs dropped from the inner-product challenge\n"
+  },
+  {
+   "id": "gm-r26-disc-fq4-hashmash-drop-yx",
+   "file": "cryptography/crypto/proof_generate.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26TranscriptBindingPinned",
+   "find": "\t\tinput = append(input, proof.y_XG[i].Marshal()...)\n",
+   "replace": "\t\t_ = i // r26 mutated: y_XG dropped from the w preimage\n"
+  },
+  {
+   "id": "gm-r26-disc-fq4b-mu-bound-behaviour",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26HonestPerturbationRefused",
+   "find": "\t\tinput = append(input, sigmasupport.A_u.Marshal()...)\n",
+   "replace": "\t\tinput = append(input, sigmasupport.A_u.Marshal()...)\n\t\tinput = append(input, ConvertBigIntToByte(proof.mu)...) // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-disc-fq4b-ip-no-panic",
+   "file": "cryptography/crypto/proof_innerproduct.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26HonestPerturbationRefused",
+   "find": "\t\tpanic(\"Faulty or invalid proof\")\n",
+   "replace": "\t\t// r26 mutated: no panic, plain false\n"
+  },
+  {
+   "id": "gm-r26-disc-b32-guard-off",
+   "file": "walletapi/r24_v2proof.go",
+   "pkg": "./walletapi/",
+   "test": "TestR26V2ProofGuardWindowResidualPinned",
+   "find": "\tx.withheld[k] = true\n\tw.r24WithholdStored(k)\n\tr24Withhold(e, k)\n}\n",
+   "replace": "\t_ = k // r26 mutated: repeat not withheld\n}\n"
+  },
+  {
+   "id": "gm-r26-disc-b32-window-withhold-all",
+   "file": "walletapi/r24_v2proof.go",
+   "pkg": "./walletapi/",
+   "test": "TestR26V2ProofGuardWindowResidualPinned",
+   "find": "\tk, withheld, ok := r24V2ProofKey(e)\n\tif !ok || withheld {\n\t\treturn\n\t}\n\tx := &w.r24proofs\n",
+   "replace": "\tk, withheld, ok := r24V2ProofKey(e)\n\tif ok && !withheld && w.account.TrackRecentBlocks > 0 { // r26 mutated: withhold all in partial history\n\t\tr24Withhold(e, k)\n\t\treturn\n\t}\n\tif !ok || withheld {\n\t\treturn\n\t}\n\tx := &w.r24proofs\n"
+  },
+  {
+   "id": "gm-r26-nodenet-dup-race-counted-as-insert",
+   "file": "p2p/rpc_notifications.go",
+   "pkg": "./p2p/",
+   "test": "TestR26DuplicateRaceCountedNotInsertFailed",
+   "find": "c.insert_refusal_reason(mbl, chain.MiniBlocks.IsCollision)",
+   "replace": "MBL_REFUSED_INSERT /* r26 mutated: B103 reverted */"
+  },
+  {
+   "id": "gm-r26-nodenet-classify-ignores-collision",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR26InsertRefusalReason",
+   "find": "\tif collides != nil && collides(mbl) {\n",
+   "replace": "\tif false { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-nodenet-dup-not-a-delivery",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR26DuplicateRaceCountedNotInsertFailed",
+   "find": "\t\tc.note_miniblock_delivery(false)\n\t\treturn MBL_REFUSED_DUPLICATE\n",
+   "replace": "\t\treturn MBL_REFUSED_DUPLICATE // r26 mutated: not counted as a delivery\n"
+  },
+  {
+   "id": "gm-r26-nodenet-refusal-line-no-error",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR26RefusalLineCarriesErrorText",
+   "find": "\"error\", refusal_error_text(err))",
+   "replace": "\"error\", \"\") // r26 mutated"
+  },
+  {
+   "id": "gm-r26-nodenet-refusal-error-unbounded",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR26RefusalLineCarriesErrorText",
+   "find": "\tif len(t) > MBL_REFUSAL_ERR_MAX {\n",
+   "replace": "\tif false { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-nodenet-strikes-never-decay",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR26SyncStrikesDecay",
+   "find": "\t\tc.obs.sync_strikes.Store(0)\n\t}\n\tn := c.obs.sync_strikes.Add(1)",
+   "replace": "\t}\n\tn := c.obs.sync_strikes.Add(1) // r26 mutated: no decay"
+  },
+  {
+   "id": "gm-r26-nodenet-relay-forgives-any-claim",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR26RelayedBlockForgives",
+   "find": "\tif our_height < c.Height.Load() {\n\t\treturn\n\t}\n\tc.sync_succeeded()",
+   "replace": "\tc.sync_succeeded() // r26 mutated: claim not checked"
+  },
+  {
+   "id": "gm-r26-nodenet-relay-never-forgives",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR26AcceptedRelayForgivesOnChain",
+   "find": "\t\t\tc.sync_relay_served(chain.Get_Height())\n",
+   "replace": "\t\t\t_ = chain.Get_Height() // r26 mutated: not wired\n"
+  },
+  {
+   "id": "gm-r26-nodenet-no-held-fallback",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR26TriggerSyncFallsBackToHeldPeers",
+   "find": "\t\t\tif held == 0 || !sync_fallback_open(time.Now()) || sync_held_ahead(clist, chain.Get_Height()) == 0 ||\n",
+   "replace": "\t\t\tif true || held == 0 || !sync_fallback_open(time.Now()) || sync_held_ahead(clist, chain.Get_Height()) == 0 || // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-nodenet-fallback-unlimited",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR26TriggerSyncFallsBackToHeldPeers",
+   "find": "\treturn last == 0 || now.UnixNano()-last >= int64(SYNC_FALLBACK_EVERY)\n",
+   "replace": "\treturn true // r26 mutated: no rate limit\n"
+  },
+  {
+   "id": "gm-r26-nodenet-held-ahead-not-counted",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR26TriggerSyncFallsBackToHeldPeers",
+   "find": "\t\tif c.sync_held(now) && c.State.Load() != HANDSHAKE_PENDING && our_height < c.Height.Load() {\n",
+   "replace": "\t\tif c.sync_held(now) && c.State.Load() != HANDSHAKE_PENDING && our_height < c.Height.Load() && false { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-nodenet-fallback-unsorted",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR26TriggerSyncFallbackOrder",
+   "find": "\t\t\t\treturn clist[i].obs.sync_hold_until.Load() < clist[j].obs.sync_hold_until.Load()\n",
+   "replace": "\t\t\t\treturn false // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-nodenet-offender-heap-inverted",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR26OffendersTopNMatchesFullSort",
+   "find": "return offender_newer(h[j], h[i]) }",
+   "replace": "return offender_newer(h[i], h[j]) } // r26 mutated"
+  },
+  {
+   "id": "gm-r26-nodenet-offender-replace-inverted",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR26OffendersTopNMatchesFullSort",
+   "find": "\t\tcase offender_newer(p, h[0]):\n",
+   "replace": "\t\tcase offender_newer(h[0], p): // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-nodenet-offender-newest-wrong-slot",
+   "file": "p2p/penalty.go",
+   "pkg": "./p2p/",
+   "test": "TestR26OffendersTopNMatchesFullSort",
+   "find": "\treturn m.last[(int(m.head)+PENALTY_LAST_REASONS-1)%PENALTY_LAST_REASONS].At\n",
+   "replace": "\treturn m.last[0].At // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-nodenet-three-invalid-pow-no-ban",
+   "file": "p2p/penalty.go",
+   "pkg": "./p2p/",
+   "test": "TestR26ThreeInvalidPowWithinHalfLifeBan",
+   "find": "\t\"invalid_pow\":           50,\n",
+   "replace": "\t\"invalid_pow\":           33, // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-nodenet-fallback-peek-skipped",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR25TriggerSyncSkipsHeldPeer",
+   "find": "\t\t\tif held == 0 || !sync_fallback_open(time.Now()) || sync_held_ahead(clist, chain.Get_Height()) == 0 ||\n",
+   "replace": "\t\t\tif held == 0 || sync_held_ahead(clist, chain.Get_Height()) == 0 || // r26 mutated: chain read with the slot taken\n"
+  },
+  {
+   "id": "gm-r26-noderpc-name-notfound",
+   "file": "cmd/derod/rpc/rpc_dero_nametoaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26NameToAddressUnknownIsNotFound",
+   "find": "\tif err != nil && xerrors.Is(err, graviton.ErrNotFound) {\n",
+   "replace": "\tif err != nil && xerrors.Is(err, graviton.ErrNotFound) && name == \"\\x00\" { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-noderpc-name-wired",
+   "file": "cmd/derod/rpc/rpc_dero_nametoaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26NameToAddressUnknownIsNotFound",
+   "find": "\tif err = name_lookup_error(p.Name, err); err == nil {\n",
+   "replace": "\tif err == nil { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-noderpc-name-echo-bound",
+   "file": "cmd/derod/rpc/rpc_dero_nametoaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26NameToAddressUnknownIsNotFound",
+   "find": "\t\tif len(name) > NAME_ECHO_MAX {",
+   "replace": "\t\tif len(name) > NAME_ECHO_MAX*100 { // r26 mutated"
+  },
+  {
+   "id": "gm-r26-noderpc-decoy-window-upstream",
+   "file": "cmd/derod/rpc/rpc_dero_getrandomaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26DecoyWindowTopo",
+   "find": "\told := top - DECOY_WINDOW\n",
+   "replace": "\told := top - DECOY_WINDOW\n\tif top <= 100 { // r26 mutated: upstream\n\t\treturn top\n\t}\n"
+  },
+  {
+   "id": "gm-r26-noderpc-decoy-floor-clamp",
+   "file": "cmd/derod/rpc/rpc_dero_getrandomaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26DecoyWindowTopo",
+   "find": "\tif old < floor {\n\t\told = floor\n",
+   "replace": "\tif old < floor-1_000_000_000 { // r26 mutated\n\t\told = floor\n"
+  },
+  {
+   "id": "gm-r26-noderpc-decoy-window-wired",
+   "file": "cmd/derod/rpc/rpc_dero_getrandomaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26RandomAddressNeverOffersAFreshlyChangedAccount",
+   "find": "\told_topoheight := decoy_window_topo(topoheight, state_prune_floor())",
+   "replace": "\told_topoheight := topoheight // r26 mutated"
+  },
+  {
+   "id": "gm-r26-noderpc-strict-headers",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerUnknownParamsRefused",
+   "find": "func (GetBlockHeadersRange_Params) DisallowUnknownFields() {}",
+   "replace": "func (GetBlockHeadersRange_Params) disallowUnknownFieldsMutated() {}"
+  },
+  {
+   "id": "gm-r26-noderpc-strict-miniblocks",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerUnknownParamsRefused",
+   "find": "func (GetMiniBlocks_Params) DisallowUnknownFields() {}",
+   "replace": "func (GetMiniBlocks_Params) disallowUnknownFieldsMutated() {}"
+  },
+  {
+   "id": "gm-r26-noderpc-strict-diffhist",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerUnknownParamsRefused",
+   "find": "func (GetDifficultyHistory_Params) DisallowUnknownFields() {}",
+   "replace": "func (GetDifficultyHistory_Params) disallowUnknownFieldsMutated() {}"
+  },
+  {
+   "id": "gm-r26-noderpc-headers-floor",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerBelowPrunePointTyped",
+   "find": "\tif err = check_block_topo(\"GetBlockHeadersRange\", start); err != nil { // r26 B104\n",
+   "replace": "\tif err = check_block_topo(\"GetBlockHeadersRange\", start); false { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-noderpc-miniblocks-floor",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerBelowPrunePointTyped",
+   "find": "\t\tif err = check_block_topo(\"GetMiniBlocks\", p.TopoHeight); err != nil { // r26 B104\n",
+   "replace": "\t\tif err = check_block_topo(\"GetMiniBlocks\", p.TopoHeight); false { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-noderpc-floor-offbyone",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerBelowPrunePointTyped",
+   "find": "\tif floor := state_prune_floor(); floor > 0 && topo < floor {\n\t\treturn refuse_state(method, topo, floor)",
+   "replace": "\tif floor := state_prune_floor(); floor > 0 && topo < floor-1 { // r26 mutated\n\t\treturn refuse_state(method, topo, floor)"
+  },
+  {
+   "id": "gm-r26-noderpc-diffhist-floor",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerBelowPrunePointTyped",
+   "find": "\tif floor := state_prune_floor(); floor > 0 && start < floor {\n",
+   "replace": "\tif floor := state_prune_floor(); false && floor > 0 && start < floor { // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-noderpc-diffhist-clip",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerBelowPrunePointTyped",
+   "find": "\t\tstart = floor\n",
+   "replace": "\t\t_ = floor // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-noderpc-zero-blid-typed",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerPrunedShapeRecord",
+   "find": "\tif crypto.Hash(r.BLOCK_ID).IsZero() { // r26 B104",
+   "replace": "\tif false { // r26 mutated"
+  },
+  {
+   "id": "gm-r26-noderpc-diffhist-hole",
+   "file": "cmd/derod/rpc/rpc_dero_explorer.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26ExplorerPrunedShapeRecord",
+   "find": "\t\tif e != nil || r.IsClean() || crypto.Hash(r.BLOCK_ID).IsZero() {",
+   "replace": "\t\tif e != nil || r.IsClean() { // r26 mutated"
+  },
+  {
+   "id": "gm-r26-noderpc-encbal-omitted-topo",
+   "file": "cmd/derod/rpc/rpc_dero_getencryptedbalance.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR26EncryptedBalanceOmittedTopoheightOnPrunedNode",
+   "find": "\tif err = check_state_topo(\"GetEncryptedBalance\", topoheight); err != nil {\n\t\treturn result, err\n\t}\n",
+   "replace": "\t_ = check_state_topo // r26 mutated\n"
+  },
+  {
+   "id": "gm-r26-merge-a2-hf3-entry",
+   "file": "tools/forensics/a2/replay.go",
+   "pkg": "./p2p/",
+   "test": "TestR23bAddCompleteBlockCensus",
+   "find": "\t\terr, ok := p2p.Add_Complete_Block_HF3(chain, cbl)\n",
+   "replace": "\t\terr, ok := chain.Add_Complete_Block(cbl) // r26 mutated: HF3 table step skipped\n"
   }
  ]
 }

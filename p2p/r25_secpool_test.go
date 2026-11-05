@@ -190,6 +190,11 @@ func TestR25TriggerSyncSkipsHeldPeer(t *testing.T) {
 		t.Fatal("control: an unheld candidate did not reach the selection code; the probe does not work")
 	}
 	c.obs.sync_hold_until.Store(time.Now().Add(time.Hour).UnixNano()) // r25 merge: the peers B47 field
+	// r26 (B99): a held peer may now be tried by the rate-limited fallback (TestR26TriggerSyncFallsBackToHeldPeers);
+	// with the fallback slot taken it must not be touched at all, not even to read the chain height
+	saved_last := sync_fallback_last.Load()
+	sync_fallback_last.Store(time.Now().UnixNano())
+	defer sync_fallback_last.Store(saved_last)
 	before = ctr.Get()
 	trigger_sync()
 	if ctr.Get() != before {

@@ -58,7 +58,7 @@ ROOT = HARNESS.parent
 STATUSES = ('planned', 'in-progress', 'implemented', 'shipped', 'measured')
 DONE = ('implemented', 'shipped', 'measured')
 TRACKED_IDS = ('B18', 'B19', 'B28', 'B29', 'B30', 'B34', 'B35', 'B38', 'B39', 'BD5', 'BD6', 'BD7', 'BD8', 'BD9')
-CHECKS = ('round', 'pipeline', 'registry', 'live', 'disclosure', 'areas', 'backlog', 'pages', 'index', 'srcarch', 'observatory', 'forensics')
+CHECKS = ('round', 'pipeline', 'registry', 'live', 'disclosure', 'areas', 'backlog', 'pages', 'index', 'srcarch', 'observatory', 'forensics', 'classes')
 # outputs the generators write; a commit touching only these does not change what src-arch shows
 GENERATED = (r'harness/stamp\.json$', r'harness/model/verified\.json$', r'harness/model/raw/', r'harness/runtime/',
              r'harness/loop/runs/', r'harness/loop/GATES\.md$', r'harness/loop/[A-Z_]+_LAST\.json$',
@@ -961,13 +961,78 @@ def check_forensics(c):
         c.facts += n
         for x in probs:
             c.drift('forensics', rel, None, 'every figure traced to its dataset file + SHA-256', x[:200], f'forensics/{ds.name} (G30)')
+    # r26 (forensics-frontend2): a round's own section quotes ITS dataset version (manifest_quote_drifts)
+    try:
+        led = {v['version']: v['manifest_sha256'] for v in json.loads((c.root / 'forensics' / 'ledger.json').read_text()).get('versions', [])}
+    except (OSError, ValueError, KeyError):
+        led = {}
     for rel in ('RUN_REPORT.md', 'ARCHITECTURE.md'):
-        t = c.text(rel) or ''
-        for i, l in enumerate(t.splitlines(), 1):
-            for mm in re.finditer(r'forensic[^|]{0,80}?manifest (?:SHA-256 )?`?([0-9a-f]{8,64})', l):
-                c.fact()
-                if not msha.startswith(mm.group(1)):
-                    c.drift('forensics', rel, i, msha[:12], mm.group(1)[:12], f'forensics/{ds.name}/manifest.json')
+        for i, want, got, src in manifest_quote_drifts(c.text(rel) or '', led, msha, ds.name, c.fact):
+            c.drift('forensics', rel, i, want[:12], got[:12], src)
+
+
+def manifest_quote_drifts(text, led, msha, newest, count=lambda: None):
+    """[(line, expected sha, quoted prefix, source)]: a forensic manifest SHA-256 quoted in RUN_REPORT / ARCHITECTURE.
+    Inside a round's section ("## Round 25 ...", "## 43. ★ Round 25: ...") the quote must be the manifest of that round's
+    own dataset version when the ledger has one (Round 25 -> forensics/r25, sealed); elsewhere, the newest manifest."""
+    out = []
+    want, src = msha, f'forensics/{newest}/manifest.json'
+    for i, l in enumerate(text.splitlines(), 1):
+        hm = re.match(r'#{2,3} (?:[\d.]+\s*)?(?:★\s*)?Round (\d+)', l)
+        if hm:
+            v = f'r{hm.group(1)}'
+            want, src = (led[v], f'forensics/{v}/manifest.json (ledger entry)') if v in led else (msha, f'forensics/{newest}/manifest.json')
+        for mm in re.finditer(r'forensic[^|]{0,80}?manifest (?:SHA-256 )?`?([0-9a-f]{8,64})', l):
+            count()
+            if not want.startswith(mm.group(1)):
+                out.append((i, want, mm.group(1), src))
+    return out
+
+
+def check_classes(c):
+    """r26 (rft §0.8.9 coherence check `classes`, G25): the class figures (counts, coverage, bound types) on the ledger,
+    the soundness page and the src-arch line equal forensics/r<N>/derived/classes.json (harness/forensics/bounds.py
+    reads them); once the dataset's round has a ledger page, each of the three pages carries the class block and,
+    while DC2 is present, the DC2-present headline."""
+    bp = c.root / 'harness' / 'forensics' / 'bounds.py'
+    if not bp.exists():
+        return
+    import importlib.util as _iu
+    sp = _iu.spec_from_file_location(f'bounds_for_coherence_{id(c)}', bp)
+    BD = _iu.module_from_spec(sp)
+    sp.loader.exec_module(BD)
+    ds = BD.classes_dataset(c.root)
+    if ds is None:
+        return
+    src = f'forensics/{ds.name}/derived/classes.json'
+    try:
+        cl = json.loads((ds / 'derived' / 'classes.json').read_text())
+        pr = json.loads((ds / 'derived' / 'presence.json').read_text())
+    except (OSError, ValueError) as e:
+        c.fact()
+        c.drift('classes', src, None, 'readable classes.json + presence.json', f'{type(e).__name__}: {e}', 'harness/forensics/bounds.py')
+        return
+    led, snd, sa = BD.pages(c.root, ds)
+    required = led.exists()
+    present = pr.get('headline', {}).get('dc2_present_now') is True
+    for pg in (led, snd, sa):
+        if not pg.exists():
+            continue
+        rel = c.rel(pg)
+        txt = pg.read_text()
+        c.fact()
+        if BD.BEGIN not in txt:
+            if required:
+                c.drift('classes', rel, None, f'the class block {BD.BEGIN}', 'none', src)
+            continue
+        probs, n = BD.check_page(txt, cl, root=c.root)
+        c.facts += n
+        for x in probs:
+            c.drift('classes', rel, None, 'every class figure equal to classes.json (class, bound, coverage, scope, value)', x[:200], src)
+        if required and present:
+            c.fact()
+            if not BD.headline_ok(txt):
+                c.drift('classes', rel, None, 'the DC2-present headline (rule 12)', 'missing', f'forensics/{ds.name}/derived/presence.json')
 
 
 # ───────────────────────────── driver ─────────────────────────────
@@ -979,7 +1044,7 @@ def run(root=ROOT, skip=()):
              'live': lambda: check_live(c, files), 'disclosure': lambda: check_disclosure(c), 'areas': lambda: check_areas(c),
              'backlog': lambda: check_backlog(c), 'pages': lambda: check_pages(c, index='index' not in skip),
              'srcarch': lambda: check_srcarch(c), 'observatory': lambda: check_observatory(c, files),
-             'forensics': lambda: check_forensics(c)}
+             'forensics': lambda: check_forensics(c), 'classes': lambda: check_classes(c)}
     for k, fn in steps.items():
         if k not in skip:
             fn()

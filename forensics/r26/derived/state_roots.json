@@ -1,0 +1,61 @@
+{
+ "a10c": {
+  "answer": "pending: no complete replay run",
+  "archive_top_root": "d3345594b8bb324b60940c0bea625c57567f09ac889704dba57935de407bd324",
+  "question": "are the archive roots 7,453,290..7,467,515 consistent with what our node accepted later?",
+  "seed_top_root": "d3345594b8bb324b60940c0bea625c57567f09ac889704dba57935de407bd324"
+ },
+ "anchor_topo": 7498540,
+ "class": "pending",
+ "evidence_class": "DERIVED (node replay: tools/forensics/a2 replay -> blockchain.Add_Complete_Block)",
+ "our_treehash_at_anchor": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7",
+ "roothash_witnesses": {
+  "archive_differ": 0,
+  "archive_equal": 200,
+  "differ": 0,
+  "equal": 2,
+  "outside_held_roots": 1358,
+  "rows_differ": [],
+  "rule": "payload 0 Statement.Roothash of a RAW tx vs our root at its reference topo (replay roots, else the archive roots of v1 derived/archive_state)"
+ },
+ "runs": {
+  "A": {
+   "base_root_eq_archive_root": true,
+   "blids_equal_raw_headerchain": true,
+   "end_state_check": "pending: the run reached topo 7467545, not 7,498,540",
+   "fail_error": "Invalid TX",
+   "fail_topo": 7467546,
+   "roots_sha256": "eb095462bbdaf205c001a7886fe2aa1447756bca57fffebcf4fb1f179fd51cdf",
+   "stopped": "block rejected by the node's own checks",
+   "topo_range": [
+    7467515,
+    7467545
+   ],
+   "topos": 31
+  },
+  "B": {
+   "base_root_eq_archive_root": true,
+   "blids_equal_raw_headerchain": true,
+   "end_state_check": "pending: the run reached topo 7467545, not 7,498,540",
+   "fail_error": "Invalid TX",
+   "fail_topo": 7467546,
+   "roots_sha256": "eb095462bbdaf205c001a7886fe2aa1447756bca57fffebcf4fb1f179fd51cdf",
+   "stopped": "block rejected by the node's own checks",
+   "topo_range": [
+    7467515,
+    7467545
+   ],
+   "topos": 31
+  }
+ },
+ "runs_byte_identical": true,
+ "window_coverage": {
+  "pending_range": [
+   7415466,
+   7467515
+  ],
+  "pending_reason": "no base state before this range: (a2) TreeSection blocked (derived/a2.json); our archive starts at 7,453,290 and its replay stopped at 7,467,516",
+  "topos_with_pre_post_root": 30,
+  "window_topos": 82477
+ }
+}

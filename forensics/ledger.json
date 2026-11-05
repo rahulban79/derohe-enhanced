@@ -6,6 +6,12 @@
    "sealed": true,
    "supersedes": [],
    "version": "r25"
+  },
+  {
+   "manifest_sha256": "857c2146f5847fd4b20bbf97053bed39453f47dd692ac4f1953d8bf34d897fd9",
+   "sealed": false,
+   "supersedes": [],
+   "version": "r26"
   }
  ]
 }

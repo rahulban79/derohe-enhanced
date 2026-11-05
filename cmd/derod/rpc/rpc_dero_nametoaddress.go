@@ -17,10 +17,13 @@
 package rpc
 
 import "context"
+import "golang.org/x/xerrors"
+import "github.com/deroproject/graviton"
 import "github.com/deroproject/derohe/cryptography/crypto"
 import "github.com/deroproject/derohe/rpc"
 import "github.com/deroproject/derohe/globals"
 import "github.com/deroproject/derohe/dvm"
+import "github.com/deroproject/derohe/metrics"
 
 //import "github.com/deroproject/derosuite/blockchain"
 
@@ -53,7 +56,8 @@ func NameToAddress(ctx context.Context, p rpc.NameToAddress_Params) (result rpc.
 	}
 
 	var value_bytes []byte
-	if value_bytes, err = tree.Get(dvm.Variable{Type: dvm.String, ValueString: p.Name}.MarshalBinaryPanic()); err == nil {
+	value_bytes, err = tree.Get(dvm.Variable{Type: dvm.String, ValueString: p.Name}.MarshalBinaryPanic())
+	if err = name_lookup_error(p.Name, err); err == nil {
 
 		var v dvm.Variable
 		if err = v.UnmarshalBinary(value_bytes); err != nil {
@@ -82,4 +86,21 @@ func name_value_address(raw string, mainnet bool) (string, error) {
 	}
 	addr.Mainnet = mainnet
 	return addr.String(), nil
+}
+
+// name_lookup_error types the name-service tree's answer for a name (r26 B100): a name nobody registered was the raw
+// graviton error "leaf not found", which jrpc2 sent as untyped -32098 (the code for errors of the operating
+// environment), indistinguishable from a store fault. It is now -32032 "name not found: <name>" (NotFoundError, the
+// r25 B80 class), counted in rpc_name_not_found_total. Any other store error is returned unchanged.
+const NAME_ECHO_MAX = 64
+
+func name_lookup_error(name string, err error) error {
+	if err != nil && xerrors.Is(err, graviton.ErrNotFound) {
+		metrics.Set.GetOrCreateCounter(`rpc_name_not_found_total`).Inc()
+		if len(name) > NAME_ECHO_MAX { // the caller's own input, echoed back: bounded anyway
+			name = name[:NAME_ECHO_MAX] + "..."
+		}
+		return &NotFoundError{What: "name", ID: name}
+	}
+	return err
 }

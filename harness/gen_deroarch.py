@@ -20,7 +20,7 @@ else, >= 12 characters). Where the anchor points decides what the row can prove:
 A row whose declared class its anchors cannot prove is re-derived from its first anchor and the page says so.
 A row with no resolvable anchor is never drawn: it goes to loop/REJECTED.json and the page's quarantine.
 """
-import collections, datetime, functools, hashlib, html, json, math, re, subprocess, sys
+import collections, datetime, functools, hashlib, html, json, math, os, re, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -1240,7 +1240,7 @@ def render(rows, rejected, unverified, stats, fp):
     deps = by['imports']
     rt = {r['field']: r for r in by['runtime'] if r.get('field')}
     gi = lambda k, d='-': rt[k]['value'] if k in rt else d
-    now = datetime.datetime.now().astimezone()
+    now = inputs_time()                  # r26 B93: reproducible (two builds of one tree are byte-exact)
     # r23c: the repo-relative files a group of rows cites, for the 'evolved' strips
     sfiles = lambda secs: {rel(e['abs']) for k in secs for r in by.get(k, []) for e in r['evidence']}
     O = []
@@ -1268,7 +1268,7 @@ def render(rows, rejected, unverified, stats, fp):
         <div class="tick"><b>{sum(p['loc'] for p in pkgs):,}</b><span>first-party lines</span></div>
         <div class="tick"><b>{stats['anchors_ok']}/{stats['anchors']}</b><span>anchors resolved</span></div>
       </div>
-      <p class="sub" style="margin-top:14px;font-size:12.5px">Snapshot captured {E(captured)} · page built {E(now.isoformat(timespec='seconds'))} · fingerprint <code>{E(fp)}</code></p>
+      <p class="sub" style="margin-top:14px;font-size:12.5px">Snapshot captured {E(captured)} · inputs as of {E(now.isoformat(timespec='seconds'))} (HEAD commit time) · fingerprint <code>{E(fp)}</code></p>
     </div></header>''')
 
     NAV = [('live', 'Live node'), ('evolution', 'Evolution'), ('map', 'Package map'), ('consensus', 'Consensus rules'), ('flows', 'Execution paths'),
@@ -1754,6 +1754,22 @@ def sources(rows):
     return sorted(s)
 
 
+def inputs_time(root=None, env=None):
+    """r26 B93: the time the page prints. It was datetime.now(), so no two builds of one tree were byte-exact (§0.9 rule
+    2; tooling_intel --determinism: 'DIFFERS'). Now SOURCE_DATE_EPOCH when set (the reproducible-builds convention),
+    else the HEAD commit time of the tree, else now (no git). The wall-clock build time stays in harness/stamp.json
+    ('built'), which is a record, not a generated page."""
+    env = os.environ if env is None else env
+    tz = datetime.datetime.now().astimezone().tzinfo
+    v = str(env.get('SOURCE_DATE_EPOCH') or '').strip()
+    if v.isdigit():
+        return datetime.datetime.fromtimestamp(int(v), tz)
+    r = subprocess.run(['git', '-C', str(root or ROOT), 'log', '-1', '--format=%ct', 'HEAD'], capture_output=True, text=True)
+    if r.returncode == 0 and r.stdout.strip().isdigit():
+        return datetime.datetime.fromtimestamp(int(r.stdout.strip()), tz)
+    return datetime.datetime.now().astimezone()
+
+
 def fingerprint(src):
     h = hashlib.sha256()
     for p in src:
@@ -1829,6 +1845,11 @@ def build():
     (LOOP / 'UNVERIFIED.md').write_text('# Items the miners could not anchor\n\n| from | item | why |\n|---|---|---|\n'
                                         + ''.join(f"| {u.get('source')} | {str(u.get('title'))[:90].replace('|', '/')} | "
                                                   f"{str(u.get('why'))[:220].replace('|', '/')} |\n" for u in unverified))
+    # r26 B93: refresh the corpus index BEFORE the fingerprint. It ran only after the page was written, so the page
+    # hashed the PREVIOUS build's manifest.json (its root, the runtime files added since) and a second build of the same
+    # tree printed another fingerprint. The manifest reads no output of this build (SKILL.md is hashed without its AUTO
+    # block), so the refresh after sync_skill below writes the same bytes again.
+    subprocess.run([sys.executable, str(HERE / 'prep_corpus.py')], capture_output=True)
     src = sources(rows)
     fp = fingerprint(src)
     h = render(rows, rejected, unverified, stats, fp)

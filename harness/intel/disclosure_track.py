@@ -18,6 +18,8 @@ plus the round's new facts and the potential fixes (FORK-REQUIRED designs vs NOD
                L3 every claim has an entry for the track's current round (re-tested this round, or FAIL).
                L4 vocabularies: verdict, state, fact status, fix kind/status/feasible; a FORK-REQUIRED design must say
                   it needs a coordinated fork; an implemented NODE-LOCAL measure must cite where it is implemented.
+                  r26 (FQ5, rft §0.8.2): a fact may be an INTERPRETATION (an argument from source, not a measurement);
+                  it needs at least two resolving non-EXT anchors and a `refuted_if` text (what would overturn it).
                L6 every row of harness/model/raw/press.json is mapped in press_map to a track claim or to
                   "NOT-TESTED: <reason>" (r24: forensics and press number their claims differently, and five press
                   claims had no verdict row; a new Foundation claim cannot slip in untested).
@@ -58,10 +60,32 @@ RPC = 'http://127.0.0.1:10102/json_rpc'
 
 VERDICTS = ('CONFIRMED', 'PARTLY-CONFIRMED', 'REFUTED', 'CANNOT-DETERMINE-LOCALLY', 'NOT-TESTED', 'pending')
 STATES = ('open', 'fixed-node-local', 'closed-by-design', 'report-only', 'upstream', 'pending')
-FACT_STATUS = ('CONFIRMED', 'MEASURED', 'PLAUSIBLE', 'pending')
+FACT_STATUS = ('CONFIRMED', 'MEASURED', 'PLAUSIBLE', 'INTERPRETATION', 'pending')
+INTERP_MIN_ANCHORS = 2   # r26 (FQ5): an INTERPRETATION fact argues from source, so it needs two own anchors and a refuted_if
 FIX_KINDS = ('FORK-REQUIRED', 'NODE-LOCAL')
 FIX_STATUS = ('design', 'implemented', 'implemented-earlier', 'feasible-not-implemented', 'infeasible', 'pending')
-ANCHOR_OK = ('OK', 'DRIFT')
+ANCHOR_OK = ('OK', 'DRIFT', 'OK-AT-HEAD')
+REGISTRY = HARNESS / 'round.json'
+
+
+def round_heads(track, root=ROOT):
+    """r26 B116: {track round id: git revision} where an EARLIER round's anchors are re-read when they drift in the
+    worktree. Each round's head comes from the track's own `round_heads` (explicit), else the round registry's
+    head_after (else merge_commit) for that round; 'pending' and absent heads give no entry. Pure on the files."""
+    out = {}
+    try:
+        reg = json.loads((Path(root) / 'harness/round.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        reg = {}
+    for r in reg.get('rounds') or []:
+        rid = str(r.get('id') or '')
+        for k in ('head_after', 'merge_commit'):
+            v = str(r.get(k) or '')
+            if re.fullmatch(r'[0-9a-f]{7,40}', v):
+                out['R' + rid[1:] if rid[:1] == 'r' else rid] = v
+                break
+    out.update({k: v for k, v in (track.get('round_heads') or {}).items() if v})
+    return out
 EXTERNAL = 'harness/external/'
 MIN_QUOTE = 12
 
@@ -180,11 +204,20 @@ def evaluate(track, root=ROOT, rev=None, legacy=None, pages=None):
     cur = track.get('current_round')
     if cur not in ri:
         why.append(f'current_round {cur!r} is not in rounds {track.get("rounds")}')
+    heads = round_heads(track, root)
 
-    def anchors_of(where, anchors):
+    def anchors_of(where, anchors, rnd=None):
         rs = []
         for a in anchors or []:
             r = resolve(a, root, rev)
+            # r26 B116: an EARLIER round's anchor that drifted in the tree being read is re-read at that round's head:
+            # if its quote is on its cited line there, it is OK-AT-HEAD (true when that round was closed), not drift.
+            # --rebase-lines never moves it (history keeps the line it cited), so before this it drifted for ever
+            # (NF24-5, R26 Part A). A quote MISSING from the tree is still a re-test, whatever the head says.
+            if r['status'] == 'DRIFT' and rnd and cur in ri and ri.get(rnd, ri[cur]) < ri[cur] and heads.get(rnd):
+                h = resolve(a, root, heads[rnd])
+                if h['status'] == 'OK':
+                    r = {**r, 'status': 'OK-AT-HEAD', 'head': heads[rnd]}
             r['where'] = where
             rs.append(r)
             resolved.append(r)
@@ -216,7 +249,7 @@ def evaluate(track, root=ROOT, rev=None, legacy=None, pages=None):
                 why.append(f'{tag}: verdict {h.get("verdict")!r} not in {VERDICTS}')
             if h.get('state') not in STATES:
                 why.append(f'{tag}: state {h.get("state")!r} not in {STATES}')
-            rs = anchors_of(tag, h.get('anchors'))
+            rs = anchors_of(tag, h.get('anchors'), h.get('round'))
             own = [r for r in rs if r['status'] in ANCHOR_OK and not is_external(r)]
             changed = prev is None or (h.get('verdict'), h.get('state')) != (prev.get('verdict'), prev.get('state'))
             if changed and h.get('verdict') != 'pending':
@@ -233,9 +266,15 @@ def evaluate(track, root=ROOT, rev=None, legacy=None, pages=None):
         tag = f'fact {f.get("id")}'
         if f.get('status') not in FACT_STATUS:
             why.append(f'{tag}: status {f.get("status")!r} not in {FACT_STATUS}')
-        rs = anchors_of(tag, f.get('anchors'))
-        if f.get('status') != 'pending' and not [r for r in rs if r['status'] in ANCHOR_OK and not is_external(r)]:
+        rs = anchors_of(tag, f.get('anchors'), f.get('round'))
+        own = [r for r in rs if r['status'] in ANCHOR_OK and not is_external(r)]
+        if f.get('status') != 'pending' and not own:
             why.append(f'{tag}: {f.get("status")} without a resolving non-EXT anchor')
+        if f.get('status') == 'INTERPRETATION':
+            if len({(r['file'], r['line']) for r in own}) < INTERP_MIN_ANCHORS:
+                why.append(f'{tag}: an INTERPRETATION needs at least {INTERP_MIN_ANCHORS} resolving non-EXT anchors')
+            if len(norm(f.get('refuted_if'))) < 20:
+                why.append(f'{tag}: an INTERPRETATION must say what would refute it (refuted_if)')
         for cl in f.get('claims') or []:
             if cl not in seen:
                 why.append(f'{tag}: names unknown claim {cl}')
@@ -296,7 +335,8 @@ def evaluate(track, root=ROOT, rev=None, legacy=None, pages=None):
 
 def rebase_lines(track, rep_drift):
     """--rebase-lines: move the line of a DRIFTed anchor to where its quote is now, for the CURRENT round's entries,
-    facts and the fixes only. Earlier rounds keep the line they cited (their drift stays visible as history). Never
+    facts and the fixes only. Earlier rounds keep the line they cited; r26 B116: evaluate() re-reads such an anchor at
+    its round's head (round_heads), so it is OK-AT-HEAD instead of drifting for ever. Never
     touches a MISSING anchor: a vanished quote means re-test, not renumber. Returns the number of lines moved."""
     cur, moved = track.get('current_round'), 0
     groups = [h.get('anchors') or [] for c in track.get('claims') or [] for h in c.get('history') or [] if h.get('round') == cur]
@@ -348,7 +388,8 @@ def emit_model(track, root=ROOT):
         rows.append({'id': f'dt-fact-{f["id"].lower()}', 'section': 'disclosure', 'kind': 'track-fact', 'class': 'SRC',
                      'title': f'{f["id"]} — {f.get("title", "")}', 'claim': f.get('text', ''),
                      'round': f.get('round'), 'status': f.get('status'), 'claims': f.get('claims') or [],
-                     'all_anchors': bool(f.get('all_anchors')), 'evidence': _ev(f.get('anchors'), root)})
+                     'all_anchors': bool(f.get('all_anchors')), 'evidence': _ev(f.get('anchors'), root),
+                     **({'refuted_if': f['refuted_if']} if f.get('refuted_if') else {})})
     for x in track.get('fixes') or []:
         rows.append({'id': f'dt-fix-{x["id"].lower()}', 'section': 'disclosure', 'kind': 'track-fix', 'class': 'SRC',
                      'title': f'{x["id"]} — {x.get("title", "")}', 'claim': x.get('design', ''),

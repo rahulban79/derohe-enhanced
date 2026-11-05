@@ -2406,3 +2406,60 @@ synced 60/60, 0 ERROR/WARN, 0 panics; GetConsensusStats, B55/B56/B58/B59/B60, th
 ban_reasons.json, B80 −32032, txs_status, total_supply_basis and B18 CONFIRMED live; B85 −32031 unit-proven (never sent
 live); B47/B48/B57/B61 pending an event; B103 (insert_failed = concurrent duplicates, PLAUSIBLE), B104, B105 opened.
 Miner: PAUSED.
+
+## 44. ★ Round 26: a node-only round plus forensics dataset v2 by defect class — sync-hold decay, duplicate-race counting, typed explorer errors, a structural transcript-binding test, classes and bounds, the a2 replay to our treehash, a second independent auditor (+22102026.r26, 2026-11-04)
+
+> Filled from the R26 records: the pipeline record (`harness/loop/runs/pipeline_20261104T220624.jsonl`), the registry
+> (`harness/round.json` r26), the merge commit fea0206b, the audit2 + frontend2 commit c802e4bc, the dataset
+> `forensics/r26/` and rft §7 B95–B128. Live r26 figures: §44.7 (measured 2026-11-05). The miner
+> track is PAUSED (artifacts/dero-rft.md §0.3).
+
+**44.1 P2P (node-net).** B99: a sync-hold strike now decays (a failure more than 10 min after the last hold ended
+restarts at strike 1); an accepted relayed block that brings us level with the peer's advertised height forgives the
+peer (also reached from sync_chain); when no peer synced in pass 0 and a held peer is ahead, trigger_sync tries the held
+peers, soonest release first, so "every peer ahead is held" no longer means "no sync". B103: `NotifyMiniBlock` checked
+`IsCollision` before `VerifyMiniblockPoW` and `InsertMiniBlock` re-checked it under the lock, so the second of two
+concurrent deliveries of one miniblock was counted `insert_failed`; it is now `reason="duplicate_race"` and a
+non-first delivery, and each "Miniblock refused" line carries the error text (≤ 256 B). The answer to the sender is
+unchanged. B102: policy kept (invalid_pow 50 points, half-life 10 min), comment corrected, pinned by a test. Counting,
+logging and peer selection only (non-consensus p2p files; S1 PASS).
+
+**44.2 RPC (node-rpc).** B100: NameToAddress for an unknown name → −32032 (name echo capped at 64 B, a metric). B104:
+the explorer methods (GetBlockHeadersRange, GetMiniBlocks, GetDifficultyHistory) decode with DisallowUnknownFields
+(−32602), refuse a range below prunedheight with −32031 before any store read, and GetDifficultyHistory no longer
+panics on a pruned-shape record (a recovered ERROR, the G15 class). B43: the simulator's intermittent wallet-tx proof
+failures were stale decoys (the wallet builds at tip−3 but fetches decoys at the tip; upstream GetRandomAddress kept its
+5-topo "unchanged" window only above topoheight 100); `decoy_window_topo` now applies at every height, clamped at the
+prune floor (mainnet answers unchanged). The wallet-side root is report-only.
+
+**44.3 Crypto and disclosure.** FQ4 (B113): `cryptography/crypto/r26_transcript_binding_test.go` pins every challenge
+and its preimage, the u_x base and the inner-product call identical at the head, Release152 and the genesis-era tag
+(the first with the mainnet Network_ID); 6/6 planted-transcript mutations caught; no invalid proof is built (§9
+NO-GO). FQ5: no public-data test separates a defect-accepted proof from an honest one, so DC2 is not decidable per tx
+and any aggregate over it is unbounded (NF26-3, INTERPRETATION).
+
+**44.4 Forensics dataset v2 and the classes (§0.8.9).** `forensics/r26/` keeps v1 sealed (G28 re-verifies it byte for
+byte). v2 holds 1,796/1,796 window tx bodies RAW and settles the 1,575 v1 pending-fee blocks (B96; SC payouts pending).
+`classes.py`, `bounds.py`, `presence.py` and the invariant/FQ files tag the figures DC0–DC3 with coverage and a bound
+kind; G31 refuses a lower bound shown as a total, DC2 shown as 0, a cross-class sum or a forbidden phrase; G32 keeps
+the classes apart (its record half is vacuous until v2 records carry a class, B126). The merge found the class files
+unlisted in the v2 manifest (B125, now `class_files`) and the a2 replay skipping the HF3 step (B123): through
+`p2p.Add_Complete_Block_HF3` the held archive replays 31,025 blocks 7,467,516..7,498,540 to our treehash `ca11cc21…`.
+
+**44.5 The second auditor (audit2) and the v2 frontend.** `harness/forensics/audit2.py` shares no code with the
+builder (own Keccak, decoders, HF3 parser, scan). Audit-1 of v2: 19 HOLD / 4 FAIL / 1 UNRESOLVED; the FAILs were fixed at
+source (B127: an open manifest must equal its ledger entry, rule L9; B128: G29 runs on every ledger version and binds a
+v2 audit to its manifest); audit-2: 20 / 3 / 1 (A10c UNRESOLVED), history kept. The frontend (`facts.build_v2`,
+`forensics_section.section_v2`, `fx_line_v2`) renders v2 by defect class on the ledger, src-arch and the per-round
+soundness page; its verifier found 4 G30 holes (a removed known section or class block, digits inside an fxid span),
+all closed (KAT FE8).
+
+**44.6 Closed loop and install.** Run 1 `pipeline_20261104T175125` FAIL at S3b (2 STALE mutation anchors, B129, fixed d3189e1a with KAT GA1–GA2); run 2 `pipeline_20261104T193301` S1–S6 PASS and installed, S7 FAIL (r25 forensics area anchors on a rewritten file, B130, fixed c643634f with KAT AS1–AS2); run 3 `pipeline_20261104T213409` project-only PASS; run 4 `pipeline_20261104T220624` full PASS (`--no-install`): mutations 1329/1329, race 26 packages 0 races, shadow 120 blocks / 240 treehashes / 0 mismatches against the live r25 build, gates 29/32 (+3 PAUSED, miner). Installed by S6 (atomic rename from `bin/.staging`;
+backups `bin/*.22102026.r25-backup`); `bin/derod` sha256 `f6ff3b005872f1cd791310f769e7b67c9dc5d00e340b47c0ebae9fd12bcc5692`.
+
+**44.7 Live (measured 2026-11-05, rft §13 R26).** Restart 07:48:21 (pid 93240), 62 min read-only
+(`harness/runtime/r26_live_window_20261105.txt`): 55/55 synced, lag 0, 0 ERROR / 0 WARN (G15 clear). CONFIRMED: the
+duplicate_race split (767, insert_failed 0; the refusal line names the `collision`), −32032 for an unknown name, −32602
+for unknown parameter names, the reorg monitor across a restart (`starts` 2). Pending an event: strike decay and
+forgiveness (0 holds), B47, B48, B57, B61. B36: the r25 segment's 24 h emission re-audited offline, 4,846 blocks, 0
+alerts, issued = formula 149,014,500 (`harness/runtime/r26_b36_emission24h_20261105.txt`).

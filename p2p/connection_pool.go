@@ -783,71 +783,91 @@ func trigger_sync() {
 		clist[i], clist[j] = clist[j], clist[i]
 	})
 
-	for _, connection := range clist {
-
-		if connection.sync_held(time.Now()) { // r25 (B47): it answered our last sync with nothing; ask the others first
-			continue
+	held := 0                         // r26 (B99): connections skipped in pass 0 because they are held
+	for pass := 0; pass < 2; pass++ { // pass 1: no peer synced in pass 0 and a held one is ahead (B99, peer_observe.go)
+		if pass == 1 {
+			// the slot is checked before the chain is read: with the fallback closed a held peer is not touched at all
+			if held == 0 || !sync_fallback_open(time.Now()) || sync_held_ahead(clist, chain.Get_Height()) == 0 ||
+				!sync_fallback_allowed(time.Now()) {
+				return
+			}
+			sync_held_fallbacks_total.Inc()
+			sort.SliceStable(clist, func(i, j int) bool { // the hold that ends soonest first
+				return clist[i].obs.sync_hold_until.Load() < clist[j].obs.sync_hold_until.Load()
+			})
+			logger.V(1).Info("no unheld peer ahead could sync; trying the held one whose hold ends soonest", "held", held)
 		}
+		for _, connection := range clist {
 
-		height := chain.Get_Height()
-
-		//connection.Lock()   recursive mutex are not suported
-		// only choose highest available peers for syncing
-		if connection.State.Load() != HANDSHAKE_PENDING && (height < connection.Height.Load() || (connection.SyncNode && height > (connection.Height.Load()+2))) { // skip pre-handshake connections
-			// check whether we are lagging with this connection
-			//connection.Lock()
-			islagging := (height < connection.Height.Load() || (connection.SyncNode && height > (connection.Height.Load()+2)))
-
-			//fmt.Printf("checking cdiff is lagging %+v  topoheight %d peer topoheight %d \n", islagging, topoheight, connection.TopoHeight)
-
-			// islagging := true
-			//connection.Unlock()
-			if islagging {
-				if connection.Pruned > chain.Load_Block_Topological_order(chain.Get_Top_ID()) && chain.Get_Height() != 0 {
-					connection.logger.V(1).Info("We cannot resync with the peer, since peer chain is pruned", "height", connection.Height.Load(), "pruned", connection.Pruned)
+			if connection.sync_held(time.Now()) { // r25 (B47): it answered our last sync with nothing; ask the others first
+				if pass == 0 {
+					held++
 					continue
 				}
-
-				time.Sleep(time.Second)
-				height := chain.Get_Height()
-				islagging = (height < connection.Height.Load() || (connection.SyncNode && height > (connection.Height.Load()+2)))
-
-				if islagging {
-					//connection.Lock()
-
-					connection.logger.V(1).Info("We need to resync with the peer", "our_height", height, "height", connection.Height.Load(), "pruned", connection.Pruned)
-
-					//connection.Unlock()
-					// set mode to syncronising
-
-					metrics.Set.GetOrCreateCounter("blockchain_sync_total").Inc() // tracks number of syncs
-
-					if chain.Sync {
-						//fmt.Printf("chain send chain request disabled\n")
-						for round := 1; ; round++ { // one chain request covers at most ~512 blocks: keep going (sync_continue.go)
-							before := chain.Get_Height()
-							connection.sync_chain()
-							connection.logger.V(1).Info("sync done")
-							if chain.Get_Height() > before { // r25 (B47): it served blocks, so its earlier failures are forgiven
-								connection.sync_succeeded()
-							}
-							if !sync_should_continue(round, before, chain.Get_Height(), connection.Height.Load(), connection.exited.Load() == 1) {
-								break
-							}
-							metrics.Set.GetOrCreateCounter("p2p_sync_continued_rounds_total").Inc()
-						}
-
-					} else { // we need a state only sync, bootstrap without history but verified chain
-						if err := connection.bootstrap_chain(); err != nil {
-							connection.bootstrap_fail(err)
-						}
-					}
-					break
-				}
-
+			} else if pass == 1 {
+				continue // asked in pass 0
 			}
-		}
 
+			height := chain.Get_Height()
+
+			//connection.Lock()   recursive mutex are not suported
+			// only choose highest available peers for syncing
+			if connection.State.Load() != HANDSHAKE_PENDING && (height < connection.Height.Load() || (connection.SyncNode && height > (connection.Height.Load()+2))) { // skip pre-handshake connections
+				// check whether we are lagging with this connection
+				//connection.Lock()
+				islagging := (height < connection.Height.Load() || (connection.SyncNode && height > (connection.Height.Load()+2)))
+
+				//fmt.Printf("checking cdiff is lagging %+v  topoheight %d peer topoheight %d \n", islagging, topoheight, connection.TopoHeight)
+
+				// islagging := true
+				//connection.Unlock()
+				if islagging {
+					if connection.Pruned > chain.Load_Block_Topological_order(chain.Get_Top_ID()) && chain.Get_Height() != 0 {
+						connection.logger.V(1).Info("We cannot resync with the peer, since peer chain is pruned", "height", connection.Height.Load(), "pruned", connection.Pruned)
+						continue
+					}
+
+					time.Sleep(time.Second)
+					height := chain.Get_Height()
+					islagging = (height < connection.Height.Load() || (connection.SyncNode && height > (connection.Height.Load()+2)))
+
+					if islagging {
+						//connection.Lock()
+
+						connection.logger.V(1).Info("We need to resync with the peer", "our_height", height, "height", connection.Height.Load(), "pruned", connection.Pruned)
+
+						//connection.Unlock()
+						// set mode to syncronising
+
+						metrics.Set.GetOrCreateCounter("blockchain_sync_total").Inc() // tracks number of syncs
+
+						if chain.Sync {
+							//fmt.Printf("chain send chain request disabled\n")
+							for round := 1; ; round++ { // one chain request covers at most ~512 blocks: keep going (sync_continue.go)
+								before := chain.Get_Height()
+								connection.sync_chain()
+								connection.logger.V(1).Info("sync done")
+								if chain.Get_Height() > before { // r25 (B47): it served blocks, so its earlier failures are forgiven
+									connection.sync_succeeded()
+								}
+								if !sync_should_continue(round, before, chain.Get_Height(), connection.Height.Load(), connection.exited.Load() == 1) {
+									break
+								}
+								metrics.Set.GetOrCreateCounter("p2p_sync_continued_rounds_total").Inc()
+							}
+
+						} else { // we need a state only sync, bootstrap without history but verified chain
+							if err := connection.bootstrap_chain(); err != nil {
+								connection.bootstrap_fail(err)
+							}
+						}
+						return // r26 (B99): was break; nothing followed the loop, and pass 1 must not run after a sync
+					}
+
+				}
+			}
+
+		}
 	}
 }
 

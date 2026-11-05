@@ -16,8 +16,12 @@ Rules (each a FAIL):
   L4 only the newest version may be open (unsealed);
   L5 a version's `supersedes` names only earlier sealed versions (a correction is a new version, never an edit);
   L6 the ledger extends the ledger committed at git HEAD: same entries in order, sealed entries unchanged;
-  L7 a version's replay/expected.sha256, when present, lists exactly its manifest's derived/ entries;
-  L8 the ledger's `version` field of each manifest equals its directory name.
+  L7 a version's replay/expected.sha256, when present, lists exactly its manifest's derived/ entries, less the ones its
+     manifest names in `class_files` (R26: the forensics-classes outputs, pinned in `files` but not re-derived);
+  L8 the ledger's `version` field of each manifest equals its directory name;
+  L9 an OPEN version's manifest.json hashes to its ledger entry too (R26 forensics-audit2 D2-01: the v2 manifest was
+     re-written at the merge, 00f39689 -> 181ab956, without a re-register, and L2 checks sealed versions only):
+     re-register (--register) after every manifest write.
 g28(root): the G28 gate = the rules above on root/forensics plus the replay run record
 harness/runtime/forensics_replay.json: >= 2 runs bound to the newest manifest's SHA-256, from distinct cwd tags, every
 report SHA-256 equal, result PASS, mode full, and the record's replay tools equal the current files.
@@ -89,6 +93,8 @@ def verify(fx, root=ROOT, committed=None, check_tools=True):
                 fails.append(f'L2 {v}: sealed manifest rewritten in place (sha256 differs from the ledger)')
         elif v != newest:
             fails.append(f'L4 {v}: an earlier version is not sealed')
+        if e.get('sealed') is not True and sha(mb) != e.get('manifest_sha256'):
+            fails.append(f'L9 {v}: open manifest differs from its ledger entry (re-register after writing the manifest)')
         tools_ok = check_tools and v == newest
         mf = manifest_check.check(d, root, manifest=None if tools_ok else dict(m, tools={}, hf3_table=None))
         fails += [f'L3 {v}: {x}' for x in mf[:20]]
@@ -101,7 +107,8 @@ def verify(fx, root=ROOT, committed=None, check_tools=True):
             fails.append(f'L5 {v}: ledger and manifest disagree on supersedes')
         ex = d / 'replay' / 'expected.sha256'
         if ex.exists():
-            want = ''.join(f'{h}  {k}\n' for k, h in sorted(m.get('files', {}).items()) if k.startswith('derived/'))
+            cf = m.get('class_files') or {}     # R26 merge: forensics-classes outputs, pinned but not re-derived by the replay
+            want = ''.join(f'{h}  {k}\n' for k, h in sorted(m.get('files', {}).items()) if k.startswith('derived/') and k not in cf)
             if ex.read_text() != want:
                 fails.append(f'L7 {v}: replay/expected.sha256 differs from its manifest derived/ entries')
             s['expected_sha256'] = 'equal' if ex.read_text() == want else 'differs'

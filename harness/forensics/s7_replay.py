@@ -30,8 +30,15 @@ def main(argv=None):
     arch = Path(os.environ.get('FORENSICS_ARCHIVE_COPY', Path.home() / 'derohe-persist/forensics_archive_copy'))
     store = store if (store / 'blobs').is_dir() else None
     arch = arch if arch.is_dir() else None
-    rep = replay.replay(ds, store, arch)
-    txt = replay.dumps(rep)
+    man = json.loads((ds / 'manifest.json').read_text())
+    if man.get('replay_tool') == 'harness/forensics/v2.py':  # r26: dataset v2 has its own re-derivation (v2.py replay)
+        import v2
+        s2 = Path(os.environ.get('FORENSICS_R26_STORE', Path.home() / 'derohe-persist/forensics_raw_r26'))
+        rep = v2.replay(ds, s2 if (s2 / 'blobs').is_dir() else None)
+        txt = v2.dumps(rep)
+    else:
+        rep = replay.replay(ds, store, arch)
+        txt = replay.dumps(rep)
     rsha = hashlib.sha256(txt.encode()).hexdigest()
     rec_p = ROOT / verify_dataset.RECORD
     rec = json.loads(rec_p.read_text()) if rec_p.exists() else {}

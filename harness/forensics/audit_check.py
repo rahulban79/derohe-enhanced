@@ -1076,6 +1076,11 @@ def binding_of(man):
     core = {'files': files, 'hf3_table': man.get('hf3_table'), 'tierB_store': man.get('tierB_store')}
     if (man.get('content_pins') or {}).get('aggregate_sha256'):
         core['content_pins'] = man['content_pins']['aggregate_sha256']
+    elif isinstance(man.get('tools'), dict) and man.get('tools'):
+        # v2 manifests (v2.py) pin their tools and v1 inputs by content but carry no content_pins: bind to those, not
+        # to the commit, so re-writing the manifest at a later commit does not stale the audit (R26 forensics-audit2)
+        core['tools'] = man['tools']
+        core['inputs'] = man.get('inputs')
     else:
         core['git_base_commit'] = man.get('git_base_commit')
     return {'data_sha256': hashlib.sha256(json.dumps(core, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
@@ -1120,6 +1125,12 @@ def verdict_problems(verdicts, challenges):
     return fails
 
 
+# challenges an audit of a version must carry (R26: v2 is audited by audit2.py). A version not named here needs the v1
+# list A1-A4 (the rule before R26), so a new version fails closed until its own list is added here.
+REQUIRED_BY_VERSION = {'r25': ('A1', 'A2', 'A3', 'A4'),
+                       'r26': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-14')}
+
+
 def g29_check(ds, repo=None, private=None):
     """G29 for one dataset version: audit report present, bound to the dataset as it is now, its rerun clean, and
     every FAILS/UNRESOLVED challenge reflected in a downgraded verdict."""
@@ -1156,9 +1167,12 @@ def g29_check(ds, repo=None, private=None):
     chs = ch.get('challenges', [])
     if len({c.get('id') for c in chs}) != len(chs):
         fails.append('G29 duplicate challenge ids')
-    for want in ('A1', 'A2', 'A3', 'A4'):
+    req = REQUIRED_BY_VERSION.get(ds.name) or REQUIRED_BY_VERSION['r25']
+    for want in req:
         if not any(c.get('id', '').startswith(want) for c in chs):
             fails.append(f'G29 required challenge {want} absent')
+    if 'dataset' in rep and rep.get('dataset') != ds.name:   # an audit copied from another version
+        fails.append(f"G29 audit report names dataset {rep.get('dataset')!r}, not {ds.name}")
     fails += ['G29 ' + x for x in verdict_problems(rep.get('verdicts', []), chs)]
     n_open = sum(c.get('result') == 'UNRESOLVED' for c in chs)
     n_fail = sum(c.get('result') == 'FAILS' for c in chs)
@@ -1183,21 +1197,27 @@ def g29_check(ds, repo=None, private=None):
 
 
 def g29(repo):
+    """G29 over EVERY ledger version (R26, forensics-audit2): each version must carry its own audit, bound to its
+    data as it is now; the newest one included (an unaudited newest version FAILS, an earlier audit going stale FAILS)."""
     repo = Path(repo)
     fx = repo / 'forensics'
     led = json.loads((fx / 'ledger.json').read_text()) if (fx / 'ledger.json').exists() else {}
     vs = [v['version'] for v in led.get('versions', [])]
     if not vs:
         return False, 'no forensic dataset version in forensics/ledger.json'
-    newest = vs[-1]
-    f, s = g29_check(fx / newest, repo)
-    if f:
-        return False, f'{newest}: ' + '; '.join(f[:4]) + (f' (+{len(f) - 4})' if len(f) > 4 else '')
-    return True, (f"{newest}: audit bound to the current data, {s['challenges']} challenges "
-                  f"({s['fails']} FAILS = overturned, {s['unresolved']} UNRESOLVED; overturned over all {s['history_runs'] + 1} audit runs: "
-                  f"{s['overturned_all_runs']}), {s['downgraded']} verdict(s) downgraded, "
-                  f"every FAILS/UNRESOLVED reflected; second implementation; 0 exploit/privacy hits in {s['scanned']} text files "
-                  f"({s['private_terms']} private terms)")
+    parts, bad = [], []
+    for v in vs:
+        f, s = g29_check(fx / v, repo)
+        if f:
+            bad.append(f'{v}: ' + '; '.join(f[:4]) + (f' (+{len(f) - 4})' if len(f) > 4 else ''))
+            continue
+        parts.append(f"{v}: {s['challenges']} challenges ({s['fails']} FAILS = overturned, {s['unresolved']} UNRESOLVED; "
+                     f"overturned over all {s['history_runs'] + 1} audit runs: {s['overturned_all_runs']}), "
+                     f"{s['downgraded']} downgraded, 0 hits in {s['scanned']} text files")
+    if bad:
+        return False, ' | '.join(bad)
+    return True, (f"{len(vs)} version(s), each audit bound to its current data, every FAILS/UNRESOLVED reflected, second "
+                  'implementation: ' + ' | '.join(parts))
 
 
 # =============================================================================================== challenges + report

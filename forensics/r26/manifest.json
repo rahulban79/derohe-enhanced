@@ -1,0 +1,88 @@
+{
+ "class_files": {
+  "derived/classes.json": "harness/forensics/classes.py",
+  "derived/fq.json": "harness/forensics/classes.py",
+  "derived/invariant.json": "harness/forensics/invariant.py",
+  "derived/presence.json": "harness/forensics/presence.py"
+ },
+ "class_slot": "`class` on every per-tx/per-block record = the defect class of rft \u00a70.8.9 (pending until forensics-classes); `evidence_class` = RAW/DERIVED/EXT (\u00a70.8.2)",
+ "dataset": "r26",
+ "files": {
+  "audit/AUDIT.md": "830bdd0b495b9ed7f2011eeaa5fae74987e45d0699048100183edb2b1d75f2c8",
+  "audit/audit_report.json": "11700b411052ee87f48033f82aba01e09555ab2ac0613048b30edb6afbef246f",
+  "audit/challenges.json": "c7ecba657ee8ecfdc7e086d08141c0ad80502198aa49fd2ed9d236fdcd6e83c2",
+  "audit/history/audit-1/AUDIT.md": "e1ab4bd6a05d2f29a519d7b744ad34ae598732a1c7559a1dd1eb5dc28bba5850",
+  "audit/history/audit-1/audit_report.json": "9a559cce64088af78adfc9fa3f20163b31d5833e0a5fb7cc8ec7afc773f18d45",
+  "audit/history/audit-1/challenges.json": "3bb98633366cc56b541013c9557d5bf241bfff9a4ceab9d499f561d3d569352c",
+  "audit/rejected.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "derived/a2.json": "6f2499733cfaf680c5de18573bcd08eb8157326386b3928c3dcd9121e1511c2e",
+  "derived/blocks_fees.jsonl.gz": "04b38d73171c057dfdd6022d8a690ce227df3805c88436d385df29b33bc4c0fc",
+  "derived/classes.json": "13316ab34ae0d7ab5c27eeab7c14f9e9a49c1cd8f7f5470b2f5e21408be1d055",
+  "derived/fees.json": "aebd4f1451403d1657501291c9465ee7347320f0eec0b26390bf7ce3db2bcc22",
+  "derived/fq.json": "86e188ebe766952bc876adcec1dc09ae604be2595feb1e8b643715005a2b0d8c",
+  "derived/inclusions.json": "14dd76cd8dfffbfefad851d7475bb56681e39e7d948cb30271c590726122e1e4",
+  "derived/invariant.json": "518b80fc585583d008ea9ce6e7b1672f426ece70bd322b56ea0976226b0b26a7",
+  "derived/presence.json": "57e96c62ac3a65786e7d3036ff16f3cc0b2210fba3e3fe64413554402c8b02da",
+  "derived/roots_window.jsonl.gz": "1eeb42e0ce4269ee0cc75279718cb8736b437220878e32d73cf1e5ac1442f7a3",
+  "derived/state_roots.json": "aa00949885d5f51e2b36a6cbaded3e9514fef9c0b72be0bd730297a54a9fcf87",
+  "derived/summary.json": "c89b0be1a4939c8e7088f52340dbe89632d96cbac89d85d971f0da323c0a4871",
+  "derived/txs.jsonl.gz": "17f97a53213d3441ab2064834ebdfb65234466f7c372849d4af687cca567a7d2",
+  "derived/walls.json": "f417c850f1f224ab6a79ef46bc71029706809cdfcb4de463bc45f482087e7b4b",
+  "raw/a2_attempt.json": "08c068c08a22622d33357ae513a477ab5aea1c50a64617e66a6f59c9a9d1b155",
+  "raw/archive_seed.json": "f6c0cabc96933b74ca55f842919787cee13b7663688c017a2050af6e95af5408",
+  "raw/missing_txs.json": "cd23ce1b635330ce5c43850631a3c11a599f2bc0ff36aad5b400e9efea2cc75d",
+  "raw/replay_runs/A/rejection.json": "52db989a13e8848b53a6bac337cd68924bbbfef988778d546506f2172a5d5e5d",
+  "raw/replay_runs/A/roots.jsonl.gz": "eb095462bbdaf205c001a7886fe2aa1447756bca57fffebcf4fb1f179fd51cdf",
+  "raw/replay_runs/A/summary.json": "4494bf1494fc44efb247431ef76eea6b253f1b593528d868f346aed5eea63911",
+  "raw/replay_runs/B/rejection.json": "52db989a13e8848b53a6bac337cd68924bbbfef988778d546506f2172a5d5e5d",
+  "raw/replay_runs/B/roots.jsonl.gz": "eb095462bbdaf205c001a7886fe2aa1447756bca57fffebcf4fb1f179fd51cdf",
+  "raw/replay_runs/B/summary.json": "4494bf1494fc44efb247431ef76eea6b253f1b593528d868f346aed5eea63911",
+  "raw/tx_bodies.jsonl.gz": "f4c4c538b6ab0b565251c2ed9ee1f1b3103863cd0fd344386edfd8d62589f925",
+  "raw/wall1_blocks.jsonl.gz": "605c1de4d08ce1969db8c3f7caa379a5189c83ad6841a1ec66f89223f59b6dc6",
+  "replay/expected.sha256": "18a9dd6d5a1acb1fe87d92352b5f0f846346ce3df592494c59883d3850d864e5",
+  "replay/replay.sh": "82c51ef01f3f40ce805335d10e8a510de6fa36f274b85b170922a239c0801545"
+ },
+ "git_base_commit": "fea0206bdb5ad117f0b736c4baadb89863882355",
+ "go": "go version go1.26.6 darwin/arm64",
+ "hf3_table": {
+  "file": "blockchain/hardfork_fixes.go",
+  "sha256": "467db1b30b0ff16c1e85003db1eba1c8c7e93eec2e64bf28ae8153558c5c5ea0"
+ },
+ "inputs": {
+  "forensics/r25/derived/archive_state/roots.jsonl.gz": "f36de9a9543deee68d0f979412bcaf6eec9b9eb8957e17da5b42d7b3259b0805",
+  "forensics/r25/derived/emission.json": "af361cd765e079c510070bbe375bfdd3b30b0c24142ae996f8bbf841ba84ac9f",
+  "forensics/r25/derived/window.jsonl.gz": "f5f79b13856ec50c8e1f5c26cdb1162b5fb50754133096401312a23770bc94f3",
+  "forensics/r25/raw/a2_feasibility.json": "cc5b2bfeb8c3d3f546e8e4e527d846455e07f4e562c3258057f829911153bf98",
+  "forensics/r25/raw/anchors.json": "b243a2621f72b1a5d9d628c0fb098207edc0cb3394667f397256ac4e6466fd04",
+  "forensics/r25/raw/headerchain.jsonl.gz": "13e5830c7d877b9a11cbbb0a50b5cc0f9643cecbf6851b29dcde771bd57227ef",
+  "forensics/r25/raw/provenance.json": "b0c705fdee5fdb9d86006399ec6d17ffa5665917f7a9a34bb99c395aa9e650ab"
+ },
+ "inputs_rule": "v1 files read by path and pinned by SHA-256; v1 is never rewritten (rft \u00a70.8.1 rule 4)",
+ "python": "3.14.2",
+ "replay": {
+  "command": "sh forensics/r26/replay/replay.sh [--record harness/runtime/forensics_replay.json]",
+  "expected": "replay/expected.sha256",
+  "node_replay": "raw/replay_runs/<run>/ are outputs of `tools/forensics/a2 replay` (the node's own Add_Complete_Block) over raw inputs; they are re-hashed by v2.py replay and re-run with a2 (hours), not re-derived by Python"
+ },
+ "replay_tool": "harness/forensics/v2.py",
+ "supersedes": [],
+ "tierB_store": {
+  "location": "~/derohe-persist/forensics_raw_r26/blobs (outside git; v1's store is never written)",
+  "tx_bodies": 1796,
+  "tx_index_sha256": "83e93bbcd666ab82c15c7b4b67fe622e83382235c65e56502040b7e2dee6fe3f"
+ },
+ "tools": {
+  "harness/forensics/keccak.py": "6c0abec314f715250f77b49b9cc579914f76615a55e452b5cb2f2a58e0c51ac2",
+  "harness/forensics/provenance.py": "5118ffcaf8215157555791a3d57feed8fcd50b09805da881b75c0e832710c9c3",
+  "harness/forensics/v2.py": "ea6b86d181db85291ae52cd89ed4949e9f80823658fccf214cb9f96099ce35fe",
+  "tools/forensics/a2/archive.go": "9f83aece2f2b90aa377dd19e8a58f3e771d7ce3e3a445985761ae8d2201f872b",
+  "tools/forensics/a2/guard.go": "8ace27984e5f003bc4b6e356de0821684a29dd2519a51bdc6bac50e8c67efb82",
+  "tools/forensics/a2/main.go": "d1ec0de15920c12d7e54acc5d8887b9f7b5139119a176b119532bde499015b9d",
+  "tools/forensics/a2/net.go": "e0128f53880233b3fd9e9090edcf9f97e8fb85a7d2311de88e6e01b1c9157039",
+  "tools/forensics/a2/replay.go": "a08b89fc579ba145d05f6bce0e78f2590ca55aed8df65b3b189a289e03365abb",
+  "tools/forensics/a2/seed.go": "cd3d7c0b1cdccab88cf3262449d279f37d4742b8e45ed23f1e16ddcd27520744",
+  "tools/forensics/extract.go": "88cc5addbb08d9b13bbbcdb48063a62b33d56b14b42378d22d32adbc18fddddf",
+  "tools/forensics/main.go": "f21db925170d1c98d7b4dc52ae7002ad085216439c396fe47370b11cd2111bdc"
+ },
+ "version": 2
+}

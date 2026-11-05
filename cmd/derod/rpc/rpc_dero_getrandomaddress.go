@@ -54,11 +54,7 @@ func GetRandomAddress(ctx context.Context, p rpc.GetRandomAddress_Params) (resul
 		return
 	}
 	topoheight := chain.Load_TOPO_HEIGHT()
-	old_topoheight := topoheight
-
-	if old_topoheight > 100 {
-		old_topoheight -= 5
-	}
+	old_topoheight := decoy_window_topo(topoheight, state_prune_floor()) // r26 B43/B100, was: top-5 only above 100
 
 	var cursor_list []string
 
@@ -160,4 +156,31 @@ func GetRandomAddress(ctx context.Context, p rpc.GetRandomAddress_Params) (resul
 	result.Status = "OK"
 
 	return result, nil
+}
+
+// DECOY_WINDOW is how many topoheights a decoy's balance leaf must have stayed unchanged (value and nonce) to be
+// offered. The wallet builds at topoheight tip-3 (walletapi/wallet_transfer.go:238) but fetches every decoy's
+// balance at the tip (TopoHeight -1, walletapi/ring_fetch.go:73), so a decoy changed in between gives a ring the
+// chain does not have ("transaction statement 0 verification failed") or a stale nonce ("Invalid Nonce, not usable").
+const DECOY_WINDOW = 5
+
+// decoy_window_topo is the topoheight GetRandomAddress compares the tip against (r26). Upstream used top-5 only when
+// top > 100 and the tip itself otherwise, which made the filter a no-op on any chain up to topoheight 100: B43, the
+// "intermittent" simulator proof failures, were decoys that had mined a block (statement) or had been marked as a
+// sender-side ring member (nonce) within the last 3 blocks (r26 decode of both captured txs). The window now always
+// applies, clamped at the prune point (the lowest state this node holds; 0 = unpruned) so it never names a pruned
+// topoheight (B100: after a fresh fastsync the tip is >= 49 above the prune point, p2p/chain_bootstrap.go:73-75, so
+// the clamp is a guard, not a change). Mainnet (top > 100, above the prune point by far) is unchanged. Pure.
+func decoy_window_topo(top, floor int64) int64 {
+	old := top - DECOY_WINDOW
+	if old < floor {
+		old = floor
+	}
+	if old < 0 {
+		old = 0
+	}
+	if old > top {
+		old = top
+	}
+	return old
 }

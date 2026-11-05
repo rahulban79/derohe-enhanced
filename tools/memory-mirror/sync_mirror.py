@@ -21,14 +21,38 @@ from pathlib import Path
 
 EMAIL_RX = re.compile(rb'[\w.+-]+@[\w-]+\.[\w.]+')
 
+# r26 (Part A; rft §1 R26 "scrub the 4 older memory-mirror files that name machine models"): machine models of the
+# private setup are machine info (memory feedback-publish-privacy, 2026-11-03), and pubscrub rewrites only a few exact
+# phrases of them (the export rules hold R10, not pubscrub). The facts stay (core counts, GPU, RAM); only the model
+# names are generalised. Ordered: the longer phrase first. Lower-case identifiers (file names such as
+# dero-miner-m1-ceiling, the compiler flag -mcpu=apple-m1) are code anchors and are kept.
+MODEL_RULES = [
+    (re.compile(r'(?:Apple )?(\*\*)?M1 Ultra Mac' ' Studio'), r'\1mining host'),
+    (re.compile(r'(?:\bthe )?(?:Apple )?M1 Ultra'), 'the mining host'),
+    (re.compile(r'Mac' ' Studio'), 'mining host'),
+    (re.compile(r'(?:\bLAN )?MacBook(?: Pro)?'), 'second LAN machine'),
+    (re.compile(r"\bM1's\b"), "hardware's"),
+    (re.compile(r'\ban M1\b'), 'the chip'),
+    (re.compile(r'\bM1 cores\b'), 'cores'),
+    (re.compile(r'\bM1\b'), 'CPU'),
+]
+
+
+def generalise_models(t):
+    """machine-model names -> generic wording (MODEL_RULES). Pure."""
+    for rx, rep in MODEL_RULES:
+        t = rx.sub(rep, t)
+    return t
+
 
 def redact(b, T):
-    """the two rules run after pubscrub: an e-mail shape -> '<e-mail>'; a non-reserved IPv4 (tooling_intel's shape, which
-    also reads an address that ends a sentence) -> '<ip>'. Pure."""
+    """the rules run after pubscrub: an e-mail shape -> '<e-mail>'; a non-reserved IPv4 (tooling_intel's shape, which
+    also reads an address that ends a sentence) -> '<ip>'; r26: machine-model names generalised (MODEL_RULES). Pure."""
     b = EMAIL_RX.sub(b'<e-mail>', b)
     t = b.decode('utf-8', errors='replace')
     rx = dict(T.PRIVATE_RX)['ipv4']
     t = rx.sub(lambda m: m.group(0) if T.IP_OK.match(m.group(0)) or any(int(x) > 255 for x in m.group(0).split('.')) else '<ip>', t)
+    t = generalise_models(t)
     return t.encode('utf-8')
 
 

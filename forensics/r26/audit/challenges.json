@@ -1,0 +1,379 @@
+{
+ "binding": {
+  "data_sha256": "2eca35695f5e0877a8f267132fb11c49fb417c37310f85afa166f04754de3879",
+  "files_bound": 26,
+  "manifest_sha256_at_audit": "c353ab3f2a78ff8c7ef09b63151dd705d8ce564946f8be3fdc84ca43a2daf88b"
+ },
+ "challenges": [
+  {
+   "affects": [],
+   "claim": "the ledger entry of r26 names the manifest the dataset now has",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "ledger c353ab3f2a78ff8c, manifest c353ab3f2a78ff8c, sealed False"
+    }
+   ],
+   "id": "D2-01",
+   "note": "",
+   "result": "HOLDS",
+   "test": "sha256(manifest.json) vs forensics/ledger.json manifest_sha256 of the open version"
+  },
+  {
+   "affects": [],
+   "claim": "every dataset file re-hashes to the manifest, none missing or unlisted, class files listed",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "listed 30, on disk 30, mismatch 0, missing 0, unlisted 0, class files listed True"
+    }
+   ],
+   "id": "D2-02",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own SHA-256 of every file under the dataset (audit/ excluded) vs manifest files"
+  },
+  {
+   "affects": [],
+   "claim": "the v1 inputs v2 reads are pinned and unchanged; v1 is sealed and unchanged",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "7 inputs, changed 0; v1 sealed True, manifest equal True"
+    }
+   ],
+   "id": "D2-03",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own SHA-256 of each pinned v1 input; v1 manifest vs its sealed ledger entry"
+  },
+  {
+   "affects": [],
+   "claim": "the RAW chain 7,412,665..7,498,540 is one tips chain from our anchor, and the 2,799 wall-1 link blocks are its blocks 7,412,665..7,415,463",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "walk 85,876 blocks 7,498,540->7,412,665, contiguous True, multi-tip 0; wall-1 rows equal 2,799/2,799"
+    }
+   ],
+   "id": "D2-04",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own decode of every v1 store blob and every v2 wall-1 blob; SHA3-256 ids; tips walk from the anchor"
+  },
+  {
+   "affects": [],
+   "claim": "the 1,796 RAW tx bodies are every body the window + gap + wall-1 window need, each passing check (iii), 0 missing",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "needed (own) 1,796 (window+gap 1,794, wall-1 window 2), verified 1,796, missing 0, extra 0, txid mismatch 0"
+    }
+   ],
+   "id": "D2-05",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own tx lists from the walk; own Keccak-256 TXID of each body's core statement; blob SHA-256"
+  },
+  {
+   "affects": [],
+   "claim": "the 1,796 derived tx rows (type, fee, burns, ring sizes, roothash, reference, SC data, body hash) equal an independent decode",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "equal 1,796/1,796, differ 0"
+    }
+   ],
+   "id": "D2-06",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own wire decoder over the RAW bodies, compared field by field"
+  },
+  {
+   "affects": [],
+   "claim": "the 1,747 per-block fee/burn/SC rows equal own sums",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "equal 1,747/1,747, differ 0"
+    }
+   ],
+   "id": "D2-07",
+   "note": "",
+   "result": "HOLDS",
+   "test": "per block: sum of own Fees() / BurnValue / SC type over its RAW tx list"
+  },
+  {
+   "affects": [],
+   "claim": "fees.json totals: window fees 855,173, burns 230,470,000, v1's 1,575 pending-fee blocks all settled, v1 known rows unchanged",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "own {'gap_burn_sum': 0, 'gap_fee_sum': 1567, 'gap_txblocks': 21, 'sc_tx_blocks': 192, 'sc_txs': 199, 'settled': 1575, 'settled_burn_sum': 230470000, 'settled_fee_sum': 838373, 'v1_known_rows_disagreeing': 0, 'window_burn_sum': 230470000, 'window_fee_sum': 855173, 'window_txblocks': 1726}; claimed equal True"
+    }
+   ],
+   "id": "D2-08",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own totals over the walk; v1 pending set from v1 window rows"
+  },
+  {
+   "affects": [],
+   "claim": "SC: 199 SC txs in 192 blocks; their payouts stay pending (no decoder runs SC execution)",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "own sc_txs 199, sc_tx_blocks 192; claimed 199/192; payouts 'pending: SC payouts are produc...'"
+    }
+   ],
+   "id": "D2-09",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own type census; the claim text"
+  },
+  {
+   "affects": [],
+   "claim": "summary.json counts equal the audit's counts",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "claimed bodies 1796, txblocks 1747; own 1796, 1747"
+    }
+   ],
+   "id": "D2-10",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own counts vs summary.json"
+  },
+  {
+   "affects": [],
+   "claim": "duplicate-body census (B97): of 67 TXIDs carried by more than one RAW block, none is held with two different bodies, and the rest is unobservable, not zero (dc1-two-bodies stays unbounded)",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "multi-block 67 (in table 67, outside 0); 2+ sources 0: equal 0, different 0; single source 67; no copy 0"
+    },
+    {
+     "class": "RAW",
+     "what": "all TXIDs with 2+ independent copies: 1 (equal 1, different 0); tx lists repeating a TXID 0"
+    },
+    {
+     "class": "INTERPRETATION",
+     "what": "a block commits to the TXID only; the TXID is Keccak-256 of the core statement, which excludes the proofs (audit decoder: core_len < body length for every proof-carrying body), so the RAW blocks cannot show which body a carrier held; bodies are compared across independent holders instead"
+    }
+   ],
+   "id": "D2-11",
+   "note": "67 of 67 multi-block TXIDs have one independent copy only: a second body under them is not observable from the data held (bound: unbounded for those)",
+   "result": "HOLDS",
+   "test": "every body copy from every independent holder (v1 raw, archive copy, fetched staging), own TXID check, byte comparison"
+  },
+  {
+   "affects": [],
+   "claim": "structural verifier (B97, second implementation): every proof-carrying body of 1,560 is well-formed: wire layout per ring size, every point and scalar canonically encoded, ring shape",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "bodies 1,796 {'NORMAL': 1361, 'REGISTRATION': 236, 'SC': 199}; points 132,504, scalars 41,410; failed checks none; decode errors 0"
+    }
+   ],
+   "id": "D2-12",
+   "note": "Structural only: a structurally well-formed proof is not shown sound; soundness stays NOT-DECIDABLE (DC2), and a second soundness verifier is NO-GO (rft \u00a79).",
+   "result": "HOLDS",
+   "test": "own layout table and own canonicality checks (bn256 P/Order from the source text); never builds or varies a proof"
+  },
+  {
+   "affects": [],
+   "claim": "node replay runs A and B are byte-identical, start from the archive seed, and follow the RAW chain",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "runs ['A', 'B'] identical True; seed root == v1 archive root True; seed blid == walk True"
+    }
+   ],
+   "id": "D2-13",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own SHA-256 of both roots files; base root vs v1 archive root at the seed topo; replay blids vs own walk"
+  },
+  {
+   "affects": [
+    "V2-END-STATE",
+    "V-STATE-ROOTS"
+   ],
+   "claim": "wall 4: the node's own checks reject block 7,467,546 (tx not in the HF3 table), so the replay ends at 7,467,545 and the end-state check is pending",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "HF3 carriers in 7,467,516..7,467,546: 3, Parity differs with/without the HF3 step on 1; source: replay calls HF3 entry True, bare add False"
+    },
+    {
+     "class": "DERIVED",
+     "what": "own replay: completed, 31,025 blocks, last topo 7,498,540, root ca11cc21 == recorded treehash True; walls accepted {'wall2': True, 'wall3': True, 'wall4': True}"
+    }
+   ],
+   "id": "D2-14",
+   "note": "Overturned: the stop is an artifact of the replay tool, which called Add_Complete_Block without the HF3 table step (the merge found it through TestR23bAddCompleteBlockCensus, B123). Through the sync path's entry the node accepts every block to our anchor and ends at our own treehash. The dataset still carries the pre-fix runs and \"pending\" end-state claims: they are corrected only by a rebuilt v2 (B123), never in place.",
+   "result": "FAILS",
+   "test": "own re-run of the node replay through the sync path's HF3 entry (p2p.Add_Complete_Block_HF3), on a fresh APFS clone of the archive copy, with the audit's own plan; and the HF3 carriers before the stop from own RAW decode against the source expression"
+  },
+  {
+   "affects": [],
+   "claim": "roothash witnesses: RAW Statement.Roothash equals the held archive root at its reference topo ({'archive_differ': 0, 'archive_equal': 200, 'differ': 0, 'equal': 2})",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "own archive witnesses equal 200, differ 0"
+    },
+    {
+     "class": "DERIVED",
+     "what": "own replay roots as witnesses: equal 690, differ 0, outside 870"
+    }
+   ],
+   "id": "D2-15",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own decode of every body's reference height and roothash; v1 archive roots"
+  },
+  {
+   "affects": [
+    "V-STATE-ROOTS"
+   ],
+   "claim": "A10c (carried from v1): the archive roots 7,453,290..7,467,515 are the canonical roots of those topos",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "dataset claim: pending: no complete replay run; own replay end-state match True (audit evidence, not a dataset file)"
+    }
+   ],
+   "id": "D2-16",
+   "note": "The audit's own replay binds the archive top root to our treehash (the replay from it reaches ca11cc21), which is the end-state check A10c asked for; it stays UNRESOLVED for this dataset because v2 does not carry that run (B123: rebuild v2 with it, then it can HOLD).",
+   "result": "UNRESOLVED",
+   "test": "needs an end-state check that binds the archive base: a replay from the archive top to our anchor ending at our treehash, IN THE DATASET"
+  },
+  {
+   "affects": [],
+   "claim": "G31 bound honesty: the 12 figures each carry class, scope, coverage, bound_type, and no forbidden phrase",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "problems none; forbidden phrases none"
+    }
+   ],
+   "id": "D2-17",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own rules over classes.json (exact needs full coverage, unbounded never 0, DC2 never 0, lower bound never a total) + phrase scan of derived/"
+  },
+  {
+   "affects": [],
+   "claim": "FQ1 / DC0: the census figures (window distinct TXIDs, multi-block TXIDs, all in the table, carriers, parity) equal an independent count; DC0 = 0",
+   "evidence": [
+    {
+     "class": "RAW",
+     "what": "own {'carriers_total': 142, 'dc0_window_duplicates': 0, 'duplicates_two_carriers': 67, 'false_parity_one_carrier': 8, 'of_which_in_table': 66, 'table_txids_outside_window_carrier': 1, 'tx_parity_true': 17, 'window_distinct_txids': 1769, 'window_tx_carrying_blocks': 1726, 'window_txids_in_two_or_more_blocks': 66}"
+    },
+    {
+     "class": "DERIVED",
+     "what": "claimed {'carriers_total': 142, 'dc0_window_duplicates': 0, 'duplicates_two_carriers': '67 of 67', 'false_parity_one_carrier': '8 of 8', 'of_which_in_table': 66, 'tx_parity_true': 17, 'window_distinct_txids': 1769, 'window_tx_carrying_blocks': 1726, 'window_txids_in_two_or_more_blocks': 66}"
+    }
+   ],
+   "id": "D2-18",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own walk and own HF3 table parser"
+  },
+  {
+   "affects": [
+    "V2-FEES"
+   ],
+   "claim": "classes.json DC3 figures reflect dataset v2 (fees and public burns of the window)",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "classes base r25: fees {'bound_type': 'lower-bound', 'value': 16800} over 80902 blocks, burns {'bound_type': 'lower-bound', 'value': 0}; v2 own: fees 855,173, burns 230,470,000 over 82477/82477"
+    }
+   ],
+   "id": "D2-19",
+   "note": "The figures are honest lower bounds over v1 (G31 holds), but stale: v2 settled every pending block, so the window fee and burn figures can be exact; classes.json still reads v1 (base r25, B126).",
+   "result": "FAILS",
+   "test": "classes.json DC3 figures vs the audit's own v2 totals"
+  },
+  {
+   "affects": [
+    "V2-FEES",
+    "V2-DUP-BODY",
+    "V2-END-STATE",
+    "V-STATE-ROOTS",
+    "V-DC2"
+   ],
+   "claim": "G32 records half: every v2 derived/raw record carries its defect class",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "v2 records 5,369: tagged 0, pending 5,369; classes.json records {'block': {'DC3': 605}, 'tx': {'DC1': 75, 'DC3': 19}, 'window_rows': {'DC3': 82477}} (v1 layout)"
+    }
+   ],
+   "id": "D2-20",
+   "note": "B126: classes.py tags the v1 record layout, so G32's record check passes vacuously on v2.",
+   "result": "FAILS",
+   "test": "own count of the `class` slot over txs, blocks_fees, roots_window and tx_bodies"
+  },
+  {
+   "affects": [],
+   "claim": "presence.json: every anchor re-reads as recorded at its rev (36 anchors); DC2 present at the head is the headline",
+   "evidence": [
+    {
+     "class": "SRC",
+     "what": "re-read equal 36/36; differ none; revs not in clone none; DC2 present at head True"
+    }
+   ],
+   "id": "D2-21",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own re-read of file:line at each rev (git show; HEAD = working tree)"
+  },
+  {
+   "affects": [],
+   "claim": "invariant.json: its Q-CS2/Q-CS3 anchors exist at the head, and the Q-CS1 census root is the held archive root",
+   "evidence": [
+    {
+     "class": "SRC",
+     "what": "anchors ok 9/9; Q-CS1 root == v1 archive root at 7467515: True"
+    }
+   ],
+   "id": "D2-22",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own file:line existence check; v1 archive roots at the census topo"
+  },
+  {
+   "affects": [],
+   "claim": "the v2 dataset text holds no exploit content and no private information (no address, path, IP, host)",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "files 27, patterns 15, private terms 34, hits 0"
+    }
+   ],
+   "id": "D2-23",
+   "note": "",
+   "result": "HOLDS",
+   "test": "G24 exploit patterns + privacy patterns + private terms over every text file"
+  },
+  {
+   "affects": [],
+   "claim": "(a2) TreeSection from ONE source stays BLOCKED and pending, with evidence, never graded",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "class pending; verdict 'BLOCKED from this host: every source tha...'"
+    }
+   ],
+   "id": "D2-24",
+   "note": "",
+   "result": "HOLDS",
+   "test": "derived/a2.json class and the scan above"
+  }
+ ],
+ "note": "independent audit challenges of dataset v2 (rft \u00a70.8.5): HOLDS / FAILS / UNRESOLVED; every FAILS or UNRESOLVED keeps its verdicts off a PROVEN grade (audit_report.json verdicts); overturns stay on record in audit/history/"
+}

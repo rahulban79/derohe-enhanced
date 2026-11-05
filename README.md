@@ -1,9 +1,25 @@
-# DERO HE — enhanced node and miner (3.6.0-153 +22102026.r25)
+# DERO HE — enhanced node and miner (3.6.0-153 +22102026.r26)
 
 > **License: research and personal use only.** Use and distribution of this technology is subject to the Java Research License included herein ([`LICENSE`](LICENSE)); commercial use requires a separate license from the DERO Project.
 
 An enhanced build of the DERO HE daemon (`derod`), miner (`dero-miner`) and wallet CLI. Every change is
 non-consensus: it runs on the current mainnet with no fork. Highlights:
+
+Round 26 (`+22102026.r26`) adds:
+
+- **Peers and sync:** sync-hold strikes decay, a relayed block that brings the node level with a held peer forgives
+  it, and held peers that are ahead are tried when no other peer can sync; a duplicate miniblock delivered by two
+  peers at once is counted as a duplicate race instead of an insert failure, and every refusal line names its error.
+- **RPC:** an unknown name gets a typed not-found (-32032); the explorer range methods refuse unknown parameter names
+  (-32602) and reads below the prune point (-32031) before any store read; GetRandomAddress keeps its decoy window
+  at every height.
+- **Disclosure track:** a structural test pins the range-proof transcript binding identical at the head, the previous
+  release and the genesis-era tag (no invalid proof is built).
+- **Monetary forensics:** dataset v2 of the HF3-exemption window with every transaction body held, rows tagged by
+  defect class with honest bounds, a replay of the held archive that ends at the node's own state root, and a second
+  independent auditor.
+- **Harness:** shadow-node teardown, daylight-saving-safe log analysis, reproducible architecture pages, network-class
+  area metrics and scrubbed process snapshots.
 
 Round 25 (`+22102026.r25`) adds:
 

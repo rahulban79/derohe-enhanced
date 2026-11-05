@@ -153,6 +153,10 @@ func tx_on_disk(txid crypto.Hash) bool {
 	return err == nil
 }
 
+// mbl_pre_insert_hook runs between VerifyMiniblockPoW and InsertMiniBlock; only tests set it (r26, B103: it lets a
+// test hold two deliveries of one miniblock past the IsCollision pre-check, the window a live duplicate race uses).
+var mbl_pre_insert_hook func(block.MiniBlock)
+
 // only miniblocks carry extra info, which leads to better time tracking
 func (c *Connection) NotifyMiniBlock(request Objects, response *Dummy) (err error) {
 	defer handle_connection_panic(c)
@@ -238,8 +242,11 @@ func (c *Connection) NotifyMiniBlock(request Objects, response *Dummy) (err erro
 			return c.refuse_miniblock(MBL_REFUSED_POW, mbl.Height, errormsg.ErrInvalidPoW) // r25 (CO24-C1)
 		}
 
+		if mbl_pre_insert_hook != nil { // tests only (r26, B103): nil in every build that is not a test
+			mbl_pre_insert_hook(mbl)
+		}
 		if err, ok = chain.InsertMiniBlock(mbl); !ok {
-			return c.refuse_miniblock(MBL_REFUSED_INSERT, mbl.Height, err) // r25 (CO24-C1)
+			return c.refuse_miniblock(c.insert_refusal_reason(mbl, chain.MiniBlocks.IsCollision), mbl.Height, err) // r25 (CO24-C1), r26 (B103)
 		} else { // rebroadcast miniblock
 			valid_found = true
 			note_miniblock_seen(c, mbl) // r25 (CO24-C5): first-seen time of an accepted miniblock

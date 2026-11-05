@@ -85,12 +85,26 @@ def lines(paths):
                     continue
                 d['_f'] = p.name
                 recs.append(d)
-    recs.sort(key=lambda d: d.get('T', ''))
+    recs.sort(key=sort_key)        # r26 B101: by the instant (offset included), stable for equal instants
     return recs
 
 
 def ts(t):
-    return datetime.datetime.strptime(t[:23], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+    """Seconds since the epoch of a derod 'T' value. r26 B101: WITH its UTC offset (2026-11-01T01:30:00.000-0800 is one
+    hour after 01:30:00.000-0700): the log crosses DST and the local-time string alone sorts and subtracts wrongly. A
+    value without an offset falls back to local time (old fixtures)."""
+    try:
+        return datetime.datetime.strptime(t, '%Y-%m-%dT%H:%M:%S.%f%z').timestamp()
+    except ValueError:
+        return datetime.datetime.strptime(t[:23], '%Y-%m-%dT%H:%M:%S.%f').timestamp()
+
+
+def sort_key(d):
+    """lines() order: the record's instant; a record without a parsable T sorts first (as '' did before)."""
+    try:
+        return ts(str(d.get('T', '')))
+    except ValueError:
+        return float('-inf')
 
 
 def classify(d):

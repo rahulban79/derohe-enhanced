@@ -75,11 +75,21 @@
   r25 G29 the forensic dataset is independently audited (harness/forensics/audit_check.py g29; forensics-audit, B78): the
        newest version's audit/ (audit_report.json, challenges.json, AUDIT.md) is bound to its current data, every FAILS or
        UNRESOLVED challenge is reflected in a non-PROVEN verdict, no PROVEN verdict rests on EXT, A1-A4 are challenged, and
-       the dataset text carries no exploit or private content (KAT MF3, MF4).
+       the dataset text carries no exploit or private content (KAT MF3, MF4). r26 (forensics-audit2): EVERY ledger version
+       carries its own audit (v2 by harness/forensics/audit2.py, challenges D2-01.., required per version), each bound to
+       its current data (KAT test_forensics_audit2_r26.py AU10-AU12).
   r25 G30 the forensics frontend traces to the dataset (harness/forensics/facts.py g30; B79): every number in the ledger's
        forensics sections (<!--forensics:begin/end-->) and in the src-arch "Forensic dataset" line is a fact span naming
        its dataset file and SHA-256 (= the manifest entry) and showing the value re-derived now; no untraced number; the
        window explorer's embedded data decodes to derived/window.jsonl.gz (KAT test_forensics_g30_r25.py).
+  r26 G31 forensic figures carry their class bound (harness/forensics/bounds.py g31; forensics-classes, B108): every figure
+       of forensics/r<N>/derived/classes.json has {class, scope, coverage num/den + anchors, bound_type}; exact only at full
+       coverage and never DC2; unbounded renders as the word, never 0; no total for a bound; no cross-class sum; a fix
+       status never regrades history; forbidden phrases only negated; no amount-recovery or exploit text in the four
+       class files; invariant anchors re-read; every page class block traces to classes.json (KAT test_forensics_bounds_r26.py).
+  r26 G32 defect classes are separated and their presence re-read (harness/forensics/bounds.py g32; B109): one class per
+       tagged record and figure; DC1-DC3 presence entries at HEAD re-read unchanged (presence.py check); the DC2-present
+       headline on the ledger, soundness and src-arch pages from the round's first ledger render (KAT test_forensics_classes_r26.py).
 Appends one row per gate to loop/GATES.md. Exit 0 all pass (or PAUSED) · 3 any fail.  Usage: run_gates.py [cycle-label]
 """
 import datetime, html, html.parser, json, re, subprocess, sys, tempfile, urllib.request
@@ -778,8 +788,8 @@ def main():
         res.append(('G28 the forensic dataset is reproducible', ok28, det28))
     except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
         res.append(('G28 the forensic dataset is reproducible', False, f'verify_dataset could not run: {type(e).__name__}: {e}'))
-    # G29 (r25 forensics-audit, B78) — the independent audit is present (harness/forensics/audit_check.py g29): bound to the
-    # newest dataset's current data, 0 FAILS/UNRESOLVED challenges left on a PROVEN verdict (MF3/MF4), A1-A4 challenged,
+    # G29 (r25 forensics-audit, B78; r26 every version) — the independent audit is present (audit_check.py g29): bound to
+    # each dataset version's current data, 0 FAILS/UNRESOLVED challenges left on a PROVEN verdict (MF3/MF4), A1-A4 challenged,
     # a second implementation, and no exploit/private text in the dataset
     try:
         import importlib.util as _iu29
@@ -802,6 +812,23 @@ def main():
         res.append(('G30 the forensics frontend traces to the dataset', ok30, det30))
     except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
         res.append(('G30 the forensics frontend traces to the dataset', False, f'facts could not run: {type(e).__name__}: {e}'))
+    # G31 / G32 (r26 forensics-classes, B108/B109; rft §0.8.9) — bound honesty: every class figure carries {class, scope,
+    # coverage, bound_type}, exact only at full coverage and never for DC2, unbounded never rendered as 0, no total for a
+    # bound, no cross-class sum, no fix status regrading history, forbidden phrases only negated, no amount-recovery text;
+    # class separation + presence: one class per record and figure, DC1-DC3 presence anchors re-read at HEAD, and the
+    # DC2-present headline on the ledger, soundness and src-arch pages once the round's ledger page exists
+    try:
+        import importlib.util as _iu31
+        _sp31 = _iu31.spec_from_file_location(f'bounds_for_gates_{id(HERE)}', HERE / 'forensics/bounds.py')
+        BD = _iu31.module_from_spec(_sp31)
+        _sp31.loader.exec_module(BD)
+        ok31, det31 = BD.g31(HERE.parent)
+        res.append(('G31 forensic figures carry their class bound', ok31, det31))
+        ok32, det32 = BD.g32(HERE.parent)
+        res.append(('G32 defect classes are separated and their presence re-read', ok32, det32))
+    except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
+        res.append(('G31 forensic figures carry their class bound', False, f'bounds could not run: {type(e).__name__}: {e}'))
+        res.append(('G32 defect classes are separated and their presence re-read', False, f'bounds could not run: {type(e).__name__}: {e}'))
 
     # G13 — a fix may change logging and peer handling, never what the node accepts or computes
     import consensus_guard as CG

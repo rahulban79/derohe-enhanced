@@ -34,6 +34,7 @@ package p2p
 // syncs are unaffected, and a --sync-node is never held (operator choice, like the stuck-peer exemption).
 
 import (
+	"container/heap"
 	"errors"
 	"fmt"
 	"math"
@@ -122,6 +123,71 @@ func (c *Connection) note_call_failure(kind call_failure) {
 const SYNC_HOLD_BASE = 30 * time.Second // one failed sync: the next sync goes to another peer for 30 s ...
 const SYNC_HOLD_MAX = 10 * time.Minute  // ... doubling per consecutive failure, at most 10 min
 
+// r26 (B99, §7): the r25 verifier found three gaps in the hold. (1) Strikes never decayed: a peer's failures a day
+// apart escalated as if consecutive. (2) A peer that relays a block we accept was never forgiven, only one that a
+// sync round got blocks from. (3) When every peer ahead of us was held, trigger_sync synced with nobody until a hold
+// ran out (up to SYNC_HOLD_MAX). Now: (1) a failure more than SYNC_STRIKE_FORGET after the previous hold ended starts
+// again at strike 1; (2) an accepted relayed block that brings us level with the height the peer advertises clears
+// its strikes and hold (sync_relay_served: its claim matched what it delivered); (3) if no unheld peer ahead could
+// sync (all held, or the rest pruned past our tip), trigger_sync tries the held ones, the hold that ends soonest
+// first, at most once per SYNC_FALLBACK_EVERY node-wide (counted in p2p_sync_held_fallbacks_total). So a peer that
+// cannot serve is asked at most once per 30 s even when it is the only one ahead (before r25: every 4 s), and with a
+// held peer ahead a sync is attempted at least once per 30 s.
+const SYNC_STRIKE_FORGET = SYNC_HOLD_MAX
+const SYNC_FALLBACK_EVERY = SYNC_HOLD_BASE
+
+var sync_held_fallbacks_total = metrics.Set.GetOrCreateCounter("p2p_sync_held_fallbacks_total")
+var sync_relay_forgiven_total = metrics.Set.GetOrCreateCounter("p2p_sync_relay_forgiven_total")
+var sync_fallback_last atomic.Int64 // unix nanos of the latest fallback (0 = never)
+
+// sync_fallback_open reports, without claiming it, whether the fallback slot is free now (B99).
+func sync_fallback_open(now time.Time) bool {
+	return sync_fallback_due(sync_fallback_last.Load(), now)
+}
+
+// sync_fallback_due is the rate rule: never before, or at least SYNC_FALLBACK_EVERY since the latest fallback.
+func sync_fallback_due(last int64, now time.Time) bool {
+	return last == 0 || now.UnixNano()-last >= int64(SYNC_FALLBACK_EVERY)
+}
+
+// sync_held_ahead counts the held, handshaken connections that advertise a height above ours (B99).
+func sync_held_ahead(clist []*Connection, our_height int64) (n int) {
+	now := time.Now()
+	for _, c := range clist {
+		if c.sync_held(now) && c.State.Load() != HANDSHAKE_PENDING && our_height < c.Height.Load() {
+			n++
+		}
+	}
+	return
+}
+
+// sync_fallback_allowed reports whether trigger_sync may try a held peer now, and if so claims the slot (B99).
+func sync_fallback_allowed(now time.Time) bool {
+	for {
+		last := sync_fallback_last.Load()
+		if !sync_fallback_due(last, now) {
+			return false
+		}
+		if sync_fallback_last.CompareAndSwap(last, now.UnixNano()) {
+			return true
+		}
+	}
+}
+
+// sync_relay_served runs when this node accepted a block the peer relayed (note_block_result, B99). If our height
+// now reaches what the peer advertises, the peer delivered what it claimed: its strikes and any hold are cleared.
+// A peer still claiming more than it delivered keeps its hold.
+func (c *Connection) sync_relay_served(our_height int64) {
+	if c == nil || c.obs.sync_strikes.Load() == 0 && c.obs.sync_hold_until.Load() == 0 {
+		return
+	}
+	if our_height < c.Height.Load() {
+		return
+	}
+	c.sync_succeeded()
+	sync_relay_forgiven_total.Inc()
+}
+
 func sync_hold_duration(strikes int32) time.Duration {
 	d := SYNC_HOLD_BASE
 	for i := int32(1); i < strikes && d < SYNC_HOLD_MAX; i++ {
@@ -138,6 +204,11 @@ func sync_hold_duration(strikes int32) time.Duration {
 func (c *Connection) sync_failed(kind call_failure, now time.Time) {
 	if kind != call_failure_remote && kind != call_failure_short {
 		return
+	}
+	// r26 (B99): strikes decay. A failure more than SYNC_STRIKE_FORGET after the previous hold ended starts again at
+	// strike 1: in r25 one short answer a day apart from the last still escalated, so strikes only ever grew.
+	if until := c.obs.sync_hold_until.Load(); until != 0 && now.UnixNano()-until > int64(SYNC_STRIKE_FORGET) {
+		c.obs.sync_strikes.Store(0)
 	}
 	n := c.obs.sync_strikes.Add(1) // a --sync-node counts too (GetPeerInfo shows it) but is never skipped: sync_held
 	d := sync_hold_duration(n)
@@ -189,20 +260,40 @@ type OffenderInfo struct {
 	LastOffences []OffenceMark `json:"last_offences"`
 }
 
-// Offenders lists up to max penalty records with offences, newest offence first (connected or not).
+// Offenders lists up to max penalty records with offences, newest offence first (connected or not); max < 0 = all.
+//
+// r26 (B99): r25 built the view of EVERY record (math.Pow, a slice per record) under penalty_mu, then sorted and cut
+// to max: 22.6-23.4 ms per GetPeerInfo on a full 65,536-record table (r25 verifier), with add_penalty blocked all that
+// time. Now the walk under the lock only reads each record's newest offence time and keeps the max newest in a
+// bounded heap; the views (and their allocations) are built for those max records only. Same order, same records.
 func Offenders(max int, now time.Time) (out []OffenderInfo) {
 	out = []OffenderInfo{}
+	if max == 0 {
+		return
+	}
+	var h offender_heap
 	penalty_mu.Lock()
 	for k, m := range penalty_map {
 		if m.events == 0 {
 			continue
 		}
+		p := offender_pick{scope: k, m: m, at: m.newest_at()}
+		switch {
+		case max < 0 || len(h) < max:
+			heap.Push(&h, p)
+		case offender_newer(p, h[0]):
+			h[0] = p
+			heap.Fix(&h, 0)
+		}
+	}
+	for _, p := range h {
+		m := p.m
 		s, b, e, l := penalty_view_locked(m, now)
 		bf := int64(0)
 		if now.Before(m.banned_until) {
 			bf = int64(m.banned_until.Sub(now) / time.Second)
 		}
-		out = append(out, OffenderInfo{Scope: k, Score: s, Bans: b, Events: e, BannedFor: bf, LastOffences: l})
+		out = append(out, OffenderInfo{Scope: p.scope, Score: s, Bans: b, Events: e, BannedFor: bf, LastOffences: l})
 	}
 	penalty_mu.Unlock()
 	sort.Slice(out, func(i, j int) bool {
@@ -218,10 +309,35 @@ func Offenders(max int, now time.Time) (out []OffenderInfo) {
 		}
 		return out[i].Scope < out[j].Scope
 	})
-	if max >= 0 && len(out) > max {
-		out = out[:max]
-	}
 	return
+}
+
+// offender_pick is one candidate of Offenders; offender_heap keeps the max newest with the OLDEST at the root.
+type offender_pick struct {
+	scope string
+	m     *misbehaviour
+	at    int64 // its newest offence (unix seconds), as LastOffences[0].At reports it
+}
+
+// offender_newer is the Offenders order: newer offence first, then scope ascending.
+func offender_newer(a, b offender_pick) bool {
+	if a.at != b.at {
+		return a.at > b.at
+	}
+	return a.scope < b.scope
+}
+
+type offender_heap []offender_pick
+
+func (h offender_heap) Len() int            { return len(h) }
+func (h offender_heap) Less(i, j int) bool  { return offender_newer(h[j], h[i]) } // root = the one every other is newer than
+func (h offender_heap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *offender_heap) Push(x interface{}) { *h = append(*h, x.(offender_pick)) }
+func (h *offender_heap) Pop() interface{} {
+	old := *h
+	x := old[len(old)-1]
+	*h = old[:len(old)-1]
+	return x
 }
 
 // ---- CO24-N4: the ban list with its sources ------------------------------------------------------------------------

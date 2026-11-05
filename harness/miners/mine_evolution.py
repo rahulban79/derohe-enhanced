@@ -26,7 +26,7 @@ BASE_TAG = 'Release152'
 SNAP = 'harness/runtime/evolution_git.tsv'
 # the ledger's round axis, in order; R23c stays listed so a not-yet-committed round renders as pending, never as zero
 ORDER = ['R1-3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9'] + [f'R{n}' for n in range(11, 24)] + ['R23b', 'R23c', 'R24']
-ORDER += ['R25', 'R26']  # r26 listed at the R25 artifacts (B90: before its first 'R26' commit); r25 plan (2026-11-03): listed before its first 'R25 plan:' commit lands, so it renders as pending, never as zero (rft §6 step 13)
+ORDER += ['R25', 'R26', 'R27']  # r27 listed at the R26 open loop (B90 early warning: before its first 'R27' commit); r26 listed at the R25 artifacts (B90: before its first 'R26' commit); r25 plan (2026-11-03): listed before its first 'R25 plan:' commit lands, so it renders as pending, never as zero (rft §6 step 13)
 # r24 (pipeline run 1): ORDER ended at R23c, so the first 'R24 ...' commit crashed this miner with KeyError: 'R24' (S7 FAIL).
 # A round that git names but ORDER does not list is now refused by name (unknown_rounds); harness/kat/
 # test_evolution_order_r24.py checks every non-planned harness/round.json round and every commit since the base.

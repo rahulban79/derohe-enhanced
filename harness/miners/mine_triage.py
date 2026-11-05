@@ -145,13 +145,23 @@ def capture(log, errs):
     print(f'captured {p.name}: {len(facts)} facts')
 
 
-def main():
+def parse(argv=None):
+    """r26 B117: a real argument parser. main() tested `'--capture' in sys.argv`, so `--help` ran the miner (it wrote
+    its raw rows) and an unknown flag was ignored. Now --help prints the usage and exits 0 having written nothing."""
+    import argparse
+    ap = argparse.ArgumentParser(prog='mine_triage.py', description=__doc__.split('\n\n')[0])
+    ap.add_argument('--capture', action='store_true', help='also re-ask derod (read-only RPC) about every txid in the log')
+    return ap.parse_args(argv)
+
+
+def main(argv=None):
+    a = parse(argv)
     log = latest_log()
     if not log:
         M.emit('triage', [], [{'title': 'no console log', 'why': 'harness/runtime/derod_console_*.log is missing'}])
         return
     errs = errors(log)
-    if '--capture' in sys.argv:
+    if a.capture:
         capture(log, errs)
     snaps = sorted(RUNTIME.glob('triage_*.json'))
     snap = str(snaps[-1].relative_to(M.ROOT)) if snaps else None

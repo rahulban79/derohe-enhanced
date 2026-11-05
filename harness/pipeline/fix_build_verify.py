@@ -780,6 +780,24 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
+# Round 26 (forensics-data: the (a2) tool tools/forensics/a2, B95/B76; artifacts/dero-rft.md §8 forensics-data)
+for _pkg, _pat in {
+        './tools/forensics/a2/': 'TestR26A2DatadirGuard|TestR26A2SectionCheck|TestR26A2ChunksFor|TestR26A2CompleteBlockChecks'
+                                 '|TestR26A2PlanContiguous|TestR26A2PeerFilePrivacy',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 26 (node-rpc dimension, dero-rft §7 B100, B104 node half, B43 root cause): typed NameToAddress / explorer
+# answers, the GetRandomAddress decoy window at every height, and the decode of the two captured B43 failures
+for _pkg, _pat in {
+        './cmd/derod/rpc/': 'TestR26NameToAddressUnknownIsNotFound|TestR26NameLookupErrorClasses'
+                            '|TestR26EncryptedBalanceOmittedTopoheightOnPrunedNode|TestR26DecoyWindowTopo'
+                            '|TestR26RandomAddressNeverOffersAFreshlyChangedAccount|TestR26ExplorerUnknownParamsRefused'
+                            '|TestR26ExplorerBelowPrunePointTyped|TestR26ExplorerPrunedShapeRecord',
+        './cmd/simulator/': 'TestR26B43CapturedFailuresDecoded',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
 TS = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 # run logs live outside every corpus root: the log is appended to while S7 hashes the corpus, so a log under
 # harness/runtime/ made G3 (corpus current) fail on the pipeline's own writes (2026-10-21)
@@ -975,6 +993,33 @@ def s3_retry(pkg, race, failed, unmatched, first=''):
 # harness/kat/test_new_tests_registered_r24.py NT1 requires every TestR<current>* to be registered here).
 for _pkg, _pat in {
     './cmd/derod/rpc/': 'TestR25ChainSwapIsRaceFreeWithResolver',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 26 (forensics-classes, rft §0.8.9 B110/B111): the structural-statistics helper (FQ3 shared-commitment census,
+# Q-CS1 tree census); none is env-gated (the RAW-blob test skips only when dataset v1 is absent, which S3 never sees).
+for _pkg, _pat in {
+    './tools/forensics/classstats/': 'TestR26StructStatsDigestsEveryPayload|TestR26CensusCountsEveryTree'
+                                     '|TestR26CensusRefusesAnUnnamedStore',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 26 (disclosure-cryptoinfl dimension): the FQ4 structural transcript-binding KAT and its honest-perturbation
+# cross-check (B113; no accepted-invalid proof is built), and the B32 partial-history residual pin.
+for _pkg, _pat in {
+    './cryptography/crypto/': 'TestR26TranscriptBindingPinned|TestR26TranscriptExtractorSeesPlantedChange'
+                              '|TestR26HonestPerturbationRefused',
+    './walletapi/': 'TestR26V2ProofGuardWindowResidualPinned',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 26 (node-net dimension, dero-rft §7 B99, B102, B103): the TestR26* of p2p/r26_node_net_test.go (none is
+# env-gated; the simulator-chain ones skip only under -short, like TestR25ConsensusObsOnSimulatorChain).
+for _pkg, _pat in {
+    './p2p/': 'TestR26DuplicateRaceCountedNotInsertFailed|TestR26InsertRefusalReason|TestR26RefusalLineCarriesErrorText'
+              '|TestR26SyncStrikesDecay|TestR26RelayedBlockForgives|TestR26AcceptedRelayForgivesOnChain'
+              '|TestR26TriggerSyncFallsBackToHeldPeers|TestR26TriggerSyncFallbackOrder|TestR26OffendersTopNMatchesFullSort'
+              '|TestR26ThreeInvalidPowWithinHalfLifeBan',
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
@@ -1991,12 +2036,75 @@ def _census(logf):
     return {'census': census, 'clone_artifacts': artifacts, 'artifact_window': [first, last], 'other_panics': panics}
 
 
+def shadow_teardown(nodes, base):
+    """r26 B98: the teardown every S5 exit runs (PASS, FAIL and each early finish(9)). Stops every shadow derod still
+    running (an early FAIL in the warm-up or in a re-clone left the OTHER node running), then removes each node's APFS
+    data clone (`<base>/<node>/data`, ~19 GB once the clone diverges) and the copied binary, and keeps the evidence
+    (console.txt, derod.log). A failed S5 kept the whole tree before (2026-11-03: 19 GB removed by hand). Returns the
+    removed paths."""
+    for n in (nodes or {}).values():
+        p = n.get('proc')
+        if p is None or p.poll() is not None:
+            continue
+        try:
+            p.stdin.write(b'exit\n')
+            p.stdin.flush()
+            p.wait(timeout=60)
+        except Exception:                                                   # noqa: BLE001
+            p.send_signal(signal.SIGINT)
+            try:
+                p.wait(timeout=30)
+            except Exception:                                               # noqa: BLE001
+                p.kill()
+                p.wait(timeout=30)
+    removed = []
+    base = Path(base)
+    if base.is_dir():
+        for d in sorted(x for x in base.iterdir() if x.is_dir()):
+            for junk in (d / 'data', d / 'derod'):
+                if junk.is_dir():
+                    shutil.rmtree(junk, ignore_errors=True)
+                elif junk.exists():
+                    junk.unlink()
+                else:
+                    continue
+                removed.append(str(junk))
+    return removed
+
+
+def record_cmds(nodes, salt=None):
+    """r26 (B119 class): the shadow command lines as the TRACKED record holds them. The candidate dials the live node's
+    LAN address (`--add-exclusive-node=<lan>:11011`), and every shadow_*.json since R24 carried it raw; each token now
+    goes through kit/privkit.scrub_argv (pseudonymised address, home path ~). The live command list is unchanged."""
+    sys.path.insert(0, str(HARNESS / 'kit'))
+    try:
+        import privkit
+        salt = salt or privkit.load_salt()
+        return {k: [privkit.scrub_argv(str(t), salt) for t in n.get('cmd') or []] for k, n in (nodes or {}).items()}
+    except Exception as e:                                                  # noqa: BLE001 — never a raw address
+        return {k: f'withheld ({type(e).__name__})' for k in (nodes or {})}
+    finally:
+        sys.path.pop(0)
+
+
 def s5_shadow(seconds):
+    """S5 with its teardown (B98): whatever way _s5_shadow ends (PASS, FAIL, an early finish(9) = SystemExit, or an
+    exception), no shadow derod keeps running and no data clone is left behind."""
+    base = Path('/private/tmp') / f'dero-shadow-{TS}'
+    live = {}
+    try:
+        _s5_shadow(seconds, base, live)
+    finally:
+        removed = shadow_teardown(live.get('nodes'), base)
+        if removed:
+            event('shadow', 'INFO', teardown_removed=len(removed), kept=str(base) if base.exists() else None)
+
+
+def _s5_shadow(seconds, base, live):
     """Two shadows at once, each on its own APFS clone, both syncing only from the live node over loopback:
     CONTROL runs the binary the operator is running now, CANDIDATE runs the new one. All three treehashes must
     agree wherever the topoheights do, and anything the candidate logs that the control does not is a regression."""
     event('shadow', 'START', seconds=seconds)
-    base = Path('/private/tmp') / f'dero-shadow-{TS}'
     # the live node keeps ONE connection per remote IP (p2p/connection_pool.go Connection_Add keys the map by
     # Address(c)), so two shadows dialling 127.0.0.1 get one slot between them (diagnostic run 2026-10-21: control 1
     # peer, candidate 0). The candidate dials the live node's LAN address instead — the live node binds 0.0.0.0:11011.
@@ -2015,6 +2123,7 @@ def s5_shadow(seconds):
                          'via': '127.0.0.1:11011'},
              'candidate': {'bin': STAGE / 'derod', 'rpc': SHADOW_RPC, 'ports': (20102, 20100, 21011),
                            'via': f'{lan}:11011'}}
+    live['nodes'] = nodes                                  # B98: the teardown stops whatever was started
     # NETWORK mode, when the live node is not running (the operator stopped it during Round 15's first run and both
     # shadows lost their only peer): the CONTROL syncs from the public network and becomes the reference; the
     # CANDIDATE syncs only from the control over loopback. It still executes every block itself, so its treehash is
@@ -2176,7 +2285,7 @@ def s5_shadow(seconds):
                if k not in cen['control']['census'] and k.startswith(('ERROR', 'WARN'))}
     caught_up = [x for x in samples[-6:] if 'candidate' in x and abs(x['candidate'][0] - x['live'][0]) <= 2]
     (HARNESS / f'runtime/shadow_{TS}.json').write_text(json.dumps(
-        {'captured': now(), 'mode': mode, 'cmds': {k: n['cmd'] for k, n in nodes.items()}, 'seconds': seconds,
+        {'captured': now(), 'mode': mode, 'cmds': record_cmds(nodes), 'seconds': seconds,
          'treehash_compared': compared, 'mismatches': mism, 'census': cen, 'regressions': regress,
          'samples': samples}, indent=1))
     # every node must have been compared on its own: a stuck candidate cannot pass on the control's comparisons
@@ -2192,7 +2301,8 @@ def s5_shadow(seconds):
                           if '"Recovered' in l), '') if (n['dir'] / 'derod.log').exists() else ''
             cen[k]['first_recovered'] = first[:3000]
         (HARNESS / f'runtime/shadow_{TS}.json').write_text(json.dumps(
-            {'captured': now(), 'cmds': {k: n['cmd'] for k, n in nodes.items()}, 'kept': str(base),
+            {'captured': now(), 'cmds': record_cmds(nodes), 'kept': str(base),
+             'kept_note': 'logs only: the teardown removes the data clones and binaries (B98)',
              'treehash_compared': compared, 'mismatches': mism, 'census': cen, 'regressions': regress,
              'samples': samples}, indent=1))
     if not ok:
@@ -2339,6 +2449,23 @@ def judged_step(step, rc, before, after):
     return True, None
 
 
+# r26 B101: the miner-side S7 steps and the input file each one needs. A clean clone (or a box whose miner never ran
+# since the pause) has no bin/: miner_intel and miner_runs exit 2 ('no miner log' / 'no ledger') and S7 FAILED, so
+# `--project-only` could not pass on a fresh checkout while the miner track is PAUSED (rft §0.3; G17/G18/G21 report
+# PAUSED anyway). Only while the track is paused AND the input is absent is the step skipped (with the
+# reason, event INFO skipped=...); an active track, or a present log, runs and is judged exactly as before.
+MINER_STEP_INPUTS = {'miner_intel': 'bin/dero-miner.log', 'miner_runs': 'bin/dero-miner.runs.jsonl'}
+
+
+def paused_skip(step, track, root):
+    """the reason to skip one S7 step, or None to run it. Pure apart from one exists()."""
+    key = Path(str(step).split()[0]).stem
+    need = MINER_STEP_INPUTS.get(key)
+    if need is None or track != 'paused' or (Path(root) / need).exists():
+        return None
+    return f'{key}: miner track paused and {need} absent (rft §0.3): skipped, its gates report PAUSED'
+
+
 def s7_project():
     event('project', 'START')
     steps = [[sys.executable, 'harness/intel/log_intel.py', '--json-only'],
@@ -2385,6 +2512,10 @@ def s7_project():
               # drift exits 4 and fails S7 like any other step (record: harness/runtime/coherence_last.json)
               [sys.executable, 'harness/intel/coherence.py', '--record']]
     for st in steps:
+        skip = paused_skip(st[1], MINER_TRACK[0], ROOT)                    # r26 B101
+        if skip:
+            event('project', 'INFO', step=' '.join(st[1:3]), skipped=skip)   # INFO: SKIP would overwrite the stage status
+            continue
         key = next((k for k in JUDGED if Path(st[1]).stem == k), None)   # r24: the script's own name (see judged_step)
         pat = JUDGED[key][1] if key else None
         before = [(p.name, p.stat().st_mtime_ns) for p in (HARNESS / 'runtime').glob(pat)] if pat else []

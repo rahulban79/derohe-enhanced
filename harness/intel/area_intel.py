@@ -232,6 +232,8 @@ def validate(reg, root):
         for m in a.get('metrics', []):
             if m.get('better', 'none') not in ('higher', 'lower', 'none'):
                 err.append(f"{aid}.{m.get('id')}: better must be higher|lower|none")
+            if m.get('class', 'node') not in METRIC_CLASSES:      # r26 B105
+                err.append(f"{aid}.{m.get('id')}: class must be one of {'|'.join(METRIC_CLASSES)}")
             ne = (m.get('source') or {}).get('needs_event')
             if ne is not None and not (isinstance(ne, dict) and isinstance(ne.get('name'), str) and ne['name']):
                 err.append(f"{aid}.{m.get('id')}: needs_event must be {{name: <prom counter>, what: <event>}}")
@@ -920,6 +922,29 @@ def alert(rule, v):
     return {'>': v > x, '<': v < x, '>=': v >= x, '<=': v <= x, '!=': v != x}.get(op, False)
 
 
+# r26 B105: a metric's direction class. 'node' (default): a move against `better` is a regression of THIS build and a
+# live alert is a node alert (severity high, area ATTENTION). 'network': the metric measures other nodes or the chain
+# (an observatory KPI: another peer's lag, chain concentration, v2-remnant sightings), so the same move proposes a §7
+# OBSERVATION row (kind network-observation, severity medium, area WATCH), never a regression: the R25 measurement and
+# the R26 start each raised 5 high proposals that measured the network and were closed by hand as observations.
+METRIC_CLASSES = ('node', 'network')
+NETWORK_KIND, NETWORK_SEVERITY = 'network-observation', 'medium'
+
+
+def classed(m, kind, severity, title):
+    """(kind, severity, title) of one metric finding after its direction class. Pure."""
+    if m.get('class', 'node') != 'network':
+        return kind, severity, title
+    return NETWORK_KIND, NETWORK_SEVERITY, f'{title} [network KPI ({kind}): an observation of other nodes, not a node regression]'
+
+
+def suggested_row(kind, title, owner, evs, cur):
+    """the §7 row a proposal suggests: a network observation is booked as an OBSERVATION, everything else OPEN."""
+    status = (f'OBSERVATION (network, self-detected {cur}, area_intel; no node regression)' if kind == NETWORK_KIND
+              else f'OPEN (self-detected {cur}, area_intel)')
+    return f"| B? | {title} | {owner} | {evs} | {status} |"
+
+
 def pid(area, kind, key):
     return f"AP-{area}-{kind}-{hashlib.sha256(f'{area}|{kind}|{key}'.encode()).hexdigest()[:6]}"
 
@@ -1028,11 +1053,11 @@ def evaluate(root, live=False, cur_override=None):
             d, reg_ = trend(num(prev['value']) if prev else None, num(last['value']) if last else None,
                             m.get('better', 'none'), float(m.get('noise_rel', 0.05)))
             if reg_ and m.get('better', 'none') != 'none':
-                found.append(('metric-regression', 'high', f"{m['id']}: {prev['display']} ({prev['round']}) -> {last['display']} ({last['round']}), "
-                              f"worse than {m.get('noise_rel', 0.05):.0%} noise ({m.get('better')} is better)", [prev['anchor'], last['anchor']], m['id']))
+                found.append((*classed(m, 'metric-regression', 'high', f"{m['id']}: {prev['display']} ({prev['round']}) -> {last['display']} ({last['round']}), "
+                              f"worse than {m.get('noise_rel', 0.05):.0%} noise ({m.get('better')} is better)"), [prev['anchor'], last['anchor']], m['id']))
             if last and last['round'] == live_r and alert(m.get('alert_if'), num(last['value'])):
-                found.append(('live-alert', 'high', f"{m['id']} = {last['display']} trips {m['alert_if']['op']} {m['alert_if']['value']}",
-                              [last['anchor']], m['id']))
+                found.append((*classed(m, 'live-alert', 'high', f"{m['id']} = {last['display']} trips {m['alert_if']['op']} {m['alert_if']['value']}"),
+                              [last['anchor']], m['id'] + ('|alert' if m.get('class') == 'network' else '')))   # one kind for both: keep the ids apart
             mcards.append({'id': m['id'], 'what': m.get('what'), 'unit': m.get('unit', ''), 'better': m.get('better', 'none'),
                            'series': pts, 'last': last, 'prev': prev, 'trend': d, 'regression': reg_})
         for b in broken:
@@ -1161,7 +1186,7 @@ def evaluate(root, live=False, cur_override=None):
             p = {'id': pid(aid, k, key), 'area': aid, 'owner_dim': a['owner_dim'], 'kind': k, 'severity': s, 'title': t,
                  'evidence': [x for x in e if x], 'round_found': cur}
             evs = '; '.join(f"{x.get('file')}:{x.get('line')}" for x in p['evidence']) or f'area_intel {k}'
-            p['suggested_row'] = f"| B? | {t} | {a['owner_dim']} | {evs} | OPEN (self-detected {cur}, area_intel) |"
+            p['suggested_row'] = suggested_row(k, t, a['owner_dim'], evs, cur)
             aprops.append(p)
         props += aprops
         sev = {p['severity'] for p in aprops}
@@ -1342,6 +1367,31 @@ def live_belongs(e, rid):
     return lr is None or str(lr).lower() == str(rid).lower()
 
 
+# r26 closed loop (pipeline_20261104T193301 S7 FAIL, 7 r25 forensics values BROKEN): harness/runtime/forensics_intel.json
+# is rewritten by every S7 (facts.py --write), and from R26 it holds dataset v2's KPIs, so an r25 history anchor on it broke
+# one round later (the B106 class, for the forensics source). record() now books such a value against a per-round sealed
+# copy, harness/runtime/forensics_intel_<round>.json, written here and never rewritten by any S7 step.
+VOLATILE_SEAL = {'harness/runtime/forensics_intel.json': 'harness/runtime/forensics_intel_{rid}.json'}
+
+
+def seal_volatile(root, rid, vals):
+    """re-point every value of `vals` anchored on a VOLATILE_SEAL file at that round's sealed copy (written once per
+    record run from the file's current bytes; the anchor line is the same, the copy being byte-equal). Returns the sealed
+    copies written."""
+    out = []
+    for src, pat in VOLATILE_SEAL.items():
+        uses = [e for ms in vals.values() for e in ms.values()
+                if isinstance(e, dict) and (e.get('anchor') or {}).get('file') == src]
+        if not uses or not (Path(root) / src).is_file():
+            continue
+        dst = pat.format(rid=rid)
+        (Path(root) / dst).write_bytes((Path(root) / src).read_bytes())
+        for e in uses:
+            e['anchor'] = {**e['anchor'], 'file': dst}
+        out.append(dst)
+    return out
+
+
 def record(root, rid):
     """Copy the computed values of round `rid` (records + current read when rid is current) into areas.json history.
     A value already recorded is kept; a recorded value that no longer recomputes is reported, never overwritten."""
@@ -1361,6 +1411,7 @@ def record(root, rid):
                         continue
                     vals[aid].setdefault(k, e)
     added, kept = 0, (skipped_live if rid == cur else [])
+    sealed = seal_volatile(root, rid, vals)
     for a in reg['areas']:
         h = a.setdefault('history', {}).setdefault(rid, {})
         kinds = {m.get('id'): ((m.get('source') or {}).get('kind'), m.get('unit', '')) for m in a.get('metrics', [])}

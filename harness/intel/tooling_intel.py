@@ -17,7 +17,10 @@ KPIs (§0.9 rule 2; 'pending' when the input is missing, never a guess):
             (harness/loop/STALE_MEMORY_CLAIMS.json: a refuted claim still in the memory without a dated correction)
   mirror    mirror_drift (memory-mirror/MANIFEST.sha256: source changed since the sync, file missing, hand-edited, or a
             private identifier in the in-repo copy)
-  skills    skill_last_round, skill_fresh (last '## Round <N>' heading = the registry's current round)
+  skills    skill_last_round, skill_fresh (last '## Round <N>' heading = the registry's current round); r26 (B92):
+            skill_over_budget (> SKILL_MAX_LINES lines), skill_paused (a skill whose '**Track:** <name>' is paused is
+            not required to be fresh; at least one other skill must be)
+  tools     r26 (B117 class, report-only): tools_without_help, harness tools whose `--help` would run them
   rounds    order_gaps (non-planned registry rounds missing from mine_evolution.ORDER, B90), order_next_missing
   gates     gate_id_duplicates (one G<n> used by two different gate titles in run_gates.py, lesson #68)
   classes   defect_classes_without_kat (every R24/R25 tooling defect class must name a KAT that exists, §0.9 rule 1)
@@ -79,6 +82,16 @@ DEFECT_CLASSES = [
     ('counter of 0 booked without its event', 'harness/kat/test_area_r25.py', 'AC2'),
     ('superseded booked value frozen', 'harness/kat/test_area_r25.py', 'AC1'),
     ('opt-in check writes the tree it measures (--determinism in place)', 'harness/kat/test_tooling_intel_r25.py', 'TI11'),
+    # r26 (harness-tooling): the classes found at R25 measurement / R26 Part A
+    ('a failed stage leaves its scratch behind (S5 shadow clone, B98)', 'harness/kat/test_harness_tooling_r26.py', 'HT1'),
+    ('a paused track fails a clean checkout (miner_intel exit 2, B101)', 'harness/kat/test_harness_tooling_r26.py', 'HT2'),
+    ('local-time string order across DST (log_intel, B101)', 'harness/kat/test_harness_tooling_r26.py', 'HT3'),
+    ('generator not byte-exact on a double run (build time, stale index, B93)', 'harness/kat/test_harness_tooling_r26.py', 'HT4'),
+    ('network observation booked as a node regression (B105)', 'harness/kat/test_harness_tooling_r26.py', 'HT5'),
+    ('probe params not from the Go json tags (B104)', 'harness/kat/test_harness_tooling_r26.py', 'HT6'),
+    ('an earlier round\'s anchor drifts for ever (B116)', 'harness/kat/test_harness_tooling_r26.py', 'HT7'),
+    ('--help runs the tool (B117)', 'harness/kat/test_harness_tooling_r26.py', 'HT8'),
+    ('a tracked snapshot keeps a raw command line (B119)', 'harness/kat/test_harness_tooling_r26.py', 'HT9'),
 ]
 # generic private-identifier shapes (no private literal in this file): an absolute home path, a scratchpad project dir
 # name, an e-mail, a DERO address, a non-reserved IPv4
@@ -332,21 +345,68 @@ def mirror_drift(mdir, mirror):
 ROUND_HEAD_RX = re.compile(r'^## Round (\d+[a-z]?)\b', re.M)
 
 
-def skill_kpis(root, current):
+# r26 B92: each skill has a size budget (§0.9 rule 2 'skills'), and a skill may name the track it serves with a line
+# `**Track:** <name>` in its first 12 lines. A skill of a PAUSED track (harness/round.json rounds[current].tracks) is not
+# required to record the current round (reported 'PAUSED'); every other skill is, and at least one must be: when
+# every skill serves a paused track, the round is recorded nowhere and skill_fresh is 0.
+SKILL_MAX_LINES = 1200
+TRACK_LINE_RX = re.compile(r'^\*\*Track:\*\*\s*([a-z][\w-]*)', re.M)
+
+
+def skill_track(text):
+    """the track a skill declares in its head, or None (a skill without one serves the round). Pure."""
+    m = TRACK_LINE_RX.search('\n'.join(text.splitlines()[:12]))
+    return m.group(1) if m else None
+
+
+def skill_kpis(root, current, paused=()):
     sk = sorted((Path(root) / '.skills').glob('*/SKILL.md'))
     if not sk:
         return {'skills': 0, 'skill_last_round': PENDING}
-    out = {'skills': len(sk), 'skill_lines': {}, 'skill_last_round': {}}
-    fresh = True
+    out = {'skills': len(sk), 'skill_lines': {}, 'skill_last_round': {}, 'skill_over_budget': [], 'skill_paused': []}
+    fresh, required = True, 0
     for p in sk:
         t = p.read_text(encoding='utf-8', errors='replace')
         rounds = ROUND_HEAD_RX.findall(t)
         last = ('r' + rounds[-1]) if rounds else None
-        out['skill_lines'][p.parent.name] = len(t.splitlines())
-        out['skill_last_round'][p.parent.name] = last or PENDING
+        name = p.parent.name
+        out['skill_lines'][name] = len(t.splitlines())
+        out['skill_last_round'][name] = last or PENDING
+        if len(t.splitlines()) > SKILL_MAX_LINES:
+            out['skill_over_budget'].append(name)
+        if skill_track(t) in set(paused):
+            out['skill_paused'].append(name)
+            continue
+        required += 1
         fresh &= bool(last) and last.lower() == str(current).lower()
-    out['skill_fresh'] = int(fresh)
+    out['skill_fresh'] = int(fresh and required > 0)
     return out
+
+
+HELP_RX = re.compile(r'ArgumentParser\(|[\'"]--help[\'"]|[\'"]-h[\'"]')
+MAIN_RX = re.compile(r'^if __name__ == [\'"]__main__[\'"]', re.M)
+
+
+def tools_without_help(root):
+    """r26 (B117 class, report-only): the harness tools (a __main__ entry; KAT files aside) whose source has no
+    argument parser and no explicit --help branch, so `--help` RUNS them (tooling_intel and mine_triage were two of
+    them). Static: nothing is executed. Sorted repo-relative paths."""
+    out = []
+    for p in sorted((Path(root) / 'harness').rglob('*.py')):
+        rel = p.relative_to(root).as_posix()
+        if rel.startswith('harness/kat/') or '__pycache__' in p.parts:
+            continue
+        t = p.read_text(encoding='utf-8', errors='replace')
+        if MAIN_RX.search(t) and not HELP_RX.search(t):
+            out.append(rel)
+    return out
+
+
+def paused_tracks(registry, current):
+    """the tracks the registry marks 'paused' for the current round (kit/roundtracks semantics). Pure."""
+    r = next((x for x in (registry or {}).get('rounds') or [] if x.get('id') == current), {})
+    tr = r.get('tracks') if isinstance(r.get('tracks'), dict) else {}
+    return sorted(k for k, v in tr.items() if v == 'paused')
 
 
 def order_gaps(registry, order):
@@ -495,7 +555,7 @@ def tool_path(key, root=ROOT):
 def scrub_plants(root=ROOT):
     """synthetic planted secrets in the shapes the scrubber must remove, built at run time from the scrubber's own rule
     table and the home directory (never written to the tree): a home path, an e-mail, a LAN address, the wallet prefix
-    with a synthetic tail, a mapped peer address."""
+    with a synthetic tail, a mapped peer address; from r26 (B131) the machine-model and agent-tool-path shapes."""
     rules = tool_path('sync_rules', root)
     plants = [str(Path.home()) + '/derohe-Release151/x.go', 'someone.planted' + '@' + 'gmail.com']
     try:
@@ -509,6 +569,11 @@ def scrub_plants(root=ROOT):
         ip = re.search(r"IP_MAP = \{\s*'([\d.]+)'", src)
         if ip:
             plants.append(ip.group(1))
+        # r26 B131: the machine-model and agent-tool-path shapes the R26 publish had to scrub by hand (built from parts,
+        # so the tree never carries the literal strings): the box model, the R1 row's quoted claim, the node tag in
+        # lower case, the memory-link directory and the two session settings files
+        plants += ['M1' + '-Ultra', '"M1 hard' + 'ware ceiling"', 'm1' + 'ultra', '~/.' + 'claude/projects/x/memory/',
+                   '.' + 'claude/settings.json', '.' + 'claude/settings.local.json']
     except (OSError, AttributeError):
         return None
     return plants
@@ -518,7 +583,9 @@ CLEAN_CONTROL = ('the node listens on 127.0.0.1:10102 and 0.0.0.0:11011\n'
                  'a documentation address 203.0.113.10 and a resolver 8.8.8.8\n'
                  'the home directory is written ~ in every page\n'
                  'topoheight 7,498,540 is the prune point\n'
-                 'gate G27 scans the whole page\n')
+                 'gate G27 scans the whole page\n'
+                 'R1 and M1 are labels; Pro, Max and Ultra are plain words; the hardware is not named\n'   # r26 B131 near-misses
+                 'harness/loop/TOOL_PATHS.json and a settings.json are not tool paths\n')
 
 
 def scrub_control():
@@ -585,7 +652,10 @@ def targets(k):
     if k.get('memory_stale_claims'):
         v.append(f"stale memory claims {k['memory_stale_claims']}")
     if k.get('skill_fresh') == 0:
-        v.append(f"skill not recorded for the current round {k.get('skill_last_round')}")
+        v.append(f"skill not recorded for the current round {k.get('skill_last_round')}"
+                 + (f" (paused-track skills {k['skill_paused']})" if k.get('skill_paused') else ''))
+    if k.get('skill_over_budget'):
+        v.append(f"skills over {SKILL_MAX_LINES} lines {k['skill_over_budget']}")
     if k.get('scripts_bad'):
         v.append(f"scripts that do not build {k['scripts_bad']}")
     return v
@@ -615,7 +685,7 @@ def run(root, mdir, opt_det=False, opt_scrub=False, opt_scripts=False):
         k['mirror_drift'], k['mirror_drift_reasons'] = n, why[:60]
     else:
         k['mirror_drift'] = PENDING
-    k.update(skill_kpis(root, cur))
+    k.update(skill_kpis(root, cur, paused_tracks(registry, cur)))
     order = evolution_order(root)
     if order is None:
         k['order_gaps'] = PENDING
@@ -626,6 +696,8 @@ def run(root, mdir, opt_det=False, opt_scrub=False, opt_scripts=False):
     except OSError:
         k['gate_id_duplicates'] = PENDING
     k['checkpoint_age_s'] = checkpoint_age(checkpoint_dir(), cur)
+    k['tools_without_help'] = tools_without_help(root)          # report-only (no §0.9 target yet)
+    k['tools_without_help_count'] = len(k['tools_without_help'])
     k['defect_classes'] = len(DEFECT_CLASSES)
     k['defect_classes_without_kat'] = classes_without_kat(root)
     k['determinism'] = determinism(root) if opt_det else {}
@@ -656,15 +728,27 @@ def write(root, k):
     return f'harness/runtime/tooling_{stamp}.json'
 
 
+def parse(argv):
+    """r26 B117: a real argument parser. main() used to test `'--x' in argv`, so `--help` ran the whole tool and wrote a
+    runtime snapshot (harness/runtime/tooling_20261104T114625.json); an unknown flag was ignored the same way. Now
+    --help prints the usage and exits 0 having written nothing, and an unknown flag exits 2."""
+    import argparse
+    ap = argparse.ArgumentParser(prog='tooling_intel.py', description=__doc__.split('\n\n')[0],
+                                 epilog='Exit 0 every target met · 5 a §0.9 rule-2 target is violated · 2 bad invocation.')
+    ap.add_argument('--memory-dir', type=Path, default=None, help='the memory dir (default: this project\'s)')
+    ap.add_argument('--determinism', action='store_true', help='generator double runs, in an isolated copy')
+    ap.add_argument('--scrub-control', action='store_true', help='pubscrub planted-secret control')
+    ap.add_argument('--scripts', action='store_true', help='bash -n every *.sh, build every tools/<go dir>')
+    return ap.parse_args(argv)
+
+
 def main(argv):
-    mdir = default_memory_dir()
-    if '--memory-dir' in argv:
-        i = argv.index('--memory-dir')
-        if i + 1 >= len(argv):
-            print('--memory-dir needs a directory')
-            return 2
-        mdir = Path(argv[i + 1])
-    k = run(ROOT, mdir, '--determinism' in argv, '--scrub-control' in argv, '--scripts' in argv)
+    try:
+        a = parse(argv)
+    except SystemExit as e:                       # --help (0) or a bad invocation (2): nothing was run or written
+        return e.code if isinstance(e.code, int) else 2
+    mdir = a.memory_dir or default_memory_dir()
+    k = run(ROOT, mdir, a.determinism, a.scrub_control, a.scripts)
     rel = write(ROOT, k)
     print(f"tooling_intel: round {k['round']} · KATs {k.get('kats_passed')}/{k.get('kats_total')} · KAT mutations "
           f"{k.get('kat_mutations_proved')}/{k.get('kat_mutations_total')} · gates {k.get('gates_pass')}/{k.get('gates_total')} "

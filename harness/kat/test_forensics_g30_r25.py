@@ -9,7 +9,8 @@ every figure to a dataset file + SHA-256. No network, no live file written.
   GF4 the explorer data: the encoding round-trips (B64X: no vowel, no '.'), and a changed id byte, timestamp delta,
       miniblock count, fee, tier, tx list or a dropped row FAILS; missing embedded data FAILS;
   GF5 (MF8/MF9 over the sections) exploit-pattern text and an IPv4 / home path inside the sections FAIL;
-  GF6 a dataset file whose bytes differ from the manifest is reported as a fact problem.
+  GF6 a dataset file whose bytes differ from the manifest is reported as a fact problem;
+  GF7 (r26) a closed page (artifacts/src/frozen/r<N>/) is built from and checked against its frozen record files.
   Committed: when artifacts/dero-r1-r25.html exists, G30 passes on it (and the src-arch line).
 
   python3 -I harness/kat/test_forensics_g30_r25.py   # exit 0 ok · 3 a KAT failed · 4 a mutation not caught / INVALID
@@ -141,9 +142,48 @@ def kats(base):
         (ds / 'derived' / 'summary.json').write_text((ds / 'derived' / 'summary.json').read_text().replace('"window_rows": 2', '"window_rows": 3'))
         F2 = FX.build(ds, tmp)
         ok(any('derived/summary.json' in x for x in F2.problems), 'GF6 a dataset file differing from the manifest is not reported')
+        (ds / 'derived' / 'summary.json').write_text((ds / 'derived' / 'summary.json').read_text().replace('"window_rows": 3', '"window_rows": 2'))
+        fails.extend(gf7(FX, tmp, page))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return fails
+
+
+def gf7(FX, tmp, page):
+    """GF7 (r26, rft §0.6 closed pages): a closed ledger page (artifacts/src/frozen/r<N>/ exists) is built from and
+    checked against its FROZEN record files: after S7 rewrites the live disclosure track, the frozen page still renders
+    the same and G30 still passes on it, while the live facts name the new record SHA-256."""
+    out = []
+    dt = tmp / 'harness' / 'loop' / 'disclosure_track.json'
+    dt.parent.mkdir(parents=True, exist_ok=True)
+    dt.write_text(json.dumps({'claims': [{'id': 'C1'}], 'facts': []}))
+    fz = tmp / 'artifacts' / 'src' / 'frozen' / 'r7'
+    (fz / 'harness' / 'loop').mkdir(parents=True)
+    (fz / 'forensics').mkdir(parents=True)
+    shutil.copyfile(dt, fz / 'harness' / 'loop' / 'disclosure_track.json')
+    shutil.copyfile(tmp / 'forensics' / 'ledger.json', fz / 'forensics' / 'ledger.json')
+    pg = tmp / 'artifacts' / 'dero-r1-r7.html'
+    if FX.page_dyn_root(tmp, pg) != fz:
+        out.append(f'GF7 the frozen input root of a closed page is not found: {FX.page_dyn_root(tmp, pg)}')
+        return out
+    Fz = FX.build(*FX.page_inputs(tmp, fz))
+    f = Fz.facts
+    S = lambda k: f'<span class="fxn" data-fx="{k}" data-src="{f[k]["file"]}" data-sha="{f[k]["sha256"]}">{FX.fmt(f[k]["value"])}</span>'
+    pg.write_text(page(FX, Fz, f'<p>track {S("dt_claims")}</p>'))
+    sa = tmp / 'artifacts' / 'dero-src-arch.html'
+    sa.write_text(FX.SA_BEGIN + FX.SA_END)
+    frozen_sha = f['dt_claims']['sha256']
+    dt.write_text(json.dumps({'claims': [{'id': 'C1'}, {'id': 'C2'}], 'facts': []}))   # S7 rewrites the live record
+    Fl = FX.build(FX.newest_dataset(tmp), tmp)
+    if Fl.facts['dt_claims']['sha256'] == frozen_sha:
+        out.append('GF7 the live facts still name the frozen record')
+    Fz2 = FX.build(*FX.page_inputs(tmp, fz))
+    if Fz2.facts['dt_claims']['sha256'] != frozen_sha or Fz2.facts['dt_claims']['value'] != 1:
+        out.append(f'GF7 a closed page reads the live record: {Fz2.facts["dt_claims"]}')
+    okk, det = FX.g30(tmp, pg, sa)
+    if not okk:
+        out.append(f'GF7 G30 fails on a closed page whose live record moved: {det[:200]}')
+    return out
 
 
 def committed():
@@ -168,13 +208,17 @@ MUTATIONS = [
     ("        if rx.search(vis):\n            p.append(f'private text in the sections: {n}')", "        if False:\n            pass"),
     ("            if not b or sha(b) != h:", "            if not b:"),
     ("    seg = re.sub(r'<script\\b.*?</script>', ' ', seg, flags=re.S)\n", "\n"),
-    ("    seg = FXID.sub(' ', seg)\n", "\n"),
+    ("    seg = FXID.sub(_fxid_text, seg)\n", "\n"),   # r26 verify: the identifier-span rule (facts._fxid_text)
+    # r26 GF7 (closed pages read their frozen record files)
+    ("            p = self.rec_root / rel\n", "            p = self.root / rel\n"),
+    ("    return d if d is not None and d.is_dir() else None\n", "    return None\n"),
+    ("        FP = build(pds, root, prec)\n", "        FP = F\n"),
 ]
 
 
 def main():
     f = kats(HARNESS) + committed()
-    print('GF1-GF6:', 'PASS' if not f else 'FAIL\n  ' + '\n  '.join(f))
+    print('GF1-GF7:', 'PASS' if not f else 'FAIL\n  ' + '\n  '.join(f))
     if f:
         return 3
     rc, caught = 0, 0

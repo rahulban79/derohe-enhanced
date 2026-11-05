@@ -115,8 +115,8 @@ func clamp_topo_range(start, end, top int64, limit int64) (int64, int64, error) 
 }
 
 // block_id_at_topo reads the block id stored at a topoheight without the panic that
-// Load_Block_Topological_order_at_index raises on a clean (unset) record.
-func block_id_at_topo(topo int64) (crypto.Hash, error) {
+// Load_Block_Topological_order_at_index raises on a clean (unset) record. method is the caller's literal (counter).
+func block_id_at_topo(method string, topo int64) (crypto.Hash, error) {
 	r, err := chain.Store.Topo_store.Read(topo)
 	if err != nil {
 		return crypto.Hash{}, err
@@ -124,7 +124,20 @@ func block_id_at_topo(topo int64) (crypto.Hash, error) {
 	if r.IsClean() {
 		return crypto.Hash{}, fmt.Errorf("no block recorded at topoheight %d", topo)
 	}
+	if crypto.Hash(r.BLOCK_ID).IsZero() { // r26 B104: a pruned slot (state version set, block id zero): typed, no read
+		return crypto.Hash{}, refuse_state(method, topo, state_prune_floor())
+	}
 	return r.BLOCK_ID, nil
+}
+
+// check_block_topo refuses a block read at a topoheight below the prune point before any store read (r26 B104): the
+// topo record there names no block (fastsync prefill, p2p/bootstrap_pipeline.go) or a block discarded by --prune,
+// and the answer used to be an untyped -32098 or a recovered panic. Same class as GetEncryptedBalance (r25 B85).
+func check_block_topo(method string, topo int64) error {
+	if floor := state_prune_floor(); floor > 0 && topo < floor {
+		return refuse_state(method, topo, floor)
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------- GetBlockHeadersRange
@@ -133,6 +146,11 @@ type GetBlockHeadersRange_Params struct {
 	Start int64 `json:"start_topoheight"`
 	End   int64 `json:"end_topoheight"`
 }
+
+// DisallowUnknownFields makes jrpc2 refuse a parameter name the method does not have with -32602 (r26 B104): a probe
+// that sent {start, end} decoded as start_topoheight = end_topoheight = 0 and read topoheight 0, below the prune
+// point. The topo-addressed explorer methods are strict; the upstream methods (rpc/ package, guarded) are not.
+func (GetBlockHeadersRange_Params) DisallowUnknownFields() {}
 
 type GetBlockHeadersRange_Result struct {
 	Headers []BlockHeader_Range `json:"headers"`
@@ -199,6 +217,9 @@ func GetBlockHeadersRange(ctx context.Context, p GetBlockHeadersRange_Params) (r
 	if err != nil {
 		return
 	}
+	if err = check_block_topo("GetBlockHeadersRange", start); err != nil { // r26 B104
+		return
+	}
 	release, err := acquire_range_slot(ctx)
 	defer release()
 	if err != nil {
@@ -210,7 +231,7 @@ func GetBlockHeadersRange(ctx context.Context, p GetBlockHeadersRange_Params) (r
 			return
 		}
 		var hash crypto.Hash
-		if hash, err = block_id_at_topo(t); err != nil {
+		if hash, err = block_id_at_topo("GetBlockHeadersRange", t); err != nil {
 			return
 		}
 		var h BlockHeader_Range
@@ -230,6 +251,8 @@ type GetMiniBlocks_Params struct {
 	Hash       string `json:"hash,omitempty"`
 	TopoHeight int64  `json:"topoheight"` // used when hash is empty
 }
+
+func (GetMiniBlocks_Params) DisallowUnknownFields() {} // r26 B104: an unknown parameter name is -32602, not topoheight 0
 
 type MiniBlock_Print struct {
 	Index      int      `json:"index"`
@@ -296,7 +319,10 @@ func GetMiniBlocks(ctx context.Context, p GetMiniBlocks_Params) (result GetMiniB
 		if p.TopoHeight < 0 || p.TopoHeight > chain.Load_TOPO_HEIGHT() {
 			return result, fmt.Errorf("topoheight %d out of range 0..%d", p.TopoHeight, chain.Load_TOPO_HEIGHT())
 		}
-		if hash, err = block_id_at_topo(p.TopoHeight); err != nil {
+		if err = check_block_topo("GetMiniBlocks", p.TopoHeight); err != nil { // r26 B104
+			return
+		}
+		if hash, err = block_id_at_topo("GetMiniBlocks", p.TopoHeight); err != nil {
 			return
 		}
 	}
@@ -379,6 +405,8 @@ type GetDifficultyHistory_Params struct {
 	End   int64 `json:"end_topoheight"` // 0 = chain top
 }
 
+func (GetDifficultyHistory_Params) DisallowUnknownFields() {} // r26 B104
+
 type DifficultyPoint struct {
 	TopoHeight int64  `json:"topoheight"`
 	Height     int64  `json:"height"`
@@ -439,6 +467,16 @@ func GetDifficultyHistory(ctx context.Context, p GetDifficultyHistory_Params) (r
 	if start, end, err = clamp_topo_range(start, end, top, MAX_DIFFICULTY_HISTORY); err != nil {
 		return
 	}
+	// r26 B104: a window that reaches below the prune point is clipped to it (the history this node holds, like end is
+	// clipped to the top); a window that ends below it is refused, typed. Pruned records name no block: their
+	// Load_Block_Difficulty panicked inside the recover (ERROR + stack, -32098).
+	if floor := state_prune_floor(); floor > 0 && start < floor {
+		if end < floor {
+			err = refuse_state("GetDifficultyHistory", end, floor)
+			return
+		}
+		start = floor
+	}
 	release, err := acquire_range_slot(ctx)
 	defer release()
 	if err != nil {
@@ -451,8 +489,8 @@ func GetDifficultyHistory(ctx context.Context, p GetDifficultyHistory_Params) (r
 			return
 		}
 		r, e := chain.Store.Topo_store.Read(t)
-		if e != nil || r.IsClean() {
-			continue // a hole (e.g. a clean record) is skipped, not fatal
+		if e != nil || r.IsClean() || crypto.Hash(r.BLOCK_ID).IsZero() {
+			continue // a hole (a clean record, or r26: a pruned slot that names no block) is skipped, not fatal
 		}
 		d := chain.Load_Block_Difficulty(crypto.Hash(r.BLOCK_ID))
 		df, _ := new(big.Float).SetInt(d).Float64()

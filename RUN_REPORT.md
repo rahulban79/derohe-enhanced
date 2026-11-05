@@ -1455,3 +1455,91 @@ self-inflicted malformed probe: wrong GetBlockHeadersRange param names read topo
   residual; B51 weight decision; B19 guard decision (user); B43 root cause.
 - Live reads after the restart: B36 24 h emission (from 2026-11-05 06:57, the r25 restart reset the segment), B39 24 h flips; B35 launchd install (user).
 - Carried: B1 UDP 11011 (user); report-only B11/B30/B31/B45/B46; C1 upstream (B8); the paused miner rows.
+
+## Round 26 (2026-11-04) — node-only round (miner paused) plus forensics dataset v2 by defect class: sync-hold decay, duplicate-race counting, typed explorer errors and decoy windows, a structural transcript-binding test, dataset v2 with classes and bounds, the a2 replay to our treehash, a second independent auditor and the v2 frontend; installed as +22102026.r26 (derod restart pending)
+
+**Why.** The R25 measurement (rft §13 R25) left three node findings: `insert_failed` counted concurrent duplicate
+deliveries (B103), a probe with wrong parameter names silently read topoheight 0 (B104), and sync-hold strikes never
+decayed (B99). The user asked (rft §2.15, §0.8.9) for the forensics to separate the defect classes and to state each
+bound honestly, with discussion input kept out of the evidence (§0.8.10). Base 3c84667f; registry `r26`, tracks miner
+`paused`, node `active`.
+
+**Open loop.** Workflow `wf_4edf0851-905`: 6 dimensions (harness-tooling, forensics-data, forensics-classes,
+disclosure-cryptoinfl, node-net, node-rpc), a builder and a fresh-context refute-by-default verifier each, clones at
+3de579bd; 0 REFUTED. Verifier fixes merged: forensics-data (SC count compared `tx_type` to `SC_TX`, the decoder emits
+`SC`: 199 SC txs were counted 0), harness-tooling (a process-row claim followed no snapshot; ADDRESS_RX untested),
+forensics-classes (a hard-coded DC1-observable 0). Integration workflow `wf_159d7b8a-386`: merge, then audit2 and
+frontend2, each builder plus verifier.
+
+**Shipped** (merge fea0206b, 117 files; audit2 + frontend2 c802e4bc, 29 files; version 5b631a01; consensus guard PASS
+in every run, 7 consensus-package files vs bf274e5, all pre-existing):
+- **P2P (B99, B103, B102):** strikes decay (a failure more than 10 min after the last hold restarts at strike 1); an
+  accepted relayed block that brings us level with a peer forgives it; when no peer synced and a held peer is ahead,
+  held peers are tried; a duplicate miniblock from two peers inside the PoW-verify window is counted
+  `reason="duplicate_race"` and as a non-first delivery, and every refusal line carries the error text; the invalid_pow
+  policy is kept, its comment corrected.
+- **RPC (B100, B104, B43):** NameToAddress unknown name → −32032; GetBlockHeadersRange / GetMiniBlocks /
+  GetDifficultyHistory refuse unknown parameter names (−32602) and reads below prunedheight (−32031) before any store
+  read; GetDifficultyHistory no longer panics on a pruned-shape record; GetRandomAddress applies its decoy window at
+  every height, clamped at the prune floor (B43 root cause: stale decoys in the simulator; TestR24TxpoolLoad 6/6 + 3/3
+  under benchlock vs 4 of 6 failing on r25).
+- **Crypto and disclosure (B113):** FQ4 structural transcript-binding test (every challenge and its preimage, the u_x
+  base and the inner-product call identical at the head, Release152 and the genesis-era tag; no invalid proof built,
+  §9 NO-GO); FQ5 recorded as INTERPRETATION: no public-data test separates a defect-accepted proof from an honest one.
+- **Tooling:** S5 shadow teardown (B98), log_intel across DST and the paused-miner clean-clone project run (B101),
+  byte-exact src-arch and the B93b publish scrub (B93), network-class area metrics (B105), `privkit.scrub_argv` for new
+  snapshots (B119), argument parsers for two tools (B117).
+
+**Monetary forensics (rft §0.8, §0.8.9).** Dataset v2 `forensics/r26/` (v1 sealed and re-verified byte for byte, G28):
+1,796/1,796 window tx bodies RAW, the 1,575 v1 pending-fee blocks settled (B96; SC payouts stay pending); defect classes
+DC0–DC3 with coverage and bounds (G31 bound honesty, G32 class separation; B107–B114; G32's record half is vacuous
+until v2 records are tagged, B126); the a2 replay of the held archive through the HF3 path, 31,025 blocks
+7,467,516..7,498,540, ends at our treehash `ca11cc21…` (B123: the "wall 4" at 7,467,546 was a tool artifact). audit2, a
+second implementation with its own Keccak, decoders and HF3 parser, re-ran everything from RAW: audit-1 of v2 19 HOLD /
+4 FAIL / 1 UNRESOLVED, fixed at source (B127 L9, B128 G29 on every version), audit-2 20 HOLD / 3 FAIL / 1 UNRESOLVED
+(A10c), history kept; two independent a2 replays reproduced roots.jsonl byte for byte. The frontend renders v2 by
+defect class (G30 now requires the known and class sections and traces digits inside identifier spans; KAT FE1–FE8).
+
+**Pipeline.**
+- `pipeline_20261104T175125` (full run 1): S1–S3k PASS; S3b FAIL 1327/1329, 2 STALE mutation anchors after B103/B99 (B129) → re-anchored + KAT `test_gomut_anchors_r26.py` (d3189e1a).
+- `pipeline_20261104T193301` (full run 2, install): S1–S6 PASS (mutations 1329/1329; race 26 packages 0 races; shadow 120 blocks, 240 treehashes, 0 mismatches, control the live r25 build); installed; S7 FAIL at `area_intel --live` (14 r25 forensics anchors on the rewritten `forensics_intel.json`, B130) → per-round sealed copy + KAT `test_area_seal_r26.py` (c643634f).
+- `pipeline_20261104T213409` (project-only, run 3): PASS, KATs 35/35, harness mutations 34/34, gates 29/32 (+3 PAUSED, miner), coherence 0 drifts.
+- `pipeline_20261104T220624` (full, `--no-install`; registry `pipeline_full`): PASS; flaky 32 ×3, 0 flaky; soundness 29 tests; KATs 47 files; mutations 1329/1329; race 26 packages 0 races; S4b/S4c PAUSED (miner); shadow 120 blocks, 240 treehashes, 0 mismatches, 0 regressions (control `bin/derod.22102026.r25-backup`, the live build); S7 KATs 35/35, harness mutations 34/34, gates 29/32 (+3 PAUSED, miner), coherence 3,545 statements, 0 drifts.
+
+**Installed** `bin/derod`, `bin/dero-miner`, `bin/dero-wallet-cli` as +22102026.r26 by S6 (staged in `bin/.staging`,
+atomic rename; backups `bin/*.22102026.r25-backup`); `bin/derod --version` `3.6.0-153.DEROHE.STARGATE+22102026.r26`, sha256 `f6ff3b005872f1cd791310f769e7b67c9dc5d00e340b47c0ebae9fd12bcc5692`. No new derod
+flag or environment variable. The running derod (r25) keeps its inode until the user restarts it (rft §11, derod only);
+the miner stays stopped (paused).
+
+**Live measurement:** pending (the r26 derod restart).
+
+**Measured live (2026-11-05, rft §13 R26).** The r25 derod ended by a typed console exit at 07:48:15 and the user
+restarted derod onto r26 at 07:48:21 (pid 93240); read-only window to 08:50, 55 samples
+(`harness/runtime/r26_live_window_20261105.txt`). 55/55 synced, lag 0, tip block age 14.9 s at 08:56:59, 13–14 out / 0
+in; 0 ERROR / 0 WARN since the restart (G15 clear; 1,201 lines), 0 recovered panics, 0 bans; the r25 run's final
+segment (26,943 lines) also 0 ERROR / 0 WARN. 176 blocks, 4 txs, 8 side blocks, 1 reorg (depth 1). CONFIRMED live: B103
+(duplicate_race 767, insert_failed 0 in 55/55 samples against 834 in r25's first hour; every refusal line carries its
+`collision` error), B100 −32032 for an unknown name, B104 −32602 for unknown parameter names (GetBlockHeadersRange,
+GetMiniBlocks, GetDifficultyHistory; harmless probes), B60 across a restart (reorg lifetime `starts` 2), B18 again.
+Emission 218 audited, 0 alerts, payees 1,367/1,367; disclosure `--live` S1–S4 PASS, census 15,506 scalars 0
+non-canonical; G28 PASS on the measured build. **B36 24 h read:** the r25 segment (2026-11-04 06:57:28 → 2026-11-05
+07:48:16, 24 h 50 min), re-audited offline on an APFS clone: 4,846 blocks 7,855,177..7,860,022 all ok, 0 alerts,
+issued = formula 149,014,500, and its checkpoint at 7,860,000 equals the live series; the segment's payee counts are not
+readable (they lived in the r25 process) (`harness/runtime/r26_b36_emission24h_20261105.txt`). Unit-proven, live
+pending-no-event: B99 decay / forgiveness / held fallback (holds 0), B47, B48, B57, B61, B85, B43. Decisions: B95 not
+pursued (the HF3-path archive replay, B123, already ends at our treehash; wall 1 has no held archive); B121 no history
+rewrite, plus a sync-time check that refuses any `harness/runtime/` or `snap_*/shadow_*.json` path (109/109 tracked
+files excluded); B131 FIXED (pubscrub machine-model and tool-path pass, planted control FN 6 → 0, FP 0, KAT HT12). New:
+B132 (the −32602 message doubles its code), B133 (project-only wall 512 → 1,901 s), B134 (area_intel books recorded
+forensics audit findings as regressions). No derod error to fix in code; no new binary.
+
+**Open after Round 26:**
+- Live reads after the restart: DONE 2026-11-05 (B103, B100, B104, B60 across a restart, G15 confirmed); still waiting for an event:
+  B99 decay and forgiveness, B47, B48, B57, B61; new B132–B134.
+- Forensics: (a2) state at 7,415,465 not pursued (B95, decided 2026-11-05: B123 already ends at our treehash); SC payouts and the FQ2/FQ3
+  window-wide census on the RAW v2 bodies (B110); a second holder for the 67 multi-block TXIDs (B97); v2 record tagging
+  (B126); the balance-tree census at 7,498,540 on a stopped-node clone (B111).
+- Tooling: 33 tools without an argument parser (B120); closed in the closed loop: B129 (stale mutation anchors), B130 (volatile area anchors); private-history raw argv and LAN address (B121, decided 2026-11-05: no rewrite, sync-time check);
+  pubscrub machine-model / tool-path gap (B131, fixed 2026-11-05); pubscrub residual on the migration report (B122); the node-operations skill file (B92).
+- Carried: B19 (user), B51 decision and live read, B35 launchd (user), B36 24 h emission (done 2026-11-05 for the r25 segment; payee counts not readable),
+  report-only B11/B30/B31/B45/B46, C1 upstream (B8), the paused miner rows.

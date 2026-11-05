@@ -89,6 +89,45 @@ def pseudonymise_obj(o, salt, skip=SKIP_KEYS):
     return o
 
 
+# r26 B119: a process command line (mine_runtime --capture snapshots the derod argv) carries more than peer addresses:
+# the node tag, the integrator (payout) address and the home path. Each flag below has its value replaced by a token.
+ARGV_PRIVATE_FLAGS = {'--node-tag': '<node-tag>', '--integrator-address': '<address>'}
+ADDRESS_RX = re.compile(r'\b(?:dero|deto)[0-9a-z]{60,}\b')          # a DERO address shape (bech32, mainnet/testnet)
+HOME_RX = re.compile(r'/Users/[^/\s=:]+|/home/[^/\s=:]+')
+
+
+def scrub_argv(line, salt):
+    """one `ps` command line made safe for a tracked snapshot: every non-reserved IPv4 pseudonymised (the peer
+    observatory's pseudonym, so a priority peer reads the same everywhere), the values of ARGV_PRIVATE_FLAGS replaced
+    by their token (`--flag=v` and `--flag v`), any address-shaped token replaced by <address>, and a home path
+    written ~. The pid/etime/rss columns and every other flag are kept, so the row still anchors. Pure."""
+    toks = str(line).split(' ')
+    out, hide = [], None
+    for t in toks:
+        if hide:
+            out.append(hide)
+            hide = None
+            continue
+        k, eq, _ = t.partition('=')
+        if k in ARGV_PRIVATE_FLAGS:
+            if eq:
+                t = f'{k}={ARGV_PRIVATE_FLAGS[k]}'
+            else:
+                hide = ARGV_PRIVATE_FLAGS[k]
+        out.append(t)
+    s = ' '.join(out)
+    s = ADDRESS_RX.sub('<address>', s)
+    s = HOME_RX.sub('~', s)
+    return pseudonymise_text(s, salt)
+
+
+def argv_scrubbed(line):
+    """r26 verify (B119): True when `line` is already in scrub_argv form (scrubbing it again changes nothing). A
+    pre-B119 snapshot line (raw home path, node tag, address or peer IPv4) is False. Salt-free: an already
+    scrubbed line holds no non-reserved IPv4, so the salt never comes into play. Pure."""
+    return scrub_argv(line, '0' * 64) == str(line)
+
+
 def mask(s):
     """salt-free matching form: every non-reserved IPv4 and every peer pseudonym -> one token."""
     s = IPV4.sub(lambda m: m.group(1) if reserved(m.group(1)) else TOKEN, str(s or ''))

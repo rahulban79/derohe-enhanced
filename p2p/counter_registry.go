@@ -60,6 +60,8 @@ var p2p_counters = []string{
 	"p2p_objects_unserved_total",       // r25 (CO24-N6)
 	"p2p_sync_short_answers_total",     // r25 (CO24-N6)
 	"p2p_sync_peer_holds_total",        // r25 (B47)
+	"p2p_sync_held_fallbacks_total",    // r26 (B99)
+	"p2p_sync_relay_forgiven_total",    // r26 (B99)
 }
 
 func init() {

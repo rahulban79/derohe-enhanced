@@ -57,8 +57,17 @@ const (
 	MBL_REFUSED_UNREGISTERED = "unregistered_miner" // key hash not registered (IsAddressHashValid)
 	MBL_REFUSED_TIP          = "tip_unexpanded"     // a 4-byte tip that matches no known block
 	MBL_REFUSED_POW          = "invalid_pow"        // VerifyMiniblockPoW failed (the peer is also penalised)
-	MBL_REFUSED_INSERT       = "insert_failed"      // InsertMiniBlock refused it
+	MBL_REFUSED_INSERT       = "insert_failed"      // InsertMiniBlock refused it for a reason other than a duplicate
+	// r26 (B103): InsertMiniBlock refused it because the same miniblock is already in the collection. NotifyMiniBlock
+	// checks IsCollision before VerifyMiniblockPoW and InsertMiniBlock checks it again under the collection lock
+	// (block/miniblockdag.go), so the second of two peers delivering one miniblock inside the PoW-verify window lands
+	// here. Before r26 it was counted as insert_failed (r25 live: 3,102 of 3,166 refusals in 17,230 s).
+	MBL_REFUSED_DUPLICATE = "duplicate_race"
 )
+
+// MBL_REFUSAL_ERR_MAX bounds the error text a refusal line carries (r26, B103): a collision error prints the whole
+// serialized miniblock in hex (block/miniblockdag.go), well under this; the bound only keeps a future long text short.
+const MBL_REFUSAL_ERR_MAX = 256
 
 // FirstSeen is when this node first saw an object and from whom (Peer 0 = this node: mined here or submitted by RPC).
 type FirstSeen struct {
@@ -204,7 +213,7 @@ var block_duplicates = metrics.Set.GetOrCreateCounter("p2p_block_offer_duplicate
 
 // every reason is on /metrics from the start (0 until it fires), as the p2p_counters list does for plain counters
 var miniblock_refusal_reasons = []string{MBL_REFUSED_TOO_MANY, MBL_REFUSED_UNDECODABLE, MBL_REFUSED_STALE, MBL_REFUSED_FINAL,
-	MBL_REFUSED_UNREGISTERED, MBL_REFUSED_TIP, MBL_REFUSED_POW, MBL_REFUSED_INSERT}
+	MBL_REFUSED_UNREGISTERED, MBL_REFUSED_TIP, MBL_REFUSED_POW, MBL_REFUSED_INSERT, MBL_REFUSED_DUPLICATE}
 var block_reject_reasons = []string{"past_missing", "future_timestamp", "timestamp_not_after_parent", "invalid_pow", "invalid_size",
 	"tx_double_spend", "invalid_tx", "invalid_block", "panic", "advance_block", "previous_block", "other", "unknown"}
 
@@ -223,9 +232,36 @@ func (c *Connection) refuse_miniblock(reason string, height uint64, err error) e
 	if log_it, held := miniblock_refused.add(reason, time.Now()); log_it {
 		// the package logger, never c.logger: a connection's logger is named after the peer's ip:port, and these lines
 		// name the sender only by its self-chosen peer_id (a pseudonym)
-		logger.V(1).Info("Miniblock refused", "reason", reason, "height", height, "peer_id", peer_label(conn_peer(c)), "suppressed", held)
+		// r26 (B103): with the error text, so an insert_failed that is not a duplicate says what refused it
+		logger.V(1).Info("Miniblock refused", "reason", reason, "height", height, "peer_id", peer_label(conn_peer(c)), "suppressed", held,
+			"error", refusal_error_text(err))
 	}
 	return err
+}
+
+func refusal_error_text(err error) string {
+	if err == nil {
+		return ""
+	}
+	t := err.Error()
+	if len(t) > MBL_REFUSAL_ERR_MAX {
+		t = t[:MBL_REFUSAL_ERR_MAX] + "..."
+	}
+	return t
+}
+
+// insert_refusal_reason names an InsertMiniBlock refusal (r26, B103). collides is the collection's IsCollision,
+// asked after the refusal: the collection only grows between purges, so a miniblock that collides now and was not
+// in it at the pre-check was inserted by another delivery in between (a duplicate race). A duplicate is also a
+// delivery that was not first (the same counter the IsCollision pre-check feeds), so first-relay shares stay true.
+// Counting only: the caller still returns InsertMiniBlock's error unchanged (a sender's failure_reason, own_broadcast.go,
+// reads "collision" in it as "duplicate").
+func (c *Connection) insert_refusal_reason(mbl block.MiniBlock, collides func(block.MiniBlock) bool) string {
+	if collides != nil && collides(mbl) {
+		c.note_miniblock_delivery(false)
+		return MBL_REFUSED_DUPLICATE
+	}
+	return MBL_REFUSED_INSERT
 }
 
 // block_reject_reason names the error value Add_Complete_Block returned (blockchain/blockchain.go). "" = not a
@@ -273,6 +309,9 @@ func note_block_result(c *Connection, cbl *block.Complete_Block, err error, ok b
 	blid := cbl.Bl.GetHash()
 	if ok {
 		alt_track.note(blid, int64(cbl.Bl.Height))
+		if c != nil && chain != nil { // r26 (B99): a peer whose relayed block brings us level with its claim is forgiven
+			c.sync_relay_served(chain.Get_Height())
+		}
 		return
 	}
 	reason := block_reject_reason(err, ok)

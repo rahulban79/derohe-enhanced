@@ -129,6 +129,17 @@ used to panic or answer wrongly, or an additive JSON field that old clients igno
 | GetTransaction for a txid the node does not hold | status OK, `as_hex` `""`, `block_height` 0 (unchanged) | the same, plus `txs_status` (`in_chain` / `in_pool` / `not_found`, index-aligned with `txs`); `rpc_tx_not_found_total` |
 | GetInfo | `total_supply` = CalcSupply(height) / 100000, unlabelled | unchanged value, plus `total_supply_basis`: the emission formula, not a count of coins (disclosure FX-N9) |
 
+Typed answers from r26 (node-rpc; same compat rule):
+
+| Call | Before r26 | From r26 |
+|---|---|---|
+| NameToAddress for a name nobody registered | -32098 `leaf not found: ...` (the raw store error, code of "operating environment" faults) | `-32032 name not found: <name>` (name echoed up to 64 bytes), `rpc_name_not_found_total`; other store errors unchanged |
+| GetEncryptedBalance with `topoheight` left out, on a pruned node | (since r25) `-32031 ... topoheight 0 is below pruned topoheight P`: an omitted field is JSON 0 = genesis | unchanged, now pinned by a test; send `-1` for the tip |
+| GetBlockHeadersRange / GetMiniBlocks / GetDifficultyHistory with a parameter name the method does not have (e.g. `start`/`end`) | ignored: the real fields decoded as 0, so the call read topoheight 0 | `-32602 invalid parameters` (jrpc2 strict fields; the wrapper does not name the field). `{}` is still accepted |
+| GetBlockHeadersRange / GetMiniBlocks (by topoheight) below `prunedheight` | -32098 `topoheight N: empty block` (no log line) or a block-not-found text | `-32031 state not available: topoheight N is below pruned topoheight P`, `rpc_state_unavailable_total{method}`; also for a topo record that names no block (pruned shape) |
+| GetDifficultyHistory over pruned topoheights | a pruned record panicked in Load_Block_Difficulty (recovered: -32098 + ERROR + stack) | a window reaching below `prunedheight` is clipped to it; one ending below it is `-32031`; a pruned-shape record is skipped as a hole |
+| GetRandomAddress decoy window | accounts unchanged over the last 5 topoheights, but only above topoheight 100 (on shorter chains every account, including ones that just mined or were just used as a ring member: wallet txs then failed `statement 0 verification failed` / `Invalid Nonce`) | the 5-topoheight window at every height, clamped at the prune point; mainnet answers are unchanged |
+
 The other `panic(err)` sites in these handlers are store or start-up invariants and keep the loud ERROR + stack
 (audit: r25 rpcrobust evidence `b86_panic_audit.txt`). The wallet RPC server's `/json_rpc` (walletapi/rpcserver,
 r25 B40) now accepts `application/json; charset=utf-8` and answers a wrong method or media type with a JSON-RPC

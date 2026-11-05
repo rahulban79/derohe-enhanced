@@ -219,6 +219,7 @@ def ti10(T, mirror_mod=None):
         (src / 'MEMORY.md').write_text('- [a](a.md) x\n')
         (src / 'a.md').write_text('wallet WALLETX in a sentence; peer 82.1.2.3.\n')
         (src / 'b.md').write_text('mail me at someone@example.org\n')
+        (src / 'd.md').write_text('the miner host is this Apple **M1 Ultra Mac' ' Studio** (20 cores); a LAN Mac' 'Book Pro runs a node\n')
         (src / 'c.md').write_text(f'a home path {HOME_PLANT} the stand-in scrubber does not remove\n')
         (repo / 'harness' / 'intel').mkdir(parents=True)
         shutil.copy2(SRC, repo / 'harness' / 'intel' / 'tooling_intel.py')
@@ -232,7 +233,7 @@ def ti10(T, mirror_mod=None):
                              '--pubscrub', str(scrub)], capture_output=True, text=True, timeout=120)
         stamps = sorted(p.name for p in dest.iterdir() if p.is_dir()) if dest.exists() else []
         out['stamp'] = len(stamps) == 1 and (dest / 'LATEST').read_text().strip() == stamps[0] \
-            and len((dest / stamps[0] / 'MANIFEST.sha256').read_text().splitlines()) == 4
+            and len((dest / stamps[0] / 'MANIFEST.sha256').read_text().splitlines()) == 5
         r2 = subprocess.run(['bash', str(tools / 'backup_memory.sh'), '--src', str(src), '--dest', str(dest)],
                             capture_output=True, text=True, timeout=120)
         out['no_churn'] = len([p for p in dest.iterdir() if p.is_dir()]) == 1 and 'unchanged' in r2.stdout
@@ -241,6 +242,9 @@ def ti10(T, mirror_mod=None):
         b = (mir / 'b.md').read_text() if (mir / 'b.md').exists() else ''
         out['scrubbed_a'] = '<wallet>' in a and '82.1.2.3' not in a and '<ip>' in a
         out['email_b'] = '<e-mail>' in b and '@example.org' not in b
+        dd = (mir / 'd.md').read_text() if (mir / 'd.md').exists() else ''
+        # r26: machine-model names are generalised in the mirror, the facts (20 cores) stay
+        out['models_d'] = bool(dd) and not any(x in dd for x in ('M1', 'Ultra', 'Mac' ' Studio', 'MacBook')) and '20 cores' in dd
         out['refused_c'] = not (mir / 'c.md').exists() and r1.returncode == 1 and ' - c.md' in (mir / 'MANIFEST.sha256').read_text()
         n, why = T.mirror_drift(src, mir)
         out['drift_only_refused'] = n == 1 and why[0].startswith('c.md: refused')
@@ -284,6 +288,7 @@ KATS = [('TI1', ti1), ('TI2', ti2), ('TI3', ti3), ('TI4', ti4), ('TI5', ti5), ('
         ('TI9', ti9), ('TI10', ti10), ('TI11', ti11), ('TI12', ti12)]
 
 MUTATIONS = [   # (file, find, replace, why)
+    (MIRROR_PY, '    t = generalise_models(t)\n', '', 'r26: machine-model names reach the memory mirror'),
     (SRC, "            'memory_index_over_300': sum(1 for l in lines if len(l) > INDEX_MAX_LINE),",
      "            'memory_index_over_300': sum(1 for l in lines if len(l) > INDEX_MAX_LINE * 2),", 'long index lines not counted'),
     (SRC, "            'memory_index_dangling': sorted({x for x in links if x not in files}),",
