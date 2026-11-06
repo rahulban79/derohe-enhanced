@@ -17,6 +17,9 @@ runs and a step whose live probe now fails is shown 'done, re-verify'; RC3 histo
 'R<id>: ... merge' subject is the merge commit; RC5 a <round>_NOTES.md in OUT is appended to the brief). Paths are overridable for the KAT: ROUND_CKPT_REPO, ROUND_CKPT_OUT,
 ROUND_CKPT_PROJ, ROUND_CKPT_SCRATCH, ROUND_CKPT_PUB.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import json, os, re, subprocess, sys, time, glob, shutil
 from pathlib import Path
 

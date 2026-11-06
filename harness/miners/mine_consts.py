@@ -5,6 +5,9 @@ Each entry below declares WHERE a rule lives and WHY it matters. The miner reads
 claim from the text it found, so the number on the page is the number in the tree. An entry whose needle is no
 longer on a line of its file produces no row: it lands in `unverified` with the file it was last seen in.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))

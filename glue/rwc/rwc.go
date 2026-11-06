@@ -85,7 +85,11 @@ func (rwc *ReadWriteCloser) Write(p []byte) (n int, err error) {
 		}
 	}
 	if err != nil || n == len(p) {
-		err = rwc.Close()
+		// r27: was err = rwc.Close(), which replaced a failed write's error with Close's (nil when the close
+		// succeeds): a short write was reported as success, against the io.Writer contract (n < len(p) => err != nil)
+		if cerr := rwc.Close(); err == nil {
+			err = cerr
+		}
 	}
 	return
 }

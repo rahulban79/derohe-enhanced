@@ -445,7 +445,9 @@ func (a *emission_auditor) series_record(kind string, topo int64, r emission.Rep
 		BLID: r.BLID, SegmentFrom: a.segFrom, SegmentTo: a.segTo, Verified: res.VerifiedHeights, Unverified: res.UnverifiedHeights,
 		Observed: res.ObservedEmission, Issued: res.IssuedEmission, Formula: res.FormulaEmission, Consistent: res.EmissionConsistent,
 		FormulaSupply: res.FormulaSupply, Alerts: res.Alerts, Fees: res.FeesRedistributed, SCDeposits: res.SCDeposits,
-		SCPayouts: res.SCPayouts, Burns: res.Burns}
+		SCPayouts: res.SCPayouts, Burns: res.Burns,
+		// r27 (B36): the payee totals too, so a stopped process's checkpoints keep them
+		V: emission.SeriesV2, Payees: res.Payees, PayeesVerified: res.PayeesVerified, PayeesExplained: res.PayeesExplained}
 }
 
 func (a *emission_auditor) record(topo int64, blid crypto.Hash, r emission.Report, err error, replaced bool) {
@@ -615,7 +617,7 @@ func (a *emission_auditor) summary() MonetaryIntegrity_Emission {
 func GetEmissionAudit(ctx context.Context) (result GetEmissionAudit_Result, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic occured. stack trace r %s", r)
+			err = rpc_internal_error(r) // r27: counted + logged like every other handler (was an untyped, uncounted text)
 		}
 	}()
 	return emission_state.snapshot(), nil

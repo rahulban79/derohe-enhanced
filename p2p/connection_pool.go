@@ -848,7 +848,10 @@ func trigger_sync() {
 								connection.sync_chain()
 								connection.logger.V(1).Info("sync done")
 								if chain.Get_Height() > before { // r25 (B47): it served blocks, so its earlier failures are forgiven
-									connection.sync_succeeded()
+									if connection.sync_succeeded() { // r27 (B99 observability): counted when it cleared something
+										sync_served_forgiven_total.Inc()
+										connection.logger.V(1).Info("sync peer forgiven: it served blocks", "our_height", chain.Get_Height())
+									}
 								}
 								if !sync_should_continue(round, before, chain.Get_Height(), connection.Height.Load(), connection.exited.Load() == 1) {
 									break

@@ -788,13 +788,16 @@ def explorer_decode(d):
     """Rows rebuilt from the embedded data alone (what the page's script shows): G30 compares them with the dataset."""
     ids = unb64x(d['ids'])
     out, t = [], 0
+    # r27 (B133): the two index sets once per call, not once per row (set(d['tierA']) rebuilt for each of the window's
+    # rows was 11.9 s of the 63.5 s frontend2 KAT body, 13 calls, cProfile 2026-11-05); same rows, same order
+    feep, tier_a = set(d['feep']), set(d['tierA'])
     for i in range(d['n']):
         t = d['ts'][0] if i == 0 else t + d['ts'][i]
         out.append({'height': d['first'] + i, 'blid': ids[64 * i:64 * i + 32].hex(), 'sha256': ids[64 * i + 32:64 * i + 64].hex(),
                     'timestamp_ms': t, 'miniblocks': int(d['mb'][i], 36),
-                    'fees': 'pending' if i in set(d['feep']) else d['fee'].get(str(i), 0),
+                    'fees': 'pending' if i in feep else d['fee'].get(str(i), 0),
                     'tx_hashes': d['txs'].get(str(i), []), 'hf3': d['hf3'].get(str(i), []),
-                    'tier': 'A' if i in set(d['tierA']) else 'B',
+                    'tier': 'A' if i in tier_a else 'B',
                     'tips': [ids[64 * (i - 1):64 * (i - 1) + 32].hex()] if i else None})
     return out
 

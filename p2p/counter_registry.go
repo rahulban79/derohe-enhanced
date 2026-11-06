@@ -62,6 +62,9 @@ var p2p_counters = []string{
 	"p2p_sync_peer_holds_total",        // r25 (B47)
 	"p2p_sync_held_fallbacks_total",    // r26 (B99)
 	"p2p_sync_relay_forgiven_total",    // r26 (B99)
+	"p2p_sync_strike_decays_total",     // r27 (B99 observability)
+	"p2p_sync_served_forgiven_total",   // r27 (B99 observability)
+	"p2p_bans_loaded_total",            // r27 (bans reloaded at start)
 }
 
 func init() {

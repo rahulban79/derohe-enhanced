@@ -32,11 +32,19 @@ B101, B104, B105, B116, B117, B119).
   HT11 B90 mine_evolution.ORDER lists every registry round that is not planned AND the next planned round.
   HT12 B131 tooling_intel.scrub_plants carries the machine-model and agent-tool-path shapes (box model, the R1 row's
       quoted claim, the lower-case node tag, the memory-link directory, both session settings files) and the clean
-      control keeps their near-misses; with the configured scrubber present, the planted control has 0 false negatives
-      and 0 false positives (pending, not failed, on a machine without it).
+      control keeps their near-misses. r27 (tools-kats, decoupled): on a FORGED root (its own TOOL_PATHS.json and rule
+      table) and FORGED scrubbers, never the out-of-repo one: a perfect scrubber scores 0 false negatives / 0 false
+      positives, a leaky one every plant, an over-eager one >= 1 false positive; a root without a rule table is pending.
+      The real scrubber's control is the measurement `tooling_intel.py --scrub-control` (§13), not this KAT: through
+      the mutant's own ROOT it failed HT12 for every tooling_intel mutation ([HT8,HT12], [HT10,HT12]).
+
+Mutation independence (r27, harness/kit/katmut.py): each mutation's reason starts with its defect (B<n>); OWNERS maps
+the defect to its KAT(s). A mutation is proved only when an owning KAT fails; a failure of another KAT is counted as
+coupled (target 0, exit 4).
 
   python3 -I harness/kat/test_harness_tooling_r26.py
-Exit 0 all ok · 3 a KAT failed · 4 a mutation was not caught (or was INVALID: the mutant did not load).
+Exit 0 all ok · 3 a KAT failed · 4 a mutation was not caught by its own KAT, was INVALID (the mutant did not load), or
+coupled to another KAT.
 """
 import ast, copy, importlib.util, json, os, shutil, subprocess, sys, tempfile
 from pathlib import Path
@@ -411,15 +419,58 @@ B131_SHAPES = ['M1' + '-Ultra', 'M1 hard' + 'ware', 'm1' + 'ultra', '.' + 'claud
                '.' + 'claude/settings.local.json']
 
 
+FAKE_SCRUB = r'''import json, sys
+from pathlib import Path
+mode, plants = json.loads(Path(__file__).with_suffix('.json').read_text())
+out = Path(sys.argv[1])
+for f in sys.argv[2:]:
+    t = Path(f).read_text()
+    if mode in ('perfect', 'eager'):
+        for p in sorted(plants, key=len, reverse=True):
+            t = t.replace(p, '<scrubbed>')
+    if mode == 'eager':
+        t = t.replace('Ultra', '<model>')
+    (out / Path(f).name).write_text(t)
+'''
+
+
+def forged_root(d, rules=True):
+    """a root whose harness/loop/TOOL_PATHS.json names a forged rule table (documentation-range LAN, a synthetic
+    wallet prefix, a mapped documentation peer); no real tool and no private value"""
+    r = Path(d)
+    (r / 'harness/loop').mkdir(parents=True)
+    if rules:
+        (r / 'rules.py').write_text("RULES = [('lan', re.compile(rb'198\\.51\\.100\\.\\d+')), "
+                                    "('wallet', re.compile(rb'" + 'de' + "roplantprefix'))]\nIP_MAP = {'203.0.113.9': 'peer-x'}\n")
+        (r / 'harness/loop/TOOL_PATHS.json').write_text(json.dumps({'sync_rules': str(r / 'rules.py')}))
+    return r
+
+
+def fake_scrubber(d, mode, plants):
+    f = Path(d) / f'fake_{mode}.py'
+    f.write_text(FAKE_SCRUB)
+    f.with_suffix('.json').write_text(json.dumps([mode, plants]))
+    return f
+
+
 def ht12(P):
     T = load(P['tool'], 'ht26tool')
-    plants = T.scrub_plants() or []
-    missing = [s for s in B131_SHAPES if not any(s in p for p in plants)]
-    near = 'Ultra' in T.CLEAN_CONTROL and 'settings.json' in T.CLEAN_CONTROL
-    sc = T.scrub_control()
-    live = sc.get('scrub_false_negatives')
-    ctl_ok = (live == T.PENDING) or (live == 0 and sc.get('scrub_false_positives') == 0)
-    return not missing and near and ctl_ok, f'missing shapes {missing} near-miss lines {near} control {sc}'
+    with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as e:
+        root = forged_root(d)
+        plants = T.scrub_plants(root) or []
+        derived = all(any(x in p for p in plants) for x in ('198.51.100.77', 'roplantprefixplanted', '203.0.113.9'))
+        missing = [s for s in B131_SHAPES if not any(s in p for p in plants)]
+        near = 'Ultra' in T.CLEAN_CONTROL and 'settings.json' in T.CLEAN_CONTROL
+        res = {m: T.scrub_control(root, fake_scrubber(d, m, plants)) for m in ('perfect', 'leaky', 'eager')}
+        bare = forged_root(e, rules=False)
+        none = T.scrub_plants(bare), T.scrub_control(bare, fake_scrubber(e, 'perfect', [])).get('scrub_false_negatives')
+    pf, lk, eg = res['perfect'], res['leaky'], res['eager']
+    ctl_ok = (pf.get('scrub_false_negatives') == 0 and pf.get('scrub_false_positives') == 0
+              and lk.get('scrub_false_negatives') == len(plants) and len(plants) >= 11
+              and eg.get('scrub_false_negatives') == 0 and (eg.get('scrub_false_positives') or 0) >= 1)
+    ok = not missing and near and derived and ctl_ok and none == (None, T.PENDING)
+    return ok, (f'missing shapes {missing} derived {derived} near-miss lines {near} perfect {pf} leaky {lk} eager {eg} '
+                f'no-rules {none}')
 
 
 KATS = [('HT1', ht1), ('HT2', ht2), ('HT3', ht3), ('HT4', ht4), ('HT5', ht5), ('HT6', ht6), ('HT7', ht7), ('HT8', ht8),
@@ -453,7 +504,7 @@ MUTATIONS = [   # (key, find, replace, why)
      'B93: the page prints the wall-clock build time'),
     ('gda', "    subprocess.run([sys.executable, str(HERE / 'prep_corpus.py')], capture_output=True)\n    src = sources(rows)",
      "    src = sources(rows)", 'B93: the fingerprint hashes the previous build\'s corpus index'),
-    ('area', "    if m.get('class', 'node') != 'network':\n        return kind, severity, title",
+    ('area', "    if c != 'network':\n        return kind, severity, title",
      "    if True:\n        return kind, severity, title", 'B105: a network KPI is booked as a node regression'),
     ('area', "    status = (f'OBSERVATION (network, self-detected {cur}, area_intel; no node regression)' if kind == NETWORK_KIND",
      "    status = (f'OBSERVATION (network, self-detected {cur}, area_intel; no node regression)' if False",
@@ -499,12 +550,30 @@ MUTATIONS = [   # (key, find, replace, why)
     ('tool', "    out['skill_fresh'] = int(fresh and required > 0)", "    out['skill_fresh'] = int(fresh)",
      'B92: no skill recording the round counts as fresh'),
     ('tool', "        if len(t.splitlines()) > SKILL_MAX_LINES:", "        if False:", 'B92: a skill over its budget is not reported'),
-    ('tool', "        plants += ['M1' + '-Ultra', '\"M1 hard' + 'ware ceiling\"', 'm1' + 'ultra', '~/.' + 'claude/projects/x/memory/',",
-     "        plants += ['~/.' + 'claude/projects/x/memory/',", 'B131: the machine-model plants are dropped from the control'),
-    ('tool', "                   '.' + 'claude/settings.json', '.' + 'claude/settings.local.json']",
-     "                   ]", 'B131: the session settings-file plants are dropped from the control'),
-    ('evo', "ORDER += ['R25', 'R26', 'R27']", "ORDER += ['R25', 'R26']", 'B90: the next planned round is missing from ORDER'),
+    ('tool', "MODEL_TOOL_PLANTS = ['M1' + '-Ultra', '\"M1 hard' + 'ware ceiling\"', 'm1' + 'ultra', '~/.' + 'claude/projects/x/memory/',",
+     "MODEL_TOOL_PLANTS = ['~/.' + 'claude/projects/x/memory/',", 'B131: the machine-model plants are dropped from the control'),
+    ('tool', "                     '.' + 'claude/settings.json', '.' + 'claude/settings.local.json']",
+     "                     ]", 'B131: the session settings-file plants are dropped from the control'),
+    ('tool', "        plants += MODEL_TOOL_PLANTS                                       # r26 B131",
+     "        pass                                       # r26 B131", 'B131: scrub_plants no longer adds the B131 shapes (r27)'),
+    ('tool', "    tool = Path(tool) if tool is not None else tool_path('pubscrub', root)",
+     "    tool = tool_path('pubscrub')", 'B131: scrub_control ignores the root and scrubber it is given (r27 coupling)'),
+    ('tool', "    fn = sum(1 for p in plants if p and p in scrubbed)", "    fn = 0",
+     'B131: the control never counts a false negative (r27)'),
+    ('evo', "ORDER += ['R25', 'R26', 'R27', 'R28']", "ORDER += ['R25', 'R26', 'R27']", 'B90: the next planned round is missing from ORDER'),
 ]
+
+
+# r27 (harness/kit/katmut.py): the KAT(s) that own each defect; a mutation is proved only by one of them
+OWNERS = {'B98': ['HT1'], 'B101': ['HT2', 'HT3'], 'B93': ['HT4'], 'B105': ['HT5'], 'B104': ['HT6'], 'B116': ['HT7'],
+          'B117': ['HT8'], 'B119': ['HT9'], 'B92': ['HT10'], 'B90': ['HT11'], 'B131': ['HT12']}
+
+
+def katmut():
+    spec = importlib.util.spec_from_file_location('katmut_r26', HARNESS / 'kit' / 'katmut.py')
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
 
 
 def run_kats(P):
@@ -524,7 +593,8 @@ def main():
         print(f"{'ok  ' if o else 'FAIL'} {name} {det[:400]}")
     if not all(o for _, o, _ in res):
         return 3
-    missed = 0
+    K = katmut()
+    missed = coupled = 0
     for key, find, repl, why in MUTATIONS:
         path = PATHS[key]
         text = path.read_text(encoding='utf-8')
@@ -548,12 +618,14 @@ def main():
                 continue
             P = {**PATHS, key: mut}
             res = run_kats(P)
-            survived = all(o for _, o, _ in res)
             failed = [n for n, o, _ in res if not o]
-        print(f"  {'MISSED ' if survived else 'proved '} {why}" + ('' if survived else f'  [{",".join(failed)}]'))
-        missed += survived
-    print(f'\nr26 harness-tooling KATs: {len(KATS)}/{len(KATS)} ok · mutations proved {len(MUTATIONS) - missed}/{len(MUTATIONS)}')
-    return 4 if missed else 0
+        verdict, extra = K.classify(failed, OWNERS.get(K.defect_of(why), []))
+        print(f"  {verdict:8} {why}" + (f'  [{",".join(failed)}]' if failed else '')
+              + (f'  COUPLED {extra}' if extra and verdict == 'proved' else ''))
+        missed += verdict != 'proved'
+        coupled += bool(extra) and verdict == 'proved'
+    print('\n' + K.summary('r26 harness-tooling KATs', len(KATS), len(MUTATIONS), missed, coupled))
+    return 4 if missed or coupled else 0
 
 
 if __name__ == '__main__':

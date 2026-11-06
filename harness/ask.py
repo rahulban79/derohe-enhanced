@@ -7,6 +7,9 @@
 It searches model/verified.json ONLY — the rows that survived the evidence contract — so an answer always comes
 with the file and line that proves it, and anything the harness refused to claim can never be returned.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import json, math, re, sys
 from pathlib import Path
 

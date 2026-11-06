@@ -1,9 +1,25 @@
-# DERO HE — enhanced node and miner (3.6.0-153 +22102026.r26)
+# DERO HE — enhanced node and miner (3.6.0-153 +22102026.r27)
 
 > **License: research and personal use only.** Use and distribution of this technology is subject to the Java Research License included herein ([`LICENSE`](LICENSE)); commercial use requires a separate license from the DERO Project.
 
 An enhanced build of the DERO HE daemon (`derod`), miner (`dero-miner`) and wallet CLI. Every change is
 non-consensus: it runs on the current mainnet with no fork. Highlights:
+
+Round 27 (`+22102026.r27`) adds:
+
+- **RPC:** a parameter that does not decode is answered with -32602 naming the field and the accepted parameter
+  names (in the message and in the error data); every error answer is counted by code, the typed refusal counters
+  read 0 from the start, and the panic recovers of the emission and supply audits are counted and logged.
+- **Peers:** a ban reloaded from the ban list at start is visible on /metrics and in `GetSyncInfo`.
+- **Config:** a consensus parameter set through the environment is reported at start (an ERROR line per field and a
+  metric); the node's behaviour is unchanged.
+- **Emission:** the audited-emission series records carry coinbase payee counts; archive and stream-adapter fixes.
+- **Tests:** known-answer tests for the smart-contract builtins and the difficulty rule (tests only, no change).
+- **Harness:** every tool answers `--help`, a stricter architecture-page build, a faster forensics frontend KAT and a
+  tracked after-restart live window.
+
+Read on a running node for 60 minutes after the restart: synced throughout, no ERROR or WARN lines, the -32602
+answers name the field, the reloaded ban and the pre-registered counters visible, payee counts in the series.
 
 Round 26 (`+22102026.r26`) adds:
 

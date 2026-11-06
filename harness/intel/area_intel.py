@@ -30,6 +30,9 @@ in its scorecard's 'held' list.
   python3 -I harness/intel/area_intel.py correct <round> <area>.<metric> --why TEXT (--pending | --value V --file F --quote Q)
                                                          # r25: correct one booked value by hand (a superseded live reading)
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import datetime, fnmatch, hashlib, json, re, sys, urllib.request
 from pathlib import Path
 
@@ -927,21 +930,34 @@ def alert(rule, v):
 # (an observatory KPI: another peer's lag, chain concentration, v2-remnant sightings), so the same move proposes a §7
 # OBSERVATION row (kind network-observation, severity medium, area WATCH), never a regression: the R25 measurement and
 # the R26 start each raised 5 high proposals that measured the network and were closed by hand as observations.
-METRIC_CLASSES = ('node', 'network')
+# r27 B134 (tools-kats): 'record': the metric COUNTS findings that are already booked at their own source record (a
+# dataset's audit report: FAIL challenges fixed at source with the history kept, a new version's pending grade), so a
+# rise is a new recorded finding to read there, never a regression of this build: kind recorded-finding, severity low
+# (area OK), suggested row RECORDED. The R26 measurement proposed forensics.audit_fails 0 -> 3 and grade_pending 1 -> 2
+# as two HIGH regressions (area ATTENTION) while both were dataset v2's recorded audit-2 findings (B105's class, for
+# the forensics area). The metric names its record in 'record'.
+METRIC_CLASSES = ('node', 'network', 'record')
 NETWORK_KIND, NETWORK_SEVERITY = 'network-observation', 'medium'
+RECORD_KIND, RECORD_SEVERITY = 'recorded-finding', 'low'
 
 
 def classed(m, kind, severity, title):
     """(kind, severity, title) of one metric finding after its direction class. Pure."""
-    if m.get('class', 'node') != 'network':
+    c = m.get('class', 'node')
+    if c == 'record':
+        src = m.get('record') or 'its source record'
+        return RECORD_KIND, RECORD_SEVERITY, f'{title} [recorded-findings KPI ({kind}): each finding is booked at {src}, not a regression]'
+    if c != 'network':
         return kind, severity, title
     return NETWORK_KIND, NETWORK_SEVERITY, f'{title} [network KPI ({kind}): an observation of other nodes, not a node regression]'
 
 
 def suggested_row(kind, title, owner, evs, cur):
-    """the §7 row a proposal suggests: a network observation is booked as an OBSERVATION, everything else OPEN."""
+    """the §7 row a proposal suggests: a network observation is booked as an OBSERVATION, a recorded finding as
+    RECORDED (r27 B134), everything else OPEN."""
     status = (f'OBSERVATION (network, self-detected {cur}, area_intel; no node regression)' if kind == NETWORK_KIND
-              else f'OPEN (self-detected {cur}, area_intel)')
+              else f'RECORDED (self-detected {cur}, area_intel; booked at its source record, no regression)'
+              if kind == RECORD_KIND else f'OPEN (self-detected {cur}, area_intel)')
     return f"| B? | {title} | {owner} | {evs} | {status} |"
 
 
@@ -1057,7 +1073,7 @@ def evaluate(root, live=False, cur_override=None):
                               f"worse than {m.get('noise_rel', 0.05):.0%} noise ({m.get('better')} is better)"), [prev['anchor'], last['anchor']], m['id']))
             if last and last['round'] == live_r and alert(m.get('alert_if'), num(last['value'])):
                 found.append((*classed(m, 'live-alert', 'high', f"{m['id']} = {last['display']} trips {m['alert_if']['op']} {m['alert_if']['value']}"),
-                              [last['anchor']], m['id'] + ('|alert' if m.get('class') == 'network' else '')))   # one kind for both: keep the ids apart
+                              [last['anchor']], m['id'] + ('|alert' if m.get('class') in ('network', 'record') else '')))   # one kind for both: keep the ids apart
             mcards.append({'id': m['id'], 'what': m.get('what'), 'unit': m.get('unit', ''), 'better': m.get('better', 'none'),
                            'series': pts, 'last': last, 'prev': prev, 'trend': d, 'regression': reg_})
         for b in broken:

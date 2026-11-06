@@ -10,6 +10,9 @@ outside harness/runtime/.
 
   python3 -I harness/intel/metrics_intel.py [--derod URL] [--miner URL] [--interval 15] [--out file] [--json-only]
 Exit 0 · 7 an ALERT fired · 2 neither endpoint answered.
+r27: while harness/round.json names the miner track 'paused' (rft §0.3, kit/roundtracks.py), a miner ALERT (its
+endpoint_down included) stays in the snapshot but is reported as PAUSED (miner) and does not set exit 7: 7 is then a
+node ALERT only (the snapshot's 'exit' block says which). --registry FILE reads another registry.
 """
 import argparse, datetime, importlib.util, json, re, sys, time, urllib.request
 from pathlib import Path
@@ -49,6 +52,24 @@ def _contention():
 
 
 CT = _contention()
+
+
+def _roundtracks():
+    """kit/roundtracks.py of THIS harness (r27): the miner-track state and the shared miner-ALERT classifier"""
+    spec = importlib.util.spec_from_file_location(f'roundtracks_for_metrics_{id(HERE)}', HARNESS / 'kit/roundtracks.py')
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+RT = _roundtracks()
+
+
+def exit_block(rep, track):
+    """r27: the snapshot's 'exit' block {rc, why, track, paused_alerts} from its alerts, endpoints and the
+    (state, why) miner track. Pure."""
+    rc, why, paused = RT.metrics_exit(rep.get('alerts'), rep.get('up'), track[0])
+    return {'rc': rc, 'why': why, 'track': {'miner': track[0], 'why': track[1]}, 'paused_alerts': paused}
 
 RULES = {
     'endpoint_down': 'ALERT: a /metrics endpoint did not answer (the process is down, or metrics are not bound)',
@@ -407,20 +428,22 @@ def main():
     ap.add_argument('--out')
     ap.add_argument('--json-only', action='store_true')
     ap.add_argument('--cpu-max', type=int, help="the miner's --cpu-max (default: read from its run checkpoint)")
+    ap.add_argument('--registry', default=str(HARNESS / 'round.json'), help='round registry for the miner track (r27)')
     a = ap.parse_args()
     rep = snapshot(a.derod, a.miner, a.interval, cpu_max=a.cpu_max if a.cpu_max is not None else checkpoint_cpu_max(),
                    ps=CT.ps_text)                                     # R23: the foreign-process census, read-only
+    rep['exit'] = exit_block(rep, RT.track_state(RT.load(a.registry)))   # r27: 7 = a node ALERT while paused
     out = Path(a.out) if a.out else HARNESS / f"runtime/metrics_{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.json"
     MI.write_atomic(out, json.dumps(rep, indent=1, ensure_ascii=False))   # R22: atomic
     if not a.json_only:
         for f in rep['facts']:
             print(f)
         for al in rep['alerts']:
-            print(f"   [{al['level']}] {al['rule']}: {al['what']}")
+            tag = 'PAUSED (miner) ' if al['level'] == 'ALERT' and RT.miner_alert(al) and rep['exit']['paused_alerts'] else ''
+            print(f"   [{tag}{al['level']}] {al['rule']}: {al['what']}")
+        print(f"exit {rep['exit']['rc']}: {rep['exit']['why']}")
         print(f'wrote {out}')
-    if not any(rep['up'].values()):
-        return 2
-    return 7 if any(x['level'] == 'ALERT' for x in rep['alerts']) else 0
+    return rep['exit']['rc']
 
 
 if __name__ == '__main__':

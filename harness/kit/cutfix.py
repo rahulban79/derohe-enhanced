@@ -12,6 +12,9 @@ reader cannot tell anything is missing. textkit's G11 only sees cuts that print 
         — add them by hand where they ARE cuts. The generator must define NAME (e.g. `_clip = textkit.html_clip`).
 Only `esc(...)` wrappers are touched, so a slice used for logic (a fingerprint, a comparison) is never rewritten.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import re
 import sys
 from pathlib import Path

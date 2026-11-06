@@ -5,6 +5,8 @@
   python3 gen_deroarch.py build     # resolve + render + stamp + rewrite the skill's AUTO block
   python3 gen_deroarch.py check     # 0 CURRENT · 3 STALE (a model file, kit module, miner or cited file changed)
   python3 gen_deroarch.py selftest  # proves check and resolve can fail
+  python3 gen_deroarch.py build --strict   # r27: exit 3 when an anchor of a mined row went MISSING (stale raw file)
+  python3 gen_deroarch.py --help    # this text, exit 0 (an unknown command: usage on stderr, exit 2)
 
 THE CONTRACT. A raw row (harness/model/raw/<key>.json) is rendered only when at least one of its {file, quote}
 anchors is found verbatim on ONE line of its file (whitespace runs and typographic quotes normalised, nothing
@@ -185,14 +187,35 @@ def apply_verdicts(rows, rejected, stats):
     return out
 
 
+# r27 (tools-kats; R26 measurement: a build after consensus_intel / area_intel but before mine_consensus / mine_areas
+# printed 6352/6396 anchors and nothing else: 43 consensus rows quoted harness/runtime/consensus_intel.json values the
+# fresh intel run had replaced). resolve() tallies every anchor that did not resolve per (raw key, miner, file, status);
+# build() names each one with the miner to re-run, and `build --strict` fails on any.
+LOST = collections.Counter()
+LOST_STATUSES = ('MISSING', 'NOFILE')
+
+
+def lost_report(lost):
+    """the warning lines of a LOST tally, largest first: '<n> anchor(s) <status> in raw/<key>.json -> <file>: re-run
+    harness/miners/<miner> (the file changed after the miner quoted it)'. Pure."""
+    out = []
+    for (key, miner, f, status), n in sorted(lost.items(), key=lambda kv: (-kv[1], kv[0])):
+        what = 'is gone' if status == 'NOFILE' else 'changed after the miner quoted it'
+        out.append(f"{n} anchor(s) {status} in raw/{key}.json -> {f}: re-run harness/miners/{miner or 'mine_' + key + '.py'} "
+                   f"(the file {what})")
+    return out
+
+
 def resolve():
     rows, rejected, unverified, seen = [], [], [], set()
     stats = collections.Counter()
+    LOST.clear()
     for key in RAW_KEYS:
         f = RAW / f'{key}.json'
         if not f.exists():
             continue
         d = json.loads(f.read_text())
+        miner = d.get('generated_by')
         for u in d.get('unverified') or []:
             unverified.append({'source': key, **(u if isinstance(u, dict) else {'title': str(u)})})
         for r in d.get('rows') or []:
@@ -202,6 +225,9 @@ def resolve():
             good = [e for e in evs if e['status'] in ('OK', 'MULTI')]
             stats['anchors'] += len(evs)
             stats['anchors_ok'] += len(good)
+            for e in evs:
+                if e['status'] in LOST_STATUSES:
+                    LOST[(key, miner, e['file'], e['status'])] += 1
             if rid in seen:
                 rejected.append({'id': rid, 'source': key, 'title': r.get('title'), 'why': 'duplicate id'})
                 continue
@@ -1836,8 +1862,9 @@ def sync_skill(st=None):
     return True
 
 
-def build():
+def build(strict=False):
     rows, rejected, unverified, stats = resolve()
+    lost = lost_report(LOST)
     LOOP.mkdir(exist_ok=True)
     (MODEL / 'verified.json').write_text(json.dumps(rows, indent=1, ensure_ascii=False))
     (LOOP / 'REJECTED.json').write_text(json.dumps(rejected, indent=1, ensure_ascii=False))
@@ -1858,6 +1885,7 @@ def build():
     OUT.write_text(h)
     st = {'built': datetime.datetime.now().astimezone().isoformat(timespec='seconds'), 'fingerprint': fp, 'root': str(ROOT),
           'stats': stats, 'svg_lint': len(lint), 'svg_lint_examples': lint[:4], 'bytes': len(h.encode()),
+          'anchors_lost': lost,                              # r27: per raw file, with the miner to re-run
           'sources': {p: sha(p) for p in src}}
     STAMP.write_text(json.dumps(st, indent=1))
     # sync_skill runs LAST and is hash-neutral: sha() excludes the AUTO block it writes, so the fingerprint
@@ -1875,7 +1903,11 @@ def build():
           f"{len(h):,} bytes · fingerprint {fp}")
     if lint:
         print('  svg_lint:', lint[:3])
-    return 3 if bad or lint else 0
+    for l in lost:
+        print('  WARN', l)
+    if lost and strict:
+        print(f'  build --strict: {sum(LOST.values())} anchor(s) lost: re-run the named miner(s), then build again')
+    return 3 if bad or lint or (lost and strict) else 0
 
 
 def stamp_root(st):
@@ -1932,13 +1964,26 @@ def selftest():
     return 0 if ok else 3
 
 
-if __name__ == '__main__':
-    cmd = sys.argv[1] if len(sys.argv) > 1 else 'build'
+COMMANDS = ('resolve', 'build', 'check', 'selftest', 'export-verify', 'export-pending', 'sync-skill')
+
+
+def main(argv):
+    """r27 (tools-kats): `gen_deroarch.py --help` raised KeyError '--help' (exit 1) and any unknown word did the same.
+    Now --help prints the module docstring (exit 0), an unknown command or flag prints the usage on stderr (exit 2),
+    and `build --strict` is the only flag a command takes."""
+    if any(a in ('-h', '--help') for a in argv):
+        print(__doc__)
+        return 0
+    cmd = argv[0] if argv else 'build'
+    flags = argv[1:]
+    if cmd not in COMMANDS or any(f != '--strict' for f in flags) or (flags and cmd != 'build'):
+        print(f"usage: gen_deroarch.py [{'|'.join(COMMANDS)}] [--strict (build only)] · got {' '.join(argv)!r}", file=sys.stderr)
+        return 2
     if cmd == 'resolve':
         rows, rej, unv, stats = resolve()
         print(json.dumps(stats))
         print('\n'.join(f"REJ {x['id']}: {str(x['why'])[:150]}" for x in rej[:40]))
-        sys.exit(0)
+        return 0
     if cmd == 'export-verify':
         VERIFY.mkdir(exist_ok=True)
         rows = resolve()[0]
@@ -1951,13 +1996,19 @@ if __name__ == '__main__':
                    for r in rows if r.get('section') in keys]
             (VERIFY / f'in_{name}.json').write_text(json.dumps(sel, indent=1, ensure_ascii=False))
             print(name, len(sel))
-        sys.exit(0)
+        return 0
     if cmd == 'export-pending':
         rows = resolve()[0]
         pend = [r for r in rows if r.get('verdict') is None]
         print(f'{len(pend)} row(s) without a current verdict:',
               dict(collections.Counter(r['section'] for r in pend)))
-        sys.exit(0)
+        return 0
     if cmd == 'sync-skill':
-        sys.exit(0 if sync_skill() else 3)
-    sys.exit({'build': build, 'check': check, 'selftest': selftest}[cmd]())
+        return 0 if sync_skill() else 3
+    if cmd == 'build':
+        return build(strict='--strict' in flags)
+    return {'check': check, 'selftest': selftest}[cmd]()
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

@@ -33,6 +33,9 @@ USE
   generators: html = retrofit.apply_html(html, 'NAME')   (last step before writing; register the evidence file and
               the kit as page sources)
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import hashlib, html as _html, json, os, pickle, re, sys, tempfile, time
 from pathlib import Path
 

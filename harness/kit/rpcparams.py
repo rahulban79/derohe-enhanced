@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 SCAN = ('harness', 'tools')
 SKIP_PARTS = {'__pycache__', 'vendor', 'node_modules'}
 
-MAP_RX = re.compile(r'"(\w+)":\s*handler\.New\((\w+)\)')
+MAP_RX = re.compile(r'"(\w+)":\s*(?:handler\.New|typed_new)\((\w+)\)')  # r27: typed_new wraps handler.New (B132)
 FUNC_RX = re.compile(r'^func (\w+)\(ctx context\.Context(?:, \w+ (\[\]\w+|(?:rpc\.)?\w+))?\)', re.M)
 ALIAS_RX = re.compile(r'^type (\w+) (?:rpc\.)?(\w+)\s*(?://.*)?$', re.M)   # type GasEstimate_Params Transfer_Params
 STRUCT_RX = re.compile(r'^\s*(?:type\s+)?(\w+)\s+struct\s*\{', re.M)

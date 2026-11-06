@@ -12,6 +12,9 @@ zero-width characters normalised, case-insensitive. A GitHub blob URL is read fr
 
 An unverified citation is kept (so nothing is silently dropped) but a page must never present it as proof.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import glob, hashlib, html, json, re, sys, time, unicodedata, urllib.request, urllib.error, datetime
 from pathlib import Path
 

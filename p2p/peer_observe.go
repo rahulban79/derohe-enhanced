@@ -138,6 +138,12 @@ const SYNC_FALLBACK_EVERY = SYNC_HOLD_BASE
 
 var sync_held_fallbacks_total = metrics.Set.GetOrCreateCounter("p2p_sync_held_fallbacks_total")
 var sync_relay_forgiven_total = metrics.Set.GetOrCreateCounter("p2p_sync_relay_forgiven_total")
+
+// r27 (B99 observability, §7): two of the three r26 rules acted without a trace. A strike decay reset the counter
+// silently, and a sync round that added blocks cleared a held peer without a count (only the relay path counted), so a
+// live window could not tell "never happened" from "happened unseen". Both are counted now (0 from start).
+var sync_strike_decays_total = metrics.Set.GetOrCreateCounter("p2p_sync_strike_decays_total")
+var sync_served_forgiven_total = metrics.Set.GetOrCreateCounter("p2p_sync_served_forgiven_total")
 var sync_fallback_last atomic.Int64 // unix nanos of the latest fallback (0 = never)
 
 // sync_fallback_open reports, without claiming it, whether the fallback slot is free now (B99).
@@ -185,6 +191,13 @@ func (c *Connection) sync_relay_served(our_height int64) {
 		return
 	}
 	c.sync_succeeded()
+	// r27 (B99 observability): the same rule is reached from a sync round (process_object_response_run ->
+	// note_block_result) while sync_chain runs on this connection; that is a sync that served, not a relay, and r26
+	// counted it as relay_forgiven. Counted by its path now; the forgiveness itself is unchanged.
+	if c.Syncing.Load() > 0 {
+		sync_served_forgiven_total.Inc()
+		return
+	}
 	sync_relay_forgiven_total.Inc()
 }
 
@@ -207,14 +220,18 @@ func (c *Connection) sync_failed(kind call_failure, now time.Time) {
 	}
 	// r26 (B99): strikes decay. A failure more than SYNC_STRIKE_FORGET after the previous hold ended starts again at
 	// strike 1: in r25 one short answer a day apart from the last still escalated, so strikes only ever grew.
+	decayed := false
 	if until := c.obs.sync_hold_until.Load(); until != 0 && now.UnixNano()-until > int64(SYNC_STRIKE_FORGET) {
-		c.obs.sync_strikes.Store(0)
+		decayed = c.obs.sync_strikes.Swap(0) != 0
+		if decayed {
+			sync_strike_decays_total.Inc() // r27 (B99 observability)
+		}
 	}
 	n := c.obs.sync_strikes.Add(1) // a --sync-node counts too (GetPeerInfo shows it) but is never skipped: sync_held
 	d := sync_hold_duration(n)
 	c.obs.sync_hold_until.Store(now.Add(d).UnixNano())
 	sync_peer_holds_total.Inc()
-	c.logger.V(1).Info("holding sync with this peer", "failures", n, "hold", d.String(), "kind", kind.String())
+	c.logger.V(1).Info("holding sync with this peer", "failures", n, "hold", d.String(), "kind", kind.String(), "decayed", decayed)
 }
 
 // sync_held: trigger_sync skips this connection now (B47).
@@ -225,9 +242,12 @@ func (c *Connection) sync_held(now time.Time) bool {
 	return now.UnixNano() < c.obs.sync_hold_until.Load()
 }
 
-func (c *Connection) sync_succeeded() {
-	c.obs.sync_strikes.Store(0)
-	c.obs.sync_hold_until.Store(0)
+// sync_succeeded clears the peer's strikes and hold and reports whether there was anything to clear (r27: the caller
+// counts a forgiveness only then).
+func (c *Connection) sync_succeeded() (cleared bool) {
+	s := c.obs.sync_strikes.Swap(0)
+	h := c.obs.sync_hold_until.Swap(0)
+	return s != 0 || h != 0
 }
 
 // ---- CO24-N1: offence view of one scope ----------------------------------------------------------------------------

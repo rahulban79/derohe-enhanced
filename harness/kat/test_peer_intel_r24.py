@@ -381,8 +381,9 @@ MUTATIONS = [
     ('PI2', PI, "            d['findings'].append({'peer': r['peer'], 'grade': 'OBSERVED',", "            d['findings'].append({'peer': r['peer'], 'grade': 'NORMAL',", 'a v2 offender is graded NORMAL'),
     ('PI3', PI, "        kind = 'short_answer'", "        kind = None", "short answers ('answered 0 blocks') are not read"),
     ('PI3', PI, "    ('evicting stuck peer', 'stuck_evict'),", "    ('evicting stuck peer!', 'stuck_evict'),", 'stuck evictions are not read'),
-    ('PI3', PI, "g = 'ANOMALY' if e['n'] >= 20 and", "g = 'ANOMALY' if e['n'] >= 2000 and", 'the unserved-object threshold is never reached'),
-    ('PI3', PI, "(med is None or e['n'] > REMOTE_UNSERVED_MULT * max(med, 1))", "(True)", 'evenly spread unserved replies are flagged'),
+    # r27: the log grade reads e[key] (the current run with counters, the whole log without: test_peer_intel_r27 PI26)
+    ('PI3', PI, "g = 'ANOMALY' if e[key] >= 20 and", "g = 'ANOMALY' if e[key] >= 2000 and", 'the unserved-object threshold is never reached'),
+    ('PI3', PI, "(med is None or e[key] > REMOTE_UNSERVED_MULT * max(med, 1))", "(True)", 'evenly spread unserved replies are flagged'),
     ('PI4', PI, 'if isinstance(o, (int, float)) and abs(o) - rtt / 2 > CLOCK_FUTURE_MS:', 'if isinstance(o, (int, float)) and abs(o) - rtt / 2 > CLOCK_FUTURE_MS * 3:', 'clock skew beyond the 50 ms rule is missed'),
     ('PI4', PI, 'if isinstance(o, (int, float)) and abs(o) - rtt / 2 > CLOCK_FUTURE_MS:', 'if isinstance(o, (int, float)) and abs(o) > CLOCK_FUTURE_MS:', 'a reading inside the +/- RTT/2 uncertainty is flagged (r24 verify)'),
     ('PI5', PI, '            if len(members) > 2:', '            if len(members) > 3:', 'the /16 outbound cap is not checked'),

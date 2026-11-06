@@ -23,8 +23,21 @@ under a QoS clamp may run on E-cores, so the bench numbers would change meaning.
 system without taskpolicy, is refused (exit 2), never silently dropped.
 
   python3 -I harness/pipeline/benchlock.py [--gpu] [--qos=utility] -- cmd args...
+
+r27b (resource hygiene, rft §5, B148): --heavy runs the command in one of K machine-wide HEAVY slots instead of the
+exclusive bench lock: a heavy job is a fan-out stage that costs RAM, not a timing measurement (a pipeline run with its
+-race and mutation stages, a mutation sweep, a clone fan-out). K = harness/intel/resource_intel.py preflight (kind
+jobs) for $DERO_HEAVY_SLOTS planned slots (default 2): OK keeps K, REDUCE halves it, HOLD is 1 (serial, never 0: the
+job waits for a slot, it is never skipped). Slot files are <lock>.heavy<i>; K is re-read every minute while waiting.
+The decision is printed and, with $DERO_ROUND_NOTES set, appended to the round notes. --help prints this and exits 0.
+
+  python3 -I harness/pipeline/benchlock.py --heavy [--qos=utility] -- cmd args...
 """
-import fcntl, json, os, shutil, subprocess, sys, time
+if __name__ == '__main__' and __import__('sys').argv[1:2] in (['-h'], ['--help']):   # r27 B120: usage, exit 0, nothing run or written
+    # r27b: only benchlock's OWN leading option; a '--help' after '--' belongs to the command and is passed through
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
+import fcntl, importlib.util, json, os, shutil, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -62,12 +75,16 @@ def restarts(log):
 QOS = {'none': [], 'utility': ['taskpolicy', '-c', 'utility'], 'background': ['taskpolicy', '-b']}   # r25 (B20)
 
 
-def parse_opts(argv):
-    """r25: leading --gpu / --qos=X options, then an optional '--'. Returns (gpu, qos, cmd). Pure."""
+def parse_opts(argv, with_heavy=False):
+    """r25: leading --gpu / --qos=X options, then an optional '--'. Returns (gpu, qos, cmd). Pure. r27b: with_heavy
+    returns (gpu, qos, heavy, cmd)."""
     gpu, qos = False, os.environ.get('DERO_BENCH_QOS') or 'none'
+    heavy = False
     while argv and argv[0] != '--' and argv[0].startswith('--'):
         if argv[0] == '--gpu':
             gpu = True
+        elif argv[0] == '--heavy':
+            heavy = True
         elif argv[0].startswith('--qos='):
             qos = argv[0][len('--qos='):]
         else:
@@ -75,7 +92,57 @@ def parse_opts(argv):
         argv = argv[1:]
     if argv and argv[0] == '--':
         argv = argv[1:]
-    return gpu, qos, argv
+    return (gpu, qos, heavy, argv) if with_heavy else (gpu, qos, argv)
+
+
+HEAVY_PLANNED = 2                    # r27b: heavy slots when nothing constrains (env DERO_HEAVY_SLOTS)
+
+
+def heavy_slots(planned, ri=None, r=None):
+    """r27b: (K, decision) from resource_intel.preflight(kind jobs); K >= 1. ri / r injectable (tests)."""
+    if ri is None:
+        spec = importlib.util.spec_from_file_location('resource_intel_bl', ROOT / 'harness/intel/resource_intel.py')
+        ri = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ri)
+    if r is None:
+        r = ri.readings(scratch=[], quick=True)
+    d = ri.preflight(r, planned, 'jobs')
+    return max(1, d['recommended']), d, ri
+
+
+def try_slot(lp, k):
+    """r27b: an open, flock'ed slot file among <lp>.heavy0..k-1, or None when all k are held"""
+    for i in range(k):
+        f = open(f'{lp}.heavy{i}', 'a')
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return f
+        except OSError:
+            f.close()
+    return None
+
+
+def heavy_acquire(lp, planned, slots=heavy_slots, wait=60.0, poll=5.0):
+    """r27b: block until a heavy slot is free (K re-read every `wait` s); returns (file, decision)"""
+    k, d, ri = slots(planned)
+    line = ri.note_line('benchlock --heavy', {**d, 'recommended': k})
+    print(f'[benchlock] {line}', file=sys.stderr, flush=True)
+    notes = os.environ.get('DERO_ROUND_NOTES')
+    if notes:
+        try:
+            with open(os.path.expanduser(notes), 'a') as nf:
+                nf.write(line + '\n')
+        except OSError:
+            pass
+    t_k = time.time()
+    while True:
+        f = try_slot(lp, k)
+        if f is not None:
+            return f, d
+        time.sleep(poll)
+        if time.time() - t_k >= wait:
+            k, d, _ = slots(planned)
+            t_k = time.time()
 
 
 def child_argv(cmd, qos, have_taskpolicy=None):
@@ -92,7 +159,7 @@ def child_argv(cmd, qos, have_taskpolicy=None):
 
 
 def main(argv):
-    gpu, qos, argv = parse_opts(argv)
+    gpu, qos, heavy, argv = parse_opts(argv, with_heavy=True)
     if not argv:
         print(__doc__, file=sys.stderr)
         return 2
@@ -104,6 +171,14 @@ def main(argv):
     if not lp:
         print('[benchlock] no lock file: export DERO_BENCHLOCK=<file> or set "benchlock" in harness/round.json', file=sys.stderr)
         return 2
+    if heavy:                                            # r27b (B148): a heavy slot, not the bench lock
+        if gpu:
+            print('[benchlock] --heavy with --gpu: a GPU bench takes the bench lock, not a heavy slot: refusing', file=sys.stderr)
+            return 2
+        planned = int(os.environ.get('DERO_HEAVY_SLOTS') or HEAVY_PLANNED)
+        f, d = heavy_acquire(lp, planned)
+        with f:
+            return subprocess.call(child)
     log = os.environ.get('DERO_MINER_LOG') or str(ROOT / 'bin/dero-miner.log')
     with open(lp, 'a') as f:
         t0 = time.time()

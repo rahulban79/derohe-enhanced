@@ -10,16 +10,21 @@ the STALE spec surfaced 55 minutes into S3b. This KAT runs in S3k (before S3b) a
   GA1 every mutation in the registry names an existing file and its find text occurs exactly once there (go_mutate
       marks any other count STALE); ids are unique; find != replace.
   GA2 negative controls: a planted spec whose find text is gone, one whose find text occurs twice, one with a missing
-      file, a duplicate id and a no-op replace are each reported.
+      file, a duplicate id, a no-op replace and a round-tag anchor are each reported.
+  GA3 (R27 closed loop, pipeline_20261105T133652 S3k FAIL: gm-r27-p2pcfg-cfg-version-date anchored on '+22102026.r26',
+      so the R27 version bump to .r27 made it STALE): a mutation of config/version.go must not anchor on the round tag
+      (+<DDMMYYYY>.r<N>), which changes every round; it is reported by problems() and so by GA1.
 
   python3 -I harness/kat/test_gomut_anchors_r26.py
 Exit 0 all ok · 3 the KAT failed · 4 a mutation of the checker was not caught.
 """
-import json, sys, tempfile
+import json, re, sys, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 REG = ROOT / 'harness' / 'intel' / 'go_mutations.json'
+ROUND_TAG_RX = re.compile(r'\+\d{8}\.r\d+')   # r27: the per-round build tag of config/version.go
+VERSION_FILE = 'config/version.go'
 
 
 def problems(spec, root, count=lambda text, find: text.count(find), want=1):
@@ -32,6 +37,8 @@ def problems(spec, root, count=lambda text, find: text.count(find), want=1):
         seen.add(mid)
         if m.get('find') == m.get('replace'):
             out.append(f'{mid}: replace equals find (a no-op mutant)')
+        if m.get('file') == VERSION_FILE and ROUND_TAG_RX.search(m.get('find', '')):
+            out.append(f'{mid}: find text anchors on the round tag of {VERSION_FILE} (STALE at the next version bump)')
         p = Path(root) / m.get('file', '')
         if p not in cache:
             cache[p] = p.read_text() if p.is_file() else None
@@ -60,7 +67,10 @@ def ga2(fn):
             'nofile': [good, {'id': 'n', 'file': 'b.go', 'find': 'x', 'replace': 'y'}],
             'dupid': [good, dict(good)],
             'noop': [good, {'id': 'p', 'file': 'a.go', 'find': 'x := 1', 'replace': 'x := 1'}],
+            'roundtag': [good, {'id': 'r', 'file': 'config/version.go', 'find': '+22102026.r27', 'replace': '+32102026.r27'}],
         }
+        (Path(d) / 'config').mkdir()
+        (Path(d) / 'config' / 'version.go').write_text('var Version = semver.MustParse("3.6.0-153.DEROHE.STARGATE+22102026.r27")\n')
         clean = fn({'mutations': [good]}, d)
         got = {k: bool(fn({'mutations': v}, d)) for k, v in cases.items()}
     return not clean and all(got.values()), f'clean {clean} cases {got}'
@@ -72,6 +82,7 @@ MUTANTS = [
     ('duplicate ids ignored', lambda s, r: [x for x in problems(s, r) if 'duplicate id' not in x]),
     ('missing files ignored', lambda s, r: [x for x in problems(s, r) if 'missing' not in x]),
     ('no-op mutants ignored', lambda s, r: [x for x in problems(s, r) if 'no-op' not in x]),
+    ('round-tag anchors ignored', lambda s, r: [x for x in problems(s, r) if 'round tag' not in x]),
 ]
 
 
@@ -88,7 +99,7 @@ def main():
         caught = not (ga1(fn)[0] and ga2(fn)[0])
         print(f"  {'proved ' if caught else 'MISSED '} {why}")
         missed += not caught
-    print(f'\nr26 gomut-anchors KATs: 2/2 ok · mutations proved {len(MUTANTS) - missed}/{len(MUTANTS)}')
+    print(f'\nr26 gomut-anchors KATs: 2/2 ok (GA3 inside GA1/GA2) · mutations proved {len(MUTANTS) - missed}/{len(MUTANTS)}')
     return 4 if missed else 0
 
 

@@ -149,6 +149,32 @@ DERO_BENCHLOCK=<lock> python3 -I pipeline/benchlock.py -- <bench cmd>
 DERO_BENCHLOCK=<lock> python3 -I pipeline/benchlock.py --gpu -- python3 -I pipeline/fix_build_verify.py --gpu-bench-only --contended-ok
 ```
 
+## Resource hygiene (r27b, artifacts/dero-rft.md §5, B148)
+
+The project's own workflow (dozens of repo clones per round, mirrored by `backup_scratch.sh`) is a RAM / swap /
+file-event load on the box. Three tools keep it bounded without dropping any gate, KAT, mutation, replay or verifier:
+
+- `intel/resource_intel.py` (read-only): swap, memory_pressure free %, RSS of fseventsd / mds_stores / derod and of the
+  project's own processes (basenames and sums only), scratchpad clone trees (`--full`: files, bytes, GOCACHE, the
+  persisted mirror) → OK / REDUCE / HOLD (exit 0 / 5 / 6). It never kills, renices or restarts anything.
+  `preflight --planned N --kind clones|jobs` gives the concurrency the readings allow (jobs >= 1: a heavy stage runs
+  serially on HOLD, never skipped; clones 0 on HOLD) and appends the decision to `--notes` / `$DERO_ROUND_NOTES`.
+- `pipeline/benchlock.py --heavy -- <cmd>`: one of K machine-wide heavy slots (K from the preflight of
+  `$DERO_HEAVY_SLOTS`, default 2) for a fan-out job that costs RAM; the bench lock stays for timing. The pipeline's
+  S3b/S3c run the preflight themselves (S3c `go test -race -p N`, timeout scaled).
+- `pipeline/scratch_gc.py --root <round dir> [--protect <active round dir>] [--apply]`: dry run by default; deletes a
+  clone tree only when its HEAD is in the reference repo, its refs too, a `<dim>.patch` + `.md5` match, and
+  `git diff HEAD` (untracked via `update-index --add --info-only` into a temp index: hashed, never written, so no
+  pack is freshened) equals the patch byte for byte; cited
+  ignored files are copied to `<dim>/evidence_from_tree/` first and `<dim>/<tree>.gc.json` keeps the recipe.
+
+```
+python3 -I intel/resource_intel.py                                   # level line (exit 0 OK / 5 REDUCE / 6 HOLD)
+python3 -I intel/resource_intel.py preflight --planned 8 --kind clones --stage r27-open --notes <round notes>
+python3 -I pipeline/scratch_gc.py --root <scratch>/r26 --protect <scratch>/r27 --reference ~/derohe-Release151   # dry run
+python3 -I kat/test_resource_hygiene_r27.py                         # RH1..RH9 + 36 mutations (katmut)
+```
+
 ## Area intelligence (r24)
 
 `harness/areas.json` registers every area of the stack (owner dimension, code paths, metrics and their sources, KATs,
@@ -188,6 +214,11 @@ python3 -I kat/test_peer_intel_r24.py            # PI1..PI13 + 30 mutations (a p
 python3 -I kat/test_peer_intel_r25.py            # r25: PI14..PI25 + 23 mutations (detectors read the CO24-N* counters of an r25
                                                  #   derod; B72 per-node clock cross-check; D15 sync holds (B47); gaps close
                                                  #   themselves; B71 log_intel / mine_triage snapshots pseudonymised)
+python3 -I kat/test_peer_intel_r27.py            # r27: PI26..PI28 + 9 mutations (D5 grades the current run once counters exist;
+                                                 #   D11 anchored on peer_id; D5/D9/D11 'explain' lists, no address or /16 written)
+python3 -I intel/b99_scenario.py                 # r27: B99 sync-hold life cycle on a loopback simulator chain + fake peer
+                                                 #   (never the live store, never 11011) -> runtime/b99_scenario_<ts>.json
+python3 -I kat/test_b99_scenario_r27.py          # r27: BS1..BS3 + 4 mutations on b99_scenario.verify()
 ```
 S7 runs `peer_intel.py --live` after metrics_intel and before area_intel (whose `peers` area reads it: metric source
 kind `peerintel`, anchored on the KPI line of the timestamped capture), and `mine_peers.py` with the other miners.

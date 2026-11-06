@@ -81,6 +81,8 @@ func (metrics_generator) LogResponse(ctx context.Context, resp *jrpc2.Response) 
 		return
 	}
 	observe_ws(ctx, resp) // r23: behaviour score of a remote socket; free for loopback (rpc_abuse.go)
+	// r27: rpc_error_responses_total{code} (r27_rpcmetrics.go), unknown methods included
+	count_error_code(resp.Error())
 	start_time, ok := ctx.Value("start_time").(*time.Time)
 	if !ok {
 		return //panic("cannot find time in context")
@@ -361,64 +363,64 @@ var internal_server = server.NewLocal(historical_apis, nil) // uses traditional 
 // Bridge HTTP to the JSON-RPC server.
 var bridge = jhttp.NewBridge(internal_server.Client)
 */
-var historical_apis = handler.Map{"getinfo": handler.New(GetInfoR25), // r25 BD6: + total_supply_basis (r25_rpcrobust.go)
-	"get_info":                   handler.New(GetInfoR25), // this is just an alias to above
-	"getblock":                   handler.New(GetBlock),
-	"getblockheaderbytopoheight": handler.New(GetBlockHeaderByTopoHeight),
-	"getblockheaderbyhash":       handler.New(GetBlockHeaderByHash),
-	"gettxpool":                  handler.New(GetTxPool),
-	"getrandomaddress":           handler.New(GetRandomAddress),
-	"gettransactions":            handler.New(GetTransactionR25), // r25: + txs_status
-	"sendrawtransaction":         handler.New(SendRawTransaction),
-	"submitblock":                handler.New(SubmitBlock),
-	"getheight":                  handler.New(GetHeight),
-	"getblockcount":              handler.New(GetBlockCount),
-	"getlastblockheader":         handler.New(GetLastBlockHeader),
-	"getblocktemplate":           handler.New(GetBlockTemplate),
-	"getencryptedbalance":        handler.New(GetEncryptedBalance),
-	"getsc":                      handler.New(GetSC),
-	"getgasestimate":             handler.New(GetGasEstimate),
-	"nametoaddress":              handler.New(NameToAddress)}
+var historical_apis = handler.Map{"getinfo": typed_new(GetInfoR25), // r25 BD6: + total_supply_basis (r25_rpcrobust.go)
+	"get_info":                   typed_new(GetInfoR25), // this is just an alias to above
+	"getblock":                   typed_new(GetBlock),
+	"getblockheaderbytopoheight": typed_new(GetBlockHeaderByTopoHeight),
+	"getblockheaderbyhash":       typed_new(GetBlockHeaderByHash),
+	"gettxpool":                  typed_new(GetTxPool),
+	"getrandomaddress":           typed_new(GetRandomAddress),
+	"gettransactions":            typed_new(GetTransactionR25), // r25: + txs_status
+	"sendrawtransaction":         typed_new(SendRawTransaction),
+	"submitblock":                typed_new(SubmitBlock),
+	"getheight":                  typed_new(GetHeight),
+	"getblockcount":              typed_new(GetBlockCount),
+	"getlastblockheader":         typed_new(GetLastBlockHeader),
+	"getblocktemplate":           typed_new(GetBlockTemplate),
+	"getencryptedbalance":        typed_new(GetEncryptedBalance),
+	"getsc":                      typed_new(GetSC),
+	"getgasestimate":             typed_new(GetGasEstimate),
+	"nametoaddress":              typed_new(NameToAddress)}
 
 var servicemux = handler.ServiceMap{
 	"DERO": handler.Map{
-		"Echo":                       handler.New(Echo),
-		"Ping":                       handler.New(Ping),
-		"GetInfo":                    handler.New(GetInfoR25), // r25 BD6
-		"GetSyncInfo":                handler.New(GetSyncInfo),
-		"Subscribe":                  handler.New(Subscribe),
-		"WatchTx":                    handler.New(WatchTx),
-		"GetMiningOutcome":           handler.New(GetMiningOutcome),
-		"GetSupplyAudit":             handler.New(GetSupplyAudit),
-		"GetEmissionAudit":           handler.New(GetEmissionAudit),
-		"GetBlockHeadersRange":       handler.New(GetBlockHeadersRange),
-		"GetMiniBlocks":              handler.New(GetMiniBlocks),
-		"GetDifficultyHistory":       handler.New(GetDifficultyHistory),
-		"GetTxPoolDetail":            handler.New(GetTxPoolDetail),
-		"GetPeerInfo":                handler.New(GetPeerInfo),
-		"GetTxStatus":                handler.New(GetTxStatus),
-		"GetFeeEstimate":             handler.New(GetFeeEstimate),       // r23
-		"GetMonetaryIntegrity":       handler.New(GetMonetaryIntegrity), // r23b
-		"GetConsensusStats":          handler.New(GetConsensusStats),    // r25 (consensus observatory)
-		"GetBlock":                   handler.New(GetBlock),
-		"GetBlockHeaderByTopoHeight": handler.New(GetBlockHeaderByTopoHeight),
-		"GetBlockHeaderByHash":       handler.New(GetBlockHeaderByHash),
-		"GetTxPool":                  handler.New(GetTxPool),
-		"GetRandomAddress":           handler.New(GetRandomAddress),
-		"GetTransaction":             handler.New(GetTransactionR25), // r25: + txs_status
-		"SendRawTransaction":         handler.New(SendRawTransaction),
-		"SubmitBlock":                handler.New(SubmitBlock),
-		"GetHeight":                  handler.New(GetHeight),
-		"GetBlockCount":              handler.New(GetBlockCount),
-		"GetLastBlockHeader":         handler.New(GetLastBlockHeader),
-		"GetBlockTemplate":           handler.New(GetBlockTemplate),
-		"GetEncryptedBalance":        handler.New(GetEncryptedBalance),
-		"GetSC":                      handler.New(GetSC),
-		"GetGasEstimate":             handler.New(GetGasEstimate),
-		"NameToAddress":              handler.New(NameToAddress),
+		"Echo":                       typed_new(Echo),
+		"Ping":                       typed_new(Ping),
+		"GetInfo":                    typed_new(GetInfoR25), // r25 BD6
+		"GetSyncInfo":                typed_new(GetSyncInfo),
+		"Subscribe":                  typed_new(Subscribe),
+		"WatchTx":                    typed_new(WatchTx),
+		"GetMiningOutcome":           typed_new(GetMiningOutcome),
+		"GetSupplyAudit":             typed_new(GetSupplyAudit),
+		"GetEmissionAudit":           typed_new(GetEmissionAudit),
+		"GetBlockHeadersRange":       typed_new(GetBlockHeadersRange),
+		"GetMiniBlocks":              typed_new(GetMiniBlocks),
+		"GetDifficultyHistory":       typed_new(GetDifficultyHistory),
+		"GetTxPoolDetail":            typed_new(GetTxPoolDetail),
+		"GetPeerInfo":                typed_new(GetPeerInfo),
+		"GetTxStatus":                typed_new(GetTxStatus),
+		"GetFeeEstimate":             typed_new(GetFeeEstimate),       // r23
+		"GetMonetaryIntegrity":       typed_new(GetMonetaryIntegrity), // r23b
+		"GetConsensusStats":          typed_new(GetConsensusStats),    // r25 (consensus observatory)
+		"GetBlock":                   typed_new(GetBlock),
+		"GetBlockHeaderByTopoHeight": typed_new(GetBlockHeaderByTopoHeight),
+		"GetBlockHeaderByHash":       typed_new(GetBlockHeaderByHash),
+		"GetTxPool":                  typed_new(GetTxPool),
+		"GetRandomAddress":           typed_new(GetRandomAddress),
+		"GetTransaction":             typed_new(GetTransactionR25), // r25: + txs_status
+		"SendRawTransaction":         typed_new(SendRawTransaction),
+		"SubmitBlock":                typed_new(SubmitBlock),
+		"GetHeight":                  typed_new(GetHeight),
+		"GetBlockCount":              typed_new(GetBlockCount),
+		"GetLastBlockHeader":         typed_new(GetLastBlockHeader),
+		"GetBlockTemplate":           typed_new(GetBlockTemplate),
+		"GetEncryptedBalance":        typed_new(GetEncryptedBalance),
+		"GetSC":                      typed_new(GetSC),
+		"GetGasEstimate":             typed_new(GetGasEstimate),
+		"NameToAddress":              typed_new(NameToAddress),
 	},
 	"DAEMON": handler.Map{
-		"Echo": handler.New(DAEMON_Echo),
+		"Echo": typed_new(DAEMON_Echo),
 	},
 }
 

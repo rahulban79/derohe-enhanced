@@ -13,6 +13,9 @@
       pill and an SVG pill with only vscode://file/ or https:// links, pins on click and closes on Escape
   exit 0 all PASS · 3 any FAIL. --ledger appends one row per gate (markdown table) for a living ledger.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import datetime, html as _html, html.parser, json, re, subprocess, sys, tempfile
 from pathlib import Path
 

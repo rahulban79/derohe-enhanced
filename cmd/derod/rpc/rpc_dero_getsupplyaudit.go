@@ -158,7 +158,7 @@ func supply_audit_for(ctx context.Context, key supply_audit_key, compute func(co
 func GetSupplyAudit(ctx context.Context) (result GetSupplyAudit_Result, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic occured. stack trace r %s", r)
+			err = rpc_internal_error(r) // r27: counted + logged like every other handler (was an untyped, uncounted text)
 		}
 	}()
 	if ctx == nil {
@@ -174,7 +174,7 @@ func GetSupplyAudit(ctx context.Context) (result GetSupplyAudit_Result, err erro
 func compute_supply_audit(ctx context.Context, topo int64) (result GetSupplyAudit_Result, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic occured. stack trace r %s", r)
+			err = rpc_internal_error(r) // r27: counted + logged like every other handler (was an untyped, uncounted text)
 		}
 	}()
 	toporecord, err := chain.Store.Topo_store.Read(topo)

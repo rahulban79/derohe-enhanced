@@ -180,8 +180,8 @@ func TestR26ExplorerUnknownParamsRefused(t *testing.T) {
 		{"DERO.GetDifficultyHistory", `{"count":3,"end":4}`, `{"count":3,"end_topoheight":4}`},
 	} {
 		_, err := r26_call(t, loc, c.m, c.bad)
-		// jrpc2's handler wrapper (vendor handler.go:195) re-wraps the decoder error and drops its data, so the client
-		// sees "-32602 invalid parameters" without the field name: enough to stop a probe from reading topoheight 0
+		// jrpc2's handler wrapper (vendor handler.go:195) re-wraps the decoder error and drops its data; from r27
+		// typed_new names the field (TestR27InvalidParamsNamesTheField). Here: the refusal itself (B104)
 		if r26_code(err) != code.InvalidParams || !strings.Contains(err.Error(), "invalid parameters") {
 			t.Fatalf("%s %s: err %v (code %v), want -32602 invalid parameters", c.m, c.bad, err, r26_code(err))
 		}

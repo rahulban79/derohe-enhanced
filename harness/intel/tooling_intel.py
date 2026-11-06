@@ -14,13 +14,19 @@ KPIs (§0.9 rule 2; 'pending' when the input is missing, never a guess):
             project_wall_s and the slowest steps (tool runtimes), flaky (newest full run's S3a)
   memory    memory_files, memory_index_lines/bytes/longest/over_300, memory_index_dangling (links to no file),
             memory_unindexed (files no index line links), memory_index_duplicates, memory_stale_claims
-            (harness/loop/STALE_MEMORY_CLAIMS.json: a refuted claim still in the memory without a dated correction)
+            (harness/loop/STALE_MEMORY_CLAIMS.json: a refuted claim still in the memory without a dated correction);
+            r27: memory_index_ranges (an index line that states a numbered range '#a–#b' for the file it links, and
+            that file's highest '#N' line differs: the index under-states the file), memory_dead_refs (a repo path
+            with a file extension that a memory file names and the tree no longer has)
   mirror    mirror_drift (memory-mirror/MANIFEST.sha256: source changed since the sync, file missing, hand-edited, or a
             private identifier in the in-repo copy)
   skills    skill_last_round, skill_fresh (last '## Round <N>' heading = the registry's current round); r26 (B92):
             skill_over_budget (> SKILL_MAX_LINES lines), skill_paused (a skill whose '**Track:** <name>' is paused is
             not required to be fresh; at least one other skill must be)
-  tools     r26 (B117 class, report-only): tools_without_help, harness tools whose `--help` would run them
+  tools     r26 (B117 class, report-only): tools_without_help, harness tools whose `--help` would run them;
+            r27 (tools-kats): kat_coverage: tools_total, tools_without_kat (no harness/kat/*.py names the tool's file),
+            kat_coverage_pct; kat_mutations_coupled (the 'mutations coupled N' lines of the KAT steps: a mutation that
+            also fails a KAT outside the defect it undoes, harness/kit/katmut.py; target 0)
   rounds    order_gaps (non-planned registry rounds missing from mine_evolution.ORDER, B90), order_next_missing
   gates     gate_id_duplicates (one G<n> used by two different gate titles in run_gates.py, lesson #68)
   classes   defect_classes_without_kat (every R24/R25 tooling defect class must name a KAT that exists, §0.9 rule 1)
@@ -92,6 +98,18 @@ DEFECT_CLASSES = [
     ('an earlier round\'s anchor drifts for ever (B116)', 'harness/kat/test_harness_tooling_r26.py', 'HT7'),
     ('--help runs the tool (B117)', 'harness/kat/test_harness_tooling_r26.py', 'HT8'),
     ('a tracked snapshot keeps a raw command line (B119)', 'harness/kat/test_harness_tooling_r26.py', 'HT9'),
+    # r27 (tools-kats): the classes found at the R26 measurement / R27 Part A
+    ('--help runs the tool or raises (B120: 33 tools, gen_deroarch KeyError)', 'harness/kat/test_tools_kats_r27.py', 'TK1'),
+    ('a build silently loses anchors of a stale raw file (43 consensus rows, R26)', 'harness/kat/test_tools_kats_r27.py', 'TK2'),
+    ('a KAT coupled to out-of-repo state (HT12 called the real scrubber)', 'harness/kat/test_tools_kats_r27.py', 'TK3'),
+    ('a recorded audit finding booked as a regression (B134)', 'harness/kat/test_tools_kats_r27.py', 'TK5'),
+    ('a wait loop that matches itself (pgrep -f, R26 x3)', 'harness/kat/test_tools_kats_r27.py', 'TK6'),
+    # r27b (resource hygiene, B148): the classes found while measuring the RAM / swap / file-event load
+    ('a fan-out launched with no resource preflight (B148)', 'harness/kat/test_resource_hygiene_r27.py', 'RH3'),
+    ('clone trees kept and mirrored for ever (scratch GC, B148)', 'harness/kat/test_resource_hygiene_r27.py', 'RH5'),
+    ('a dry run that writes (git add -N empty blob, B148)', 'harness/kat/test_resource_hygiene_r27.py', 'RH5'),
+    ('hardlinked pack mtime read as tree activity (B148)', 'harness/kat/test_resource_hygiene_r27.py', 'RH5'),
+    ('backup mirrors reproducible clone trees (B148)', 'harness/kat/test_resource_hygiene_r27.py', 'RH7'),
 ]
 # generic private-identifier shapes (no private literal in this file): an absolute home path, a scratchpad project dir
 # name, an e-mail, a DERO address, a non-reserved IPv4
@@ -144,11 +162,22 @@ def frac(v):
 
 
 GATES_RX = re.compile(r'^\s*(\d+)\s*/\s*(\d+)(?:\s*\(\+(\d+)\s+PAUSED)?')
-KAT_MUT_RX = re.compile(r'mutations proved (\d+)\s*/\s*(\d+)')
+KAT_COUPLED_RX = re.compile(r'mutations coupled (\d+)\b')       # r27: harness/kit/katmut.py summary
+
+
+def kat_coupled(lines):
+    """the sum of 'mutations coupled N' over KAT summary lines, or None when no line carries one (not measured). Pure."""
+    hits = [int(m.group(1)) for l in lines for m in KAT_COUPLED_RX.finditer(str(l))]
+    return sum(hits) if hits else None
+# r27 (harness-measure): the seven forensics KATs (test_forensics_r25/_r26/_g30_r25/_bounds_r26/_classes_r26/_audit2_r26/
+# _frontend2_r26) end with 'mutations caught X/Y', so their mutations were never in kat_mutations_total (652/652 in
+# the r26 record). The literal 'mutations caught X/Y' counts too; still no other number pair.
+KAT_MUT_RX = re.compile(r'mutations (?:proved|caught) (\d+)\s*/\s*(\d+)')
 
 
 def kat_mutations(lines):
-    """(proved, total) summed over KAT summary lines. Only the literal 'mutations proved X/Y' counts: a line such as
+    """(proved, total) summed over KAT summary lines. Only the literal 'mutations proved X/Y' (r27: or 'mutations caught
+    X/Y') counts: a line such as
     'ANOMALY 7848898 blocks behind us' or 'mutations: 3 INVALID' is never read as a count (tooling class 'count-regex
     misread', cbaf664 / CO1). Pure."""
     p = t = 0
@@ -201,6 +230,8 @@ def project_summary(ev, rel):
     if t:
         k['kat_mutations_proved'], k['kat_mutations_total'] = p, t
         k['kat_mutation_kill_pct'] = round(100.0 * p / t, 2)
+    c = kat_coupled(lines)
+    k['kat_mutations_coupled'] = PENDING if c is None else c
     if start and ts(end):
         k['project_wall_s'] = int((ts(end) - start).total_seconds())
     rt = sorted(step_runtimes(ev), key=lambda x: -x[1])
@@ -251,6 +282,65 @@ def memory_index_kpis(mdir):
             'memory_index_dangling': sorted({x for x in links if x not in files}),
             'memory_unindexed': sorted(set(topics) - set(links)),
             'memory_index_duplicates': sorted({x for x in links if links.count(x) > 1})}
+
+
+# r27 (memory control): the index line of a numbered-lessons file states the range it covers; R27 Part A found the index
+# at '#1–#77' while the file had reached #79 (and the rft §10 header a third count). A numbered entry is a line that starts
+# with '#<N>' (optionally bold); the stated bound is the largest upper end of the '#a–#b' ranges on the index line (a
+# line may also quote a sub-range such as '#72–77').
+RANGE_RX = re.compile(r'#(\d+)\s*[–-]\s*#?(\d+)')
+ENTRY_RX = re.compile(r'^\s*(?:[-*]\s*)?(?:\*\*)?#(\d+)\b', re.M)
+
+
+def index_ranges(mdir):
+    """[(file, stated upper bound, highest numbered entry)] for every index line whose linked file has numbered entries
+    and whose stated range ends below or above the file's highest entry. Pure over the directory."""
+    mdir = Path(mdir)
+    try:
+        text = (mdir / 'MEMORY.md').read_text(encoding='utf-8')
+    except OSError:
+        return PENDING
+    out = []
+    for l in text.splitlines():
+        links = LINK_RX.findall(l)
+        rng = RANGE_RX.findall(l)
+        if not links or not rng:
+            continue
+        stated = max(int(b) for _a, b in rng)
+        try:
+            nums = [int(x) for x in ENTRY_RX.findall((mdir / links[0]).read_text(encoding='utf-8', errors='replace'))]
+        except OSError:
+            continue
+        if nums and max(nums) != stated:
+            out.append((links[0], stated, max(nums)))
+    return out
+
+
+# r27 (memory control): a memory that names a repo file must still resolve. Only a token that starts with a top-level
+# directory of the tree and ends in a file name with an extension counts (prose such as 'block/s' or 'artifacts/GitHub'
+# does not); a token with a placeholder ('<', '*', '{') is a pattern, not a file. Measured at R27: dero-r24-round.md
+# names harness/runtime/r24_live_first/hour_20261102.txt, which never existed (the records are r24_live_first_ and
+# r24_live_hour_20261102.txt).
+REF_RX = re.compile(r'(?<![\w/~.<-])((?:[A-Za-z_][\w.-]*/)+[\w-][\w.-]*\.[A-Za-z]\w{0,5})(?![\w/<*{])')
+
+
+def dead_refs(mdir, root):
+    """['<memory file>: <path>'] every repo path (REF_RX, first component a top-level directory of `root`) a memory file
+    names that `root` does not have. Pure over the two directories."""
+    root, mdir = Path(root), Path(mdir)
+    if not mdir.is_dir():
+        return PENDING
+    tops = {p.name for p in root.iterdir() if p.is_dir() and not p.name.startswith('.')}
+    out = []
+    for p in sorted(mdir.glob('*.md')):
+        try:
+            t = p.read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            continue
+        for m in sorted(set(REF_RX.findall(t))):
+            if m.split('/')[0] in tops and not (root / m).exists():
+                out.append(f'{p.name}: {m}')
+    return out
 
 
 CORRECTION_RX = re.compile(r'(REVISED|REFUTED|CORRECTED|corrected|correction|superseded|stale)[^\n]{0,40}\d{4}-\d{2}-\d{2}'
@@ -387,19 +477,69 @@ HELP_RX = re.compile(r'ArgumentParser\(|[\'"]--help[\'"]|[\'"]-h[\'"]')
 MAIN_RX = re.compile(r'^if __name__ == [\'"]__main__[\'"]', re.M)
 
 
-def tools_without_help(root):
+PIN_RX = re.compile(r'"((?:harness|tools|glue)/[^"\s:]+)')
+
+
+def content_pinned(root):
+    """r27: the repo files a committed forensic dataset pins by content (forensics/r<N>/manifest.json: replay tools,
+    cited files). Their bytes cannot change without a new dataset version (G28, rft §0.8.8): adding a --help guard to
+    harness/forensics/pins.py failed test_forensics_r25 MF1/MF12 ('pinned tool changed'). Static."""
+    out = set()
+    for m in sorted(Path(root).glob('forensics/*/manifest.json')):
+        try:
+            out |= set(PIN_RX.findall(m.read_text(errors='replace')))
+        except OSError:
+            continue
+    return out
+
+
+def tools_without_help(root, pinned=None):
     """r26 (B117 class, report-only): the harness tools (a __main__ entry; KAT files aside) whose source has no
     argument parser and no explicit --help branch, so `--help` RUNS them (tooling_intel and mine_triage were two of
-    them). Static: nothing is executed. Sorted repo-relative paths."""
+    them). Static: nothing is executed. Sorted repo-relative paths. r27: a content-pinned tool (content_pinned) is not
+    listed here: it is reported apart (tools_without_help_pinned), since its bytes wait for the next dataset version."""
+    pinned = content_pinned(root) if pinned is None else pinned
     out = []
     for p in sorted((Path(root) / 'harness').rglob('*.py')):
         rel = p.relative_to(root).as_posix()
-        if rel.startswith('harness/kat/') or '__pycache__' in p.parts:
+        if rel.startswith('harness/kat/') or '__pycache__' in p.parts or rel in pinned:
             continue
         t = p.read_text(encoding='utf-8', errors='replace')
         if MAIN_RX.search(t) and not HELP_RX.search(t):
             out.append(rel)
     return out
+
+
+def harness_tools(root):
+    """repo-relative paths of the harness tools: a __main__ entry, KAT files and __pycache__ aside. Static."""
+    out = []
+    for p in sorted((Path(root) / 'harness').rglob('*.py')):
+        rel = p.relative_to(root).as_posix()
+        if rel.startswith('harness/kat/') or '__pycache__' in p.parts:
+            continue
+        if MAIN_RX.search(p.read_text(encoding='utf-8', errors='replace')):
+            out.append(rel)
+    return out
+
+
+def kat_coverage(root):
+    """r27 (tools-kats): the KAT coverage map. A tool is covered when a harness/kat/*.py names its file (its path, or
+    its file name as a quoted literal or a path segment: `HARNESS / 'intel' / 'x.py'`, 'intel/x.py'). Static: nothing
+    is run. {tools_total, tools_with_kat, tools_without_kat, kat_coverage_pct, kat_map {tool: [kat files]}}."""
+    kats = {p.name: p.read_text(encoding='utf-8', errors='replace') for p in sorted((Path(root) / 'harness/kat').glob('*.py'))}
+    tools = harness_tools(root)
+    cmap, missing = {}, []
+    for rel in tools:
+        name = rel.rsplit('/', 1)[-1]
+        sub = rel[len('harness/'):]
+        rx = re.compile(r'''(?<![\w.-])(?:%s|%s)['"]''' % (re.escape(name), re.escape(sub)))
+        hit = sorted(k for k, txt in kats.items() if rx.search(txt) or rel in txt)
+        cmap[rel] = hit
+        if not hit:
+            missing.append(rel)
+    n = len(tools)
+    return {'tools_total': n, 'tools_with_kat': n - len(missing), 'tools_without_kat': missing,
+            'kat_coverage_pct': round(100.0 * (n - len(missing)) / n, 1) if n else PENDING, 'kat_map': cmap}
 
 
 def paused_tracks(registry, current):
@@ -552,10 +692,20 @@ def tool_path(key, root=ROOT):
     return Path(os.path.expanduser(v)) if v else None
 
 
+# r26 B131: the machine-model and agent-tool-path shapes the R26 publish had to scrub by hand (built from parts, so the
+# tree never carries the literal strings): the box model, the R1 row's quoted claim, the node tag in lower case, the
+# memory-link directory and the two session settings files. r27 (tools-kats): a module constant, so the KAT reads the
+# shapes without the out-of-repo rule table (HT12 used to fail for every tooling_intel mutation: the mutant's ROOT
+# had no TOOL_PATHS.json, so scrub_plants() returned None: KAT coupling [HT8,HT12], [HT10,HT12]).
+MODEL_TOOL_PLANTS = ['M1' + '-Ultra', '"M1 hard' + 'ware ceiling"', 'm1' + 'ultra', '~/.' + 'claude/projects/x/memory/',
+                     '.' + 'claude/settings.json', '.' + 'claude/settings.local.json']
+
+
 def scrub_plants(root=ROOT):
     """synthetic planted secrets in the shapes the scrubber must remove, built at run time from the scrubber's own rule
     table and the home directory (never written to the tree): a home path, an e-mail, a LAN address, the wallet prefix
-    with a synthetic tail, a mapped peer address; from r26 (B131) the machine-model and agent-tool-path shapes."""
+    with a synthetic tail, a mapped peer address; from r26 (B131) the machine-model and agent-tool-path shapes.
+    None when `root` names no readable rule table (harness/loop/TOOL_PATHS.json 'sync_rules')."""
     rules = tool_path('sync_rules', root)
     plants = [str(Path.home()) + '/derohe-Release151/x.go', 'someone.planted' + '@' + 'gmail.com']
     try:
@@ -569,11 +719,7 @@ def scrub_plants(root=ROOT):
         ip = re.search(r"IP_MAP = \{\s*'([\d.]+)'", src)
         if ip:
             plants.append(ip.group(1))
-        # r26 B131: the machine-model and agent-tool-path shapes the R26 publish had to scrub by hand (built from parts,
-        # so the tree never carries the literal strings): the box model, the R1 row's quoted claim, the node tag in
-        # lower case, the memory-link directory and the two session settings files
-        plants += ['M1' + '-Ultra', '"M1 hard' + 'ware ceiling"', 'm1' + 'ultra', '~/.' + 'claude/projects/x/memory/',
-                   '.' + 'claude/settings.json', '.' + 'claude/settings.local.json']
+        plants += MODEL_TOOL_PLANTS                                       # r26 B131
     except (OSError, AttributeError):
         return None
     return plants
@@ -588,9 +734,12 @@ CLEAN_CONTROL = ('the node listens on 127.0.0.1:10102 and 0.0.0.0:11011\n'
                  'harness/loop/TOOL_PATHS.json and a settings.json are not tool paths\n')
 
 
-def scrub_control():
-    tool = tool_path('pubscrub')
-    plants = scrub_plants()
+def scrub_control(root=ROOT, tool=None):
+    """the planted-secret control of the scrubber `tool` (default: the configured pubscrub of `root`). r27: `root` and
+    `tool` are parameters, so the KAT runs it on a forged rule table and forged scrubbers (perfect, leaky, over-eager)
+    and the out-of-repo scrubber is measured only by `--scrub-control` (§13), never inside a KAT."""
+    tool = Path(tool) if tool is not None else tool_path('pubscrub', root)
+    plants = scrub_plants(root)
     if tool is None or not tool.exists() or plants is None:
         return {'scrub_false_negatives': PENDING, 'why': 'pubscrub.py not on this machine'}
     with tempfile.TemporaryDirectory(prefix='r25scrub-') as d:
@@ -641,6 +790,8 @@ def targets(k):
         v.append(f"gate ids used by two gates {k['gate_id_duplicates']}")
     if isinstance(k.get('flaky'), int) and k['flaky']:
         v.append(f"flaky tests {k['flaky']} (target 0)")
+    if isinstance(k.get('kat_mutations_coupled'), int) and k['kat_mutations_coupled']:
+        v.append(f"KAT mutations coupled {k['kat_mutations_coupled']} (a mutation also fails a KAT of another defect; target 0)")
     if isinstance(k.get('scrub_false_negatives'), int) and k['scrub_false_negatives']:
         v.append(f"pubscrub false negatives {k['scrub_false_negatives']} on the planted control")
     if any(x != 'byte-exact' for x in (k.get('determinism') or {}).values()):
@@ -651,6 +802,10 @@ def targets(k):
         v.append(f"memory index {k['memory_index_lines']} lines (>= {INDEX_MAX_LINES})")
     if k.get('memory_stale_claims'):
         v.append(f"stale memory claims {k['memory_stale_claims']}")
+    if isinstance(k.get('memory_index_ranges'), list) and k['memory_index_ranges']:
+        v.append(f"memory index ranges differ from their files {k['memory_index_ranges']}")
+    if isinstance(k.get('memory_dead_refs'), list) and k['memory_dead_refs']:
+        v.append(f"memory files name repo paths that do not exist {k['memory_dead_refs'][:5]}")
     if k.get('skill_fresh') == 0:
         v.append(f"skill not recorded for the current round {k.get('skill_last_round')}"
                  + (f" (paused-track skills {k['skill_paused']})" if k.get('skill_paused') else ''))
@@ -680,6 +835,8 @@ def run(root, mdir, opt_det=False, opt_scrub=False, opt_scripts=False):
     else:
         k['memory_stale_claims'] = stale_claims(mdir, claims)
         k['memory_stale_claim_count'] = len(k['memory_stale_claims'])
+    k['memory_index_ranges'] = index_ranges(mdir)
+    k['memory_dead_refs'] = dead_refs(mdir, root)
     if Path(mdir).is_dir():
         n, why = mirror_drift(mdir, root / MIRROR)
         k['mirror_drift'], k['mirror_drift_reasons'] = n, why[:60]
@@ -698,6 +855,10 @@ def run(root, mdir, opt_det=False, opt_scrub=False, opt_scripts=False):
     k['checkpoint_age_s'] = checkpoint_age(checkpoint_dir(), cur)
     k['tools_without_help'] = tools_without_help(root)          # report-only (no §0.9 target yet)
     k['tools_without_help_count'] = len(k['tools_without_help'])
+    k['tools_without_help_pinned'] = sorted(set(tools_without_help(root, pinned=set())) - set(k['tools_without_help']))
+    cov = kat_coverage(root)                                     # r27: report-only (rule-2 target pending)
+    k.update({x: cov[x] for x in ('tools_total', 'tools_with_kat', 'tools_without_kat', 'kat_coverage_pct')})
+    k['tools_without_kat_count'] = len(cov['tools_without_kat'])
     k['defect_classes'] = len(DEFECT_CLASSES)
     k['defect_classes_without_kat'] = classes_without_kat(root)
     k['determinism'] = determinism(root) if opt_det else {}
@@ -709,7 +870,7 @@ def run(root, mdir, opt_det=False, opt_scrub=False, opt_scripts=False):
     if isinstance(k.get('gate_id_duplicates'), dict):
         k['gate_id_duplicate_count'] = len(k['gate_id_duplicates'])
     for key in ('memory_index_dangling', 'memory_unindexed', 'memory_index_duplicates', 'defect_classes_without_kat',
-                'order_gaps'):
+                'order_gaps', 'memory_index_ranges', 'memory_dead_refs'):
         if isinstance(k.get(key), list):
             k[key + '_count'] = len(k[key])
     k['violations'] = targets(k)
@@ -750,8 +911,11 @@ def main(argv):
     mdir = a.memory_dir or default_memory_dir()
     k = run(ROOT, mdir, a.determinism, a.scrub_control, a.scripts)
     rel = write(ROOT, k)
-    print(f"tooling_intel: round {k['round']} · KATs {k.get('kats_passed')}/{k.get('kats_total')} · KAT mutations "
-          f"{k.get('kat_mutations_proved')}/{k.get('kat_mutations_total')} · gates {k.get('gates_pass')}/{k.get('gates_total')} "
+    # r27: 'KATs 35/35' was the verify_deroarch DK suite next to kat_files 47 (harness/kat/test_*.py): two counts, one word
+    print(f"tooling_intel: round {k['round']} · DK KATs (verify_deroarch) {k.get('kats_passed')}/{k.get('kats_total')} · "
+          f"KAT files {k.get('kat_files')} · KAT mutations "
+          f"{k.get('kat_mutations_proved')}/{k.get('kat_mutations_total')} (coupled {k.get('kat_mutations_coupled')}) · "
+          f"tools with a KAT {k.get('tools_with_kat')}/{k.get('tools_total')} · without --help {k.get('tools_without_help_count')} · gates {k.get('gates_pass')}/{k.get('gates_total')} "
           f"(+{k.get('gates_paused')} PAUSED) · memory index {k.get('memory_index_bytes')} B, longest {k.get('memory_index_longest')} · "
           f"mirror drift {k.get('mirror_drift')} · stale claims {k.get('memory_stale_claim_count', k.get('memory_stale_claims'))} · "
           f"wrote {rel}")

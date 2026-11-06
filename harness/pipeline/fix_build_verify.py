@@ -16,6 +16,8 @@ installed, so bin/ only ever receives binaries that passed every stage before IN
                !race-only simulator test without -race) and harness/loop/SOUNDNESS_LAST.json records each test's status
                with a sha256 fingerprint of its test file and the claim's watch files; gate G22 accepts a PASS only
                while those files are unchanged. --soundness-only runs S1 + S3s alone. A failing soundness test FAILS.
+  r27b         before S3b and S3c a resource preflight (harness/intel/resource_intel.py) records its decision; S3c's
+               `go test -race` gets -p from it (HOLD: serial, never skipped; timeout scaled) — rft §5 resource hygiene.
   S3k kats     (R20) the stand-alone harness KATs (harness/kat/test_*.py) BEFORE build/install, so a broken intel
                tool stops the run before bin/ changes (before R20 they ran only in S7, after install)
   S4 build     derod, dero-miner, dero-wallet-cli into bin/.staging; version + flags checked
@@ -1023,6 +1025,82 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
+# Round 27 (dvm-blockchain, dero-rft §7 B10/B110, R27 sweep): DVM builtin KATs + the offline hash-gas census (dvm/),
+# the emission auditor booking a real DVM payout (glue/emission/), the difficulty rule against the observatory's
+# vectors (blockchain/). Tests only; none is env-gated.
+for _pkg, _pat in {
+    './dvm/': 'TestR27BuiltinScalarsKAT|TestR27BuiltinAddressKAT|TestR27BuiltinAssetValueKAT|TestR27BuiltinExistsDelete'
+              '|TestR27BuiltinFailuresRevert|TestR27SendAssetToAddressDERO|TestR27SendAssetToAddressToken'
+              '|TestR27UpdateSCCode|TestR27BuiltinGasTablePinned|TestR27HashGasCensus',
+    './glue/emission/': 'TestR27AuditBooksRealSendAssetToAddress|TestR27AuditBooksRealOverdraftRefund'
+                        '|TestR27AuditTokenPayoutOutsideScope',
+    './blockchain/': 'TestR27DifficultyCrossImpl|TestR27DifficultyEarlyReturns',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 27 (group p2p-config, dero-rft §7 B99/B47 + the r26 sweep's 0 % paths and config pins): the TestR27* of
+# p2p/r27_p2p_config_test.go, config/r27_consensus_params_test.go, cmd/derod/config_env_r27_test.go and
+# cmd/derod/rpc/r27_syncinfo_bans_test.go (none is env-gated; the loopback scenario skips only under -short).
+for _pkg, _pat in {
+    './p2p/': 'TestR27StrikeDecayIsCounted|TestR27SyncSucceededReportsCleared|TestR27ForgivenessCountedByPath'
+              '|TestR27B99CountersOnMetricsFromStart|TestR27SyncHoldLoopbackScenario|TestR27LoadBanListWithReasons'
+              '|TestR27BanCleanUpLoopDropsExpiredAndExits|TestR27ConsensusCountersSnapshot',
+    './config/': 'TestR27ConsensusConstantsPinned|TestR27SettingsDefaultsPinned|TestR27VersionRules'
+                 '|TestR27ConsensusConfigReadOnly',
+    './cmd/derod/': 'TestR27ConsensusSettingOverrides|TestR27ConsensusEnvGauge|TestR27ReportConsensusEnvOverrides',
+    './cmd/derod/rpc/': 'TestR27SyncInfoBanFields|TestR27SyncInfoBanFieldsFilled',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 27 (glue-global group: globals clock/amount, glue/rwc nhooyr adapter, glue/emission archive + series payees,
+# glue/txprecheck PeekWindow); none is env-gated; each guards a gm-r27-glue-* mutation in harness/intel/go_mutations.json.
+for _pkg, _pat in {
+    './globals/': 'TestR27TimeOffsetRules|TestR27ClockOffsetRace|TestR27InitNetwork'
+                  '|TestR27InitializeDataDirAndProxy|TestR27InitializeLogLevelsAndCaller|TestR27RecoverCounts'
+                  '|TestR27CryptoRandSource',
+    './glue/rwc/': 'TestR27NhooyrWriteHandlesShortWrites|TestR27WriteErrorSurvivesClose|TestR27NhooyrRoundTripMessages'
+                   '|TestR27NhooyrReadLimitMatchesServers',
+    './glue/emission/': 'TestR27FormulaSupplyBoundedAndGenesis|TestR27CumulativeCountsPayeesSkipsErrors|TestR27SeriesPayeesRoundTrip'
+                        '|TestR27SeriesTailWindowOnLineBoundary|TestR27CountSeries|TestR27DirSourceReadsStorefsLayout'
+                        '|TestR27TopoMapLen',
+    './glue/txprecheck/': 'TestR27PeekWindowGatesRawBodies',
+    './cmd/derod/rpc/': 'TestR27SeriesRecordCarriesPayees',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 27 (tools-kats): the -archive reader of glue/emission (0.0% covered before) and tools/emission-audit's first
+# tests (payee tally, archive callback, series reader); none is env-gated.
+for _pkg, _pat in {
+    './glue/emission/': 'TestR27DirSourceBlockFileNewestVersion|TestR27DirSourceBlockAndState'
+                        '|TestR27DirSourceTxBothDirsAndErrors|TestR27TopoMapFastsyncShape|TestR27CountSeriesIntactAndTorn',
+    './tools/emission-audit/': 'TestR27PayeeTallyCountsVerifiedAndExplained|TestR27ArchiveEachPayeesSegmentsAndCheckpoints'
+                               '|TestR27SeriesMainAndHF3Invocation',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 27 (harness-measure, dero-rft §7 B36): the emission series and the archive segment carry the coinbase payee
+# counts (glue/emission r27_series_payees_test.go, cmd/derod/rpc r27_emission_series_payees_test.go,
+# tools/emission-audit r27_series_payees_test.go; none is env-gated)
+for _pkg, _pat in {
+    './glue/emission/': 'TestR27CumulativeCountsPayees|TestR27SeriesCarriesPayees',
+    './cmd/derod/rpc/': 'TestR27EmissionSeriesCheckpointsCarryPayees',
+    './tools/emission-audit/': 'TestR27SeriesReadPayees',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+
+# Round 27 (rpc-metrics, dero-rft §7 B132/B143/B100/B104; registered at the R27 merge: the group's patch carried no
+# NEW_TESTS block and test_new_tests_registered_r24 NT1 listed these 16 as unregistered). None is env-gated.
+for _pkg, _pat in {
+    './cmd/derod/rpc/': 'TestR27InvalidParamsNamesTheField|TestR27ParamsHelpers|TestR27ErrorResponsesCountedByCode'
+                        '|TestR27TypedRefusalCountersPreregistered|TestR27NameEchoCapKeepsUTF8|TestR27ZeroBlidTextOnUnprunedNode'
+                        '|TestR27UntypedRecoversAreCounted|TestR27BanListGauge|TestR27TipHandlersOnSimulator'
+                        '|TestR27DocumentedMetricsExist',
+    './metrics/': 'TestR27ExpositionChecker|TestR27WritePrometheusIsValid|TestR27DiskUsageAccessors',
+    './rpc/': 'TestR27ArgumentsLookups|TestR27ArgumentsPack|TestR27AddressHelpers',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
 
 UPSTREAM_BASE = 'bf274e5'           # pristine Release153 content (harness/baseline); rule #28 compares against it
 NEW_TESTS_BASE = 'HEAD'
@@ -1417,8 +1495,49 @@ def s3k_kats():
     event('kats', 'PASS', results=done)
 
 
+RESOURCE_INTEL = HARNESS / 'intel/resource_intel.py'     # r27b (B148)
+
+
+def heavy_preflight(stage, planned, ri=None, r=None):
+    """r27b (B148, rft §5 resource hygiene): the resource preflight before a heavy stage. Records one 'preflight' INFO
+    event (and, with $DERO_ROUND_NOTES set, one round-notes line) and returns the concurrency the readings allow, >= 1:
+    the stage then runs slower, never skipped and never with fewer tests. An unreadable probe returns `planned` (the
+    stage runs as before) and says so in the event. ri / r injectable (tests)."""
+    try:
+        if ri is None:
+            spec = importlib.util.spec_from_file_location('resource_intel_fbv', RESOURCE_INTEL)
+            ri = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(ri)
+        if r is None:
+            r = ri.readings(scratch=[], quick=True)
+        d = ri.preflight(r, planned, 'jobs')
+    except Exception as e:                                   # noqa: BLE001 — a probe failure never blocks a gate
+        event('preflight', 'INFO', stage=stage, level='unreadable', planned=planned, recommended=planned,
+              why=f'{type(e).__name__}: {e}'[:200])
+        return planned
+    event('preflight', 'INFO', stage=stage, level=d['level'], planned=d['planned'], recommended=d['recommended'],
+          reasons=d['reasons'])
+    notes = os.environ.get('DERO_ROUND_NOTES')
+    if notes:
+        try:
+            with open(os.path.expanduser(notes), 'a') as f:
+                f.write(ri.note_line(f'pipeline {stage}', d) + '\n')
+        except OSError:
+            pass
+    return max(1, d['recommended'])
+
+
+def race_args(p, cpus, base_timeout=3600):
+    """r27b: (extra go test args, timeout) for -p p on a cpus-core box. Pure. p >= cpus is go's default (no flag, the
+    timeout as before); a lower p adds -p and scales the timeout by cpus/p, capped at 6 h (same packages, same tests)."""
+    if p >= cpus:
+        return [], base_timeout
+    return ['-p', str(p)], min(6 * 3600, int(base_timeout * cpus / max(1, p)))
+
+
 def s3b_mutate():
     """every local fix must be caught by its test when it is undone (harness/intel/go_mutations.json)"""
+    heavy_preflight('mutate', 1)                             # r27b: go_mutate is serial already: the decision is recorded
     event('mutate', 'START')
     out = HARNESS / f'runtime/gomut_{TS}.json'
     rc, o, e = sh([sys.executable, 'harness/intel/go_mutate.py', '--json', str(out), '--baseline', UPSTREAM_BASE], timeout=7200)
@@ -1449,8 +1568,10 @@ RACE_PKGS = ['./p2p/', './blockchain/', './cmd/derod/rpc/', './dvm/', './block/'
 def s3c_race():
     """rpc2 runs every request on its own goroutine: the race detector runs over every package the node's request
     paths touch, not just the new tests"""
-    event('race', 'START', packages=RACE_PKGS)
-    rc, o, e = sh(['go', 'test', '-race', '-count=1', *RACE_PKGS], timeout=3600)
+    cpus = os.cpu_count() or 1
+    pargs, tmo = race_args(heavy_preflight('race', cpus), cpus)     # r27b (B148): -p from the resource preflight
+    event('race', 'START', packages=RACE_PKGS, parallel=pargs[1] if pargs else 'default', timeout=tmo)
+    rc, o, e = sh(['go', 'test', '-race', '-count=1', *pargs, *RACE_PKGS], timeout=tmo)
     races = (o + e).count('WARNING: DATA RACE')
     oks = re.findall(r'^ok\s+(\S+)', o, re.M)
     if rc != 0 or races:

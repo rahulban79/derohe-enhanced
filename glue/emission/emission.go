@@ -71,6 +71,12 @@ func BlockReward(h uint64) uint64 {
 func FormulaSupply(h uint64) uint64 {
 	s := config.PREMINE + ClaimBonusTotalAtomic
 	for start := uint64(0); start < h; start += ReductionInterval {
+		if BlockReward(start) == 0 {
+			// r27: every later interval pays 0 as well (the reward halves per interval: 0 from start 112,000,000 on).
+			// Without the stop, a caller's FormulaSupply(h-1) at h == 0 (2^64-1) looped ~2.6e12 times, and start
+			// wrapped past 2^64 back below h: the archive auditor hung on a genesis report.
+			break
+		}
 		n := uint64(ReductionInterval)
 		if h-start < n {
 			n = h - start
@@ -78,6 +84,15 @@ func FormulaSupply(h uint64) uint64 {
 		s += BlockReward(start) * n
 	}
 	return s
+}
+
+// SupplyBefore is the formula supply before the block at height h (FormulaSupply(h-1)); at h == 0, the genesis, it is
+// FormulaSupply(0): no block before it paid a reward, and h-1 must not wrap to 2^64-1.
+func SupplyBefore(h uint64) uint64 {
+	if h == 0 {
+		return FormulaSupply(0)
+	}
+	return FormulaSupply(h - 1)
 }
 
 // Split is the coinbase division of transaction_execute.go:126-160, restated: full = base + fees is divided into

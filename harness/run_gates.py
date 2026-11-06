@@ -92,6 +92,9 @@
        headline on the ledger, soundness and src-arch pages from the round's first ledger render (KAT test_forensics_classes_r26.py).
 Appends one row per gate to loop/GATES.md. Exit 0 all pass (or PAUSED) · 3 any fail.  Usage: run_gates.py [cycle-label]
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import datetime, html, html.parser, json, re, subprocess, sys, tempfile, urllib.request
 from pathlib import Path
 
@@ -412,12 +415,10 @@ def g18_gate(mt, name, tree_ver, now=None):
             f"alerts {[a['rule'] for a in mt.get('alerts', [])]}" + ('' if age_h < 24 else ' · STALE'))
 
 
-# r24: the metrics_intel ALERT rules about the miner (metrics_intel.rules); every other ALERT is the node's
-MINER_ALERT_RULES = ('miner_disconnected', 'split_disabled', 'gpu_mismatch', 'no_hashing', 'miner_behind')
-
-
-def miner_alert(a):
-    return a.get('rule') in MINER_ALERT_RULES or (a.get('rule') == 'endpoint_down' and str(a.get('what', '')).startswith('miner '))
+# r24: the metrics_intel ALERT rules about the miner (metrics_intel.rules); every other ALERT is the node's.
+# r27: one classifier in kit/roundtracks.py, shared with metrics_intel's exit code
+MINER_ALERT_RULES = RT.MINER_ALERT_RULES
+miner_alert = RT.miner_alert
 
 
 def g18_derod_half(mt, now=None):

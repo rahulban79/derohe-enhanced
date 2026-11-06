@@ -1543,3 +1543,93 @@ forensics audit findings as regressions). No derod error to fix in code; no new 
   pubscrub machine-model / tool-path gap (B131, fixed 2026-11-05); pubscrub residual on the migration report (B122); the node-operations skill file (B92).
 - Carried: B19 (user), B51 decision and live read, B35 launchd (user), B36 24 h emission (done 2026-11-05 for the r25 segment; payee counts not readable),
   report-only B11/B30/B31/B45/B46, C1 upstream (B8), the paused miner rows.
+
+## Round 27 (2026-11-05) — node-only area-enhancement round (miner paused): −32602 answers that name the field, counted recovers and error codes, visible reloaded bans, a reported consensus env override, emission payee records and glue fixes, DVM and blockchain KATs, and a harness whose every tool answers --help; installed as +22102026.r27 (derod restart pending)
+
+**Why.** The R26 measurement (rft §13 R26) left three rows: the −32602 message doubled its code and named no field
+(B132), the project-only wall time had grown 512 → 1,901 s (B133), and area_intel booked recorded forensics audit
+findings as regressions (B134). The R27 plan (rft §8) enhanced every area of the tree itself: harness, measurements,
+tools, KATs, artifacts and the memory mirror, p2p, config, rpc, metrics, the glue, globals, dvm and blockchain, with
+dvm/ and blockchain/ limited to tests and observability. Base fcfc09d5; registry `r27`, tracks miner `paused`, node
+`active`.
+
+**Open loop.** Workflow `wf_eae21b40-28b`: 7 groups (harness-measure, tools-kats, artifacts-memory, p2p-config,
+rpc-metrics, glue-global, dvm-blockchain), a builder and a fresh-context refute-by-default verifier each, clones at
+cee1d80f. Verifier fixes merged: tools-kats (the new KAT registered in areas.json; a KAT comment on Darwin zombies),
+p2p-config (the GetSyncInfo ban fill and the derod env report were untested: 2 tests + 4 mutations), rpc-metrics (the
+ban-gauge collect wiring untested: test + mutation; `data.field` bounded). Merge 321fa728 (141 files, +13,555 / −1,876;
+`harness/runtime/r27_merge_20261105.txt`), then an rft coherence pass (99720ff1: 44 fixes; 79fe6b78 regenerated pages,
+G25 0 drifts) and the version commit 7baab828.
+
+**Shipped** (consensus guard PASS in every run; 0 consensus-package files changed against cee1d80f):
+- **RPC (B132, B143):** typed_new wraps all 53 method-table entries; only on jrpc2's parameter-decode failure it answers
+  −32602 naming the field and the accepted names (`unknown field "start" (accepted: start_topoheight, end_topoheight)`,
+  data {field, accepted}, the echo bounded), counted in `rpc_params_refused_total`; the four untyped panic recovers of
+  GetEmissionAudit, GetMonetaryIntegrity and GetSupplyAudit count `rpc_internal_error`; typed refusal counters are
+  pre-registered; `rpc_error_responses_total{code}` counts every error answer.
+- **P2P and bans (B142):** a ban reloaded from `ban_list.json` was invisible on /metrics; now `p2p_bans_active`,
+  `p2p_bans_loaded_total`, the same two fields in GetSyncInfo, and the gauge `dero_p2p_ban_list_entries`.
+- **Config (B141, mitigated):** a consensus parameter (the minimum and bootstrap difficulties) is settable through the
+  environment at package init; derod now logs one ERROR line per Settings field that differs from its default and
+  exports `config_consensus_env_overrides`. config/ and blockchain/ are unchanged; refusing to start is the user's
+  decision. None of the four names is in the running derod's environment (read 2026-11-05).
+- **Emission and glue (B36 fields, B139, B144):** series and archive records carry payee counts; the archive no longer
+  hangs on a height-0 report; ReadSeriesTail keeps a record when the window starts on a line boundary; the glue/rwc
+  adapters report a failed write and do not re-send on a short write; `tools/emission-audit -archive` prints its payees.
+  **Held (B147):** the globals ParseAmount, FormatMoneyPrecision and GetOffset fixes, because `globals/globals.go` is a
+  content-pinned decoder input of the sealed dataset forensics/r25 (MF12); they wait in
+  `harness/loop/held/r27_globals_amount_offset.patch` with their 3 tests and 5 mutations.
+- **DVM and blockchain (tests only; B145, B146):** KATs for every SC builtin that had no test (dvm coverage 72.2 →
+  84.4 %), the hash-gas census, difficulty vectors (difficulty.go 41.5 → 81.9 %); six consensus-visible DVM behaviours
+  pinned and documented, never changed; the first blockchain/ -coverpkg record (54.0 → 55.4–55.5 %).
+- **Harness and tooling (B120, B133, B134, B135, B137, B138, B139):** every harness tool answers `--help` without running
+  (33 → 0; `harness/forensics/pins.py` held by the r25 content pin); `gen_deroarch.py build --strict` names the miner
+  whose raw file lost anchors and exits 3; a KAT mutation counts as proved only by its own KAT (r26 runner 12/12, 43/43,
+  coupled 0); the area_intel metric class `record`; the frontend2 KAT memoises its dataset readers (852.83 → 244.67 s,
+  17/17 caught); `harness/intel/live_window.py` for the after-restart read (peer labels aggregated); the memory mirror
+  checks pubscrub's residual on its final bytes.
+
+**Pipeline.**
+- `pipeline_20261105T133652` (full run 1): S1–S3 PASS (flaky 80 ×3, 0 flaky); S3k FAIL at `test_gomut_anchors_r26.py` GA1: `gm-r27-p2pcfg-cfg-version-date` anchored on the round tag `+22102026.r26` and went STALE at the r27 version bump → round-independent anchor `+22102026.r` (go_mutate --only 2/2 CAUGHT) + KAT GA3 (a config/version.go mutation must not anchor on the round tag; fails on the pre-fix registry, 6/6 checker mutations proved) (72266d4f).
+- `pipeline_20261105T140432` (full run 2, install; registry `pipeline_full`): PASS; guard 7 consensus-package files vs bf274e5, all pre-existing; flaky 80 ×3, 0 flaky; soundness 29 tests; KATs 53 files; mutations 1448/1448 (upstream failures recorded 3); race 27 packages 0 races; S4b/S4c PAUSED (miner); shadow 120 blocks, 240 treehashes, 0 mismatches, 0 regressions (control `bin/derod`, the live r26 build); S6 installed; S7 KATs 35/35, harness mutations 34/34, gates 29/32 (+3 PAUSED, miner), src-arch 6,629/6,629 anchors, coherence 2,224 statements, 0 drifts; records 663a2198.
+
+**Installed** `bin/derod`, `bin/dero-miner`, `bin/dero-wallet-cli` as +22102026.r27 by S6 of run 2 (staged in `bin/.staging`,
+atomic rename; backups `bin/*.22102026.r26-backup`); `bin/derod --version` `3.6.0-153.DEROHE.STARGATE+22102026.r27`, sha256 `1c2d2b9123a75bd2d26867e7af4d2407c915429eb62f62f1dc29df5d5442bb47`.
+No new derod flag or environment variable. The running derod (r26, pid 93240) keeps its inode until the user restarts
+it (rft §11, derod only); the miner stays stopped (paused).
+
+**Live measurement:** pending (the r27 derod restart).
+
+**Measured live (2026-11-05, rft §13 R27).** The user restarted derod onto r27 at 17:51:48 (pid 77276); read-only
+window 17:53:50 → 18:52:50 with `harness/intel/live_window.py`, 60 samples, first one 121 s after the derod start
+(`harness/runtime/r27_live_window_20261105.txt`). 60/60 synced, lag 0, tip age mean 12.9 s (GetSyncInfo), tip block age
+11.0 s at 18:57:17 (GetLastBlockHeader against the local clock), 14 out / 0 in; 0 ERROR / 0 WARN since the restart (G15
+clear; 1,199 lines, `harness/runtime/error_census_20261105T185445.json`), 0 "panic" lines, 0 recovered panics. 191 blocks,
+0 txs, 9 side blocks (GetInfo `alt_blocks_count` = GetConsensusStats in 60/60 samples), 2 reorgs (depth 1, 0 heights).
+CONFIRMED live (`harness/runtime/r27_live_probes_20261105.txt`): B132, three malformed probes with Content-Type
+application/json answer −32602 `invalid parameters: unknown field "start" (accepted: start_topoheight, end_topoheight)`,
+`field start_topoheight: want int64, got string` and `field topoheight: want uint64, got string`, each with data
+{field, accepted}; B143, `rpc_error_responses_total{code="-32602"}` and `rpc_params_refused_total` 0 → 3, all 18
+pre-registered series present at 0 before their event, `rpc_recovered_panics_total` 0 and code −32603 0; B142,
+`p2p_bans_active` 1, `p2p_bans_loaded_total` 1 and `dero_p2p_ban_list_entries` 1 in 12/12 scrapes and in GetSyncInfo (the
+r25 v2_chain ban, reloaded from ban_list.json; `p2p_bans_total` 0 placements); B141, `config_consensus_env_overrides` 0
+in 12/12 scrapes and no override line; B36, the r27 series checkpoints are v2 and carry payees (7,861,957: 14;
+7,862,000: 296; 7,862,100: 960; all verified and explained, `harness/runtime/r27_live_emission_20261105.txt`); B103,
+duplicate_race 742 and insert_failed absent in 60/60 samples (`p2p_miniblock_refused_total{reason="insert_failed"}` 0 in
+12/12); B60, reorg monitor lifetime `starts` 3. Emission 230 audited, 0 alerts, issued = formula 7,011,000, payees
+1,508/1,508; disclosure `--live` S1–S4 PASS, census 15,422 scalars 0 non-canonical; G28 PASS (r25 + r26) on the measured
+build. Unit-proven, live pending-no-event: B99 decay / forgiveness (0 holds), B47, B48 (0 inbound), B57, B61, B85.
+Self-detected B149: r27 was missing from `harness/areas.json` `rounds`, so area_intel read the r27 captures as an
+unknown binary and `record r27` failed check with 18 errors; added (record r27: 128 values). Project-only pipeline_20261105T190905: PASS (benchlock --heavy, nice 15, 19:09:05 → 19:33:28, wall 1,463 s): KATs 35/35, harness mutations 34/34, gates 29/32 (+3 PAUSED, miner), src-arch 6,645/6,645 anchors, coherence 3,866 statements 0 drifts.
+No derod error to fix in code; no new binary.
+
+**Open after Round 27:**
+- Live reads after the r27 restart: DONE 2026-11-05 (B132, B142, B143, B141, B36 payees, B103, B60, G15 confirmed);
+  still waiting for an event: B99 decay and forgiveness, B47, B48, B57, B61; new B149 (area registry rounds, fixed).
+- Held for the next dataset version: the globals amount and offset fixes (B144, B147); the wallet's 64-bit
+  FormatMoneyPrecision copies unchanged.
+- Report-only: the pinned DVM behaviours (B145); blockchain/ coverage with process_transaction_sc at 0.0 % (B146).
+- Tooling: B135 (raw /metrics scrapes keep peer labels, scratchpad only), B139 residual (the -archive payee line is not
+  under test), B140 (memory dead references), B133 project_wall_s on r27 1,377 s (r26 1,901 s), B122.
+- Carried: B19 (user), B51 slack decision (live CPU per call on r26 22.7 / 22.5 ms), B35 launchd (user), report-only
+  B11/B30/B31/B45/B46, C1 upstream (B8), forensics B97/B110/B111/B126, the paused miner rows.

@@ -6,6 +6,9 @@ Every row anchors on a line of the pseudonymised capture (harness/runtime/peer_c
 cannot anchor never becomes a row: it goes to 'unverified'. No row carries an IP address or a peer tag: peer_intel
 never writes one, and gate G27 re-scans these rows and the rendered section.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import json, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))

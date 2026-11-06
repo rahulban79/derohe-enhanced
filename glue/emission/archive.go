@@ -238,19 +238,24 @@ func (t *TopoMap) FindHeight(h int64) int64 {
 // (the range-proof soundness class) are not measurable by any node, so the true supply is bounded by neither
 // Issued nor Issued - Burns: these are the plaintext-visible parts only.
 type Cumulative struct {
-	From            uint64 `json:"from"`
-	To              uint64 `json:"to"`
-	Blocks          uint64 `json:"blocks"`
-	Verified        uint64 `json:"verified_heights"`   // coinbase proven to land exactly
-	Unverified      uint64 `json:"unverified_heights"` // sc_unexplained, errors, protocol-skipped heights
-	Observed        uint64 `json:"observed_emission"`  // formula base reward of the verified heights
-	Excused         uint64 `json:"excused_emission"`   // formula base reward of the unverified heights
-	Formula         uint64 `json:"formula_emission"`   // FormulaSupply(To) - FormulaSupply(From-1)
-	Issued          uint64 `json:"issued"`             // sum(Paid - Fees) over verified heights
-	Fees            uint64 `json:"fees"`
-	SCDeposits      uint64 `json:"sc_deposits"`
-	SCPayouts       uint64 `json:"sc_payouts"`
-	Burns           uint64 `json:"burns"`
+	From       uint64 `json:"from"`
+	To         uint64 `json:"to"`
+	Blocks     uint64 `json:"blocks"`
+	Verified   uint64 `json:"verified_heights"`   // coinbase proven to land exactly
+	Unverified uint64 `json:"unverified_heights"` // sc_unexplained, errors, protocol-skipped heights
+	Observed   uint64 `json:"observed_emission"`  // formula base reward of the verified heights
+	Excused    uint64 `json:"excused_emission"`   // formula base reward of the unverified heights
+	Formula    uint64 `json:"formula_emission"`   // FormulaSupply(To) - SupplyBefore(From)
+	Issued     uint64 `json:"issued"`             // sum(Paid - Fees) over verified heights
+	Fees       uint64 `json:"fees"`
+	SCDeposits uint64 `json:"sc_deposits"`
+	SCPayouts  uint64 `json:"sc_payouts"`
+	Burns      uint64 `json:"burns"`
+	// r27 (B36): the coinbase payees of the audited heights (Report.Payees), so an archive range reports what the
+	// live auditor's GetEmissionAudit reports (payees, payees_verified, payees_explained)
+	Payees          uint64 `json:"payees"`
+	PayeesVerified  uint64 `json:"payees_verified"`
+	PayeesExplained uint64 `json:"payees_explained"`
 	Alerts          uint64 `json:"alerts"`
 	Gaps            uint64 `json:"gap_heights"`      // heights missing inside the range
 	RepeatedHeights uint64 `json:"repeated_heights"` // a height audited twice (not expected on the main chain)
@@ -282,7 +287,7 @@ func (c *Cumulative) Add(r Report, err error) {
 		c.To = r.Height
 	}
 	c.Blocks++
-	formula := FormulaSupply(r.Height) - FormulaSupply(r.Height-1)
+	formula := FormulaSupply(r.Height) - SupplyBefore(r.Height) // r27: 0 at the genesis (was a wrap of h-1)
 	switch {
 	case err == nil && (r.Verdict == VerdictOK || r.Verdict == VerdictOKSC):
 		c.Verified++
@@ -299,11 +304,20 @@ func (c *Cumulative) Add(r Report, err error) {
 		c.SCDeposits = sat(c.SCDeposits, r.SCDeposits)
 		c.SCPayouts = sat(c.SCPayouts, r.SCPayout)
 		c.Burns = sat(c.Burns, r.Burns)
+		for _, py := range r.Payees { // r27 (B36): counted like cmd/derod/rpc flows_of
+			c.Payees++
+			if py.Verified {
+				c.PayeesVerified++
+			}
+			if py.Explained {
+				c.PayeesExplained++
+			}
+		}
 	}
 	if r.Verdict == VerdictAlert {
 		c.Alerts++
 	}
-	c.Formula = FormulaSupply(c.To) - FormulaSupply(c.From-1)
+	c.Formula = FormulaSupply(c.To) - SupplyBefore(c.From)
 	c.IssuedMatchesFormula = c.Issued == c.Observed
 	c.Consistent = c.Gaps == 0 && c.RepeatedHeights == 0 && c.Alerts == 0 &&
 		c.Verified+c.Unverified == c.To-c.From+1 && c.Observed+c.Excused == c.Formula

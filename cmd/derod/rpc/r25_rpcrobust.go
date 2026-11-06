@@ -70,6 +70,9 @@ type StateUnavailableError struct {
 }
 
 func (e *StateUnavailableError) Error() string {
+	if e.TopoHeight >= e.PrunedTopo { // r27 (NR26 note): a record that names no block at or above the prune point
+		return fmt.Sprintf("state not available: the record at topoheight %d names no block (pruned topoheight %d)", e.TopoHeight, e.PrunedTopo)
+	}
 	return fmt.Sprintf("state not available: topoheight %d is below pruned topoheight %d", e.TopoHeight, e.PrunedTopo)
 }
 

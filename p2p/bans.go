@@ -74,14 +74,41 @@ const BAN_SOURCE_UNATTRIBUTED = "unattributed" // Ban_Address without a source (
 
 var ban_meta = map[string]ban_info{} // guarded by ban_mutex; keys = ban_map keys
 
+// r27 (§7 sweep): p2p_bans_total counts bans PLACED since start, so a ban reloaded from ban_list.json was invisible
+// on /metrics (live r26: ban_list.json held 1 running ban while p2p_bans_total read 0). The running bans and the ones
+// reloaded at start are exposed separately; who is banned and for how long is unchanged.
+var bans_loaded_total = metrics.Set.GetOrCreateCounter("p2p_bans_loaded_total")
+var _ = metrics.Set.GetOrCreateGauge("p2p_bans_active", func() float64 { return float64(Ban_Count()) })
+
+// BansLoaded is the number of running bans reloaded from ban_list.json at start (r27).
+func BansLoaded() uint64 { return bans_loaded_total.Get() }
+
+const BAN_CLEAN_UP_EVERY = 20 * time.Second
+
 // loads peers list from disk
 func load_ban_list() {
 	go ban_clean_up_goroutine() // start routine to clean up ban list
-	defer ban_clean_up()        // cleanup list after loading it
+	load_ban_list_from(globals.GetDataDirectory())
+}
+
+// load_ban_list_from loads ban_list.json and its ban_reasons.json sidecar from dir, drops the expired entries and
+// counts the running ones it loaded (r27: split from load_ban_list so the reload is tested without the goroutine).
+func load_ban_list_from(dir string) {
+	pre := 0       // bans present before the load (none at start)
+	defer func() { // runs after the cleanup below: only bans still running count as loaded
+		ban_mutex.Lock()
+		n := len(ban_map) - pre
+		ban_mutex.Unlock()
+		if n > 0 {
+			bans_loaded_total.Add(n)
+		}
+	}()
+	defer ban_clean_up() // cleanup list after loading it
 	ban_mutex.Lock()
 	defer ban_mutex.Unlock()
+	pre = len(ban_map)
 
-	ban_file := filepath.Join(globals.GetDataDirectory(), "ban_list.json")
+	ban_file := filepath.Join(dir, "ban_list.json")
 
 	if _, err := os.Stat(ban_file); errors.Is(err, os.ErrNotExist) {
 		return // since file doesn't exist , we cannot load it
@@ -100,7 +127,7 @@ func load_ban_list() {
 			logger.V(1).Info("Successfully loaded bans from file", "ban_count", (len(ban_map)))
 		}
 	}
-	load_ban_meta_locked(filepath.Join(globals.GetDataDirectory(), "ban_reasons.json")) // r25 (CO24-N4)
+	load_ban_meta_locked(filepath.Join(dir, "ban_reasons.json")) // r25 (CO24-N4)
 }
 
 // load_ban_meta_locked reads the ban_reasons.json sidecar and keeps only entries whose key is banned (r25). A missing
@@ -142,17 +169,21 @@ func save_ban_list() {
 
 // clean up ban list every 20 seconds
 func ban_clean_up_goroutine() {
+	ban_clean_up_loop(BAN_CLEAN_UP_EVERY, Exit_Event)
+}
 
-	delay := time.NewTicker(20 * time.Second)
+// ban_clean_up_loop is the goroutine's body with its period and exit channel as arguments (r27: testable).
+func ban_clean_up_loop(every time.Duration, exit <-chan bool) {
+	delay := time.NewTicker(every)
+	defer delay.Stop()
 	for {
 		select {
-		case <-Exit_Event:
+		case <-exit:
 			return
 		case <-delay.C:
 		}
 		ban_clean_up()
 	}
-
 }
 
 /*  used for manual simulation once to track a hard to find bug

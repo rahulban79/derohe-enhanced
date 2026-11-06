@@ -19,6 +19,11 @@ No network, no live file written (every tampered page is a temp copy).
   FE8 (verify) on a v2 dataset the generated sections are required: a soundness page without its known section, or a
       page (ledger, soundness, src-arch) without its class block, FAILS G30; a number inside an identifier span
       (<span class="fxid">) is an untraced number, not a name
+  FE9 (r27, B133) the dataset readers are memoised (key: the dataset dir + size/mtime of every file under forensics/),
+      and a changed dataset file is re-read. A mutant facts.py shares the base caches only when the source of every
+      reader and reader helper (MEMO_DEPS) is unchanged; a mutation inside one (mutation 7, explorer_rows) reads with
+      caches of its own. With facts.explorer_decode's hoisted index sets: 876.83 s -> 237.82 s wall under benchlock
+      (pristine cee1d80f vs r27, load average ~30, 2026-11-05); the 17 mutations stay 17/17 CAUGHT.
 
   python3 -I harness/kat/test_forensics_frontend2_r26.py   # exit 0 ok · 3 a KAT failed · 4 a mutation not caught / INVALID
 """
@@ -195,6 +200,24 @@ def kats(mods):
            f'FE8 a number inside an identifier span passes G30: {det[:160]}')
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+    # FE9 (r27, B133): the KAT's reader memo re-reads a changed dataset file and is per module
+    tmp = Path(tempfile.mkdtemp(prefix='fe2kat_'))
+    try:
+        import gzip
+        w = tmp / 'forensics' / 'rX' / 'derived'
+        w.mkdir(parents=True)
+
+        def wr(n):
+            with gzip.open(w / 'window.jsonl.gz', 'wt') as fh:
+                fh.write(''.join(json.dumps({'height': i}) + '\n' for i in range(n)))
+        wr(2)
+        a = len(FX.window_rows(w.parent))
+        wr(3)
+        b = len(FX.window_rows(w.parent))
+        ok(getattr(FX.window_rows, '_r27_memo', False), 'FE9 the dataset readers are not memoised (B133)')
+        ok((a, b) == (2, 3), f'FE9 a changed dataset file is served from the memo: {a} then {b} rows')
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     return fails
 
 
@@ -225,13 +248,63 @@ MUTATIONS = [
 ]
 
 
+# r27 (B133): the dataset readers this KAT calls again and again (window_rows 26x, explorer_rows 25x, explorer_data
+# 13x per kats() run, cProfile 2026-11-05) memoised PER LOADED MODULE, keyed by the dataset directory and the size and
+# mtime of every file under it: a mutant module gets its own cache (its mutated reader runs), a changed dataset file is
+# a cache miss, and no reader result is mutated by any caller (they copy: explorer_rows dict(r), FE5 dict(d, ...)).
+MEMO = ('window_rows', 'explorer_rows', 'explorer_data', '_replay_roots', '_hf3_rows')
+
+
+def _ds_key(ds):
+    d = Path(ds).resolve()
+    top = d.parent if d.parent.name == 'forensics' else d   # a v2 dataset reads its sealed v1 sibling too
+    files = sorted(q for q in top.rglob('*') if q.is_file()) if top.is_dir() else []
+    return str(d), tuple((str(q), q.stat().st_size, q.stat().st_mtime_ns) for q in files)
+
+
+# the helpers the memoised readers call: a mutation inside any of them (or inside a reader) makes the mutant read
+# with caches of its own; any other mutant shares the base module's caches (same reader source, same dataset bytes ->
+# same result), so a mutation of g30 or check_page does not re-parse the 8.6 MB dataset (B133)
+MEMO_DEPS = MEMO + ('is_v2', '_manifest', '_v1_dir', 'b64x', '_b36')
+SHARED = {}
+
+
+def reader_source(fx):
+    import inspect
+    return ''.join(inspect.getsource(getattr(fx, n)) for n in MEMO_DEPS if callable(getattr(fx, n, None)))
+
+
+def memoize(fx, names=MEMO, share=None):
+    """wrap fx's dataset readers with a cache keyed by _ds_key; `share` {name: cache} reuses another module's caches"""
+    for name in names:
+        fn = getattr(fx, name, None)
+        if fn is None or getattr(fn, '_r27_memo', False):
+            continue
+        cache = share[name] if share is not None and name in share else {}
+
+        def wrapped(ds, _fn=fn, _c=cache):
+            k = _ds_key(ds)
+            if k not in _c:
+                _c[k] = _fn(ds)
+            return _c[k]
+        wrapped._r27_memo = True
+        wrapped.cache = cache
+        setattr(fx, name, wrapped)
+    return fx
+
+
 def load_all(base):
-    return {k: load(Path(base) / v, k) for k, v in FILES.items()}
+    mods = {k: load(Path(base) / v, k) for k, v in FILES.items()}
+    if not SHARED:
+        SHARED['src'] = reader_source(mods['facts'])
+        SHARED['caches'] = {n: {} for n in MEMO}
+    memoize(mods['facts'], share=SHARED['caches'])
+    return mods
 
 
 def main():
     f = kats(load_all(ROOT))
-    print('FE1-FE8:', 'PASS' if not f else 'FAIL\n  ' + '\n  '.join(f))
+    print('FE1-FE9:', 'PASS' if not f else 'FAIL\n  ' + '\n  '.join(f))
     if f:
         return 3
     rc, caught = 0, 0
@@ -245,6 +318,10 @@ def main():
             mp.write_text(src.replace(old, new, 1))
             mods = load_all(ROOT)
             mods[key] = load(mp, key + 'mut')
+            if key == 'facts':   # r27 (B133): the mutant's readers are memoised too; shared only when they are unchanged
+                same = reader_source(mods[key]) == SHARED['src']
+                memoize(mods[key], share=SHARED['caches'] if same else None)
+                print(f"mutation {i}: reader caches {'shared' if same else 'own (a reader or helper is mutated)'}")
             if key == 'bounds':   # facts.g30 loads bounds by path from the root: route it to the mutant
                 mods['facts']._bounds = lambda root, _m=mods[key]: _m
             try:

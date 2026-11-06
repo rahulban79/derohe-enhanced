@@ -8,6 +8,9 @@ only when they are there.
   python3 harness/gen_index.py            # render
   python3 harness/gen_index.py check      # 0 CURRENT · 3 STALE
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import collections, datetime, hashlib, html, json, re, sys
 from pathlib import Path
 
@@ -16,7 +19,8 @@ ROOT = HERE.parent
 ART = ROOT / 'artifacts'
 OUT = ART / 'index.html'
 PUB = HERE / 'model/published.json'
-MEMORY = Path.home() / '.claude/projects' / ('-' + str(Path.home()).strip('/').replace('/', '-') + '-derohe-Release142') / 'memory'
+MEMORY = Path.home() / '.claude/projects' / ('-' + str(Path.home() / 'derohe-Release142').strip('/').replace('/', '-')) / 'memory'
+MIRROR = ROOT / 'memory-mirror'      # r27: the scrubbed in-repo copy (tools/memory-mirror/sync_mirror.py), read by the table
 sys.path.insert(0, str(HERE / 'kit'))
 sys.path.insert(0, str(HERE))
 import assetkit as ak  # noqa: E402
@@ -66,6 +70,44 @@ def memories():
                     'desc': (desc.group(1).strip() if desc else '').strip('"'),
                     'path': str(f), 'line': dline})
     return out
+
+
+def unhome(s, home=None):
+    """r27: a memory description is shown without the home directory: '<home>/x' -> '~/x', and the home in Claude
+    project-dir form ('-<home with dashes>-') -> '-<home>-'. Pure."""
+    h = str(home or Path.home())
+    s = str(s).replace(h, '~')
+    return s.replace('-' + h.strip('/').replace('/', '-') + '-', '-<home>-')
+
+
+def mirror_files(mirror=None):
+    """{file: True} the memory files the in-repo mirror holds (MANIFEST.sha256 lines '<src sha> <mirror sha|-> <file>';
+    '-' = refused by the scrub, so not linkable). Pure but for the read."""
+    out = {}
+    try:
+        for l in (Path(mirror or MIRROR) / 'MANIFEST.sha256').read_text().splitlines():
+            f = l.split()
+            if len(f) == 3:
+                out[f[2]] = f[1] != '-'
+    except OSError:
+        pass
+    return out
+
+
+def memory_rows(mems, mirrored, home=None):
+    """r27: the memory table rows. Until R26 every row linked vscode://file/<home>/.claude/...:<line>: the committed page
+    carried the home path 46 times and the scrubbed publish copy turned each link into '<memory>/x.md' (no link
+    target). A row now links the scrubbed in-repo mirror copy relative to the page (../memory-mirror/<file>), and a file
+    the mirror does not hold (refused, or not synced yet) is shown as text. No home path is written. Pure."""
+    out = []
+    for m in mems:
+        lab = f'{E(m["file"])}:{m["line"]}'
+        cell = (f'<a class="open" href="../memory-mirror/{E(m["file"])}" title="the scrubbed in-repo mirror copy" '
+                f'style="font-family:var(--mono);font-size:11px">{lab}</a>' if mirrored.get(m['file'])
+                else f'<span class="mut" title="not in the in-repo mirror" style="font-family:var(--mono);font-size:11px">{lab}</span>')
+        out.append(f'<tr><td><b>{E(unhome(m["name"], home))}</b><br><span class="mut" style="font-size:11px">{E(m["file"])}</span></td>'
+                   f'<td>{_mtag(m["type"])}</td><td>{E(unhome(m["desc"], home))}</td><td>{cell}</td></tr>')
+    return ''.join(out)
 
 
 def gates():
@@ -218,13 +260,7 @@ def main():
           <p>{link}</p>
         </article>''')
 
-    mrows = ''.join(
-        f'<tr><td><b>{E(m["name"])}</b><br><span class="mut" style="font-size:11px">{E(m["file"])}</span></td>'
-        f'<td>{_mtag(m["type"])}</td>'
-        f'<td>{E(m["desc"])}</td>'
-        f'<td><a class="open" href="vscode://file/{E(m["path"])}:{m["line"]}" '
-        f'style="font-family:var(--mono);font-size:11px">{E(m["file"])}:{m["line"]}</a></td></tr>'
-        for m in mems)
+    mrows = memory_rows(mems, mirror_files())
     mkpis = ''.join(f'<div class="kpi"><div class="kv">{v}</div><div class="kl">{E(k)}</div></div>'
                     for k, v in [('entries', len(mems))] + sorted(mtype.items()))
     grows = ''.join(f"<tr><td><b>{E(r[3].strip())}</b></td>"
@@ -232,7 +268,7 @@ def main():
                     f"<td class=mut>{tk.html_clip(r[5].strip(), 150)}</td></tr>" for r in last)
 
     body = f'''<header class="mast"><div class="wrap">
-      <div class="eyebrow">Artifact suite \u00b7 DERO HE \u00b7 <repo></div>
+      <div class="eyebrow">Artifact suite \u00b7 DERO HE \u00b7 {E(ROOT.name)}</div>
       <h1>{len(PAGES)} pages, one evidence contract</h1>
       <p class="sub">The two gated artifacts are drawn only from lines that still exist \u2014 in the Go tree, in the
       third-party code it links, in snapshots of the daemon that is running, or in this project's own notes: one is
@@ -278,7 +314,8 @@ def main():
       <section id="memory"><h2><span class="num">04</span>The memory store</h2>
       <p class="lede">Persistent, cross-session memory for this project — {len(mems)} entries under
       <code>~/.claude/projects/…/memory/</code>, each one fact, cross-linked with <code>[[wikilinks]]</code>.
-      This table is read from the files themselves on every build, so it is never out of date. GK class: the
+      This table is read from the files themselves on every build, so it is never out of date; each file links its
+      scrubbed copy in <code>memory-mirror/</code> (the memory itself stays private). GK class: the
       project's own knowledge base.</p>
       <div class="kpis">{mkpis}</div>
       <div class="tw"><table id="t-mem" data-notag="a listing of the project\u2019s GK knowledge base; each row cites its own file"><thead><tr><th>memory</th><th>type</th><th>what it captures</th><th>file</th></tr></thead><tbody>
@@ -287,7 +324,7 @@ def main():
       </section>
 
       <section id="rebuild"><h2><span class="num">05</span>Rebuilding both</h2>
-      <pre>cd <repo>
+      <pre>cd {E(ROOT.name)}     # the repository root
 python3 harness/prep_corpus.py
 for m in inventory consts flows logbridge localdiff findings; do python3 harness/miners/mine_$m.py; done
 python3 harness/miners/mine_runtime.py --capture     # needs derod listening on 127.0.0.1:10102
@@ -300,7 +337,7 @@ python3 harness/kat/verify_deroarch.py --mutations</pre>
       model file, a miner, the kit or the skill is edited.</p>
       </section>
       <footer>Rendered by <code>harness/gen_index.py</code> \u00b7 {E(now.strftime('%Y-%m-%d %H:%M %Z'))} \u00b7
-      private pages: they cite absolute paths on this machine.</footer>
+      private page: its citation pop-ups open files on this machine (publish only the scrubbed copy).</footer>
     </div>'''
 
     extra = ('''.acards{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin:18px 0}

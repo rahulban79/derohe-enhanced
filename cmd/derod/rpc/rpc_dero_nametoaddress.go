@@ -97,9 +97,7 @@ const NAME_ECHO_MAX = 64
 func name_lookup_error(name string, err error) error {
 	if err != nil && xerrors.Is(err, graviton.ErrNotFound) {
 		metrics.Set.GetOrCreateCounter(`rpc_name_not_found_total`).Inc()
-		if len(name) > NAME_ECHO_MAX { // the caller's own input, echoed back: bounded anyway
-			name = name[:NAME_ECHO_MAX] + "..."
-		}
+		name = cap_utf8(name, NAME_ECHO_MAX) // the caller's own input, echoed back: bounded, cut on a rune boundary (r27)
 		return &NotFoundError{What: "name", ID: name}
 	}
 	return err

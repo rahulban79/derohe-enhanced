@@ -76,6 +76,9 @@ RULES = {
     'chunk_tip': ('p2p/chunk_server.go', 'chunk dropped: block builds on a tip we do not have'),
     'chain_request': ('p2p/rpc_chain_request.go', 'func (c *Connection) Chain(request Chain_Request_Struct, response *Chain_Response_Struct) error {'),
     'peer_info': ('p2p/peer_info.go', 'ClockOffsetMs   float64 `json:"clock_offset_ms"`'),
+    # r27: D11's rule is the handshake peer_id GetPeerInfo reports, not the clock field D6 reads (r24-r26 anchored both
+    # on the clock line)
+    'peer_id': ('p2p/peer_info.go', 'PeerID          string  `json:"peer_id"`'),
     'call_timeout': ('p2p/call.go', 'metrics.Set.GetOrCreateCounter(fmt.Sprintf(`p2p_call_timeouts_total{method="%s"}`, method)).Inc()'),
     'fingerprint': ('cmd/derod/rpc/rpc_dero_explorer.go', 'const HF3_V3_HASH = "e454090e983a3437e9b8ad4f1a45e4dbf46849832cccb3cc2b7841b94fb464d5"'),
     # r25 (peers): the counters and GetPeerInfo fields of CO24-N1..N7 and B47 (p2p/peer_observe.go); a detector reads
@@ -355,6 +358,69 @@ def rule_anchors(root):
     return out
 
 
+def explain_detectors(D, peers, ips_active, fr_metric=None):
+    """r27 (§7, peer observatory): an 'explain' list on D5, D9 and D11 that puts each flagged peer next to the facts of
+    the same capture that bear on it (latency rank, connection age, first-relay share, unserved per first relay,
+    whether a D11 pair shares one /16 and one version). Explanations never change a grade; every number cites the
+    capture line it comes from. The /16 comparison is computed on the private addresses and only a boolean is written."""
+    by = {d['id']: d for d in D}
+    fr = {k: v for k, v in (fr_metric or {}).items()}            # pseudonym -> (p2p_first_relay_total this run, line)
+    row = {p['peer']: p for p in peers}
+    lat = sorted((p['latency_ms'], p['peer']) for p in peers if isinstance(p.get('latency_ms'), (int, float)))
+    rank = {pid: i + 1 for i, (_, pid) in enumerate(lat)}
+    med_lat = statistics.median([x for x, _ in lat]) if lat else None
+    d9 = by.get('D9') or {}
+    top = next((f for f in d9.get('findings') or [] if f.get('grade') in ('ANOMALY', 'NORMAL') and f.get('peer') in row), None)
+    d5_peers = {f['peer'] for f in (by.get('D5') or {}).get('findings') or [] if f.get('grade') == 'ANOMALY'}
+    if top:
+        p = row[top['peer']]
+        fastest = lat[0][1] if lat else None
+        x = {'peer': top['peer'], 'latency_ms': p.get('latency_ms'), 'latency_rank': rank.get(top['peer']), 'peers': len(lat),
+             'latency_median_ms': med_lat, 'connected_s': p.get('connected_s'), 'also_d5': top['peer'] in d5_peers,
+             'fastest_peer': fastest, 'fastest_first_relays': (fr.get(fastest) or (None,))[0] if fastest else None,
+             'cap_line': p['line']}
+        x['what'] = (f"the top first-relay peer is RTT rank {x['latency_rank']} of {x['peers']} ({x['latency_ms']} ms; median "
+                     f"{med_lat:.1f} ms), connected {x['connected_s']} s; the RTT rank-1 peer delivered "
+                     f"{'n/a' if x['fastest_first_relays'] is None else format(x['fastest_first_relays'], 'g')} first relays this run: "
+                     f"a first relay goes to whoever forwards a new block first, so the share measures this peer's position "
+                     f"(its own peers and miners), not a fault of ours or its" + ("; it is also D5's peer" if x['also_d5'] else ''))
+        d9.setdefault('explain', []).append(x)
+    d5 = by.get('D5') or {}
+    tot = d9.get('total') or 0
+    for f in d5.get('findings') or []:
+        p = row.get(f.get('peer'))
+        if not p:
+            continue
+        n_fr = (fr.get(f['peer']) or (None,))[0]
+        x = {'peer': f['peer'], 'objects_unserved': p.get('objects_unserved'), 'first_relays_run': n_fr,
+             'is_d9_top': bool(top and top['peer'] == f['peer']), 'cap_line': p['line']}
+        if isinstance(p.get('objects_unserved'), int) and n_fr:
+            x['unserved_per_first_relay'] = round(p['objects_unserved'] / n_fr, 4)
+        x['what'] = (f"{x['objects_unserved']} unserved GetObject call(s) on this connection against {'n/a' if n_fr is None else format(n_fr, 'g')} first relays from it this run"
+                     + (f" ({x['unserved_per_first_relay']:.2%})" if 'unserved_per_first_relay' in x else '')
+                     + ("; it is D9's top relay, and a fetch goes back to the connection that announced (NotifyINV calls "
+                        "GetObject on it, p2p/rpc_notifications.go), so it is asked most: 'the only peer with any' measures exposure as "
+                        "much as fault" if x['is_d9_top'] else ''))
+        if f['peer'] not in {e['peer'] for e in d5.get('explain') or []}:
+            d5.setdefault('explain', []).append(x)
+    d11 = by.get('D11') or {}
+    for f in d11.get('findings') or []:
+        pids = [x.strip() for x in str(f.get('peer', '')).split(',') if x.strip() in row]
+        if len(pids) < 2:
+            continue
+        groups = {netgroup(ips_active.get(pid)) for pid in pids}
+        vers = {row[pid].get('version') for pid in pids}
+        x = {'peers': pids, 'same_netgroup': len(groups) == 1 and None not in groups, 'same_version': len(vers) == 1,
+             'latency_ms': [row[pid].get('latency_ms') for pid in pids], 'connected_s': [row[pid].get('connected_s') for pid in pids],
+             'heights': [row[pid].get('height') for pid in pids], 'cap_lines': [row[pid]['line'] for pid in pids]}
+        x['what'] = (f"{len(pids)} addresses, {'one /16' if x['same_netgroup'] else 'different /16s'}, "
+                     f"{'one version' if x['same_version'] else 'different versions'}, RTT {x['latency_ms']} ms, connected {x['connected_s']} s, "
+                     f"heights {x['heights']}: one node reachable on several addresses (multi-homed or re-addressed, legitimate); "
+                     f"{'its addresses add ' + str(len(groups) - 1) + ' extra /16 to D8 though they are one node' if not x['same_netgroup'] else 'D8 sees one /16'}"
+                     f", and it holds {len(pids)} of our outgoing slots")
+        d11.setdefault('explain', []).append(x)
+
+
 def version_class(v):
     v = str(v or '')
     if not VERSION_RX.match(v):
@@ -601,10 +667,14 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
             u = {k: e for k, e in u.items() if e['n_current']}
         if not u:
             return
-        med = statistics.median([e['n'] for e in u.values()]) if len(u) > 1 else None
+        # r27: with the counter, the log's lines from BEFORE the current run are history (the D4 rule since r25, PI15):
+        # the grade reads the current run's count; r24-r26 graded the whole log since 2026-10-22 here, so 251 old
+        # lines kept one peer ANOMALY while its counter read 4
+        key = 'n_current' if ctr else 'n'
+        med = statistics.median([e[key] for e in u.values()]) if len(u) > 1 else None
         for peer, e in u.items():
-            g = 'ANOMALY' if e['n'] >= 20 and (med is None or e['n'] > REMOTE_UNSERVED_MULT * max(med, 1)) else 'NORMAL'
-            d['findings'].append({'peer': peer, 'grade': g, 'what': f"{e['n']} 'could not serve the object' replies in the log since {str(e['first_T'])[:10]} ({e['n_current']} in the current run; {len(u)} peer(s) with any, median {'n/a' if med is None else f'{med:g}'}; ANOMALY if >= 20 and > {REMOTE_UNSERVED_MULT:g}x the median, or the only one)", 'logx_lines': e['logx_lines']})
+            g = 'ANOMALY' if e[key] >= 20 and (med is None or e[key] > REMOTE_UNSERVED_MULT * max(med, 1)) else 'NORMAL'
+            d['findings'].append({'peer': peer, 'grade': g, 'source': 'log-history' if ctr else 'log', 'graded_on': key, 'what': f"{e['n']} 'could not serve the object' replies in the log since {str(e['first_T'])[:10]} ({e['n_current']} in the current run; graded on {'the current run' if ctr else 'the whole log'}; {len(u)} peer(s) with any, median {'n/a' if med is None else f'{med:g}'}; ANOMALY if >= 20 and > {REMOTE_UNSERVED_MULT:g}x the median, or the only one)", 'logx_lines': e['logx_lines']})
     det('D5', 'Objects a peer announced but could not serve (remote errors)', 'remote_unserved', f_unserved, f'test: >= 20 lines and > {REMOTE_UNSERVED_MULT:g}x the per-peer median')
 
     def f_clock(d):
@@ -703,7 +773,7 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
         for node, pids in ids_seen.items():
             if len(pids) > 1:
                 d['findings'].append({'peer': ', '.join(sorted(pids)), 'grade': 'ANOMALY', 'what': f'one peer_id ({node}) on {len(pids)} addresses at once', 'cap_line': next(p['line'] for p in peers if p['peer'] in pids)})
-    det('D11', 'One node identity on several addresses', 'peer_info', f_ids, 'test: the same handshake peer_id on > 1 active address')
+    det('D11', 'One node identity on several addresses', 'peer_id', f_ids, 'test: the same handshake peer_id on > 1 active address')
 
     def f_chunk(d):
         for peer, e in (per_kind.get('chunk_unknown_tip') or {}).items():
@@ -746,6 +816,7 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
                 d['findings'].append({'peer': p['peer'], 'grade': 'OBSERVED', 'source': 'GetPeerInfo.sync_failures',
                                       'what': f"{p['sync_failures']} consecutive failed sync(s) that were its own (error or short answer); sync with it held {p['sync_hold_s']} s more", 'cap_line': p['line']})
     det('D15', 'Sync held from peers that answer with nothing (B47)', 'sync_hold', f_hold, 'rule: a sync fetch the peer fails (its own error or fewer blocks than asked) holds sync with it 30 s, doubling to 10 min; a sync that adds blocks forgives (r25)')
+    explain_detectors(D, peers, ips_active, fr_metric)          # r27: D5/D9/D11 explained from the same capture
     # ── churn and series
     act = sorted(p['peer'] for p in peers)
     churn = None

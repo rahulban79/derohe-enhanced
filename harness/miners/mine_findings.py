@@ -5,6 +5,9 @@ Every finding below is a claim ABOUT several source lines, so each carries all o
 only if they all still resolve. Numbers that follow from constants (difficulty step bounds, the current block
 reward) are COMPUTED here from the values the source declares, never typed in, so they cannot drift.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import math, re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -119,7 +122,7 @@ def main():
        ('harness/baseline/bf274e5/cmd/derod/rpc/rpc_dero_getinfo.go.base', '//result.Target_Height = uint64(chain.Get_Height())'),
        ('cmd/derod/rpc/rpc_dero_getinfo.go', 'if best, _ := p2p.Best_Peer_Height(); best > 0 { // upstream left this commented out, so it always read 0'),
        ('cmd/derod/rpc/rpc_dero_getsyncinfo.go', 'func classify_sync(peers uint64, lag int64, tip_age_s float64) (status, reason string) {'),
-       ('cmd/derod/rpc/websocket_server.go', '"GetSyncInfo":                handler.New(GetSyncInfo),')],
+       ('cmd/derod/rpc/websocket_server.go', '"GetSyncInfo":                typed_new(GetSyncInfo),')],
       impact='Until the +22102026 build runs, only the tip block\u2019s age (DERO.GetBlockHeaderByTopoHeight at topoheight) '
              'answers the question; after it, one RPC call does.',
       action='Use DERO.GetSyncInfo (status, tip_age_seconds, lag_blocks). The harness still re-checks the tip age on '

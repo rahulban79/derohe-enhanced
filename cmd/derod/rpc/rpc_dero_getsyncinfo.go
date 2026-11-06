@@ -53,7 +53,9 @@ type GetSyncInfo_Result struct {
 	RecoveredPanics    uint64     `json:"recovered_panics_total"`
 	RPCRecoveredPanics uint64     `json:"rpc_recovered_panics_total"`
 	TxFetchFailures    uint64     `json:"p2p_tx_fetch_failures_total"`
-	Bans               uint64     `json:"p2p_bans_total"`
+	Bans               uint64     `json:"p2p_bans_total"`        // bans PLACED since start
+	BansActive         uint64     `json:"p2p_bans_active"`       // r27: running bans now, reloaded ones included
+	BansLoaded         uint64     `json:"p2p_bans_loaded_total"` // r27: running bans reloaded from ban_list.json at start
 	ChunksUnknownTip   uint64     `json:"p2p_chunks_unknown_tip_total"`
 	InboundOpens       uint64     `json:"inbound_connections_since_start"`
 	Inbound            string     `json:"inbound"`
@@ -121,6 +123,7 @@ func GetSyncInfo(ctx context.Context) (result GetSyncInfo_Result, err error) {
 	result.RPCRecoveredPanics = metrics.Set.GetOrCreateCounter("rpc_recovered_panics_total").Get()
 	result.TxFetchFailures = metrics.Set.GetOrCreateCounter("p2p_tx_fetch_failures_total").Get()
 	result.Bans = metrics.Set.GetOrCreateCounter("p2p_bans_total").Get()
+	result.BansActive, result.BansLoaded = p2p.Ban_Count(), p2p.BansLoaded()
 	result.ChunksUnknownTip = metrics.Set.GetOrCreateCounter("p2p_chunks_unknown_tip_total").Get()
 	result.InboundOpens, result.Inbound = inbound_status()
 	result.NAT = p2p.NAT_Status()

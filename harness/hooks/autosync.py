@@ -6,6 +6,9 @@ snapshot or the skill, it runs `gen_deroarch.py build` (~3 s): the page is re-pr
 the skill's AUTO block rewritten. Anything else is ignored. It never blocks the tool call — it prints a one-line
 systemMessage with the result (or the failure) and exits 0.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import json, subprocess, sys
 from pathlib import Path
 

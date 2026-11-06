@@ -303,7 +303,7 @@ MUTATIONS = [   # (file, find, replace, why)
      'a refused file is not drift'),
     (SRC, "                    if q in l and not CORRECTION_RX.search(l):", "                    if q in l:",
      'a dated correction does not clear a stale claim'),
-    (SRC, "KAT_MUT_RX = re.compile(r'mutations proved (\\d+)\\s*/\\s*(\\d+)')", "KAT_MUT_RX = re.compile(r'(\\d+)\\s*/?\\s*(\\d+)')",
+    (SRC, "KAT_MUT_RX = re.compile(r'mutations (?:proved|caught) (\\d+)\\s*/\\s*(\\d+)')", "KAT_MUT_RX = re.compile(r'(\\d+)\\s*/?\\s*(\\d+)')",
      'any number pair read as a mutation count (count-regex misread)'),
     (SRC, "        (nxt if r.get('status') == 'planned' else gaps).append(key)", "        nxt.append(key)",
      'a non-planned round missing from ORDER is only a warning'),
@@ -324,8 +324,8 @@ MUTATIONS = [   # (file, find, replace, why)
     (SRC, "    except (OSError, ValueError, TypeError):\n        return PENDING\n    at = at", "    except (OSError, ValueError, TypeError):\n        return 0\n    at = at",
      'a missing checkpoint is booked as age 0'),
     (MIRROR_PY, "    b = EMAIL_RX.sub(b'<e-mail>', b)\n", "", 'an e-mail shape reaches the in-repo mirror'),
-    (MIRROR_PY, "        if b is None or hits(b.decode('utf-8', errors='replace')):", "        if b is None:",
-     'a file with a surviving home path is mirrored'),
+    (MIRROR_PY, "        if (b is None or hits(b.decode('utf-8', errors='replace'))", "        if (b is None",
+     'a file with a surviving home path is mirrored'),   # r27: the condition also reads the final residual
 ]
 
 

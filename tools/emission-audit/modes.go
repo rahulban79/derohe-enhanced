@@ -27,6 +27,63 @@ import (
 
 const txValidityHeight = 11 // blockchain.TX_VALIDITY_HEIGHT: a tx is mined within 11 heights of its reference
 
+// payeeTally counts the coinbase payees of audited reports: verified (the ciphertext moved by exactly the reward) and
+// explained (r23c per-account check). r27 (tools-kats): the live mode printed these and -archive did not, so the B36
+// 24 h archive read could not say how many payees it proved.
+type payeeTally struct{ payees, verified, explained int }
+
+func (p *payeeTally) add(r emission.Report) {
+	for _, py := range r.Payees {
+		p.payees++
+		if py.Verified {
+			p.verified++
+		}
+		if py.Explained {
+			p.explained++
+		}
+	}
+}
+
+func (p payeeTally) String() string {
+	return fmt.Sprintf("payees %d verified %d explained %d", p.payees, p.verified, p.explained)
+}
+
+// archiveRun is the per-report state of archiveMain: the current segment (reset at every unavailable height), its
+// series checkpoints, and the payee tally of every audited report.
+type archiveRun struct {
+	seg           emission.Cumulative
+	segStart      int64
+	seriesOut     string
+	every         uint64
+	written, werr int
+	payees        payeeTally
+	now           func() int64
+}
+
+func (a *archiveRun) each(t int64, r emission.Report, err error) {
+	if err != nil && errors.Is(err, emission.ErrUnavailable) {
+		a.seg, a.segStart = emission.Cumulative{}, a.now()
+		return
+	}
+	a.payees.add(r)
+	prevTo := a.seg.To
+	a.seg.Add(r, err)
+	seg := a.seg
+	if a.seriesOut != "" && seg.Blocks > 1 && seg.To/a.every > prevTo/a.every {
+		rec := emission.SeriesRecord{Kind: emission.SeriesCheckpoint, Time: a.now(), SegStart: a.segStart, Topo: t,
+			Height: r.Height, BLID: r.BLID, SegmentFrom: seg.From, SegmentTo: seg.To, Verified: seg.Verified,
+			Unverified: seg.Unverified, Observed: seg.Observed, Issued: seg.Issued, Formula: seg.Formula, Consistent: seg.Consistent,
+			FormulaSupply: emission.FormulaSupply(seg.To), Alerts: seg.Alerts, Fees: seg.Fees, SCDeposits: seg.SCDeposits,
+			SCPayouts: seg.SCPayouts, Burns: seg.Burns, V: emission.SeriesV2, Payees: seg.Payees,
+			PayeesVerified: seg.PayeesVerified, PayeesExplained: seg.PayeesExplained} // r27 (B36): v2 checkpoint
+		if e := emission.AppendSeries(a.seriesOut, rec); e != nil {
+			a.werr++
+		} else {
+			a.written++
+		}
+	}
+}
+
 func archiveMain(src *fsSource, tm *emission.TopoMap, fromH, toH int64, p emission.Params, jsonOut, seriesOut string, every uint64) int {
 	last := tm.LastWritten() - 3
 	from := tm.FindHeight(fromH)
@@ -45,37 +102,19 @@ func archiveMain(src *fsSource, tm *emission.TopoMap, fromH, toH int64, p emissi
 	if every == 0 {
 		every = 100
 	}
-	var seg emission.Cumulative
-	segStart := time.Now().Unix()
-	var written, werr int
+	unix := func() int64 { return time.Now().Unix() }
+	run := &archiveRun{segStart: unix(), seriesOut: seriesOut, every: every, now: unix}
 	cpu0, wall0 := cpuTime(), time.Now()
-	sum := emission.ArchiveRange(src, tm, from, to, p, func(t int64, r emission.Report, err error) {
-		if err != nil && errors.Is(err, emission.ErrUnavailable) {
-			seg, segStart = emission.Cumulative{}, time.Now().Unix()
-			return
-		}
-		prevTo := seg.To
-		seg.Add(r, err)
-		if seriesOut != "" && seg.Blocks > 1 && seg.To/every > prevTo/every {
-			rec := emission.SeriesRecord{Kind: emission.SeriesCheckpoint, Time: time.Now().Unix(), SegStart: segStart, Topo: t,
-				Height: r.Height, BLID: r.BLID, SegmentFrom: seg.From, SegmentTo: seg.To, Verified: seg.Verified,
-				Unverified: seg.Unverified, Observed: seg.Observed, Issued: seg.Issued, Formula: seg.Formula, Consistent: seg.Consistent,
-				FormulaSupply: emission.FormulaSupply(seg.To), Alerts: seg.Alerts, Fees: seg.Fees, SCDeposits: seg.SCDeposits,
-				SCPayouts: seg.SCPayouts, Burns: seg.Burns}
-			if e := emission.AppendSeries(seriesOut, rec); e != nil {
-				werr++
-			} else {
-				written++
-			}
-		}
-	})
+	sum := emission.ArchiveRange(src, tm, from, to, p, run.each)
+	written, werr := run.written, run.werr
 	cpu, wall := cpuTime()-cpu0, time.Since(wall0)
 	fmt.Printf("archive topo %d..%d (heights %d..%d requested): audited %d unavailable %d errors %d verdicts %v\n",
 		from, to, fromH, toH, sum.Audited, sum.Unavailable, sum.Errors, sum.Verdicts)
+	fmt.Printf("archive %s (over %d audited blocks)\n", run.payees, sum.Audited) // r27: the live mode's payee line
 	for i, c := range sum.Segments {
-		fmt.Printf("segment %d topo %d..%d heights %d..%d: verified %d unverified %d observed %d formula %d issued %d fees %d burns %d sc_deposits %d sc_payouts %d consistent %v issued_matches_formula %v\n",
+		fmt.Printf("segment %d topo %d..%d heights %d..%d: verified %d unverified %d observed %d formula %d issued %d fees %d burns %d sc_deposits %d sc_payouts %d payees %d payees_verified %d payees_explained %d consistent %v issued_matches_formula %v\n",
 			i, sum.Available[i][0], sum.Available[i][1], c.From, c.To, c.Verified, c.Unverified, c.Observed, c.Formula, c.Issued,
-			c.Fees, c.Burns, c.SCDeposits, c.SCPayouts, c.Consistent, c.IssuedMatchesFormula)
+			c.Fees, c.Burns, c.SCDeposits, c.SCPayouts, c.Payees, c.PayeesVerified, c.PayeesExplained, c.Consistent, c.IssuedMatchesFormula)
 	}
 	for _, r := range sum.Flagged {
 		fmt.Printf("flagged height %d %s alerts=%v notes=%v\n", r.Height, r.Verdict, r.Alerts, r.Notes)
@@ -222,8 +261,9 @@ func seriesMain(path string) int {
 	allOK := true
 	for _, k := range starts {
 		r := segs[k]
-		fmt.Printf("segment started %s: heights %d..%d verified %d unverified %d observed %d issued %d formula %d consistent %v alerts %d\n",
-			time.Unix(k, 0).UTC().Format(time.RFC3339), r.SegmentFrom, r.SegmentTo, r.Verified, r.Unverified, r.Observed, r.Issued, r.Formula, r.Consistent, r.Alerts)
+		fmt.Printf("segment started %s: heights %d..%d verified %d unverified %d observed %d issued %d formula %d consistent %v alerts %d payees %s\n",
+			time.Unix(k, 0).UTC().Format(time.RFC3339), r.SegmentFrom, r.SegmentTo, r.Verified, r.Unverified, r.Observed, r.Issued, r.Formula, r.Consistent, r.Alerts,
+			SeriesPayees(r))
 		heights += r.SegmentTo - r.SegmentFrom + 1
 		verified += r.Verified
 		allOK = allOK && r.Consistent && r.Alerts == 0 && r.Issued == r.Observed
@@ -231,4 +271,13 @@ func seriesMain(path string) int {
 	fmt.Printf("series %s: %d records (%d dropped as torn/corrupt), %d segments, %d notable; heights covered %d (segments may overlap), verified %d, all consistent %v\n",
 		path, len(recs), bad, len(segs), notable, heights, verified, allOK)
 	return 0
+}
+
+// SeriesPayees renders a checkpoint's payee counts for -series-read; a pre-r27 record (no V) says "pending (not
+// recorded before r27)" instead of a 0 that would read as "no payees" (r27, B36).
+func SeriesPayees(r emission.SeriesRecord) string {
+	if !r.PayeesKnown() {
+		return "pending (not recorded before r27)"
+	}
+	return fmt.Sprintf("%d verified %d explained %d", r.Payees, r.PayeesVerified, r.PayeesExplained)
 }

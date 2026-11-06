@@ -15,6 +15,9 @@ Roots and what a line found under each can PROVE (the class vocabulary is closed
 
 Nothing here writes into the source tree. Inputs are read-only.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import hashlib, json, os, re, subprocess, sys
 from pathlib import Path
 

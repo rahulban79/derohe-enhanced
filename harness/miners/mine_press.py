@@ -10,6 +10,9 @@ prevent.
 The claim list is declared here with the exact substring that must still be on a line of the file; if the
 document is re-fetched and a claim has been edited away, the row disappears and the change is visible.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))

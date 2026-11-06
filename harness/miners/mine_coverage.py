@@ -10,6 +10,9 @@ risk function is a part of the consensus or security surface the page is silent 
 Writes harness/runtime/coverage_<ts>.json (one fact per line) and coverage rows anchored on it. Gate G16 fails when
 risk coverage drops between two snapshots.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import collections, datetime, json, re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))

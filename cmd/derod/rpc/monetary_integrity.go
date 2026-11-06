@@ -195,7 +195,7 @@ func monetary_integrity_of(p GetMonetaryIntegrity_Params, em MonetaryIntegrity_E
 func GetMonetaryIntegrity(ctx context.Context, p GetMonetaryIntegrity_Params) (result GetMonetaryIntegrity_Result, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic occured. stack trace r %s", r)
+			err = rpc_internal_error(r) // r27: counted + logged like every other handler (was an untyped, uncounted text)
 		}
 	}()
 	hf3_facts_once.Do(func() { hf3_facts_cached = hf3_facts(blockchain.HF3_Affected_Txs, globals.Config.MAJOR_HF3_HEIGHT) })

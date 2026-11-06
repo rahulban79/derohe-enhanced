@@ -33,6 +33,9 @@ CITATIONS (2026-10-16): every pill opens a clickable panel of the EXACT places t
   page: <style>{ak.CITE_CSS}</style> · <script>{ak.CITE_JS}</script>; a pill whose class has no citation renders
   .ct-nocite and the panel says so in red — audit() counts them (never invent a citation to fill one)
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import html.parser, json, re, sys
 from pathlib import Path
 

@@ -15,6 +15,9 @@ stopped hashing, or the endpoint went away.
   python3 -I harness/intel/gpu_watch.py snap                              # one reading as JSON
 Exit: the command's exit code, or 99 when the live GPU split was disturbed (STOP all GPU work).
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import json, subprocess, sys, time, urllib.request
 
 MINER = 'http://127.0.0.1:10110/metrics'

@@ -57,7 +57,20 @@ type SeriesRecord struct {
 	SCPayouts     uint64 `json:"sc_payouts"`
 	Burns         uint64 `json:"burns"`
 	Flow          uint64 `json:"flow,omitempty"` // notable: the block's largest single plaintext flow
+	// r27 (B36): the segment's coinbase payee counts. Before r27 a checkpoint carried none, so the payee totals of a
+	// stopped process were lost (only its live GetEmissionAudit had them). V = SeriesV2 marks a record that carries
+	// them; a record without V (written before r27) has unknown payees, never 0 (SeriesRecord.PayeesKnown).
+	V               int    `json:"v,omitempty"`
+	Payees          uint64 `json:"payees,omitempty"`
+	PayeesVerified  uint64 `json:"payees_verified,omitempty"`
+	PayeesExplained uint64 `json:"payees_explained,omitempty"`
 }
+
+// SeriesV2 is the record version that carries the payee counts (r27).
+const SeriesV2 = 2
+
+// PayeesKnown reports whether the record carries payee counts (written by an r27+ auditor).
+func (r SeriesRecord) PayeesKnown() bool { return r.V >= SeriesV2 }
 
 // EncodeSeriesLine renders one record with its checksum and the line end.
 func EncodeSeriesLine(r SeriesRecord) []byte {
@@ -135,7 +148,10 @@ func ReadSeriesTail(path string, maxBytes int64) (out []SeriesRecord, bad int, e
 	}
 	off := int64(0)
 	if st.Size() > maxBytes {
-		off = st.Size() - maxBytes
+		// r27: read from one byte BEFORE the window. The old code dropped the window's first line unconditionally,
+		// so a window starting exactly on a line boundary lost a whole intact record; now that byte tells whether
+		// the window starts mid-line ('\n' before it: the first line is complete and kept).
+		off = st.Size() - maxBytes - 1
 	}
 	b := make([]byte, st.Size()-off)
 	if _, err = f.ReadAt(b, off); err != nil && err != io.EOF {

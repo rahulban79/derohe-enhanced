@@ -85,6 +85,7 @@ type node_snapshot struct {
 	status               string
 	getwork_miners       int
 	jobs_held            bool
+	ban_list_entries     uint64 // r27: entries in the ban list now, persisted ones included (p2p.Ban_Count)
 	collect_seconds      float64
 }
 
@@ -114,6 +115,7 @@ func collect_node_snapshot() (s node_snapshot) {
 	s.getwork_miners = len(client_list)
 	client_list_mutex.Unlock()
 	s.jobs_held, _ = jobs_held()
+	s.ban_list_entries = p2p.Ban_Count()
 	s.ok = true
 	return
 }
@@ -144,6 +146,10 @@ func write_node_metrics(w io.Writer, s node_snapshot) {
 	}
 	fmt.Fprintf(w, "dero_getwork_miners %d\n", s.getwork_miners)
 	fmt.Fprintf(w, "dero_mining_work_would_be_stale %d\n", b2f(s.jobs_held))
+	// r27 (R26 metrics gap): p2p_bans_total counts bans made since the start, so it read 0 while the ban list held a
+	// ban loaded from ban_list.json; the gauge is the list itself.
+	fmt.Fprintf(w, "# HELP dero_p2p_ban_list_entries entries in the ban list now, persisted ones included; p2p_bans_total counts only bans made since start\n")
+	fmt.Fprintf(w, "# TYPE dero_p2p_ban_list_entries gauge\ndero_p2p_ban_list_entries %d\n", s.ban_list_entries)
 }
 
 // metrics_handler: everything metrics.WritePrometheus wrote before, then the node-state block.

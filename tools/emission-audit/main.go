@@ -131,8 +131,9 @@ func main() {
 	var reports []emission.Report
 	var micros []int64
 	verdicts := map[string]int{}
-	var txs, changed, payees, verified int
-	var explained, exactAccts, accts int // r23c per-account check
+	var txs, changed int
+	var pt payeeTally         // r27: the same tally -archive prints
+	var exactAccts, accts int // r23c per-account check
 	var probeTotal, precheckTotal time.Duration
 	var probes int
 	cpu0 := cpuTime()
@@ -151,15 +152,7 @@ func main() {
 		micros = append(micros, r.Micros)
 		txs += r.Txs
 		changed += r.Changed
-		for _, py := range r.Payees {
-			payees++
-			if py.Verified {
-				verified++
-			}
-			if py.Explained {
-				explained++
-			}
-		}
+		pt.add(r)
 		exactAccts += r.AccountsExact
 		accts += r.Changed + r.Inserted
 		if r.Verdict == emission.VerdictAlert || r.Verdict == emission.VerdictError || r.Verdict == emission.VerdictSCUnexplained {
@@ -197,8 +190,8 @@ func main() {
 		sum += m
 	}
 	fmt.Printf("blocks %d (topo %d..%d) verdicts %v\n", len(micros), *end-*n+1, *end, verdicts)
-	fmt.Printf("txs %d changed accounts %d payees %d verified %d\n", txs, changed, payees, verified)
-	fmt.Printf("r23c per-account: accounts exact %d of %d changed+inserted; payees explained %d\n", exactAccts, accts, explained)
+	fmt.Printf("txs %d changed accounts %d payees %d verified %d\n", txs, changed, pt.payees, pt.verified)
+	fmt.Printf("r23c per-account: accounts exact %d of %d changed+inserted; payees explained %d\n", exactAccts, accts, pt.explained)
 	if len(micros) > 0 {
 		fmt.Printf("per block wall us: mean %d p50 %d p95 %d max %d; process cpu %.3f s for %.3f s wall (%.1f ms cpu/block)\n",
 			sum/int64(len(micros)), pct(0.5), pct(0.95), pct(1), cpu.Seconds(), wall.Seconds(), cpu.Seconds()*1000/float64(len(micros)))

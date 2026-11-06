@@ -8995,32 +8995,32 @@
    "file": "cmd/derod/rpc/websocket_server.go",
    "pkg": "./cmd/derod/rpc/",
    "test": "TestR25GetTransactionStatusOverJSONRPC",
-   "find": "\t\t\"GetTransaction\":             handler.New(GetTransactionR25), // r25: + txs_status",
-   "replace": "\t\t\"GetTransaction\":             handler.New(GetTransaction), // r25: + txs_status"
+   "find": "\t\t\"GetTransaction\":             typed_new(GetTransactionR25), // r25: + txs_status",
+   "replace": "\t\t\"GetTransaction\":             typed_new(GetTransaction), // r25: + txs_status"
   },
   {
    "id": "gm-r25-rpcrobust-txstatus-alias",
    "file": "cmd/derod/rpc/websocket_server.go",
    "pkg": "./cmd/derod/rpc/",
    "test": "TestR25GetTransactionStatusOverJSONRPC",
-   "find": "\t\"gettransactions\":            handler.New(GetTransactionR25), // r25: + txs_status",
-   "replace": "\t\"gettransactions\":            handler.New(GetTransaction), // r25: + txs_status"
+   "find": "\t\"gettransactions\":            typed_new(GetTransactionR25), // r25: + txs_status",
+   "replace": "\t\"gettransactions\":            typed_new(GetTransaction), // r25: + txs_status"
   },
   {
    "id": "gm-r25-rpcrobust-getinfo-wired",
    "file": "cmd/derod/rpc/websocket_server.go",
    "pkg": "./cmd/derod/rpc/",
    "test": "TestR25GetInfoTotalSupplyBasis",
-   "find": "\t\t\"GetInfo\":                    handler.New(GetInfoR25), // r25 BD6",
-   "replace": "\t\t\"GetInfo\":                    handler.New(GetInfo), // r25 BD6"
+   "find": "\t\t\"GetInfo\":                    typed_new(GetInfoR25), // r25 BD6",
+   "replace": "\t\t\"GetInfo\":                    typed_new(GetInfo), // r25 BD6"
   },
   {
    "id": "gm-r25-rpcrobust-getinfo-alias",
    "file": "cmd/derod/rpc/websocket_server.go",
    "pkg": "./cmd/derod/rpc/",
    "test": "TestR25GetInfoTotalSupplyBasis",
-   "find": "\t\"get_info\":                   handler.New(GetInfoR25), // this is just an alias to above",
-   "replace": "\t\"get_info\":                   handler.New(GetInfo), // this is just an alias to above"
+   "find": "\t\"get_info\":                   typed_new(GetInfoR25), // this is just an alias to above",
+   "replace": "\t\"get_info\":                   typed_new(GetInfo), // this is just an alias to above"
   },
   {
    "id": "gm-r25-rpcrobust-chain-swap-lock",
@@ -9068,8 +9068,8 @@
    "file": "cmd/derod/rpc/websocket_server.go",
    "pkg": "./cmd/derod/rpc/",
    "test": "TestR25GetInfoTotalSupplyBasis",
-   "find": "var historical_apis = handler.Map{\"getinfo\": handler.New(GetInfoR25),",
-   "replace": "var historical_apis = handler.Map{\"getinfo\": handler.New(GetInfo),"
+   "find": "var historical_apis = handler.Map{\"getinfo\": typed_new(GetInfoR25),",
+   "replace": "var historical_apis = handler.Map{\"getinfo\": typed_new(GetInfo),"
   },
   {
    "id": "gm-r25-verify-rpcrobust-b80-errcheck",
@@ -10015,8 +10015,8 @@
    "file": "p2p/peer_observe.go",
    "pkg": "./p2p/",
    "test": "TestR25SyncHoldEscalatesAndForgives",
-   "find": "\tc.obs.sync_strikes.Store(0)\n\tc.obs.sync_hold_until.Store(0)",
-   "replace": "\tc.obs.sync_strikes.Store(0)"
+   "find": "\th := c.obs.sync_hold_until.Swap(0)\n",
+   "replace": "\th := c.obs.sync_hold_until.Load()\n"
   },
   {
    "id": "gm-r25-peers-trigger-sync-ignores-hold",
@@ -10031,8 +10031,8 @@
    "file": "p2p/connection_pool.go",
    "pkg": "./p2p/",
    "test": "TestR25SyncHoldWiring",
-   "find": "\t\t\t\t\t\t\t\tconnection.sync_succeeded()\n",
-   "replace": "\t\t\t\t\t\t\t\t_ = 0\n"
+   "find": "\t\t\t\t\t\t\t\t\tif connection.sync_succeeded() { // r27 (B99 observability): counted when it cleared something\n",
+   "replace": "\t\t\t\t\t\t\t\t\tif false { // r27 mutated: never forgives\n"
   },
   {
    "id": "gm-r25-peers-v2-ban-unattributed",
@@ -10407,8 +10407,8 @@
    "file": "p2p/peer_observe.go",
    "pkg": "./p2p/",
    "test": "TestR26SyncStrikesDecay",
-   "find": "\t\tc.obs.sync_strikes.Store(0)\n\t}\n\tn := c.obs.sync_strikes.Add(1)",
-   "replace": "\t}\n\tn := c.obs.sync_strikes.Add(1) // r26 mutated: no decay"
+   "find": "\t\tdecayed = c.obs.sync_strikes.Swap(0) != 0\n",
+   "replace": "\t\tdecayed = c.obs.sync_strikes.Load() != 0 // r26 mutated: no decay\n"
   },
   {
    "id": "gm-r26-nodenet-relay-forgives-any-claim",
@@ -10519,8 +10519,8 @@
    "file": "cmd/derod/rpc/rpc_dero_nametoaddress.go",
    "pkg": "./cmd/derod/rpc/",
    "test": "TestR26NameToAddressUnknownIsNotFound",
-   "find": "\t\tif len(name) > NAME_ECHO_MAX {",
-   "replace": "\t\tif len(name) > NAME_ECHO_MAX*100 { // r26 mutated"
+   "find": "\t\tname = cap_utf8(name, NAME_ECHO_MAX)",
+   "replace": "\t\tname = cap_utf8(name, NAME_ECHO_MAX*100) // r26 mutated (r27: the cap moved into cap_utf8)"
   },
   {
    "id": "gm-r26-noderpc-decoy-window-upstream",
@@ -10641,6 +10641,958 @@
    "test": "TestR23bAddCompleteBlockCensus",
    "find": "\t\terr, ok := p2p.Add_Complete_Block_HF3(chain, cbl)\n",
    "replace": "\t\terr, ok := chain.Add_Complete_Block(cbl) // r26 mutated: HF3 table step skipped\n"
+  },
+  {
+   "id": "gm-r27-dvm-exists-always",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tdvm.State.Store.Load(DataKey{SCID: dvm.State.Chain_inputs.SCID, Key: key}, &found)\n\treturn found\n",
+   "replace": "\tdvm.State.Store.Load(DataKey{SCID: dvm.State.Chain_inputs.SCID, Key: key}, &found)\n\treturn 1 // r27 mutated\n",
+   "test": "TestR27BuiltinScalarsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-delete-noop",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tdvm.State.Store.Delete(DataKey{SCID: dvm.State.Chain_inputs.SCID, Key: key})\n",
+   "replace": "\t_ = key // r27 mutated: DELETE is a no-op\n",
+   "test": "TestR27BuiltinExistsDelete",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-delete-marker",
+   "file": "dvm/dvm_store.go",
+   "find": "\ttx_store.RawKeys[string(dkey.MarshalBinaryPanic())] = []byte{}\n",
+   "replace": "\tdelete(tx_store.RawKeys, string(dkey.MarshalBinaryPanic())) // r27 mutated: no deletion marker\n",
+   "test": "TestR27BuiltinExistsDelete",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-dero-nonzero",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tvar zerohash crypto.Hash\n\treturn true, string(zerohash[:])\n",
+   "replace": "\tvar zerohash crypto.Hash\n\tzerohash[0] = 1 // r27 mutated\n\treturn true, string(zerohash[:])\n",
+   "test": "TestR27BuiltinScalarsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-update-code-key",
+   "file": "dvm/dvm_functions.go",
+   "find": "ValueString: \"C\"}}, Variable{Type: String, ValueString: k})",
+   "replace": "ValueString: \"D\"}}, Variable{Type: String, ValueString: k}) /* r27 mutated */",
+   "test": "TestR27UpdateSCCode",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-addrvalid-string",
+   "file": "dvm/dvm_functions.go",
+   "find": "\t\tif err := addr_raw.DecodeCompressed([]byte(k)); err == nil {\n",
+   "replace": "\t\tif err := addr_raw.DecodeCompressed([]byte(k)); err == nil || len(k) > 33 { // r27 mutated\n",
+   "test": "TestR27BuiltinAddressKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-address-raw",
+   "file": "dvm/dvm_functions.go",
+   "find": "\t\t\treturn true, string(addr.Compressed())\n",
+   "replace": "\t\t\treturn true, string(addr.Compressed()[1:]) // r27 mutated\n",
+   "test": "TestR27BuiltinAddressKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-address-string-net",
+   "file": "dvm/dvm_functions.go",
+   "find": "\t\t\taddr := rpc.NewAddressFromKeys(p)\n",
+   "replace": "\t\t\taddr := rpc.NewAddressFromKeys(p)\n\t\t\taddr.Mainnet = false // r27 mutated\n",
+   "test": "TestR27BuiltinAddressKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-send-asset-amount",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tdvm.State.Store.SendExternal(dvm.State.Chain_inputs.SCID, asset, addr_eval.(string), amount_eval.(uint64)) // add record for external transfer\n",
+   "replace": "\tdvm.State.Store.SendExternal(dvm.State.Chain_inputs.SCID, asset, addr_eval.(string), amount_eval.(uint64)+1) // r27 mutated\n",
+   "test": "TestR27SendAssetToAddressDERO",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-audit-send-asset-amount",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tdvm.State.Store.SendExternal(dvm.State.Chain_inputs.SCID, asset, addr_eval.(string), amount_eval.(uint64)) // add record for external transfer\n",
+   "replace": "\tdvm.State.Store.SendExternal(dvm.State.Chain_inputs.SCID, asset, addr_eval.(string), amount_eval.(uint64)+1) // r27 mutated\n",
+   "test": "TestR27AuditBooksRealSendAssetToAddress",
+   "pkg": "./glue/emission/"
+  },
+  {
+   "id": "gm-r27-dvm-send-asset-as-dero",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tvar asset crypto.Hash\n\tcopy(asset[:], ([]byte(asset_eval.(string))))\n\n\tdvm.State.Store.SendExternal",
+   "replace": "\tvar asset crypto.Hash // r27 mutated: every asset paid as DERO\n\n\tdvm.State.Store.SendExternal",
+   "test": "TestR27SendAssetToAddressToken",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-audit-token-as-dero",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tvar asset crypto.Hash\n\tcopy(asset[:], ([]byte(asset_eval.(string))))\n\n\tdvm.State.Store.SendExternal",
+   "replace": "\tvar asset crypto.Hash // r27 mutated: every asset paid as DERO\n\n\tdvm.State.Store.SendExternal",
+   "test": "TestR27AuditTokenPayoutOutsideScope",
+   "pkg": "./glue/emission/"
+  },
+  {
+   "id": "gm-r27-dvm-assetvalue",
+   "file": "dvm/dvm_functions.go",
+   "find": "\treturn true, dvm.State.Assets[asset]\n",
+   "replace": "\treturn true, dvm.State.Assets[dvm.State.SCIDZERO] // r27 mutated\n",
+   "test": "TestR27BuiltinAssetValueKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-itoa",
+   "file": "dvm/dvm_functions.go",
+   "find": "fmt.Sprintf(\"%d\", asset_eval.(uint64))",
+   "replace": "fmt.Sprintf(\"%x\", asset_eval.(uint64)) /* r27 mutated */",
+   "test": "TestR27BuiltinScalarsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-atoi",
+   "file": "dvm/dvm_functions.go",
+   "find": "strconv.ParseUint(asset_eval.(string), 10, 64)",
+   "replace": "strconv.ParseUint(asset_eval.(string), 16, 64) /* r27 mutated */",
+   "test": "TestR27BuiltinScalarsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-atoi-fail",
+   "file": "dvm/dvm_functions.go",
+   "find": "strconv.ParseUint(asset_eval.(string), 10, 64)",
+   "replace": "strconv.ParseUint(asset_eval.(string), 16, 64) /* r27 mutated */",
+   "test": "TestR27BuiltinFailuresRevert",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-strlen-runes",
+   "file": "dvm/dvm_functions.go",
+   "find": "uint64(len([]byte(asset_eval.(string))))",
+   "replace": "uint64(len([]rune(asset_eval.(string)))) /* r27 mutated */",
+   "test": "TestR27BuiltinScalarsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-min",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tif a1.(uint64) < a2.(uint64) {\n",
+   "replace": "\tif a1.(uint64) > a2.(uint64) { // r27 mutated\n",
+   "test": "TestR27BuiltinScalarsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-max",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tif a1.(uint64) > a2.(uint64) {\n",
+   "replace": "\tif a1.(uint64) < a2.(uint64) { // r27 mutated\n",
+   "test": "TestR27BuiltinScalarsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-panic-noop",
+   "file": "dvm/dvm_functions.go",
+   "find": "\tpanic(\"panic function called\")\n\treturn true, uint64(0)\n",
+   "replace": "\treturn true, uint64(0) // r27 mutated: PANIC() returns\n",
+   "test": "TestR27BuiltinFailuresRevert",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-gas-sha256",
+   "file": "dvm/dvm_functions.go",
+   "find": "ComputeCost: 25000, StorageCost: 0, PtrS: dvm_sha256}",
+   "replace": "ComputeCost: 25001, StorageCost: 0, PtrS: dvm_sha256} /* r27 mutated */",
+   "test": "TestR27BuiltinGasTablePinned",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-census-price",
+   "file": "dvm/dvm_functions.go",
+   "find": "ComputeCost: 25000, StorageCost: 0, PtrS: dvm_keccak256}",
+   "replace": "ComputeCost: 30000, StorageCost: 0, PtrS: dvm_keccak256} /* r27 mutated */",
+   "test": "TestR27HashGasCensus",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-census-metered",
+   "file": "dvm/dvm_functions.go",
+   "find": "\thash := sha256.Sum256([]byte(input_eval.(string)))\n",
+   "replace": "\tdvm.State.ConsumeGas(int64(len(input_eval.(string)) / 64)) // r27 mutated: length-metered\n\thash := sha256.Sum256([]byte(input_eval.(string)))\n",
+   "test": "TestR27HashGasCensus",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-dvm-sanity-underflow",
+   "file": "dvm/simulator.go",
+   "find": "\t\t\tif asset != scid && stored_value-value > stored_value {\n",
+   "replace": "\t\t\tif false && asset != scid && stored_value-value > stored_value { // r27 mutated\n",
+   "test": "TestR27SendAssetToAddressDERO",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-audit-sanity-underflow",
+   "file": "dvm/simulator.go",
+   "find": "\t\t\tif asset != scid && stored_value-value > stored_value {\n",
+   "replace": "\t\t\tif false && asset != scid && stored_value-value > stored_value { // r27 mutated\n",
+   "test": "TestR27AuditBooksRealOverdraftRefund",
+   "pkg": "./glue/emission/"
+  },
+  {
+   "id": "gm-r27-dvm-own-token-limited",
+   "file": "dvm/simulator.go",
+   "find": "\t\t\tif asset != scid && stored_value-value > stored_value {\n",
+   "replace": "\t\t\tif stored_value-value > stored_value { // r27 mutated: own token limited\n",
+   "test": "TestR27SendAssetToAddressToken",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-audit-dero-tree",
+   "file": "dvm/simulator.go",
+   "find": "\t\tswitch transfer.Asset {\n\t\tcase zeroscid: // main dero balance, handle it\n\t\t\tcurbtree = balance_tree\n",
+   "replace": "\t\tswitch transfer.Asset {\n\t\tcase zeroscid: // main dero balance, handle it\n\t\t\tcurbtree = cache[scid] // r27 mutated\n",
+   "test": "TestR27AuditBooksRealSendAssetToAddress",
+   "pkg": "./glue/emission/"
+  },
+  {
+   "id": "gm-r27-dvm-errorrevert-norefund",
+   "file": "dvm/simulator.go",
+   "find": "\t\t\tnb.Balance = nb.Balance.Plus(new(big.Int).SetUint64(burnvalue)) // add back burn value to users balance homomorphically\n",
+   "replace": "\t\t\tnb.Balance = nb.Balance.Plus(new(big.Int).SetUint64(0 * burnvalue)) // r27 mutated: no refund\n",
+   "test": "TestR27BuiltinFailuresRevert",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r27-audit-errorrevert-norefund",
+   "file": "dvm/simulator.go",
+   "find": "\t\t\tnb.Balance = nb.Balance.Plus(new(big.Int).SetUint64(burnvalue)) // add back burn value to users balance homomorphically\n",
+   "replace": "\t\t\tnb.Balance = nb.Balance.Plus(new(big.Int).SetUint64(0 * burnvalue)) // r27 mutated: no refund\n",
+   "test": "TestR27AuditBooksRealOverdraftRefund",
+   "pkg": "./glue/emission/"
+  },
+  {
+   "id": "gm-r27-diff-m",
+   "file": "blockchain/difficulty.go",
+   "find": "\tM := int64(8)\n",
+   "replace": "\tM := int64(7) // r27 mutated\n",
+   "test": "TestR27DifficultyCrossImpl",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r27-diff-clamp",
+   "file": "blockchain/difficulty.go",
+   "find": "\tif solve_time > (block_time * 2) { // there should not be sudden decreases\n\t\tsolve_time = block_time * 2\n",
+   "replace": "\tif solve_time > (block_time * 3) { // r27 mutated\n\t\tsolve_time = block_time * 3\n",
+   "test": "TestR27DifficultyCrossImpl",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r27-diff-floor",
+   "file": "blockchain/difficulty.go",
+   "find": "\tif difficulty.Cmp(MinimumDifficulty) < 0 { // we can never be below minimum difficulty\n",
+   "replace": "\tif false && difficulty.Cmp(MinimumDifficulty) < 0 { // r27 mutated\n",
+   "test": "TestR27DifficultyCrossImpl",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r27-diff-step",
+   "file": "blockchain/difficulty.go",
+   "find": "\teasypart := int64(math.Pow(E, ((1-float64(solvetime)/float64(blocktime))/float64(M))) * 10000)\n\tdiff = new(big.Int)",
+   "replace": "\teasypart := int64(math.Pow(E, ((1-float64(solvetime)/float64(blocktime))/float64(M))) * 10001) // r27 mutated\n\tdiff = new(big.Int)",
+   "test": "TestR27DifficultyCrossImpl",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r27-diff-hf2-window",
+   "file": "blockchain/difficulty.go",
+   "find": "height <= (globals.Config.MAJOR_HF2_HEIGHT+2)",
+   "replace": "height <= (globals.Config.MAJOR_HF2_HEIGHT+1) /* r27 mutated */",
+   "test": "TestR27DifficultyEarlyReturns",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r27-diff-first-tip",
+   "file": "blockchain/difficulty.go",
+   "find": "\ttip_difficulty := source.Load_Block_Difficulty(tips[0])\n",
+   "replace": "\ttip_difficulty := source.Load_Block_Difficulty(tips[len(tips)-1]) // r27 mutated\n",
+   "test": "TestR27DifficultyEarlyReturns",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r27-diff-genesis-h3",
+   "file": "blockchain/difficulty.go",
+   "find": "\tif height < 3 {\n",
+   "replace": "\tif height < 2 { // r27 mutated\n",
+   "test": "TestR27DifficultyEarlyReturns",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r27-p2pcfg-decay-uncounted",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR27StrikeDecayIsCounted",
+   "find": "\t\t\tsync_strike_decays_total.Inc() // r27 (B99 observability)\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r27-p2pcfg-scenario-decay-uncounted",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR27SyncHoldLoopbackScenario",
+   "find": "\t\t\tsync_strike_decays_total.Inc() // r27 (B99 observability)\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r27-p2pcfg-scenario-no-decay",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR27SyncHoldLoopbackScenario",
+   "find": "\t\tdecayed = c.obs.sync_strikes.Swap(0) != 0\n",
+   "replace": "\t\tdecayed = c.obs.sync_strikes.Load() != 0 // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-served-labelled-relay",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR27ForgivenessCountedByPath",
+   "find": "\tif c.Syncing.Load() > 0 {\n\t\tsync_served_forgiven_total.Inc()",
+   "replace": "\tif false {\n\t\tsync_served_forgiven_total.Inc()"
+  },
+  {
+   "id": "gm-r27-p2pcfg-scenario-served-labelled-relay",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR27SyncHoldLoopbackScenario",
+   "find": "\tif c.Syncing.Load() > 0 {\n\t\tsync_served_forgiven_total.Inc()",
+   "replace": "\tif false {\n\t\tsync_served_forgiven_total.Inc()"
+  },
+  {
+   "id": "gm-r27-p2pcfg-scenario-trigger-served-uncounted",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR27SyncHoldLoopbackScenario",
+   "find": "\t\t\t\t\t\t\t\t\t\tsync_served_forgiven_total.Inc()\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r27-p2pcfg-succeeded-misreports",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR27SyncSucceededReportsCleared",
+   "find": "\treturn s != 0 || h != 0\n",
+   "replace": "\treturn s != 0 && h != 0 && false\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-scenario-fallback-off",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR27SyncHoldLoopbackScenario",
+   "find": "\treturn last == 0 || now.UnixNano()-last >= int64(SYNC_FALLBACK_EVERY)\n",
+   "replace": "\treturn false // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-scenario-short-not-held",
+   "file": "p2p/peer_observe.go",
+   "pkg": "./p2p/",
+   "test": "TestR27SyncHoldLoopbackScenario",
+   "find": "\tif kind != call_failure_remote && kind != call_failure_short {\n",
+   "replace": "\tif kind != call_failure_remote {\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-counter-not-eager",
+   "file": "p2p/counter_registry.go",
+   "pkg": "./p2p/",
+   "test": "TestP2PCountersRegisteredEagerly",
+   "find": "\t\"p2p_sync_strike_decays_total\",     // r27 (B99 observability)\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r27-p2pcfg-bans-loaded-uncounted",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR27LoadBanListWithReasons",
+   "find": "\t\t\tbans_loaded_total.Add(n)\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r27-p2pcfg-bans-load-keeps-expired",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR27LoadBanListWithReasons",
+   "find": "\tdefer ban_clean_up() // cleanup list after loading it\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r27-p2pcfg-bans-reasons-wrong-dir",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR27LoadBanListWithReasons",
+   "find": "load_ban_meta_locked(filepath.Join(dir, \"ban_reasons.json\"))",
+   "replace": "load_ban_meta_locked(filepath.Join(globals.GetDataDirectory(), \"ban_reasons.json\"))"
+  },
+  {
+   "id": "gm-r27-p2pcfg-bans-active-gauge-zero",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR27LoadBanListWithReasons",
+   "find": "func() float64 { return float64(Ban_Count()) }",
+   "replace": "func() float64 { return 0 }"
+  },
+  {
+   "id": "gm-r27-p2pcfg-ban-loop-never-exits",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR27BanCleanUpLoopDropsExpiredAndExits",
+   "find": "\t\tcase <-exit:\n\t\t\treturn\n",
+   "replace": "\t\tcase <-exit:\n\t\t\ttime.Sleep(time.Hour)\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-ban-loop-never-cleans",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "TestR27BanCleanUpLoopDropsExpiredAndExits",
+   "find": "\t\tcase <-delay.C:\n\t\t}\n\t\tban_clean_up()\n\t}\n}",
+   "replace": "\t\tcase <-delay.C:\n\t\t}\n\t}\n}"
+  },
+  {
+   "id": "gm-r27-p2pcfg-snapshot-no-duplicates",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR27ConsensusCountersSnapshot",
+   "find": "\ts.BlockOfferDuplicates = block_duplicates.Get()\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r27-p2pcfg-cfg-hf3-height",
+   "file": "config/config.go",
+   "pkg": "./config/",
+   "test": "TestR27ConsensusConstantsPinned",
+   "find": "\tMAJOR_HF3_HEIGHT:        7504640,\n",
+   "replace": "\tMAJOR_HF3_HEIGHT:        7504641,\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-cfg-stable-limit",
+   "file": "config/config.go",
+   "pkg": "./config/",
+   "test": "TestR27ConsensusConstantsPinned",
+   "find": "const STABLE_LIMIT = int64(8)\n",
+   "replace": "const STABLE_LIMIT = int64(9)\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-cfg-genesis-hash-set",
+   "file": "config/config.go",
+   "pkg": "./config/",
+   "test": "TestR27ConsensusConstantsPinned",
+   "find": "\tMAJOR_HF3_HEIGHT:        7504640,\n",
+   "replace": "\tMAJOR_HF3_HEIGHT:        7504640,\n\tGenesis_Block_Hash:      crypto.Hash{1},\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-cfg-min-diff-default",
+   "file": "config/config.go",
+   "pkg": "./config/",
+   "test": "TestR27SettingsDefaultsPinned",
+   "find": "envDefault:\"100000\"`",
+   "replace": "envDefault:\"1\"`"
+  },
+  {
+   "id": "gm-r27-p2pcfg-cfg-version-date",
+   "file": "config/version.go",
+   "pkg": "./config/",
+   "test": "TestR27VersionRules",
+   "find": "+22102026.r",
+   "replace": "+32102026.r"
+  },
+  {
+   "id": "gm-r27-p2pcfg-cfg-version-core",
+   "file": "config/version.go",
+   "pkg": "./config/",
+   "test": "TestR27VersionRules",
+   "find": "3.6.0-153.DEROHE.STARGATE+",
+   "replace": "3.6.1-153.DEROHE.STARGATE+"
+  },
+  {
+   "id": "gm-r27-p2pcfg-cfg-readonly-writer",
+   "file": "cmd/derod/config_env_r27.go",
+   "pkg": "./config/",
+   "test": "TestR27ConsensusConfigReadOnly",
+   "find": "\tconsensus_env_overrides = len(ov)\n",
+   "replace": "\tconsensus_env_overrides = len(ov)\n\tconfig.Settings.MAINNET_MINIMUM_DIFFICULTY = 1\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-derod-env-override-ignored",
+   "file": "cmd/derod/config_env_r27.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR27ConsensusSettingOverrides",
+   "find": "\t\tif got := v.Field(i).Uint(); got != d {\n",
+   "replace": "\t\tif got := v.Field(i).Uint(); false && got != d {\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-derod-env-gauge-zero",
+   "file": "cmd/derod/config_env_r27.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR27ConsensusEnvGauge",
+   "find": "func() float64 { return float64(consensus_env_overrides) }",
+   "replace": "func() float64 { return 0 }"
+  },
+  {
+   "id": "gm-r27-p2pcfg-syncinfo-bans-active-tag",
+   "file": "cmd/derod/rpc/rpc_dero_getsyncinfo.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27SyncInfoBanFields",
+   "find": "`json:\"p2p_bans_active\"`",
+   "replace": "`json:\"p2p_bans_running\"`"
+  },
+  {
+   "id": "gm-r27-p2pcfg-verify-syncinfo-bans-unfilled",
+   "file": "cmd/derod/rpc/rpc_dero_getsyncinfo.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27SyncInfoBanFieldsFilled",
+   "find": "\tresult.BansActive, result.BansLoaded = p2p.Ban_Count(), p2p.BansLoaded()\n",
+   "replace": "\t_, _ = p2p.Ban_Count(), p2p.BansLoaded()\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-verify-derod-env-check-not-called",
+   "file": "cmd/derod/main.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR27ReportConsensusEnvOverrides",
+   "find": "\treport_consensus_env_overrides() // r27",
+   "replace": "\t// report_consensus_env_overrides() // r27"
+  },
+  {
+   "id": "gm-r27-p2pcfg-verify-derod-env-count-unset",
+   "file": "cmd/derod/config_env_r27.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR27ReportConsensusEnvOverrides",
+   "find": "\tconsensus_env_overrides = len(ov)\n",
+   "replace": "\t_ = len(ov)\n"
+  },
+  {
+   "id": "gm-r27-p2pcfg-verify-derod-env-no-error-lines",
+   "file": "cmd/derod/config_env_r27.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR27ReportConsensusEnvOverrides",
+   "find": "\tfor _, o := range ov {\n",
+   "replace": "\tfor _, o := range ov[:0] {\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-typed-new-off",
+   "file": "cmd/derod/rpc/r27_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27InvalidParamsNamesTheField",
+   "find": "\t\tif err != nil && pt != nil && is_param_decode_failure(err) {\n",
+   "replace": "\t\tif false && err != nil && pt != nil && is_param_decode_failure(err) { // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-map-wired",
+   "file": "cmd/derod/rpc/websocket_server.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27InvalidParamsNamesTheField",
+   "find": "\t\t\"GetBlockHeadersRange\":       typed_new(GetBlockHeadersRange),\n",
+   "replace": "\t\t\"GetBlockHeadersRange\":       handler.New(GetBlockHeadersRange), // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-unknown-field-msg",
+   "file": "cmd/derod/rpc/r27_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27InvalidParamsNamesTheField",
+   "find": "\t\tmsg = fmt.Sprintf(\"unknown field %q (accepted: %s)\", bounded(field), strings.Join(accepted, \", \"))\n",
+   "replace": "\t\tmsg = \"invalid parameters\" // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-strict-redecode",
+   "file": "cmd/derod/rpc/r27_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27InvalidParamsNamesTheField",
+   "find": "\tif _, strict := v.(strict_fields); strict {\n",
+   "replace": "\tif _, strict := v.(strict_fields); strict && false { // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-count-code-wired",
+   "file": "cmd/derod/rpc/websocket_server.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27ErrorResponsesCountedByCode",
+   "find": "\tcount_error_code(resp.Error())\n",
+   "replace": "\t// r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-count-code-other",
+   "file": "cmd/derod/rpc/r27_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27ErrorResponsesCountedByCode",
+   "find": "\trpc_error_code_other.Inc()\n",
+   "replace": "\t// r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-prereg-init",
+   "file": "cmd/derod/rpc/r27_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27TypedRefusalCountersPreregistered",
+   "find": "\tfor _, name := range rpc_counters_preregistered {\n\t\tmetrics.Set.GetOrCreateCounter(name)\n\t}\n",
+   "replace": "\tfor _, name := range rpc_counters_preregistered {\n\t\t_ = name // r27 mutated\n\t}\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-prereg-list",
+   "file": "cmd/derod/rpc/r27_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27TypedRefusalCountersPreregistered",
+   "find": "\t`rpc_state_unavailable_total{method=\"GetSC\"}`,\n",
+   "replace": "\t// r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-utf8-cap",
+   "file": "cmd/derod/rpc/r27_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27NameEchoCapKeepsUTF8",
+   "find": "\tfor n > 0 && !utf8_rune_start(s[n]) {\n",
+   "replace": "\tfor n > 0 && !utf8_rune_start(s[n]) && false { // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-utf8-wired",
+   "file": "cmd/derod/rpc/rpc_dero_nametoaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27NameEchoCapKeepsUTF8",
+   "find": "\t\tname = cap_utf8(name, NAME_ECHO_MAX)",
+   "replace": "\t\tname = name[:NAME_ECHO_MAX] + \"...\" // r27 mutated"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-zero-blid-text",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27ZeroBlidTextOnUnprunedNode",
+   "find": "\tif e.TopoHeight >= e.PrunedTopo {",
+   "replace": "\tif false && e.TopoHeight >= e.PrunedTopo {"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-recover-emission",
+   "file": "cmd/derod/rpc/emission_audit.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27UntypedRecoversAreCounted",
+   "find": "\t\t\terr = rpc_internal_error(r) // r27: counted + logged like every other handler (was an untyped, uncounted text)\n\t\t}\n\t}()\n\treturn emission_state.snapshot(), nil\n",
+   "replace": "\t\t\terr = fmt.Errorf(\"panic occured. stack trace r %s\", r) // r27 mutated\n\t\t}\n\t}()\n\treturn emission_state.snapshot(), nil\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-recover-monetary",
+   "file": "cmd/derod/rpc/monetary_integrity.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27UntypedRecoversAreCounted",
+   "find": "\t\t\terr = rpc_internal_error(r) // r27: counted + logged like every other handler (was an untyped, uncounted text)\n",
+   "replace": "\t\t\terr = fmt.Errorf(\"panic occured. stack trace r %s\", r) // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-recover-supply",
+   "file": "cmd/derod/rpc/rpc_dero_getsupplyaudit.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27UntypedRecoversAreCounted",
+   "find": "\t\t\terr = rpc_internal_error(r) // r27: counted + logged like every other handler (was an untyped, uncounted text)\n\t\t}\n\t}()\n\tif ctx == nil {\n",
+   "replace": "\t\t\terr = fmt.Errorf(\"panic occured. stack trace r %s\", r) // r27 mutated\n\t\t}\n\t}()\n\tif ctx == nil {\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-ban-gauge",
+   "file": "cmd/derod/rpc/node_metrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27BanListGauge",
+   "find": "\tfmt.Fprintf(w, \"# TYPE dero_p2p_ban_list_entries gauge\\ndero_p2p_ban_list_entries %d\\n\", s.ban_list_entries)\n",
+   "replace": "\t// r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-ban-gauge-collect",
+   "file": "cmd/derod/rpc/node_metrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27BanListGauge",
+   "find": "\ts.ban_list_entries = p2p.Ban_Count()\n",
+   "replace": "\t// r27 mutated (the snapshot no longer reads the ban list)\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-data-field-bound",
+   "file": "cmd/derod/rpc/r27_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27ParamsHelpers",
+   "find": "\t\tdata[\"field\"] = bounded(field) //",
+   "replace": "\t\tdata[\"field\"] = field //"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-doc-metric",
+   "file": "cmd/derod/rpc/RPC_METHODS.md",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27DocumentedMetricsExist",
+   "find": "sends are counted in `getwork_job_dispatch_total{reason}`)",
+   "replace": "sends are counted in `getwork_jobs_coalesced_total`)"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-rpc-hasvalue",
+   "file": "rpc/rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR27ArgumentsLookups",
+   "find": "\t\tif arg.Name == name && arg.DataType == dtype && arg.Value != nil {\n",
+   "replace": "\t\tif arg.Name == name && arg.DataType == dtype { // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-rpc-clone-shares",
+   "file": "rpc/address.go",
+   "pkg": "./rpc/",
+   "test": "TestR27AddressHelpers",
+   "find": "\tz.Arguments = append(z.Arguments, a.Arguments...)\n",
+   "replace": "\tz.Arguments = a.Arguments // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-rpc-checkpack-limit",
+   "file": "rpc/rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR27ArgumentsPack",
+   "find": "\tif len(packed) > limit {\n",
+   "replace": "\tif len(packed) > limit+1 { // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-metrics-used",
+   "file": "metrics/diskusage.go",
+   "pkg": "./metrics/",
+   "test": "TestR27DiskUsageAccessors",
+   "find": "\treturn du.Size() - du.Free()\n",
+   "replace": "\treturn du.Size() // r27 mutated (Size - Available is equivalent on APFS, where bavail == bfree)\n"
+  },
+  {
+   "id": "gm-r27-rpcmetrics-metrics-name",
+   "file": "metrics/metrics.go",
+   "pkg": "./metrics/",
+   "test": "TestR27WritePrometheusIsValid",
+   "find": "\tfmt.Fprintf(w, \"app_uptime_seconds %d\\n\", int(time.Since(startTime).Seconds()))\n",
+   "replace": "\tfmt.Fprintf(w, \"app.uptime_seconds %d\\n\", int(time.Since(startTime).Seconds())) // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-glue-time-ntp-applied",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27TimeOffsetRules",
+   "find": "\tif off, ok := ntp_offset(); ok {\n\t\treturn time.Now().Add(off)\n\t}\n\treturn time.Now()\n\t//return",
+   "replace": "\tif _, ok := ntp_offset(); ok {\n\t\treturn time.Now() // r27 mutated: NTP offset ignored\n\t}\n\treturn time.Now()\n\t//return"
+  },
+  {
+   "id": "gm-r27-glue-time-insync",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27TimeOffsetRules",
+   "find": "func Time() time.Time {\n\tif TimeIsInSync {",
+   "replace": "func Time() time.Time {\n\tif false && TimeIsInSync { // r27 mutated"
+  },
+  {
+   "id": "gm-r27-glue-timeskip-ntp",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27TimeOffsetRules",
+   "find": "func TimeSkipP2P() time.Time {\n\tif TimeIsInSync {\n\t\treturn time.Now()\n\t}\n\tif off, ok := ntp_offset(); ok {\n\t\treturn time.Now().Add(off)",
+   "replace": "func TimeSkipP2P() time.Time {\n\tif TimeIsInSync {\n\t\treturn time.Now()\n\t}\n\tif off, ok := ntp_offset(); ok {\n\t\treturn time.Now().Add(off / 2) // r27 mutated"
+  },
+  {
+   "id": "gm-r27-glue-ntp-gate",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27TimeOffsetRules",
+   "find": "if TimeIsInSyncNTP || atomic.LoadUint32(&ntp_in_sync) == 1 {",
+   "replace": "if true { // r27 mutated: offset used before NTP ran"
+  },
+  {
+   "id": "gm-r27-glue-initnetwork-testnet",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27InitNetwork",
+   "find": "\t\tConfig = config.Testnet\n",
+   "replace": "\t\tConfig = config.Mainnet // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-glue-recover-counter",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27RecoverCounts",
+   "find": "\t\tmetrics.Set.GetOrCreateCounter(fmt.Sprintf(`recovered_panics_total{level=\"%d\"}`, level)).Inc()\n",
+   "replace": "\t\t_ = metrics.Set // r27 mutated: not counted\n"
+  },
+  {
+   "id": "gm-r27-glue-nhooyr-short-write",
+   "file": "glue/rwc/rwc_nhyoor.go",
+   "pkg": "./glue/rwc/",
+   "test": "TestR27NhooyrWriteHandlesShortWrites",
+   "find": "m, err = rwc.w.Write(p[n:])",
+   "replace": "m, err = rwc.w.Write(p) /* r27 mutated */"
+  },
+  {
+   "id": "gm-r27-glue-nhooyr-read-limit",
+   "file": "glue/rwc/rwc_nhyoor.go",
+   "pkg": "./glue/rwc/",
+   "test": "TestR27NhooyrReadLimitMatchesServers",
+   "find": "const NhooyrReadLimit = MaxMessageSize",
+   "replace": "const NhooyrReadLimit = 2 * 1024 * 1024 // r27 mutated"
+  },
+  {
+   "id": "gm-r27-glue-nhooyr-write-err",
+   "file": "glue/rwc/rwc_nhyoor.go",
+   "pkg": "./glue/rwc/",
+   "test": "TestR27WriteErrorSurvivesClose",
+   "find": "if cerr := rwc.Close(); err == nil {",
+   "replace": "if cerr := rwc.Close(); true { // r27 mutated"
+  },
+  {
+   "id": "gm-r27-glue-gorilla-write-err",
+   "file": "glue/rwc/rwc.go",
+   "pkg": "./glue/rwc/",
+   "test": "TestR27WriteErrorSurvivesClose",
+   "find": "if cerr := rwc.Close(); err == nil {",
+   "replace": "if cerr := rwc.Close(); true { // r27 mutated"
+  },
+  {
+   "id": "gm-r27-glue-formula-bounded",
+   "file": "glue/emission/emission.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27FormulaSupplyBoundedAndGenesis",
+   "find": "\t\tif BlockReward(start) == 0 {\n",
+   "replace": "\t\tif false && BlockReward(start) == 0 { // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-glue-supply-before-genesis",
+   "file": "glue/emission/emission.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27FormulaSupplyBoundedAndGenesis",
+   "find": "\tif h == 0 {\n\t\treturn FormulaSupply(0)\n\t}\n\treturn FormulaSupply(h - 1)",
+   "replace": "\treturn FormulaSupply(h - 1) // r27 mutated"
+  },
+  {
+   "id": "gm-r27-glue-series-tail-boundary",
+   "file": "glue/emission/series.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27SeriesTailWindowOnLineBoundary",
+   "find": "off = st.Size() - maxBytes - 1",
+   "replace": "off = st.Size() - maxBytes // r27 mutated"
+  },
+  {
+   "id": "gm-r27-glue-cumulative-payees",
+   "file": "glue/emission/archive.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27CumulativeCountsPayeesSkipsErrors",
+   "find": "\t\t\tc.Payees++\n",
+   "replace": "\t\t\t// r27 mutated: not counted\n"
+  },
+  {
+   "id": "gm-r27-glue-series-record-payees",
+   "file": "cmd/derod/rpc/emission_audit.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27SeriesRecordCarriesPayees",
+   "find": "\t\tV: emission.SeriesV2, Payees: res.Payees, PayeesVerified: res.PayeesVerified, PayeesExplained: res.PayeesExplained}",
+   "replace": "\t\tV: emission.SeriesV2} // r27 mutated: no payees"
+  },
+  {
+   "id": "gm-r27-glue-peekwindow",
+   "file": "glue/txprecheck/window.go",
+   "pkg": "./glue/txprecheck/",
+   "test": "TestR27PeekWindowGatesRawBodies",
+   "find": "\treturn Window(h, tip_height)\n",
+   "replace": "\treturn Window(h, -1) // r27 mutated\n"
+  },
+  {
+   "id": "gm-r27-tk-archive-payees",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR27ArchiveEachPayeesSegmentsAndCheckpoints",
+   "find": "\ta.payees.add(r)\n",
+   "replace": "\t// r27 mutated: -archive counts no payees\n"
+  },
+  {
+   "id": "gm-r27-tk-payee-verified",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR27PayeeTallyCountsVerifiedAndExplained",
+   "find": "\t\tif py.Verified {\n\t\t\tp.verified++\n",
+   "replace": "\t\tif py.Verified {\n\t\t\t// r27 mutated: verified payees not counted\n"
+  },
+  {
+   "id": "gm-r27-tk-archive-segment-reset",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR27ArchiveEachPayeesSegmentsAndCheckpoints",
+   "find": "\t\ta.seg, a.segStart = emission.Cumulative{}, a.now()\n",
+   "replace": "\t\ta.segStart = a.now() // r27 mutated: the segment survives a pruned height\n"
+  },
+  {
+   "id": "gm-r27-tk-blockfile-newest",
+   "file": "glue/emission/archive.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27DirSourceBlockFileNewestVersion",
+   "find": "\t\t\tif name == \"\" || v > version {\n",
+   "replace": "\t\t\tif name == \"\" || v < version { // r27 mutated: oldest version wins\n"
+  },
+  {
+   "id": "gm-r27-tk-txbytes-second-dir",
+   "file": "glue/emission/archive.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27DirSourceTxBothDirsAndErrors",
+   "find": "[]string{s.dir(h[0], h[1]), s.dir(h[16], h[17])}",
+   "replace": "[]string{s.dir(h[0], h[1])} /* r27 mutated */"
+  },
+  {
+   "id": "gm-r27-tk-state-version0",
+   "file": "glue/emission/archive.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27DirSourceBlockAndState",
+   "find": "\tif v == 0 {\n\t\treturn nil, ErrUnavailable\n\t}\n\treturn s.Store.LoadSnapshot(v)",
+   "replace": "\treturn s.Store.LoadSnapshot(v) // r27 mutated: a version-0 block reads a state"
+  },
+  {
+   "id": "gm-r27-tk-countseries-bad",
+   "file": "glue/emission/series.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27CountSeriesIntactAndTorn",
+   "find": "\t\t\tintact++\n\t\t} else {\n\t\t\tbad++\n",
+   "replace": "\t\t\tintact++\n\t\t} else {\n\t\t\t// r27 mutated: torn lines not counted\n"
+  },
+  {
+   "id": "gm-r27-cumulative-payees",
+   "file": "glue/emission/archive.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27CumulativeCountsPayees",
+   "find": "\t\t\tc.Payees++\n",
+   "replace": "\t\t\t// r27 mutated: payee not counted\n"
+  },
+  {
+   "id": "gm-r27-cumulative-payees-verified",
+   "file": "glue/emission/archive.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27CumulativeCountsPayees",
+   "find": "\t\t\tif py.Verified {\n\t\t\t\tc.PayeesVerified++",
+   "replace": "\t\t\tif py.Explained {\n\t\t\t\tc.PayeesVerified++"
+  },
+  {
+   "id": "gm-r27-series-known",
+   "file": "glue/emission/series.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR27SeriesCarriesPayees",
+   "find": "func (r SeriesRecord) PayeesKnown() bool { return r.V >= SeriesV2 }",
+   "replace": "func (r SeriesRecord) PayeesKnown() bool { return true }"
+  },
+  {
+   "id": "gm-r27-live-series-payees",
+   "file": "cmd/derod/rpc/emission_audit.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27EmissionSeriesCheckpointsCarryPayees",
+   "find": "\t\tV: emission.SeriesV2, Payees: res.Payees, PayeesVerified: res.PayeesVerified, PayeesExplained: res.PayeesExplained}",
+   "replace": "\t\tV: emission.SeriesV2} // r27 mutated: payees dropped"
+  },
+  {
+   "id": "gm-r27-live-series-version",
+   "file": "cmd/derod/rpc/emission_audit.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR27EmissionSeriesCheckpointsCarryPayees",
+   "find": "\t\tV: emission.SeriesV2, Payees: res.Payees,",
+   "replace": "\t\tPayees: res.Payees,"
+  },
+  {
+   "id": "gm-r27-series-read-pending",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR27SeriesReadPayees",
+   "find": "\tif !r.PayeesKnown() {\n\t\treturn \"pending (not recorded before r27)\"",
+   "replace": "\tif false {\n\t\treturn \"pending (not recorded before r27)\""
   }
  ]
 }

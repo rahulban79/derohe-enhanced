@@ -111,7 +111,8 @@ must print 403, and the same without the Host header 200.
 Getwork job dispatch (r23, getwork_dispatch.go; port 10100, not JSON-RPC): template fetches are numbered in order
 and a miner is never sent an older job after a newer one (two SendJobs overlap: the miniblock notification and the
 10 ms dispatch loop; skips counted in `getwork_jobs_superseded_total`); the loop no longer resends a job the
-notification already sent for the same miniblock count and height (`getwork_jobs_coalesced_total`); a new connection
+notification already sent for the same miniblock count and height (not counted: until r27 this line named a
+"coalesced jobs" counter that never existed in the source; sends are counted in `getwork_job_dispatch_total{reason}`); a new connection
 gets its first job at once, only that connection (`getwork_first_jobs_total`). A miner that stops reading is closed by
 nbio once its kernel and 32 KiB write buffers are full and a 100 ms write deadline passes (measured: after 1,801 jobs of
 ~330 bytes, about 10 minutes at the live 3.1 jobs/s); other miners are not delayed.
@@ -135,10 +136,26 @@ Typed answers from r26 (node-rpc; same compat rule):
 |---|---|---|
 | NameToAddress for a name nobody registered | -32098 `leaf not found: ...` (the raw store error, code of "operating environment" faults) | `-32032 name not found: <name>` (name echoed up to 64 bytes), `rpc_name_not_found_total`; other store errors unchanged |
 | GetEncryptedBalance with `topoheight` left out, on a pruned node | (since r25) `-32031 ... topoheight 0 is below pruned topoheight P`: an omitted field is JSON 0 = genesis | unchanged, now pinned by a test; send `-1` for the tip |
-| GetBlockHeadersRange / GetMiniBlocks / GetDifficultyHistory with a parameter name the method does not have (e.g. `start`/`end`) | ignored: the real fields decoded as 0, so the call read topoheight 0 | `-32602 invalid parameters` (jrpc2 strict fields; the wrapper does not name the field). `{}` is still accepted |
+| GetBlockHeadersRange / GetMiniBlocks / GetDifficultyHistory with a parameter name the method does not have (e.g. `start`/`end`) | ignored: the real fields decoded as 0, so the call read topoheight 0 | `-32602 invalid parameters` (jrpc2 strict fields; from r27 the text names the field, below). `{}` is still accepted |
 | GetBlockHeadersRange / GetMiniBlocks (by topoheight) below `prunedheight` | -32098 `topoheight N: empty block` (no log line) or a block-not-found text | `-32031 state not available: topoheight N is below pruned topoheight P`, `rpc_state_unavailable_total{method}`; also for a topo record that names no block (pruned shape) |
 | GetDifficultyHistory over pruned topoheights | a pruned record panicked in Load_Block_Difficulty (recovered: -32098 + ERROR + stack) | a window reaching below `prunedheight` is clipped to it; one ending below it is `-32031`; a pruned-shape record is skipped as a hole |
 | GetRandomAddress decoy window | accounts unchanged over the last 5 topoheights, but only above topoheight 100 (on shorter chains every account, including ones that just mined or were just used as a ring member: wallet txs then failed `statement 0 verification failed` / `Invalid Nonce`) | the 5-topoheight window at every height, clamped at the prune point; mainnet answers are unchanged |
+
+Typed answers from r27 (rpc-metrics, r27_rpcmetrics.go; same compat rule; codes unchanged, only texts and counters):
+
+| Call | Before r27 | From r27 |
+|---|---|---|
+| Any method whose parameters do not decode (unknown name on the strict explorer methods, a wrong JSON type, an array) | `-32602 invalid parameters: [-32602] invalid parameters` (the code doubled into the text, no field named; jrpc2's handler wrapper drops the decoder text) | `-32602 invalid parameters: unknown field "start" (accepted: start_topoheight, end_topoheight)`, `... field topoheight: want uint64, got string`, `... want a JSON object, got array (accepted fields: ...)`; `data` = `{"field", "accepted"}`; `rpc_params_refused_total` |
+| Every error response | counted per method only (`rpc_request_errors_total{method}`, no code) | also `rpc_error_responses_total{code}`: one series per listed code (-32700, -32600, -32601, -32602, -32603, -32098, -32097, -32096, -32029, -32030, -32031, -32032) and `other`, all present at 0 from the start |
+| A topo record that names no block on a node with prune floor 0 | `-32031 ... topoheight N is below pruned topoheight 0` (false) | `-32031 state not available: the record at topoheight N names no block (pruned topoheight P)` whenever N >= P |
+| NameToAddress echo of a long unknown name | cut at byte 64, possibly inside a multi-byte rune | cut on a rune boundary at or below byte 64, then `...` |
+| GetEmissionAudit / GetMonetaryIntegrity / GetSupplyAudit after a recovered panic | `-32098 panic occured. stack trace r ...`, no ERROR line, not in `rpc_recovered_panics_total` | `-32098 internal error: ...`, ERROR + stack, counted, like every other handler |
+
+First-event counters (`rpc_state_unavailable_total{method}`, `rpc_input_refused_total{method,kind}`,
+`rpc_name_not_found_total`, `rpc_tx_not_found_total`, `rpc_block_not_found_total{method}`, `rpc_limited_total`, ...)
+are registered at start (`rpc_counters_preregistered`), so 0 means "never happened" and absent means "not built in".
+`dero_p2p_ban_list_entries` is the ban list now (persisted entries included); `p2p_bans_total` counts only the bans
+made since the start, so it read 0 while the list held a ban loaded from disk.
 
 The other `panic(err)` sites in these handlers are store or start-up invariants and keep the loud ERROR + stack
 (audit: r25 rpcrobust evidence `b86_panic_audit.txt`). The wallet RPC server's `/json_rpc` (walletapi/rpcserver,

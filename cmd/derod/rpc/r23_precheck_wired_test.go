@@ -27,7 +27,7 @@ func TestEmissionAuditWired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"go emission_audit_loop(r.Exit_Event)", "kick_emission_audit()", `"GetEmissionAudit":           handler.New(GetEmissionAudit)`} {
+	for _, want := range []string{"go emission_audit_loop(r.Exit_Event)", "kick_emission_audit()", `"GetEmissionAudit":           typed_new(GetEmissionAudit)` /* r27: handler.New wrapped by typed_new (B132) */} {
 		if !strings.Contains(string(src), want) {
 			t.Fatalf("websocket_server.go lacks %q", want)
 		}

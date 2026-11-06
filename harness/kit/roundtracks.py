@@ -8,8 +8,9 @@ its unchanged verdict is quoted in the PAUSED detail, and with tracks.miner 'act
 registry, or an unknown value) the exact pre-r24 behaviour holds — every doubt resolves to 'active', so a typo can
 never silence a check; harness/kat/test_round_registry_r23c.py fails such a registry instead.
 
-Shared by harness/run_gates.py (imported from kit/) and harness/pipeline/fix_build_verify.py (loaded by path). Pure
-except load(); harness/kat/test_round_tracks_r24.py holds the KATs and the mutation proofs.
+Shared by harness/run_gates.py (imported from kit/), harness/pipeline/fix_build_verify.py and (r27)
+harness/intel/metrics_intel.py (both loaded by path). Pure except load(); harness/kat/test_round_tracks_r24.py holds the
+KATs and the mutation proofs, harness/kat/test_harness_measure_r27.py the r27 exit-code ones.
 """
 import json
 from pathlib import Path
@@ -180,3 +181,34 @@ def gate_tally(lines, state):
         else:
             bad.append(g)
     return passed, paused, bad
+
+
+# r27 (harness-measure): the metrics_intel ALERT rules about the miner (moved here from run_gates.py, which imports
+# them, so the snapshot's exit code and G18 split the alerts with ONE classifier). Every other ALERT is the node's.
+MINER_ALERT_RULES = ('miner_disconnected', 'split_disabled', 'gpu_mismatch', 'no_hashing', 'miner_behind')
+
+
+def miner_alert(a):
+    """True for an ALERT about the miner: one of MINER_ALERT_RULES, or endpoint_down naming the miner. Pure."""
+    return a.get('rule') in MINER_ALERT_RULES or (a.get('rule') == 'endpoint_down' and str(a.get('what', '')).startswith('miner '))
+
+
+def metrics_exit(alerts, up, state):
+    """(rc, why, paused) of one metrics_intel snapshot: 2 when neither endpoint answered; 7 when a node ALERT fired, or
+    a miner ALERT while the miner track is not paused; else 0. While paused (rft §0.3) a miner ALERT is reported as
+    PAUSED (miner) in `paused` (the alert itself stays in the snapshot, so G18 still quotes it) and does not set 7.
+    Before r27 every snapshot exited 7 while paused (the absent miner's endpoint_down), so S7 could not tell a real
+    derod ALERT (not_synced, tip_age > 600 s) from the pause by the exit code. Pure."""
+    if not any((up or {}).values()):
+        return 2, 'neither /metrics endpoint answered', []
+    al = [a for a in alerts or [] if a.get('level') == 'ALERT']
+    node = [a['rule'] for a in al if not miner_alert(a)]
+    miner = [a['rule'] for a in al if miner_alert(a)]
+    paused = miner if state == 'paused' else []
+    if node:
+        return 7, f'node ALERT {sorted(set(node))}', paused
+    if miner and state != 'paused':
+        return 7, f'miner ALERT {sorted(set(miner))} (miner track active)', paused
+    if paused:
+        return 0, f'PAUSED (miner): {PAUSE_REF}; miner ALERT {sorted(set(paused))} not counted', paused
+    return 0, 'no ALERT', paused

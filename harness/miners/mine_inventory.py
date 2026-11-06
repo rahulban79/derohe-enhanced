@@ -5,6 +5,9 @@ Every number is counted from the filesystem (corpus/pkgindex.json, built by a wa
 the `package <name>` clause of the package's first file, so the row cannot outlive the package. Import edges
 are read from the import blocks themselves and anchored on the import line that proves the edge.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import collections, json, re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))

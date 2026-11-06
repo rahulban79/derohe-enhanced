@@ -289,6 +289,10 @@ def evaluate(page_text, registry, last, root=ROOT, live=True, get=None):
         why.append(f'units matched by several entries: {amb[:3]}')
     if partial:
         why.append(f'{len(partial)} unit(s) only partly covered by their entry: {partial[:3]}')
+    if registry.get('_want_measured') and registry['_want_measured'] not in page_text:
+        # r27: the page states its round's measured status (harness/kit/soundpage.py measured_block); a page without the
+        # current line reads as measured when it is not, or the reverse
+        why.append('the page lacks the current measured line (python3 -I harness/kit/soundpage.py --write-measured)')
     if registry.get('_want_page') and registry.get('page') != registry['_want_page']:
         why.append(f"the claim registry names {registry.get('page')!r}, the current round's page is {registry['_want_page']!r} (r25)")
     code = [x for x in out if x['kind'] == 'code']
@@ -299,7 +303,8 @@ def evaluate(page_text, registry, last, root=ROOT, live=True, get=None):
             'code_claims_on_page': len(on), 'code_backed_on_page': sum(1 for x in on if x['ok']),
             'off_page': [x['id'] for x in out if not x['on_page']],
             'tests': sorted({f"{b['pkg']}::{b['name']}" for c in claims for b in c.get('backing') or [] if b.get('type') == 'test'}),
-            'record': (last or {}).get('run')}
+            'record': (last or {}).get('run'),
+            'measured': bool(registry.get('_want_measured')) and registry['_want_measured'] in page_text}
 
 
 def soundpage():
@@ -317,7 +322,9 @@ def load(root=ROOT):
     reg = json.loads((Path(root) / 'harness/loop/SOUNDNESS_CLAIMS.json').read_text())
     lp = Path(root) / 'harness/loop/SOUNDNESS_LAST.json'
     last = json.loads(lp.read_text()) if lp.exists() else None
-    reg['_want_page'] = soundpage().rel(root)
+    sp = soundpage()
+    reg['_want_page'] = sp.rel(root)
+    reg['_want_measured'] = sp.measured_block(root)
     page = (Path(root) / reg['_want_page']).read_text()
     return page, reg, last
 
@@ -365,7 +372,7 @@ def main():
     print(f"G22 {'PASS' if r['ok'] else 'FAIL'}: {r['units']} page units, every unit fully covered by one entry; code claims "
           f"backed {r['code_backed_on_page']}/{r['code_claims_on_page']} on the page, "
           f"{r['code_backed'] - r['code_backed_on_page']}/{r['code_claims'] - r['code_claims_on_page']} off the page; "
-          f"record {r['record']}, unregistered {len(r['unregistered'])}, partial {len(r['partial'])}, stale {len(r['stale'])}")
+          f"record {r['record']} (implementation), measured line {'current' if r['measured'] else 'MISSING'}, unregistered {len(r['unregistered'])}, partial {len(r['partial'])}, stale {len(r['stale'])}")
     if a.json:
         Path(a.json).write_text(json.dumps(r, indent=1, ensure_ascii=False))
     return 0 if r['ok'] else 3

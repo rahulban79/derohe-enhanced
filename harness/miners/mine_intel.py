@@ -6,6 +6,9 @@ Reads the newest harness/runtime/logintel_*.json (harness/intel/log_intel.py), d
 set discovery_*.json — all in harness/runtime/, the evidence root for captured measurements. Each row cites the snapshot line that carries its number, so
 the page shows only what a tool measured.
 """
+if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
+    print(__doc__ or 'usage: see the header of this file')
+    raise SystemExit(0)
 import json, re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))

@@ -2463,3 +2463,59 @@ duplicate_race split (767, insert_failed 0; the refusal line names the `collisio
 for unknown parameter names, the reorg monitor across a restart (`starts` 2). Pending an event: strike decay and
 forgiveness (0 holds), B47, B48, B57, B61. B36: the r25 segment's 24 h emission re-audited offline, 4,846 blocks, 0
 alerts, issued = formula 149,014,500 (`harness/runtime/r26_b36_emission24h_20261105.txt`).
+
+## 45. ★ Round 27: a node-only area-enhancement round — −32602 answers that name the field, counted recovers, visible reloaded bans, a reported consensus env override, emission payee records, DVM and blockchain KATs, and a harness whose every tool answers --help (+22102026.r27, 2026-11-05)
+
+> Filled from the R27 records: the merge record (`harness/runtime/r27_merge_20261105.txt`), the pipeline records
+> (`harness/loop/runs/pipeline_20261105T133652.jsonl`, `pipeline_20261105T140432.jsonl`), the registry (`harness/round.json` r27) and rft §7 B132–B147. Live r27 figures: §45.7 (measured
+> 2026-11-05). The miner track is PAUSED (artifacts/dero-rft.md §0.3).
+
+**45.1 RPC (rpc-metrics).** B132: jrpc2 decodes a method's parameters inside `handler.New`; on a decode failure R26
+answered `invalid parameters: [-32602] invalid parameters` and named no field. `typed_new`
+(`cmd/derod/rpc/r27_rpcmetrics.go`) wraps all 53 method-table entries and, only on that failure, answers −32602 with the
+unknown or mistyped field and the accepted names (data {field, accepted}; the echoed name is bounded), counted in
+`rpc_params_refused_total`. B143: the four untyped panic recovers of GetEmissionAudit, GetMonetaryIntegrity and
+GetSupplyAudit now count `rpc_internal_error`; the typed refusal counters are pre-registered at 0 (a pre-registered 0 is
+still not a reading before its event, B54); `rpc_error_responses_total{code}` counts every error answer. Answers to
+valid calls are unchanged.
+
+**45.2 P2P bans (p2p-config, rpc-metrics; B142).** `p2p_bans_total` counts placements since start, so a ban reloaded from
+`ban_list.json` was invisible (Part A: 1 entry on disk, GetSyncInfo p2p_bans 0). Additive: gauge `p2p_bans_active`,
+counter `p2p_bans_loaded_total`, the same two fields in GetSyncInfo, and the rpc-metrics gauge
+`dero_p2p_ban_list_entries` (same fact, two readers, both kept). Ban policy unchanged.
+
+**45.3 Config (B141, mitigated, report-only).** `config/config_main.go` runs `env.Parse(&Settings)` at package init and
+`blockchain/difficulty.go` reads the minimum and bootstrap difficulties from it, so a consensus parameter is
+environment-settable. Neither file changed (S1): `cmd/derod/config_env_r27.go` logs one ERROR line per Settings field
+that differs from its envDefault and exports `config_consensus_env_overrides`; `config/r27_consensus_params_test.go`
+pins the defaults, every consensus constant and the version rules. Refusing to start is the user's decision.
+
+**45.4 Emission, glue and globals (glue-global, harness-measure, tools-kats).** Series and archive records carry payee
+counts (the B36 fields); the archive no longer hangs on a height-0 report (`FormulaSupply(h-1)` wrap); ReadSeriesTail
+kept dropping a record when the window began on a line boundary; the glue/rwc adapters reported a failed write as
+success when Close succeeded and the nhooyr adapter would re-send a message head on a short write; `tools/emission-audit
+-archive` prints `archive payees N verified V explained E` (B139). The three globals fixes (ParseAmount exact,
+FormatMoneyPrecision 128-bit, GetOffset sign) are HELD (B147): `globals/globals.go` is one of the 484 decoder inputs
+content-pinned by the sealed dataset forensics/r25, so changing it fails MF12; the patch, its tests and mutations wait
+in `harness/loop/held/r27_globals_amount_offset.patch` for the next dataset version.
+
+**45.5 DVM and blockchain (tests only; B145, B146).** `dvm/r27_builtins_test.go` covers every SC builtin that was at
+0.0 % through the Simulator's chain sequence (dvm 72.2 → 84.4 %); `dvm/r27_hash_gas_census_test.go`; difficulty vectors
+(`blockchain/testdata/r27_difficulty_vectors.json`, difficulty.go 41.5 → 81.9 %). Six consensus-visible DVM behaviours
+are pinned and documented, never changed (B145: EXISTS/LOAD after DELETE in one invocation, unparsed UPDATE_SC_CODE,
+mainnet-only ADDRESS_STRING, MIN/MAX argument checks, unlimited own-token mint, the non-32-byte asset refusal). The
+first blockchain/ -coverpkg record: 54.0 % → 55.4–55.5 %, process_transaction_sc 0.0 % in every package (B146).
+
+**45.6 Harness, closed loop and install.** Every harness tool answers `--help` without running (B120, 33 → 0; KAT TK1
+runs each in a sandboxed APFS clone); `gen_deroarch.py build --strict` exits 3 and names the miner whose raw file lost
+anchors (B137); `harness/kit/katmut.py` proves a mutation only by its own KAT (B138); area_intel metric class `record`
+(B134); the frontend2 KAT memoises its dataset readers (B133: 852.83 → 244.67 s); `harness/intel/live_window.py`
+(B135). Closed loop: run 1 `pipeline_20261105T133652` FAIL at S3k (a Go mutation anchored on the round tag of config/version.go went STALE at the version bump; fixed 72266d4f with KAT GA3); run 2 `pipeline_20261105T140432` full PASS incl. install: flaky 80 ×3 0 flaky, mutations 1448/1448, race 27 packages 0 races, shadow 120 blocks / 240 treehashes / 0 mismatches against the live r26 build, gates 29/32 (+3 PAUSED, miner). Installed by S6 (atomic rename from `bin/.staging`; backups `bin/*.22102026.r26-backup`); `bin/derod` sha256 `1c2d2b9123a75bd2d26867e7af4d2407c915429eb62f62f1dc29df5d5442bb47`.
+
+**45.7 Live (measured 2026-11-05, rft §13 R27).** restart 17:51:48 (pid 77276), 60 min read-only (`harness/runtime/r27_live_window_20261105.txt`, first sample 121 s after the start): 60/60 synced, lag 0, 14 out / 0 in, tip block age 11.0 s at 18:57:17; 0 ERROR / 0 WARN in 1,199 lines since the restart (G15 clear), 0 recovered panics. CONFIRMED: −32602 names the field and the accepted names
+(3/3 probes; `rpc_error_responses_total{code="-32602"}` and `rpc_params_refused_total` 0 → 3), the 18 pre-registered rpc
+series read 0 before their event, the reloaded ban as `p2p_bans_active` / `p2p_bans_loaded_total` /
+`dero_p2p_ban_list_entries` 1 and in GetSyncInfo, `config_consensus_env_overrides` 0, payee counts in the r27 series
+checkpoints (14 / 296 / 960), duplicate_race 742 with insert_failed absent, reorg monitor `starts` 3
+(`harness/runtime/r27_live_probes_20261105.txt`, `r27_live_emission_20261105.txt`). Pending an event: strike decay and
+forgiveness, B47, B48, B57, B61. Self-detected B149: the area registry lacked the r27 round (fixed at measurement).
