@@ -35,6 +35,8 @@ sys.path.insert(0, str(HERE))
 import audit_check as AC  # noqa: E402  (the auditor's own second implementation; never the builder's code)
 
 IMPL_VERSION = 'audit2-1'
+HF3_ENTRY = 'p2p.Add_Complete_Block_HF3'             # R28 v3: run C's entry point (B123 fix); a summary without `entry`
+PRE_FIX_ENTRY = 'blockchain.Add_Complete_Block'      # is a pre-fix run (A/B of v2)
 V1 = 'forensics/r25'
 WINDOW = (7415466, 7497942)
 WALL1_LINK = (7412665, 7415463)
@@ -599,11 +601,19 @@ def run(ds, repo, v1store, v2store, archive, stage, replay_dir, private, jobs):
         rr = jgz(d / 'roots.jsonl.gz')
         s = json.loads((d / 'summary.json').read_text())
         runs[d.name] = {'roots_sha256': fsha(d / 'roots.jsonl.gz'), 'lines': len(rr),
+                        # R28 (v3): the entry point the run used, and its roots as plain JSON lines (comparable with the
+                        # audit's own replay output byte for byte)
+                        'entry': s.get('entry', PRE_FIX_ENTRY), 'stopped': s.get('stopped'),
+                        'roots_jsonl_sha256': sha(gzip.decompress((d / 'roots.jsonl.gz').read_bytes())),
                         'fail_topo': s.get('fail_topo'), 'last_topo': s.get('last_topo'),
                         'base_eq_archive': any(o['topo'] == seed['top_topo'] and o.get('root') == arch_roots.get(seed['top_topo']) for o in rr),
                         'blids_eq_walk': all(chain.get(o['topo'], {}).get('id') == o.get('blid') for o in rr if o['topo'] > seed['top_topo'])}
     rj = json.loads((ds / 'raw/replay_runs/A/rejection.json').read_text())
-    R['runs'] = {'runs': runs, 'identical': len({r['roots_sha256'] for r in runs.values()}) == 1,
+    by_entry = {}
+    for r in runs.values():
+        by_entry.setdefault(r['entry'], set()).add(r['roots_sha256'])
+    R['runs'] = {'runs': runs, 'identical': all(len(v) == 1 for v in by_entry.values()),
+                 'entries': sorted(by_entry), 'hf3_entry_runs': sorted(n for n, r in runs.items() if r['entry'] == HF3_ENTRY),
                  'seed_top_root_eq_v1_archive_root': seed.get('top_root') == arch_roots.get(seed['top_topo']),
                  'seed_top_blid_eq_walk': chain.get(seed['top_topo'], {}).get('id') == seed.get('top_blid'),
                  'rejection_txid_in_table': rj.get('txid') in table,
@@ -761,7 +771,10 @@ def audit_classes(ds, repo, chain, table, carriers, fees, v1pending):
                              'bound_type': figs.get('dc1-two-bodies', {}).get('bound_type')}
     # G32 records half: v2 per-record class slots
     pend = tagged = 0
-    for n in ('derived/txs.jsonl.gz', 'derived/blocks_fees.jsonl.gz', 'derived/roots_window.jsonl.gz', 'raw/tx_bodies.jsonl.gz'):
+    for n in ('derived/txs.jsonl.gz', 'derived/blocks_fees.jsonl.gz', 'derived/roots_window.jsonl.gz', 'raw/tx_bodies.jsonl.gz',
+              'raw/wall1_blocks.jsonl.gz'):   # R28: the wall-1 link blocks are block records too
+        if not (ds / n).exists():
+            continue
         for r in jgz(ds / n):
             if r.get('class') in ('DC0', 'DC1', 'DC2', 'DC3'):
                 tagged += 1
@@ -898,25 +911,41 @@ def build_challenges(R):
                   ['V-DC2'],
                   note='Structural only: a structurally well-formed proof is not shown sound; soundness stays NOT-DECIDABLE (DC2), and a second soundness verifier is NO-GO (rft §9).'))
     RU = R['runs']
-    out.append(ch('D2-13', 'node replay runs A and B are byte-identical, start from the archive seed, and follow the RAW chain',
+    out.append(ch('D2-13', ('node replay runs A and B are byte-identical, start from the archive seed, and follow the RAW chain'
+                            if not RU.get('hf3_entry_runs') else
+                            'node replay runs are byte-identical per entry point, start from the archive seed, and follow the RAW chain'),
                   'own SHA-256 of both roots files; base root vs v1 archive root at the seed topo; replay blids vs own walk',
                   RU['identical'] and RU['seed_top_root_eq_v1_archive_root'] and RU['seed_top_blid_eq_walk'] and all(r['base_eq_archive'] and r['blids_eq_walk'] for r in RU['runs'].values()),
                   [{'class': 'DERIVED', 'what': f"runs {sorted(RU['runs'])} identical {RU['identical']}; seed root == v1 archive root {RU['seed_top_root_eq_v1_archive_root']}; seed blid == walk {RU['seed_top_blid_eq_walk']}"}],
                   ['V2-END-STATE']))
     W4, OR = R['wall4'], R.get('own_replay')
     ok14 = bool(OR) and OR['stopped'] == 'completed' and OR['end_eq_recorded_treehash'] and all(OR['walls_accepted'].values())
-    out.append(ch('D2-14', f"wall 4: the node's own checks reject block {RU['rejection_topo']:,} (tx {'in' if RU['rejection_txid_in_table'] else 'not in'} the HF3 table), so the replay ends at {RU['rejection_topo'] - 1:,} and the end-state check is pending",
-                  ('own re-run of the node replay through the sync path\'s HF3 entry (p2p.Add_Complete_Block_HF3), on a fresh APFS clone '
-                   'of the archive copy, with the audit\'s own plan; and the HF3 carriers before the stop from own RAW decode against the '
-                   'source expression'),
-                  not ok14,
-                  [{'class': 'RAW', 'what': f"HF3 carriers in {WALLS['wall2']:,}..{WALLS['wall4']:,}: {len(W4['hf3_carriers_before_stop'])}, Parity differs with/without the HF3 step on {W4['differs']}; source: replay calls HF3 entry {W4['source']['replay_calls_hf3_entry']}, bare add {W4['source']['replay_calls_bare_add']}"},
-                   {'class': 'DERIVED', 'what': (f"own replay: {OR['stopped']}, {OR['added']:,} blocks, last topo {OR['last_topo']:,}, root {str(OR['last_root'])[:8]} == recorded treehash {OR['end_eq_recorded_treehash']}; walls accepted {OR['walls_accepted']}" if OR else 'own replay: not run')}],
-                  ['V2-END-STATE', 'V-STATE-ROOTS'],
-                  note=('Overturned: the stop is an artifact of the replay tool, which called Add_Complete_Block without the HF3 table step '
-                        '(the merge found it through TestR23bAddCompleteBlockCensus, B123). Through the sync path\'s entry the node accepts '
-                        'every block to our anchor and ends at our own treehash. The dataset still carries the pre-fix runs and "pending" '
-                        'end-state claims: they are corrected only by a rebuilt v2 (B123), never in place.') if ok14 else ''))
+    hf = [RU['runs'][n] for n in RU.get('hf3_entry_runs', [])]
+    if hf:   # R28 v3: the dataset itself carries a run through the HF3 entry; its claim is the completed run, tested here
+        c14 = bool(OR) and ok14 and all(r['roots_jsonl_sha256'] == OR['roots_sha256'] and r['stopped'] == 'completed' for r in hf)
+        out.append(ch('D2-14', (f"run(s) {RU['hf3_entry_runs']} through the HF3 entry ({HF3_ENTRY}) complete {WALLS['wall2']:,}..{OR['last_topo'] if OR else '?'} "
+                                'and end at our own treehash; the pre-fix stop of runs A/B at 7,467,546 is a tool artifact'),
+                      ('own re-run of the node replay through the HF3 entry on a fresh APFS clone with the audit\'s own plan; '
+                       'its roots compared byte for byte with the dataset run; walls 2-4 accepted'),
+                      c14,
+                      [{'class': 'DERIVED', 'what': (f"own replay: {OR['stopped']}, {OR['added']:,} blocks, root {str(OR['last_root'])[:8]} == recorded treehash "
+                                                     f"{OR['end_eq_recorded_treehash']}; walls accepted {OR['walls_accepted']}; own roots {OR['roots_sha256'][:16]} "
+                                                     f"== dataset run roots {[r['roots_jsonl_sha256'][:16] for r in hf]}" if OR else 'own replay: not run')},
+                       {'class': 'RAW', 'what': f"HF3 carriers in {WALLS['wall2']:,}..{WALLS['wall4']:,}: {len(W4['hf3_carriers_before_stop'])}, Parity differs with/without the HF3 step on {W4['differs']}"}],
+                      ['V2-END-STATE', 'V-STATE-ROOTS']))
+    else:
+        out.append(ch('D2-14', f"wall 4: the node's own checks reject block {RU['rejection_topo']:,} (tx {'in' if RU['rejection_txid_in_table'] else 'not in'} the HF3 table), so the replay ends at {RU['rejection_topo'] - 1:,} and the end-state check is pending",
+                      ('own re-run of the node replay through the sync path\'s HF3 entry (p2p.Add_Complete_Block_HF3), on a fresh APFS clone '
+                       'of the archive copy, with the audit\'s own plan; and the HF3 carriers before the stop from own RAW decode against the '
+                       'source expression'),
+                      not ok14,
+                      [{'class': 'RAW', 'what': f"HF3 carriers in {WALLS['wall2']:,}..{WALLS['wall4']:,}: {len(W4['hf3_carriers_before_stop'])}, Parity differs with/without the HF3 step on {W4['differs']}; source: replay calls HF3 entry {W4['source']['replay_calls_hf3_entry']}, bare add {W4['source']['replay_calls_bare_add']}"},
+                       {'class': 'DERIVED', 'what': (f"own replay: {OR['stopped']}, {OR['added']:,} blocks, last topo {OR['last_topo']:,}, root {str(OR['last_root'])[:8]} == recorded treehash {OR['end_eq_recorded_treehash']}; walls accepted {OR['walls_accepted']}" if OR else 'own replay: not run')}],
+                      ['V2-END-STATE', 'V-STATE-ROOTS'],
+                      note=('Overturned: the stop is an artifact of the replay tool, which called Add_Complete_Block without the HF3 table step '
+                            '(the merge found it through TestR23bAddCompleteBlockCensus, B123). Through the sync path\'s entry the node accepts '
+                            'every block to our anchor and ends at our own treehash. The dataset still carries the pre-fix runs and "pending" '
+                            'end-state claims: they are corrected only by a rebuilt v2 (B123), never in place.') if ok14 else ''))
     SR, SO = R['state_roots_claim'], R['state_roots_own']
     out.append(ch('D2-15', f"roothash witnesses: RAW Statement.Roothash equals the held archive root at its reference topo ({SR['witness_claim']})",
                   'own decode of every body\'s reference height and roothash; v1 archive roots', SO['archive_differ'] == 0 and SO['archive_equal'] == SR['witness_claim'].get('archive_equal'),
@@ -924,13 +953,24 @@ def build_challenges(R):
                   ([{'class': 'DERIVED', 'what': f"own replay roots as witnesses: equal {OR['witnesses']['equal']}, differ {OR['witnesses']['differ']}, outside {OR['witnesses']['outside']}"}] if OR else []),
                   ['V-STATE-ROOTS']))
     a10c_ok = bool(OR) and OR['end_eq_recorded_treehash'] and OR['seed_eq_dataset_seed'] and OR['witnesses']['differ'] == 0
-    out.append(ch('D2-16', 'A10c (carried from v1): the archive roots 7,453,290..7,467,515 are the canonical roots of those topos',
-                  'needs an end-state check that binds the archive base: a replay from the archive top to our anchor ending at our treehash, IN THE DATASET',
-                  False, [{'class': 'DERIVED', 'what': f"dataset claim: {SR['a10c_answer']}; own replay end-state match {OR['end_eq_recorded_treehash'] if OR else 'not run'} (audit evidence, not a dataset file)"}],
-                  ['V-STATE-ROOTS'], unresolved=True,
-                  note=('The audit\'s own replay binds the archive top root to our treehash (the replay from it reaches ca11cc21), which is '
-                        'the end-state check A10c asked for; it stays UNRESOLVED for this dataset because v2 does not carry that run '
-                        '(B123: rebuild v2 with it, then it can HOLD).') if a10c_ok else 'No end-state check binds the archive base.'))
+    in_ds = bool(hf) and a10c_ok and all(r['roots_jsonl_sha256'] == OR['roots_sha256'] for r in hf) and str(SR['a10c_answer']).startswith('bound')
+    if in_ds:   # R28 v3: the end-state check that binds the archive base is now a dataset run (run C)
+        out.append(ch('D2-16', 'A10c (carried from v1): the archive roots 7,453,290..7,467,515 are the canonical roots of those topos',
+                      'the dataset\'s own end-state check (a run from the archive top to our anchor) equals the audit\'s own replay, and every witness agrees',
+                      True, [{'class': 'DERIVED', 'what': f"dataset claim: {SR['a10c_answer']}; dataset run roots == own replay roots True; own end-state match True; "
+                                                          f"own replay witnesses differ {OR['witnesses']['differ']}"}],
+                      ['V-STATE-ROOTS'],
+                      note='Bound in the dataset: run C starts from the archive top root (d3345594...) and reaches our own treehash at 7,498,540, '
+                           'so the archive state it starts from is the state our node accepted; this is consistency with our chain, '
+                           'not a statement about hidden amounts (rft §0.8.9 rule 11).'))
+    else:
+        out.append(ch('D2-16', 'A10c (carried from v1): the archive roots 7,453,290..7,467,515 are the canonical roots of those topos',
+                      'needs an end-state check that binds the archive base: a replay from the archive top to our anchor ending at our treehash, IN THE DATASET',
+                      False, [{'class': 'DERIVED', 'what': f"dataset claim: {SR['a10c_answer']}; own replay end-state match {OR['end_eq_recorded_treehash'] if OR else 'not run'} (audit evidence, not a dataset file)"}],
+                      ['V-STATE-ROOTS'], unresolved=True,
+                      note=('The audit\'s own replay binds the archive top root to our treehash (the replay from it reaches ca11cc21), which is '
+                            'the end-state check A10c asked for; it stays UNRESOLVED for this dataset because v2 does not carry that run '
+                            '(B123: rebuild v2 with it, then it can HOLD).') if a10c_ok else 'No end-state check binds the archive base.'))
     C = R['classes']
     g31 = C['g31']
     out.append(ch('D2-17', f"G31 bound honesty: the {g31['figures']} figures each carry class, scope, coverage, bound_type, and no forbidden phrase",
@@ -950,8 +990,8 @@ def build_challenges(R):
                         'window fee and burn figures can be exact; classes.json still reads v1 (base r25, B126).') if not d3['reflects_v2'] else ''))
     g32 = C['g32_records']
     out.append(ch('D2-20', 'G32 records half: every v2 derived/raw record carries its defect class',
-                  'own count of the `class` slot over txs, blocks_fees, roots_window and tx_bodies', g32['pending'] == 0,
-                  [{'class': 'DERIVED', 'what': f"v2 records {g32['v2_records']:,}: tagged {g32['tagged']}, pending {g32['pending']:,}; classes.json records {g32['classes_records']} (v1 layout)"}],
+                  'own count of the `class` slot over txs, blocks_fees, roots_window, tx_bodies and wall1_blocks', g32['pending'] == 0 and g32['tagged'] > 0,
+                  [{'class': 'DERIVED', 'what': f"v2 records {g32['v2_records']:,}: tagged {g32['tagged']:,}, pending {g32['pending']:,}; classes.json records {g32['classes_records']}"}],
                   ALL_V,
                   note='B126: classes.py tags the v1 record layout, so G32\'s record check passes vacuously on v2.' if g32['pending'] else ''))
     pr = C['presence']
@@ -1050,6 +1090,14 @@ def _g_dup(R, bad, by):
 
 
 def _g_end(R, bad, by):
+    if R['runs'].get('hf3_entry_runs') and 'D2-14' not in bad:   # R28 v3: the dataset carries the completed run
+        OR = R.get('own_replay') or {}
+        return {'builder_grade': 'MATCH (derived/state_roots.json run C end_state_check)', 'audit_grade': 'NOT-DECIDABLE-FROM-PUBLIC-DATA',
+                'reason': (f"end-state check HOLDS in the dataset (D2-14): run(s) {R['runs']['hf3_entry_runs']} through the HF3 entry end at "
+                           f"our own treehash at {OR.get('last_topo', 'pending')}, byte-identical to the audit's own replay; this shows our "
+                           'state is consistent with the blocks our node accepted and nothing about hidden amounts, so the inflation '
+                           'question it feeds stays NOT-DECIDABLE (rft §0.8.9 rule 11)'),
+                'inputs': [{'class': 'DERIVED', 'what': 'dataset run C (D2-14) and the audit\'s own run'}]}
     return {'builder_grade': 'pending: the run reached topo 7467545, not 7,498,540', 'audit_grade': 'pending',
             'reason': ('the dataset\'s stop at 7,467,546 is overturned (D2-14): the audit\'s own replay through the HF3 entry '
                        'ends at our treehash; the verdict stays pending until a rebuilt v2 carries such a run (B123)')
@@ -1058,6 +1106,12 @@ def _g_end(R, bad, by):
 
 
 def _g_roots(R, bad, by):
+    if R['runs'].get('hf3_entry_runs') and 'D2-16' not in bad and 'D2-14' not in bad:
+        return {'builder_grade': 'bound (derived/state_roots.json a10c)', 'audit_grade': 'NOT-DECIDABLE-FROM-PUBLIC-DATA',
+                'reason': ('A10c HOLDS in the dataset (D2-16): the archive base is bound by run C\'s end-state check and every witness '
+                           'agrees (D2-15); state roots are node-computed, not consensus-committed, and say nothing about hidden amounts '
+                           '(rule 11); window topos 7,415,466..7,453,289 have no held state (B95 decided)'),
+                'inputs': [{'class': 'DERIVED', 'what': 'replay roots (run C) and archive roots'}]}
     return {'builder_grade': 'pending (30 topos with pre/post roots of 82,477)', 'audit_grade': 'pending',
             'reason': 'A10c stays UNRESOLVED for this dataset (D2-16); every witness agrees (D2-15)',
             'inputs': [{'class': 'DERIVED', 'what': 'replay and archive roots'}]}

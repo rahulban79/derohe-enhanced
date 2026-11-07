@@ -92,13 +92,27 @@ def go_files(pkg, tests=False):
     return sorted(out)
 
 
-def tags():
-    """corpus/tags.tsv → [(name, file, line, kind, pkg)]"""
+CORPUS_HINT = 'run `python3 -I harness/prep_corpus.py` first (it writes the untracked symbol table harness/corpus/tags.tsv)'
+
+
+def tags_text():
+    """the text of corpus/tags.tsv. r28 (tools-kats): the file is untracked (.gitignore), so a fresh clone has none.
+    tags() used to return [] then: mine_inventory routed 4 packages to unverified with the wrong reason ('no package
+    clause found to anchor on': 111 rows / 7 unverified vs 115 / 3 after prep_corpus, the R27 order note blamed the
+    tracked pkgindex), and mine_coverage died with a FileNotFoundError traceback. A missing table now stops the miner
+    with exit 2 and the fix, before it writes anything."""
     p = CORPUS / 'tags.tsv'
     if not p.exists():
-        return []
+        print(f'{Path(sys.argv[0]).name}: {p.relative_to(ROOT) if ROOT in p.parents else p} is missing: {CORPUS_HINT}',
+              file=sys.stderr)
+        raise SystemExit(2)
+    return p.read_text()
+
+
+def tags():
+    """corpus/tags.tsv → [(name, file, line, kind, pkg)]; exit 2 when the table was never built (tags_text)"""
     out = []
-    for l in p.read_text().splitlines():
+    for l in tags_text().splitlines():
         parts = l.split('\t')
         if len(parts) == 5:
             out.append((parts[0], parts[1], int(parts[2]), parts[3], parts[4]))

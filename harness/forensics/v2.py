@@ -58,7 +58,7 @@ V1_INPUTS = ['forensics/r25/raw/headerchain.jsonl.gz', 'forensics/r25/raw/anchor
 TOOLS = ['harness/forensics/v2.py', 'harness/forensics/keccak.py', 'harness/forensics/provenance.py',
          'tools/forensics/main.go', 'tools/forensics/extract.go', 'tools/forensics/a2/main.go', 'tools/forensics/a2/net.go',
          'tools/forensics/a2/seed.go', 'tools/forensics/a2/replay.go', 'tools/forensics/a2/archive.go',
-         'tools/forensics/a2/guard.go']
+         'tools/forensics/a2/guard.go', 'harness/forensics/classes.py']
 HF3 = 'blockchain/hardfork_fixes.go'
 FORBIDDEN = [Path.home() / 'dero-data']
 V1_STORE = Path.home() / 'derohe-persist' / 'forensics_raw'
@@ -640,6 +640,10 @@ def derive(ds, stores, out, work, root=ROOT):
         'v1_pending_settled': em['settled'], 'v1_pending_still': em['still_pending'],
         'replay_runs': len(runs), 'end_state': {k: v.get('end_state_check') for k, v in sr['runs'].items()},
         'records_with_class_slot': len(txrows) + len(brows) + len(window_rows), 'window': list(WINDOW)})
+    # R28 B126: the defect class of every derived record (classes.py rule: a table TXID is DC1, every other tx DC3, every
+    # block record DC3); applied here so the G28 re-derivation reproduces the tagged files byte for byte
+    import classes  # noqa: E402  (a replay tool of v2 since R28: TOOLS)
+    files = classes.tag_v2_files(files, classes.hf3_txids(root))
     for rel, b in files.items():
         p = out / rel
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -705,8 +709,9 @@ def cmd_manifest(a):
                                     'Add_Complete_Block) over raw inputs; they are re-hashed by v2.py replay and re-run '
                                     'with a2 (hours), not re-derived by Python')},
          'class_files': {k: v for k, v in sorted(CLASS_FILES.items()) if k in files},
-         'class_slot': '`class` on every per-tx/per-block record = the defect class of rft §0.8.9 (pending until '
-                       'forensics-classes); `evidence_class` = RAW/DERIVED/EXT (§0.8.2)'}
+         'class_slot': '`class` on every per-tx/per-block record = the defect class of rft §0.8.9 (derived/ records: '
+                       'v2.derive applies classes.tag_v2_files; raw/ records: classes.py --tag; R28 B126); '
+                       '`evidence_class` = RAW/DERIVED/EXT (§0.8.2)'}
     (ds / 'manifest.json').write_bytes(dump(m))
     print('manifest', sha((ds / 'manifest.json').read_bytes()), len(files), 'files')
 

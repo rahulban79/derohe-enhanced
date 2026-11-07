@@ -109,6 +109,14 @@ def build_tags():
     out = []
     r = subprocess.run(['ctags', '--languages=Go', '--fields=+n-f', '-x', '--_xformat=%N\t%F\t%n\t%K', *files],
                        capture_output=True, text=True, cwd=ROOT)
+    if files and (r.returncode != 0 or not r.stdout.strip()):
+        # r28 (tools-kats): with Xcode's /usr/bin/ctags first on PATH (BSD ctags, no long options: 'illegal option -- -', measured 2026-11-06)
+        # this wrote a one-blank-line tags.tsv and exited 0: mine_inventory then lost 4 package rows and mine_coverage
+        # measured 0 functions, all without an error. Stop before anything is written.
+        why = (r.stderr or r.stdout).strip().splitlines()[:1]
+        print(f'prep_corpus: ctags produced no symbols for {len(files)} Go files (exit {r.returncode}: {why}); '
+              f'universal-ctags must be first on PATH (`ctags --version` names Universal Ctags)', file=sys.stderr)
+        raise SystemExit(2)
     for line in r.stdout.splitlines():
         parts = line.split('\t')
         if len(parts) < 4:

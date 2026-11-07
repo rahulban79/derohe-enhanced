@@ -681,7 +681,9 @@ func any_reserved(methods []string) bool {
 
 // write_method_not_found answers a remote /json_rpc body that names a reserved method, without dispatching any of it.
 func write_method_not_found(w http.ResponseWriter) {
-	body, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": nil, "error": &jrpc2.Error{Code: code.MethodNotFound, Message: "method not found"}})
+	e := &jrpc2.Error{Code: code.MethodNotFound, Message: "method not found"}
+	count_error_code(e) // r28 verify: a reserved rpc.* name is answered outside jrpc2 too (rpc_error_responses_total{code="-32601"})
+	body, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": nil, "error": e})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(body)
@@ -715,7 +717,9 @@ func write_abuse_http(w http.ResponseWriter, v abuse_verdict, d time.Duration) {
 	if secs < 1 {
 		secs = 1
 	}
-	body, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": nil, "error": abuse_error(v, d)})
+	e := abuse_error(v, d)
+	count_error_code(e) // r28: written outside jrpc2, so LogResponse never counted it in rpc_error_responses_total
+	body, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": nil, "error": e})
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Retry-After", strconv.FormatInt(secs, 10))
 	w.WriteHeader(http.StatusTooManyRequests)

@@ -56,7 +56,8 @@ No network, no live file read or written (the live RPC is a fake in MF11).
        PASSES, while a changed replay tool, a changed decoder input, a changed or shifted cited line, a deleted HF3
        table, a decoder input set that gained a file, an empty pin group, a tampered aggregate and a manifest without
        content_pins each FAIL (also through replay.check_pinned); the citation parser continues ', :n' only after
-       a separator and never reads 'disc:n' as code. Committed: the manifest's content pins hold at HEAD.
+       a separator and never reads 'disc:n' as code. Committed: the manifest's content pins hold at HEAD, or (R28, B147)
+       every pin resolves from git objects and the materialized pinned snapshot passes pins.check (pinsnap.py).
 
   python3 -I harness/kat/test_forensics_r25.py   # KATs, then each mutation on a temp copy must flip its KAT
 Exit 0 all ok · 3 a KAT failed · 4 a mutation was not caught (or was INVALID: the mutant did not load or the
@@ -326,6 +327,12 @@ def mf1(base, committed=True):
         shutil.rmtree(tmp, ignore_errors=True)
     if committed and (DATASET / 'manifest.json').exists():
         f = M.check(DATASET, ROOT)
+        if f and all('pinned tool changed' in x for x in f):
+            # R28 (N28-08): the sealed version's tools moved on at HEAD; every pinned tool must then resolve byte-exact
+            # from the git object store (pinsnap.resolve_tools), and the dataset files themselves must still match
+            m = json.loads((DATASET / 'manifest.json').read_text())
+            S = load(ROOT / 'harness', 'forensics/pinsnap.py', 'pinsnap_mf1')
+            f = M.check(DATASET, ROOT, manifest=dict(m, tools={})) + S.resolve_tools(m.get('tools'), ROOT)
         if f:
             fails.append(f'MF1 committed dataset does not match its manifest: {f[0]} (+{len(f) - 1})')
     return fails
@@ -1012,7 +1019,21 @@ def mf12(base, committed=True):
         m = json.loads((DATASET / 'manifest.json').read_text())
         f = P.check(m.get('content_pins'), ROOT)
         if f:
-            fails.append(f'MF12 committed manifest content pins fail at HEAD: {f[0]}')
+            # R28 (B147): a sealed version's pins need not hold in the working tree; every pinned byte must then RESOLVE
+            # from the git object store and the materialized snapshot must pass pins.check inside it (go list included).
+            # Nothing is re-pinned or skipped: an unresolvable pin still FAILS here (harness/forensics/pinsnap.py).
+            S = load(ROOT / 'harness', 'forensics/pinsnap.py', 'pinsnap_committed')
+            r = S.resolve(m.get('content_pins'), ROOT)
+            if r['failures']:
+                fails.append(f'MF12 committed manifest content pins fail at HEAD ({f[0]}) and do not resolve: {r["failures"][0]}')
+            else:
+                snap = Path(tempfile.mkdtemp(prefix='mf12snap_'))
+                try:
+                    _, sf = S.snapshot(m.get('content_pins'), snap / 'src', ROOT)
+                finally:
+                    shutil.rmtree(snap, ignore_errors=True)
+                if sf:
+                    fails.append(f'MF12 committed pins resolve but the snapshot fails: {sf[0]}')
     return fails
 
 

@@ -231,7 +231,9 @@ func http_request_shape_ok(w http.ResponseWriter, req *http.Request, ip string, 
 			return false
 		}
 	}
-	body, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": nil, "error": &jrpc2.Error{Code: code.InvalidRequest, Message: msg}})
+	e := &jrpc2.Error{Code: code.InvalidRequest, Message: msg}
+	count_error_code(e) // r28: a 405/415 body is written outside jrpc2 (rpc_error_responses_total{code="-32600"})
+	body, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": nil, "error": e})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	w.Write(body)

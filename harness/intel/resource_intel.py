@@ -40,6 +40,11 @@ HOLD_FREE_PCT = 20                   # memory_pressure free %: before 42, after 
 REDUCE_FREE_PCT = 50                 # 42 % (before) is REDUCE on its own
 HOLD_SWAP_FREE_MB = 1024             # swap at its ceiling (before: 797 MB free) AND free % below REDUCE_FREE_PCT
 REDUCE_FSEVENTSD_MB = 4 * 1024       # before 21-22 GB · after 12 MB (fresh) — a large fseventsd is a REDUCE signal
+# r28 (B148): Spotlight's index store. Readings: 1.24 GB (2026-11-05 11:08, after the fseventsd restart) -> 8.38 GB (12:38)
+# -> 14,465 MB (R28 Part A 23:27) -> 50,360 MB (2026-11-06 00:39, this probe) while fseventsd stayed at 42 MB: the index
+# grows with the project's file churn (SUSPECTED, not proven). A REDUCE signal only (excluding dirs from Spotlight or
+# restarting mds is the user's decision, rft §5); never acted on by any tool.
+REDUCE_MDS_STORES_MB = 16 * 1024
 REDUCE_CLONE_TREES = 100             # 218 trees held in the scratchpad at the event (309 .git dirs counted by r27b)
 RESERVE_PCT = 20                     # kind=jobs: RAM kept free for the node, the system and the operator
 PER_JOB_MB = {'jobs': 2048, 'clones': 512}   # per-job RAM estimates (ASSUMED until measured; r27b findings records
@@ -218,6 +223,10 @@ def level(r):
     fse = ((r.get('procs') or {}).get('watch') or {}).get('fseventsd')
     if fse is not None and fse >= REDUCE_FSEVENTSD_MB:
         reduce.append(f'fseventsd RSS {fse:.0f} MB >= {REDUCE_FSEVENTSD_MB} (restarting it is the user\'s decision)')
+    mds = ((r.get('procs') or {}).get('watch') or {}).get('mds_stores')
+    if mds is not None and mds >= REDUCE_MDS_STORES_MB:                       # r28 (B148)
+        reduce.append(f'mds_stores RSS {mds:.0f} MB >= {REDUCE_MDS_STORES_MB} (Spotlight index; excluding dirs or '
+                      f'restarting it is the user\'s decision)')
     trees = (r.get('scratchpad') or {}).get('clone_trees')
     if isinstance(trees, int) and trees > REDUCE_CLONE_TREES:
         reduce.append(f'{trees} clone trees in the scratchpads > {REDUCE_CLONE_TREES} (run scratch_gc.py)')

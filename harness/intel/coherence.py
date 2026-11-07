@@ -41,6 +41,9 @@ Checks (each drift names file:line, expected, found and the canonical source):
                NORMAL n) or key KPI (participants, mean block time, first-relay share, out / in) stated next to a capture
                file equals that capture; the src-arch 'chainobs' and 'peers' sections show the newest capture time and
                grade counts; the ledger's consensus-observatory section names the newest capture files
+  k rows       (r28) harness/intel/backlog_truth.py: §7 lead vs the row's own bold statuses and §13 CONFIRMED live;
+               rft header / How-to-start / §1 / §8 round names vs the registry; the round's closure record
+               (harness/loop/backlog_closures_<round>.json: records exist, premises hold, §7 lead == closure class)
   i src-arch   every source hash in harness/stamp.json still matches (same function as gen_deroarch check), the
                page size matches the stamp, and every round-marked commit up to HEAD that changes more than generated
                outputs is in evolution_git.tsv (else STALE: rebuild with mine_evolution.py + gen_deroarch.py build)
@@ -58,7 +61,7 @@ ROOT = HARNESS.parent
 STATUSES = ('planned', 'in-progress', 'implemented', 'shipped', 'measured')
 DONE = ('implemented', 'shipped', 'measured')
 TRACKED_IDS = ('B18', 'B19', 'B28', 'B29', 'B30', 'B34', 'B35', 'B38', 'B39', 'BD5', 'BD6', 'BD7', 'BD8', 'BD9')
-CHECKS = ('round', 'pipeline', 'registry', 'live', 'disclosure', 'areas', 'backlog', 'pages', 'index', 'srcarch', 'observatory', 'forensics', 'classes')
+CHECKS = ('round', 'pipeline', 'registry', 'live', 'disclosure', 'areas', 'backlog', 'pages', 'index', 'srcarch', 'observatory', 'forensics', 'classes', 'rows')
 # outputs the generators write; a commit touching only these does not change what src-arch shows
 GENERATED = (r'harness/stamp\.json$', r'harness/model/verified\.json$', r'harness/model/raw/', r'harness/runtime/',
              r'harness/loop/runs/', r'harness/loop/GATES\.md$', r'harness/loop/[A-Z_]+_LAST\.json$',
@@ -224,7 +227,9 @@ def rft_backlog(text):
     if not sec:
         return out
     for k, l in enumerate(sec):
-        cells = [c.strip() for c in l.strip().strip('|').split('|')]
+        cells = [c.strip() for c in re.split(r'(?<!\\)\|', l.strip().strip('|'))]
+        if len(cells) > 5:                 # r28: a bare pipe in the status text (B105 'node|network') stays in the status
+            cells = cells[:4] + [' | '.join(cells[4:])]
         if len(cells) >= 3 and re.fullmatch(r'BD?\d+', cells[0]):
             out[cells[0]] = (ln + k, cells[-1])
     return out
@@ -292,8 +297,33 @@ def soundness_rel(root):
         return 'artifacts/dero-soundness-<no current round>.html'
 
 
+MINER_SKILL = '.skills/dero-miner-tuning/SKILL.md'
+SKILL_TRACK_RX = re.compile(r'^\*\*Track:\*\*\s*([a-z][\w-]*)', re.M)
+
+
+def skill_files(root):
+    """r28 (B92): every .skills/*/SKILL.md, repo-relative and sorted (the miner skill alone until R28). Static."""
+    return sorted(p.relative_to(root).as_posix() for p in Path(root).glob('.skills/*/SKILL.md'))
+
+
+def round_skills(c):
+    """r28 (B92): the skills that must carry the round's section: every skill whose '**Track:** <name>' (first 12
+    lines, the tooling_intel.skill_track reading) is not a track the registry pauses for the current round. A skill
+    without a Track line serves every round. When none serves (every skill paused, or no skill), the miner skill is
+    returned, so the missing section is still reported. Pure over the tree."""
+    tr = c.rcur.get('tracks') if isinstance(c.rcur.get('tracks'), dict) else {}
+    paused = {k for k, v in tr.items() if v == 'paused'}
+    out = []
+    for f in skill_files(c.root):
+        t = c.text(f) or ''
+        m = SKILL_TRACK_RX.search('\n'.join(t.splitlines()[:12]))
+        if not (m and m.group(1) in paused):
+            out.append(f)
+    return out or [MINER_SKILL]
+
+
 def artifact_files(c):
-    fs = ['RUN_REPORT.md', 'ARCHITECTURE.md', '.skills/dero-miner-tuning/SKILL.md', 'artifacts/dero-rft.md',
+    fs = ['RUN_REPORT.md', 'ARCHITECTURE.md', MINER_SKILL, *skill_files(c.root), 'artifacts/dero-rft.md',
           'artifacts/dero-src-arch.html', 'artifacts/index.html', soundness_rel(c.root), c.ledger]
     return [f for f in dict.fromkeys(fs) if (c.root / f).exists()]
 
@@ -359,7 +389,7 @@ def check_round(c):
     # the round's own section in RUN_REPORT, ARCHITECTURE, SKILL once implemented
     if c.done:
         for f, rx in (('RUN_REPORT.md', rf'^## Round {re.escape(lab)}\b'), ('ARCHITECTURE.md', rf'^## \d+\. .*Round {re.escape(lab)}\b'),
-                      ('.skills/dero-miner-tuning/SKILL.md', rf'^## Round {re.escape(lab)}\b')):
+                      *((s, rf'^## Round {re.escape(lab)}\b') for s in round_skills(c))):   # r28 B92: the serving skills
             t = c.text(f)
             if t is None:
                 continue
@@ -1036,6 +1066,28 @@ def check_classes(c):
 
 
 # ───────────────────────────── driver ─────────────────────────────
+def check_rows(c):
+    """r28 (backlog-sweep): harness/intel/backlog_truth.py — every §7 row's lead agrees with its newest record (the row's
+    own bold statuses, §13 CONFIRMED live, the round's closure record) and the rft header / §1 / §8 headings name the
+    registry's rounds. Its drifts join this report unchanged; the tool of THIS root is used (a mutant tree checks its own)."""
+    import importlib.util
+    p = c.root / 'harness/intel/backlog_truth.py'
+    if not p.is_file():
+        c.notes.append('rows: no harness/intel/backlog_truth.py in this tree (pre-r28): not checked')
+        return
+    spec = importlib.util.spec_from_file_location(f'backlog_truth_for_coherence_{id(c)}', p)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    try:
+        r = m.run(c.root)
+    except (OSError, ValueError, KeyError, StopIteration) as e:
+        c.drift('rows', 'artifacts/dero-rft.md', None, 'backlog_truth runs', f'{type(e).__name__}: {e}', 'harness/intel/backlog_truth.py')
+        return
+    c.fact(r['facts'])
+    c.drifts.extend(r['drifts'])
+    c.notes.extend(r['notes'])
+
+
 def run(root=ROOT, skip=()):
     c = Ctx(root)
     files = artifact_files(c) + ['harness/round.json']
@@ -1044,7 +1096,7 @@ def run(root=ROOT, skip=()):
              'live': lambda: check_live(c, files), 'disclosure': lambda: check_disclosure(c), 'areas': lambda: check_areas(c),
              'backlog': lambda: check_backlog(c), 'pages': lambda: check_pages(c, index='index' not in skip),
              'srcarch': lambda: check_srcarch(c), 'observatory': lambda: check_observatory(c, files),
-             'forensics': lambda: check_forensics(c), 'classes': lambda: check_classes(c)}
+             'forensics': lambda: check_forensics(c), 'classes': lambda: check_classes(c), 'rows': lambda: check_rows(c)}
     for k, fn in steps.items():
         if k not in skip:
             fn()

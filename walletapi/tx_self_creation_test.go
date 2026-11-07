@@ -155,8 +155,9 @@ func Test_Creation_TX_morecheck(t *testing.T) {
 	//fmt.Printf("balance wdst %v ringsize %d\n", wdst.account.Balance_Mature, wdst.account.Ringsize)
 	//fmt.Printf("balance wdst2 %v\n", wdst2.account.Balance_Mature)
 
-	if wdst.account.Balance_Mature != 1500000 {
-		t.Fatalf("failed balance check, expected 1500000 actual %d", wdst.account.Balance_Mature)
+	// r28 (dero-rft §7 B21): stated relative to the simulator registration credit (r28_simulator_credit_test.go)
+	if want := uint64(1500000 - upstreamFixtureCredit + simulatorRegistrationCredit); wdst.account.Balance_Mature != want {
+		t.Fatalf("failed balance check, expected %d actual %d", want, wdst.account.Balance_Mature)
 	}
 
 }

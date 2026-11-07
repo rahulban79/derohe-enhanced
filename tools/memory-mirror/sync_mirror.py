@@ -22,6 +22,11 @@ runs a second time over the FINAL mirror bytes. A file whose final residual name
 allowed check carries its reason) is refused like a private hit. The run prints both return codes ('pubscrub rc raw X ·
 final Y') and the final residual per file.
 
+r28 (N28-06, R27 verifier advisory): the box's process census is matched case-insensitively. The export check's box-proc
+shape is case-sensitive (one mixed-case spelling), so the lower-case daemon name of a memory reached the mirror. redact() now writes
+every name of tooling_intel's 'box-proc' shape (case-insensitive, built from parts there) as PROC_WORD, and the same
+shape is a private hit, so a name redact() missed is refused, and tooling_intel's mirror_drift counts it.
+
 Exit 0 mirrored · 1 a file was refused for a private identifier or an unexplained residual (the others are still
 mirrored) · 2 bad invocation.
 """
@@ -56,6 +61,7 @@ SIG_RULES = [
     (re.compile(r'\bmacOS \d{1,2}(?:\.\d+){1,2}(?: \([0-9A-Z]{4,8}\))?'), 'macOS <version>'),
 ]
 TOOL_WORD = '<export tool>'
+PROC_WORD = '<system process>'      # r28 (N28-06)
 # the pubscrub residual checks a mirror file may keep, with the reason (memory-mirror/ is never published, rft §0.9 rule 5)
 RESIDUAL_ALLOW = {
     'ext-impl': 'names of external implementations are public facts; the GitHub copy excludes memory-mirror/',
@@ -135,15 +141,24 @@ def generalise_models(t):
     return t
 
 
+def generalise_procs(t, T):
+    """r28 (N28-06): every name of tooling_intel's case-insensitive 'box-proc' shape -> PROC_WORD; a tooling_intel
+    without the shape (an older tree) changes nothing. Pure."""
+    rx = dict(T.PRIVATE_RX).get('box-proc')
+    return rx.sub(PROC_WORD, t) if rx is not None else t
+
+
 def redact(b, T, terms=()):
     """the rules run after pubscrub: an e-mail shape -> '<e-mail>'; a non-reserved IPv4 (tooling_intel's shape, which
-    also reads an address that ends a sentence) -> '<ip>'; r26: machine-model names generalised (MODEL_RULES); r27: the
-    tool names, the tool-signature trailer/link and the OS version (scrub_tools). Pure."""
+    also reads an address that ends a sentence) -> '<ip>'; r26: machine-model names generalised (MODEL_RULES); r28: the
+    box's process names (generalise_procs); r27: the tool names, the tool-signature trailer/link and the OS version
+    (scrub_tools). Pure."""
     b = EMAIL_RX.sub(b'<e-mail>', b)
     t = b.decode('utf-8', errors='replace')
     rx = dict(T.PRIVATE_RX)['ipv4']
     t = rx.sub(lambda m: m.group(0) if T.IP_OK.match(m.group(0)) or any(int(x) > 255 for x in m.group(0).split('.')) else '<ip>', t)
     t = generalise_models(t)
+    t = generalise_procs(t, T)
     t = scrub_tools(t, terms)
     return t.encode('utf-8')
 

@@ -1,9 +1,26 @@
-# DERO HE — enhanced node and miner (3.6.0-153 +22102026.r27)
+# DERO HE — enhanced node and miner (3.6.0-153 +22102026.r28)
 
 > **License: research and personal use only.** Use and distribution of this technology is subject to the Java Research License included herein ([`LICENSE`](LICENSE)); commercial use requires a separate license from the DERO Project.
 
 An enhanced build of the DERO HE daemon (`derod`), miner (`dero-miner`) and wallet CLI. Every change is
 non-consensus: it runs on the current mainnet with no fork. Highlights:
+
+Round 28 (`+22102026.r28`) adds:
+
+- **RPC:** `GetInfo` reports `tx_pool_unmined` (the pool minus the transactions of the recent blocks); the JSON-RPC
+  error bodies written by the HTTP layer (shape refusals, rate-limit and ban answers, bound errors) are counted by code.
+- **Metrics:** every /metrics family carries a HELP line, and a TYPE line where Prometheus defines one, from a metric
+  registry embedded in the node; the chunk-path PoW verification is counted (blocks, checks, pool hits, slow checks, time).
+- **Peers and sync:** executable loopback scenarios for the sync hold, the inbound-lane quota and the block-rejection
+  counters; `derod --help` states the defaults the code uses.
+- **Globals:** exact amount parsing, 128-bit money formatting and the offset sign fix.
+- **Tests:** smart-contract install/call processing and prune-history known-answer tests (tests only, no change).
+- **Monetary forensics:** dataset v3 of the HF3-exemption window (content-pinned, replays byte-exact, audit holds).
+- **Harness:** a backlog truth check, a round-list check, per-step time budgets and a privacy audit of captures.
+
+Read on a running node for 60 minutes after the restart: synced throughout, no ERROR or WARN lines, the unmined-pool
+field present, the chunk PoW counters read (about one check in ten misses the miniblock pool), the HTTP-layer error
+bodies counted, and HELP on every metric family.
 
 Round 27 (`+22102026.r27`) adds:
 

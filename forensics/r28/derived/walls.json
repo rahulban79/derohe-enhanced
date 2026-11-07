@@ -1,0 +1,383 @@
+{
+ "replay_stops": {
+  "class": "pending",
+  "reading": "runs A/B stopped at 7,467,546 because the pre-fix tool skipped the HF3 table step (B123: a tool artifact, audit D2-14); run C through p2p.Add_Complete_Block_HF3 accepts it and every later block to our anchor",
+  "rule": "a stop is a RAW block (checks i-ii) that blockchain.Add_Complete_Block rejects at this commit, replayed from the archive state; it is a fact about the current code and that state, not a verdict on the block",
+  "runs": {
+   "A": {
+    "blid": "6991183dd241d286b7026af0096885096985f97ed3297a84c1b056603bf99f80",
+    "blid_equals_raw_headerchain": true,
+    "check": "Verify_Transaction_NonCoinbase_CheckNonce_Tips (blockchain/transaction_verify.go:72-200, error at :189)",
+    "tip_nonce_height": 7467544,
+    "topo": 7467546,
+    "tx_ref_nonce_height": 7467538,
+    "txid": "ca63e2c4d51902906ab1391284f9237f592416d1545521b218fc433734bde649",
+    "txid_in_hf3_table": false
+   },
+   "B": {
+    "blid": "6991183dd241d286b7026af0096885096985f97ed3297a84c1b056603bf99f80",
+    "blid_equals_raw_headerchain": true,
+    "check": "Verify_Transaction_NonCoinbase_CheckNonce_Tips (blockchain/transaction_verify.go:72-200, error at :189)",
+    "tip_nonce_height": 7467544,
+    "topo": 7467546,
+    "tx_ref_nonce_height": 7467538,
+    "txid": "ca63e2c4d51902906ab1391284f9237f592416d1545521b218fc433734bde649",
+    "txid_in_hf3_table": false
+   }
+  }
+ },
+ "wall1": {
+  "radius": 5,
+  "rows": [
+   {
+    "blid": "248a964abfda0916d4e2c05847341fbca159963388c364216e781c3658645b67",
+    "bodies_raw": 1,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412670,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 1
+   },
+   {
+    "blid": "33c5421b3bde9b0fe5b0529ec872df258f43504f97885c9eaff3ccad367da3df",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412671,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 0
+   },
+   {
+    "blid": "bfd5f354cecba72e302bf64bf63eff889e02d07e953fd33e6831f218ed1653da",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412672,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 0
+   },
+   {
+    "blid": "5df0c1077a01c97fc67cf36f0bfb848a8521e0b980cccaef8549b097d1293c4f",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412673,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 0
+   },
+   {
+    "blid": "ce7118dd854bfb50f1752770b57016132ca184549d3c13919ceb7a42a5dc4138",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412674,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 0
+   },
+   {
+    "blid": "7f4540d479c7ac0701df87d6ae7596a5cd0655d0fc4fa5b887e7de1b7e2b6c0e",
+    "bodies_raw": 1,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412675,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 1
+   },
+   {
+    "blid": "dcf1b3a7c104537d071563d6ca5b13c6537566d4b4d57d46f1a4f4da39400999",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412676,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 0
+   },
+   {
+    "blid": "a7f44999f2873b3a11f9a348f24caba1412400a67a8a694a7714b5500e87fb43",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412677,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 0
+   },
+   {
+    "blid": "5ba76ed1197ffbb0d63bca0f3d083cf0a5a083776d44978fe8aa5757b990c50d",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412678,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 0
+   },
+   {
+    "blid": "b894cb08d4db723b6e1da8c20931342b3db0b3b717a812899859d7c22cb3dfdd",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412679,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 0
+   },
+   {
+    "blid": "65b5027657f773925f3b4168f71e6859724346fddf4ed1561818fcf88b1338c8",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7412680,
+    "hf3_table_txs": [],
+    "node_replay": "not replayable: no held state below 7,453,290 (derived/a2.json)",
+    "tx_count": 0
+   }
+  ],
+  "wall_topo": 7412675
+ },
+ "wall2": {
+  "radius": 5,
+  "rows": [
+   {
+    "blid": "df09ebc1ad808b5e7d48ce9710deb829eb70462d215cea02e7880190b0678ff2",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467511,
+    "hf3_table_txs": [],
+    "node_replay": "committed by our 2026-08 archive node (not re-run)",
+    "tx_count": 0
+   },
+   {
+    "blid": "ce22e7f524ff20c649c96d51dea0d6e95cd1d3324b9584217f486af0747c2f4d",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467512,
+    "hf3_table_txs": [],
+    "node_replay": "committed by our 2026-08 archive node (not re-run)",
+    "tx_count": 0
+   },
+   {
+    "blid": "422b27d85c3f4fbbc18ceb4e3ae2392fe5cc649316e938cdc46cf0651c40fc28",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467513,
+    "hf3_table_txs": [],
+    "node_replay": "committed by our 2026-08 archive node (not re-run)",
+    "tx_count": 0
+   },
+   {
+    "blid": "de0ab26f0d9bd3f74cb57cd5b6233ea93352dbeb39b96c61c427368d9146e1da",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467514,
+    "hf3_table_txs": [],
+    "node_replay": "committed by our 2026-08 archive node (not re-run)",
+    "tx_count": 0
+   },
+   {
+    "blid": "5460bce958ff0642dcbabbade30fee81589c69bee6d1a1e987df99768d2b2579",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467515,
+    "hf3_table_txs": [],
+    "node_replay": "base of the replay: committed by our 2026-08 archive node",
+    "tx_count": 0
+   },
+   {
+    "blid": "eadbe4fcbebc1c2d030e9a390bfbf8727119e330c1d6ea8f1a8d6c724e176d32",
+    "bodies_raw": 1,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467516,
+    "hf3_table_txs": [
+     "0045a6d4c51a8578b6c97f2b376415653583505f21032eb6a808cd1643a300a7"
+    ],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 523dd2e6804553cf)",
+    "tx_count": 1
+   },
+   {
+    "blid": "db789f404b6fa05c7586740676be637c45c780b86530a7ef8bbb187c9f21d1db",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467517,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 451601dfaadcadbc)",
+    "tx_count": 0
+   },
+   {
+    "blid": "19314d54c8f2495f0c2c98c0a724eb340f0c7668a4f640e04be7c15fcd288f0d",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467518,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root fdd9141c87016aaf)",
+    "tx_count": 0
+   },
+   {
+    "blid": "cfe3c60ead0a6a2a0017a1f1fba0580bfe03ea3261d313c0434fe4a6f6f9b15f",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467519,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 12dd316a0ed46110)",
+    "tx_count": 0
+   },
+   {
+    "blid": "1475ea5a4b067519517044b7539f68a0e80e824bf5f9df287aee4c2eb48ef215",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467520,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 27cac488f9ad1e19)",
+    "tx_count": 0
+   },
+   {
+    "blid": "ff983f68ca1dd2883259cfde63334a1f9344859c9a1e7ccc738201443f8e8dca",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7467521,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 024d1a75bfa0fb53)",
+    "tx_count": 0
+   }
+  ],
+  "wall_topo": 7467516
+ },
+ "wall3": {
+  "radius": 5,
+  "rows": [
+   {
+    "blid": "1ccd71db0ef72aa34d95d300de037636f273de6bd520cc670cd8d5f6fb73d8e9",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497831,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 7d10ac1a49bd243e)",
+    "tx_count": 0
+   },
+   {
+    "blid": "2cedcbbae1d7237e56af716a2d97bbbf2e5237a9e3fbeb0cf26021c254186326",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497832,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 37639436beb0acde)",
+    "tx_count": 0
+   },
+   {
+    "blid": "816f9a2123e560597d5a97fa056da9e7fa308881d3016ac867b6750173ef31d5",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497833,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root ab5f3eb5d347b2ef)",
+    "tx_count": 0
+   },
+   {
+    "blid": "72c81d6c52b83b8e48d7c9bfd092353ff46e79aebd1c844a807474e6ae1f5088",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497834,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root c3832f3c437ddfe7)",
+    "tx_count": 0
+   },
+   {
+    "blid": "70eb1a950a0041d369fe1fca1e4f629dc9fb0585035fc6200d8a031e9b1bc101",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497835,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root c27b0999a16f9f31)",
+    "tx_count": 0
+   },
+   {
+    "blid": "58f95c97ae86efa928f966e7b028c8bdf0473b88eba35cb7e8677887130059de",
+    "bodies_raw": 1,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497836,
+    "hf3_table_txs": [
+     "4d56a1a150063b6bd810a33fc669df8e2698475f0b3c17d96cab738b25ba8393"
+    ],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root c6a9a6a8e7dc85a6)",
+    "tx_count": 1
+   },
+   {
+    "blid": "79d05298e70acda88c4be9e4e652cecf62aff1b8e10d8a44250c05f47cc9a67e",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497837,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 3a95c41c1508d310)",
+    "tx_count": 0
+   },
+   {
+    "blid": "7c9ee94ad1405fe74c05be29b07a42948260799d51c5feb3c9bd0d80e7017e85",
+    "bodies_raw": 1,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497838,
+    "hf3_table_txs": [
+     "4d56a1a150063b6bd810a33fc669df8e2698475f0b3c17d96cab738b25ba8393"
+    ],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 4856ad55a378c7b1)",
+    "tx_count": 1
+   },
+   {
+    "blid": "6bc0c36b22fad9b224e9836decc1c8c768fd79097f97845d4deeb734b0633feb",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497839,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 786e168c2a81b720)",
+    "tx_count": 0
+   },
+   {
+    "blid": "e61bbeb34399f8ee882997fa7286ad9589ec7c2b945aa62544b9fd432d65e250",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497840,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root 4ffff7d6e609260e)",
+    "tx_count": 0
+   },
+   {
+    "blid": "f5ad856e2528cc863ffc6455c391bca80871c9fb19848a459ed30400d09a9619",
+    "bodies_raw": 0,
+    "class": "pending",
+    "evidence_class": "RAW block; replay outcome DERIVED",
+    "height": 7497841,
+    "hf3_table_txs": [],
+    "node_replay": "accepted (p2p.Add_Complete_Block_HF3 at this commit, run C; root f1a677ddb73a94a4)",
+    "tx_count": 0
+   }
+  ],
+  "wall_topo": 7497836
+ }
+}

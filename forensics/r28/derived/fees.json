@@ -1,0 +1,37 @@
+{
+ "class": "pending",
+ "coverage": {
+  "bound_type": "pending (set by forensics-classes, rft \u00a70.8.9 rule 9)",
+  "settled_of_v1_pending": [
+   1575,
+   1575
+  ]
+ },
+ "evidence_class": "DERIVED",
+ "rule": "fee = transaction.Fees(), burn = sum of payload BurnValue (the node decoder, as v1 derive.py); public fields only; SC payouts stay pending with the reason",
+ "sc_payouts": "pending: SC payouts are produced by SC execution (blockchain/transaction_execute.go), which a decoder does not run and the node replay does not export",
+ "scope": "tx-carrying blocks 7,415,466..7,498,540 (window 7,415,466..7,497,942 and the gap to our anchor)",
+ "v1": {
+  "known_blocks": 80902,
+  "known_sum_atomic": 16800,
+  "pending_blocks": 1575
+ },
+ "v1_known_rows_disagreeing": [],
+ "v2": {
+  "gap_burn_sum": 0,
+  "gap_fee_pending_blocks": 0,
+  "gap_fee_sum": 1567,
+  "gap_txblocks": 21,
+  "sc_tx_blocks": 192,
+  "sc_txs": 199,
+  "settled": 1575,
+  "settled_burn_sum": 230470000,
+  "settled_fee_sum": 838373,
+  "still_pending": 0,
+  "v1_pending": 1575,
+  "window_burn_sum": 230470000,
+  "window_fee_pending_blocks": 0,
+  "window_fee_sum": 855173,
+  "window_txblocks": 1726
+ }
+}

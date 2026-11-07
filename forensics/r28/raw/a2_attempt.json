@@ -1,0 +1,100 @@
+{
+ "class": "pending",
+ "controls": [
+  {
+   "control": "loopback derod built from this tree, genesis datadir in the scratchpad, our client = first session",
+   "kcp_in_pkts": 5,
+   "kcp_out_pkts": 5,
+   "result": "handshake ok"
+  },
+  {
+   "control": "same derod, a SECOND session from the same IP while the first is held open",
+   "kcp_in_pkts": 1,
+   "kcp_out_pkts": 3,
+   "result": "tls handshake timeout"
+  },
+  {
+   "control": "same derod, a third session after the first closed (the accept back-off of up to 200 s, p2p/controller.go:700)",
+   "kcp_in_pkts": 1,
+   "kcp_out_pkts": 4,
+   "result": "tls handshake timeout"
+  }
+ ],
+ "evidence_class": "RAW (our own probe outcomes; no address recorded)",
+ "evidence_summary": "3 of 3 session sources: 1 packet in, TLS timeout; 5 of 5 other seeds: 0 packets in; loopback control: first session ok, a second same-IP session reproduces the 1-in/timeout signature",
+ "fallback": "replay from our own replaywall archive copy (raw/archive_seed.json): base topo 7,467,515, replay 7,467,516..7,498,540",
+ "live_peer_census": {
+  "endpoint_sources": 9,
+  "endpoint_sources_with_session": 9,
+  "mainnet_seeds_without_session": 5,
+  "mainnet_seeds_without_session_answering": 0,
+  "state_sources": 6,
+  "state_sources_with_a_live_node_session": 6
+ },
+ "probes": [
+  {
+   "kcp_in_pkts": 1,
+   "kcp_out_pkts": 1,
+   "live_node_session": "yes (GetPeerInfo 2026-11-04)",
+   "result": "tls handshake timeout",
+   "source": "src-1"
+  },
+  {
+   "kcp_in_pkts": 1,
+   "kcp_out_pkts": 1,
+   "live_node_session": "yes (GetPeerInfo 2026-11-04)",
+   "result": "tls handshake timeout",
+   "source": "src-2"
+  },
+  {
+   "kcp_in_pkts": 1,
+   "kcp_out_pkts": 1,
+   "live_node_session": "yes (GetPeerInfo 2026-11-04)",
+   "result": "tls handshake timeout",
+   "source": "src-3"
+  },
+  {
+   "kcp_in_pkts": 0,
+   "kcp_out_pkts": 12,
+   "live_node_session": "no",
+   "result": "tls handshake timeout",
+   "source": "seed-1"
+  },
+  {
+   "kcp_in_pkts": 0,
+   "kcp_out_pkts": 12,
+   "live_node_session": "no",
+   "result": "tls handshake timeout",
+   "source": "seed-2"
+  },
+  {
+   "kcp_in_pkts": 0,
+   "kcp_out_pkts": 12,
+   "live_node_session": "no",
+   "result": "tls handshake timeout",
+   "source": "seed-3"
+  },
+  {
+   "kcp_in_pkts": 0,
+   "kcp_out_pkts": 12,
+   "live_node_session": "no",
+   "result": "tls handshake timeout",
+   "source": "seed-4"
+  },
+  {
+   "kcp_in_pkts": 0,
+   "kcp_out_pkts": 12,
+   "live_node_session": "no",
+   "result": "tls handshake timeout",
+   "source": "seed-5"
+  }
+ ],
+ "question": "(a2) TreeSection state at topo 7,415,465 from ONE archival source",
+ "rule": "Release152 p2p/controller.go:596-604 (the sources run 3.6.0-152/153): an inbound session from an IP that already has a session is closed; our tree p2p/controller.go:700-709 does the same",
+ "tool": "tools/forensics/a2 fetch-state / probe (one outgoing KCP+TLS+CBOR session, p2p/controller.go:375-478 framing)",
+ "unblock_options_user_decision": [
+  "the live node not peered with one archival source while the fetch runs (derod restart with a ban/exclude: user only)",
+  "a run from another egress address (user only)"
+ ],
+ "verdict": "BLOCKED from this host: every source that holds the state (6 of 6, raw/a2_feasibility of v1) already has a session with our live node, so it drops our second same-IP session; the 5 seeds without a session answer no packet at all"
+}

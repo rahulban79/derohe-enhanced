@@ -13,7 +13,7 @@ risk coverage drops between two snapshots.
 if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
     print(__doc__ or 'usage: see the header of this file')
     raise SystemExit(0)
-import collections, datetime, json, re, sys
+import collections, datetime, json, os, re, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import minelib as M
@@ -26,7 +26,7 @@ PKGS_IN_SCOPE = ('blockchain', 'p2p', 'cryptography', 'block', 'transaction', 'd
 def spans():
     """file -> sorted [(line, name)] of func/method declarations from the corpus symbol table."""
     out = collections.defaultdict(list)
-    for l in (M.CORPUS / 'tags.tsv').read_text().splitlines():
+    for l in M.tags_text().splitlines():        # r28: exit 2 naming prep_corpus when the table is missing
         name, f, line, kind, pkg = (l.split('\t') + ['', '', '', '', ''])[:5]
         if kind in ('func', 'method') and f.startswith(PKGS_IN_SCOPE) and not f.endswith('_test.go'):
             out[f].append((int(line), name))
@@ -129,11 +129,44 @@ def main():
 CONSENSUS_PKGS = ('blockchain/', 'dvm/', 'transaction/', 'cryptography/', 'block/', 'astrobwt/', 'config/', 'proof/')
 
 
+def go_call_lines(root=None):
+    """[(repo-relative path, line text)] of every first-party, non-test .go file under root, read once. r28
+    (tools-kats): risk_register ran `grep -rn --include=*.go '\\bNAME(' .` once per risk function, 201 recursive
+    greps over the whole checkout (vendor/, harness/ and .git included, then filtered): 110 s of a 125 s run
+    (cProfile, 2026-11-06), so the MK7 KAT took 521 s. The same files and filters, one walk: riskmap.json byte-equal.
+    Symbolic links are not followed (grep -r does not follow them either)."""
+    root = Path(root or M.ROOT)
+    out = []
+    for dp, dn, fn in os.walk(root):
+        rel_d = os.path.relpath(dp, root)
+        if rel_d == '.':
+            dn[:] = [d for d in dn if d not in ('vendor', 'harness')]
+        dn.sort()
+        for f in sorted(fn):
+            p = os.path.join(dp, f)
+            if not f.endswith('.go') or f.endswith('_test.go') or os.path.islink(p):
+                continue
+            rel = os.path.relpath(p, root)
+            try:
+                text = Path(p).read_text(errors='replace')
+            except OSError:
+                continue
+            out += [(rel, l) for l in text.split('\n')]
+    return out
+
+
+def callers_of(name, lines):
+    """the files with a non-comment, non-declaration `name(` (grep's \\bNAME( on each line). Pure."""
+    rx, needle = re.compile(r'\b' + re.escape(name) + r'\('), name + '('
+    return {f for f, txt in lines if needle in txt and rx.search(txt) and not txt.strip().startswith('//')
+            and not re.match(r'\s*func ', txt)}
+
+
 def risk_register(S):
     """One row per risk-named function, with measured structure only: size, callers, panics, recovers, and
     whether it lives in a consensus package. No prose is generated — every attribute is counted."""
-    import subprocess
     rows = []
+    call_lines = go_call_lines()
     for f, decls in sorted(S.items()):
         raw, _ = M.lines(f)
         if raw is None:
@@ -146,15 +179,7 @@ def risk_register(S):
             a = M.anchor(f, raw[ln - 1].strip(), hint=ln, full_line=True)
             if not a:
                 continue
-            r = subprocess.run(['grep', '-rn', '--include=*.go', rf'\b{name}(', '.'], cwd=M.ROOT, capture_output=True, text=True)
-            callers = set()
-            for hit in r.stdout.splitlines():
-                cf, _, txt = hit.split(':', 2)
-                cf = cf.lstrip('./')
-                if cf.startswith(('vendor/', 'harness/')) or cf.endswith('_test.go') or txt.strip().startswith('//') \
-                        or re.match(r'\s*func ', txt):
-                    continue
-                callers.add(cf)
+            callers = callers_of(name, call_lines)       # r28: one in-process walk, not one grep per function
             rows.append({'id': f"risk-{f.replace('/', '-')}-{ln}", 'section': 'riskmap', 'class': 'SRC', 'title': name,
                          'file': f, 'line': ln, 'lines': len(body),
                          'caller_files': len(callers),   # files (incl. its own) with a non-comment, non-declaration `name(`

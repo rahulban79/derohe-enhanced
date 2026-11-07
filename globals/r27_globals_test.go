@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,6 +85,25 @@ func TestR27TimeOffsetRules(t *testing.T) {
 			t.Fatalf("%s: TimeIsInSyncNTP did not enable the NTP offset", name)
 		}
 		TimeIsInSyncNTP = false
+	}
+}
+
+func TestR27GetOffsetIsTheAppliedCorrection(t *testing.T) {
+	clock_state(t)
+	if got := GetOffset(); got != 0 {
+		t.Fatalf("before NTP: GetOffset %v, want 0", got)
+	}
+	SetClockOffsetNTP(1500 * time.Millisecond)
+	SetClockOffsetP2P(-700 * time.Millisecond)
+	if got := GetOffset(); got != 1500*time.Millisecond { // was time.Now().Sub(Time()): -1.5 s plus read jitter
+		t.Fatalf("GetOffset %v, want +1.5s (the correction Time() applies, same sign as GetOffsetNTP)", got)
+	}
+	if GetOffsetNTP() != 1500*time.Millisecond || GetOffsetP2P() != -700*time.Millisecond {
+		t.Fatalf("GetOffsetNTP %v GetOffsetP2P %v", GetOffsetNTP(), GetOffsetP2P())
+	}
+	TimeIsInSync = true
+	if got := GetOffset(); got != 0 {
+		t.Fatalf("--timeisinsync: GetOffset %v, want 0", got)
 	}
 }
 
@@ -208,6 +228,62 @@ func TestR27RecoverCounts(t *testing.T) {
 	}
 	if Recover(7) != nil { // no panic in flight
 		t.Fatalf("Recover without a panic returned an error")
+	}
+}
+
+func TestR27ParseAmountExact(t *testing.T) {
+	ok := map[string]uint64{
+		"1": 100000, "0.00001": 1, ".5": 50000, "5.": 500000, "  2 ": 200000, "1e3": 100000000, "1.5e-5": 0,
+		"123456789.12345":       12345678912345,
+		"92233720368547.75807":  9223372036854775807,  // was ...806 (64-bit big.Float)
+		"184467440737095.51614": 18446744073709551614, // was ...612
+		"0":                     0, "0.000000": 0, "2.500000e-4": 25,
+	}
+	delete(ok, "1.5e-5") // 1.5 atomic units: refused below
+	for s, want := range ok {
+		got, err := ParseAmount(s)
+		if err != nil || got != want {
+			t.Fatalf("ParseAmount(%q) = %d, %v; want %d", s, got, err, want)
+		}
+	}
+	for _, s := range []string{
+		"0.000009", "0.000005", "1.000005", "0.000015", "1.5e-5", // more than 5 decimals: were rounded silently
+		"-1", "-0", "0x10", "Inf", "1,5", "", "abc", "1/3",
+		"184467440737095.51615", "184467440737095.51616", "1e15", // MaxUint64 is refused, above it overflows
+		"1e999999999", "1e-999999999", "1e65", "0e70", // exponent bound: no 10^|exp| allocation
+	} {
+		if got, err := ParseAmount(s); err == nil {
+			t.Fatalf("ParseAmount(%q) = %d, nil; want an error", s, got)
+		}
+	}
+}
+
+func TestR27FormatMoneyExact(t *testing.T) {
+	for _, c := range []struct {
+		amount uint64
+		prec   int
+		want   string
+	}{
+		{0, 5, "0.00000"}, {1, 5, "0.00001"}, {123456, 12, "1.234560000000"}, {150000, 0, "2"}, {250000, 0, "2"},
+		{math.MaxUint64, 5, "184467440737095.51615"}, // was ...51614
+		{math.MaxUint64 - 1, 8, "184467440737095.51614000"},
+		{9223372036854775807, 5, "92233720368547.75807"},
+	} {
+		if got := FormatMoneyPrecision(c.amount, c.prec); got != c.want {
+			t.Fatalf("FormatMoneyPrecision(%d, %d) = %s, want %s", c.amount, c.prec, got, c.want)
+		}
+	}
+	if FormatMoney(1) != "0.00001" || FormatMoney0(250000) != "2" || FormatMoney5(7) != "0.00007" ||
+		FormatMoney8(1) != "0.00001000" || FormatMoney12(1) != "0.000010000000" {
+		t.Fatalf("FormatMoney wrappers")
+	}
+	for a := uint64(math.MaxUint64); a > math.MaxUint64-100000; a -= 997 { // the round trip is exact up to the top
+		if a == math.MaxUint64 {
+			continue
+		}
+		if got, err := ParseAmount(FormatMoney(a)); err != nil || got != a {
+			t.Fatalf("round trip %d -> %s -> %d %v", a, FormatMoney(a), got, err)
+		}
 	}
 }
 

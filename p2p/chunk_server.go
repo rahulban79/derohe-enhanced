@@ -158,11 +158,11 @@ func (connection *Connection) feed_chunk(chunk *Block_Chunk, sent int64) error {
 			return nil
 		}
 
-		for _, mbl := range bl.MiniBlocks {
-			if !chain.VerifyMiniblockPoW(&bl, mbl) {
-				connection.penalize("invalid_pow")
-				return errormsg.ErrInvalidPoW
-			}
+		// r28 (L24-21): the same calls in the same order, counted (r28_chunk_pow.go)
+		if !chunk_pow_valid(bl.MiniBlocks, chain.MiniBlocks.IsCollision, func(mbl block.MiniBlock) bool { return chain.VerifyMiniblockPoW(&bl, mbl) },
+			time.Now) {
+			connection.penalize("invalid_pow")
+			return errormsg.ErrInvalidPoW
 		}
 
 		// first chunk of a block that passed the checks above: this connection delivered it before any other

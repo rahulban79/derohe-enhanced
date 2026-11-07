@@ -364,8 +364,53 @@ def g31(root=ROOT, inv_check=None):
                   f'); 0 forbidden phrases; {nspans} class spans on {npages} page(s) trace to classes.json')
 
 
+V2_RECORD_FILES = ('derived/txs.jsonl.gz', 'derived/blocks_fees.jsonl.gz', 'derived/roots_window.jsonl.gz',
+                   'raw/tx_bodies.jsonl.gz', 'raw/wall1_blocks.jsonl.gz')   # = classes.V2_RECORD_FILES (R28 B126)
+
+
+def check_records_v2(ds, cl):
+    """R28 B126: the v2 layout. Every record of every v2 record file carries one class in `class`; the per-file counts
+    equal classes.json `records`; a dataset with record files but no tagged record FAILS (the R26/R27 vacuous PASS)."""
+    import gzip, collections
+    p, n_tagged, n_files = [], 0, 0
+    recs = cl.get('records') or {}
+    for rel in V2_RECORD_FILES:
+        f = ds / rel
+        if not f.exists():
+            continue
+        n_files += 1
+        seen = collections.Counter()
+        bad = 0
+        for i, l in enumerate(gzip.decompress(f.read_bytes()).decode().splitlines(), 1):
+            if not l.strip():
+                continue
+            c = json.loads(l).get('class')
+            if c in CLASS_IDS:
+                seen[c] += 1
+                n_tagged += 1
+            else:
+                bad += 1
+                if bad == 1:
+                    p.append(f'{rel}:{i}: class {c!r} is not a defect class')
+        if bad > 1:
+            p.append(f'{rel}: {bad} records without a defect class')
+        want = recs.get(rel)
+        if want is None:
+            p.append(f'classes.json records has no entry for {rel}')
+        elif dict(seen) != {k: v for k, v in want.items() if k in CLASS_IDS} or any(k not in CLASS_IDS for k in want):
+            p.append(f'records.{rel} = {want} but the dataset has {dict(sorted(seen.items()))}')
+    if n_files and not n_tagged:
+        p.append(f'{n_files} v2 record file(s) and 0 tagged records: the record half would pass vacuously (B126)')
+    for rel in recs:
+        if rel not in V2_RECORD_FILES:
+            p.append(f'classes.json records names {rel}, which is not a v2 record file')
+    return p, n_tagged
+
+
 def check_records(ds, cl):
     """every v2 record carries one class; counts equal classes.json"""
+    if (ds / 'derived' / 'txs.jsonl.gz').exists():
+        return check_records_v2(ds, cl)
     p = []
     import gzip, collections
     seen = collections.Counter()

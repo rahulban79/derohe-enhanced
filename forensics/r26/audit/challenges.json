@@ -1,8 +1,8 @@
 {
  "binding": {
-  "data_sha256": "2eca35695f5e0877a8f267132fb11c49fb417c37310f85afa166f04754de3879",
+  "data_sha256": "9980b66c010e433ce0d41b50169525a1fc01d50cd9aa83e4563e45c796f30556",
   "files_bound": 26,
-  "manifest_sha256_at_audit": "c353ab3f2a78ff8c7ef09b63151dd705d8ce564946f8be3fdc84ca43a2daf88b"
+  "manifest_sha256_at_audit": "94e355a3c5fdce3eacbb2d01343e2015682e5c814ef9d68e12981824b8e39cd6"
  },
  "challenges": [
   {
@@ -11,7 +11,7 @@
    "evidence": [
     {
      "class": "RAW",
-     "what": "ledger c353ab3f2a78ff8c, manifest c353ab3f2a78ff8c, sealed False"
+     "what": "ledger 94e355a3c5fdce3e, manifest 94e355a3c5fdce3e, sealed False"
     }
    ],
    "id": "D2-01",
@@ -25,7 +25,7 @@
    "evidence": [
     {
      "class": "RAW",
-     "what": "listed 30, on disk 30, mismatch 0, missing 0, unlisted 0, class files listed True"
+     "what": "listed 33, on disk 33, mismatch 0, missing 0, unlisted 0, class files listed True"
     }
    ],
    "id": "D2-02",
@@ -283,39 +283,31 @@
    "test": "own walk and own HF3 table parser"
   },
   {
-   "affects": [
-    "V2-FEES"
-   ],
+   "affects": [],
    "claim": "classes.json DC3 figures reflect dataset v2 (fees and public burns of the window)",
    "evidence": [
     {
      "class": "DERIVED",
-     "what": "classes base r25: fees {'bound_type': 'lower-bound', 'value': 16800} over 80902 blocks, burns {'bound_type': 'lower-bound', 'value': 0}; v2 own: fees 855,173, burns 230,470,000 over 82477/82477"
+     "what": "classes base r25: fees {'bound_type': 'exact', 'value': 855173} over 82477 blocks, burns {'bound_type': 'exact', 'value': 230470000}; v2 own: fees 855,173, burns 230,470,000 over 82477/82477"
     }
    ],
    "id": "D2-19",
-   "note": "The figures are honest lower bounds over v1 (G31 holds), but stale: v2 settled every pending block, so the window fee and burn figures can be exact; classes.json still reads v1 (base r25, B126).",
-   "result": "FAILS",
+   "note": "",
+   "result": "HOLDS",
    "test": "classes.json DC3 figures vs the audit's own v2 totals"
   },
   {
-   "affects": [
-    "V2-FEES",
-    "V2-DUP-BODY",
-    "V2-END-STATE",
-    "V-STATE-ROOTS",
-    "V-DC2"
-   ],
+   "affects": [],
    "claim": "G32 records half: every v2 derived/raw record carries its defect class",
    "evidence": [
     {
      "class": "DERIVED",
-     "what": "v2 records 5,369: tagged 0, pending 5,369; classes.json records {'block': {'DC3': 605}, 'tx': {'DC1': 75, 'DC3': 19}, 'window_rows': {'DC3': 82477}} (v1 layout)"
+     "what": "v2 records 5,369: tagged 5369, pending 0; classes.json records {'derived/blocks_fees.jsonl.gz': {'DC3': 1747}, 'derived/roots_window.jsonl.gz': {'DC3': 30}, 'derived/txs.jsonl.gz': {'DC1': 75, 'DC3': 1721}, 'raw/tx_bodies.jsonl.gz': {'DC1': 75, 'DC3': 1721}, 'raw/wall1_blocks.jsonl.gz': {'DC3': 2799}} (v1 layout)"
     }
    ],
    "id": "D2-20",
-   "note": "B126: classes.py tags the v1 record layout, so G32's record check passes vacuously on v2.",
-   "result": "FAILS",
+   "note": "",
+   "result": "HOLDS",
    "test": "own count of the `class` slot over txs, blocks_fees, roots_window and tx_bodies"
   },
   {

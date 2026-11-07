@@ -37,6 +37,13 @@ cmd/dero-miner/runledger.go appends one JSON line per miner run (final line at a
      neighbour runs' own expected share rate x the ledger's paid/found fraction x the per-miniblock reward: the DERO the
      idle time forwent (ESTIMATE, fees excluded). Gate G21 recomputes it.
 
+  6. (r28, B50 / H24-5) THE USER'S PAUSE IS NOT FORGONE PAYOUT: while harness/round.json names the miner track
+     'paused' (artifacts/dero-rft.md §0.3, kit/roundtracks.py), the OPEN trailing gap (the newest run ended, no run
+     since) is the deliberate pause, not idle time: it is booked as paused_s with idle_s 0 and no forgone shares or
+     DERO, and uptime_fraction is taken over the span without it. With --paused-since ISO only the part of that gap
+     after the instant is paused (the part before it is still priced). Closed gaps between runs are always priced.
+     With the track active (or no registry) nothing changes: the R23b ledger exactly.
+
 Writes harness/runtime/minerruns_<ts>.json (one anchorable fact per line). Never writes the ledger or the checkpoint.
   python3 -I harness/intel/miner_runs.py [--ledger bin/dero-miner.runs.jsonl] [--log bin/dero-miner.log] [--no-rpc]
 Exit 0 · 6 a validation check failed · 2 no ledger and no checkpoint.
@@ -71,6 +78,17 @@ def _mi():
 
 
 MI = _mi()
+
+
+def _rt():
+    """kit/roundtracks.py of THIS harness (r28 B50): the miner-track state of the current round"""
+    spec = importlib.util.spec_from_file_location(f'roundtracks_for_runs_{id(HERE)}', HARNESS / 'kit/roundtracks.py')
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+RT = _rt()
 
 
 def ts(s):
@@ -251,7 +269,7 @@ IDLE_MIN_S = 5.0                 # a restart shorter than this is not idle time 
 CHECKPOINT_STALE_S = 180.0       # runledger.go checkpoints every 60 s: three missed writes = the run is dead, not running
 
 
-def idle_gaps(rows, now, per_mb, paid_fraction, log_starts=None):
+def idle_gaps(rows, now, per_mb, paid_fraction, log_starts=None, paused=False, paused_since=None):
     """R23b: the time the miner was NOT mining between (and after) its runs, and the shares and DERO that time forwent.
     `rows` are ledger rows plus the checkpoint (end 'running'). A gap's share rate is its two neighbour runs' OWN
     expected share rate (sum of expected_shares / sum of uptime_s: their hashes at their difficulty, 5/(9 D) per hash),
@@ -259,7 +277,10 @@ def idle_gaps(rows, now, per_mb, paid_fraction, log_starts=None):
     forgone shares x paid_fraction (paid / found over the ledger); DERO = paid shares x per-miniblock reward (fees
     excluded). The trailing gap is open when the newest run ended or its checkpoint went stale. `log_starts` (the miner
     log's start-up instants) cross-checks every gap: a start inside one means a run the ledger does not hold (a build
-    without the ledger, or a lost line), so that gap is NOT idle and G21 fails it. ESTIMATE. Pure."""
+    without the ledger, or a lost line), so that gap is NOT idle and G21 fails it. ESTIMATE. Pure.
+    r28 B50: `paused` (the miner track is paused, §0.3) books the OPEN trailing gap as the user's pause: idle_s 0,
+    paused_s the gap (from max(gap start, `paused_since`) when that epoch is given; the part before it is a priced idle
+    gap of its own), forgone None; totals carry paused_s and uptime_fraction over span - paused_s."""
     rs = sorted([r for r in rows if r.get('start')], key=lambda r: ts(r['start']))
     out = []
 
@@ -292,11 +313,22 @@ def idle_gaps(rows, now, per_mb, paid_fraction, log_starts=None):
         last = ts(z['last']) if z.get('last') else ts(z['start']) + float(z.get('uptime_s') or 0)
         if z.get('end') != 'running' or now - last > CHECKPOINT_STALE_S:
             if now - last >= IDLE_MIN_S:
-                out.append(row(z, None, last, now, True))
+                cut = last if not paused or paused_since is None else min(max(last, float(paused_since)), now)
+                if paused and cut - last >= IDLE_MIN_S:
+                    out.append(row(z, None, last, cut, False))     # idle before the pause began: still priced
+                if paused and now - cut > 0:
+                    g = row(z, None, cut, now, True)
+                    g.update({'paused': True, 'paused_s': g['idle_s'], 'idle_s': 0, 'forgone_shares': None,
+                              'forgone_paid_shares': None, 'forgone_DERO': None})
+                    out.append(g)
+                elif not paused:
+                    out.append(row(z, None, last, now, True))
     span = (now - ts(rs[0]['start'])) if rs else 0
     idle = sum(g['idle_s'] for g in out)
+    pz = sum(g.get('paused_s') or 0 for g in out)
     tot = {'gaps': len(out), 'idle_s': idle, 'idle_h': round(idle / 3600, 2), 'span_h': round(span / 3600, 2),
-           'uptime_fraction': round(1 - idle / span, 4) if span > 0 else None,
+           'paused_s': pz, 'paused_h': round(pz / 3600, 2),
+           'uptime_fraction': round(1 - idle / (span - pz), 4) if span - pz > 0 else None,
            'forgone_shares': round(sum(g['forgone_shares'] or 0 for g in out), 2),
            'forgone_paid_shares': round(sum(g['forgone_paid_shares'] or 0 for g in out), 2),
            'forgone_DERO': None if per_mb is None else round(sum(g['forgone_DERO'] or 0 for g in out), 5),
@@ -506,7 +538,7 @@ def rpc_block_getter(url):
     return get_block
 
 
-def analyse(ledger_path, log_path, use_rpc=True, rpc_url=RPC, now=None, checkpoint_path=None):
+def analyse(ledger_path, log_path, use_rpc=True, rpc_url=RPC, now=None, checkpoint_path=None, paused_since=None):
     now = time.time() if now is None else now
     lp = Path(ledger_path)
     text = lp.read_text() if lp.exists() else ''
@@ -561,8 +593,10 @@ def analyse(ledger_path, log_path, use_rpc=True, rpc_url=RPC, now=None, checkpoi
                          'runs': pr, 'total': pt}
         # R23b: idle gaps between runs and what they forwent, priced at the neighbour runs' own share rate
         pf = round(pt['paid'] / pt['found'], 4) if pt.get('found') else None
+        st, _ = RT.track_state(RT.load(HARNESS / 'round.json'))      # r28 B50: the user's pause is not forgone
         gaps, gt = idle_gaps(rows + ([checkpoint] if checkpoint else []), now, pt.get('per_miniblock_atomic'), pf,
-                             [x for x, _ in ev['starts']])
+                             [x for x, _ in ev['starts']], paused=st == 'paused', paused_since=paused_since)
+        gt['miner_track'] = st
         rep['idle'] = {'gaps': gaps, 'total': gt}
     except (OSError, ValueError, AttributeError) as e:
         rep['payout'] = {'error': f'{type(e).__name__}: {e}'}
@@ -613,7 +647,8 @@ def facts(rep):
         t = idl['total']
         f.append(f"idle total gaps={t['gaps']} idle_h={t['idle_h']} span_h={t['span_h']} uptime_fraction={t['uptime_fraction']} "
                  f"forgone_shares={t['forgone_shares']} forgone_paid_shares={t['forgone_paid_shares']} "
-                 f"forgone_DERO={t['forgone_DERO']} paid_fraction={t['paid_fraction']} open_now={t['open_now']} (ESTIMATE)")
+                 f"forgone_DERO={t['forgone_DERO']} paid_fraction={t['paid_fraction']} open_now={t['open_now']} "
+                 f"paused_h={t.get('paused_h', 0)} miner_track={t.get('miner_track', 'active')} (ESTIMATE)")
     lc = rep['ledger_checks']
     f.append(f"miner run ledger rows={len(rep['rows'])} skipped_lines={rep['skipped_lines']} "
              + ' '.join(f"{k.split()[0]}={'ok' if v['ok'] else 'FAIL'}" for k, v in lc.items()))
@@ -628,11 +663,14 @@ def main():
     ap.add_argument('--no-rpc', action='store_true')
     ap.add_argument('--out')
     ap.add_argument('--payout-ledger', help='with --out: merge the payout rows into this file instead of none')
+    ap.add_argument('--paused-since', help="r28 B50: ISO instant the user paused the miner (only the open gap after it is "
+                                           "paused; default: the whole open gap while the track is 'paused')")
     a = ap.parse_args()
     if not Path(a.ledger).exists() and not (a.checkpoint and Path(a.checkpoint).exists()):
         print(f'miner_runs: no ledger at {a.ledger}')
         return 2
-    rep = analyse(a.ledger, a.log, not a.no_rpc, checkpoint_path=a.checkpoint)
+    rep = analyse(a.ledger, a.log, not a.no_rpc, checkpoint_path=a.checkpoint,
+                  paused_since=ts(a.paused_since) if a.paused_since else None)
     out = Path(a.out) if a.out else HARNESS / f"runtime/minerruns_{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.json"
     MI.write_atomic(out, json.dumps(rep, indent=1, ensure_ascii=False))
     if (rep.get('payout') or {}).get('runs') and not a.out:

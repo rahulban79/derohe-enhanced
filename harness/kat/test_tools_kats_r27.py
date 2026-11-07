@@ -113,8 +113,10 @@ def tk1(P):
         (f / 'guarded.py').write_text('"""a tool"""\nif __name__ == \'__main__\' and {\'-h\', \'--help\'} & set(__import__(\'sys\').argv[1:]):\n'
                                       '    print(__doc__)\n    raise SystemExit(0)\n\nif __name__ == \'__main__\':\n    open("x", "w")\n')
         forged = T.tools_without_help(Path(d))
+        # R28 merge (B165): no real pinned tool lacks --help any more, so the pinned exclusion is proved on a forged pin
+        forged_pinned = T.tools_without_help(Path(d), pinned={'harness/bare.py'})
     ok = (len(tools) >= 60 and not bad and not wrote and census == [] and forged == ['harness/bare.py'] and prof is not None
-          and held == ['harness/forensics/pins.py'])
+          and held == [] and forged_pinned == [])   # R28 merge (B165): pins.py gained --help with dataset v3 (N28-08), so no pinned tool is held
     return ok, (f'{len(tools)} tools --help in the sandboxed clone: bad {dict(list(bad.items())[:4])} wrote {wrote[:4]} · '
                 f'census {census[:4]} pinned-held {held} forged {forged} sandbox {prof is not None}')
 

@@ -1038,6 +1038,18 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
+# Round 28 (dvm-blockchain, dero-rft §7 B146/B145/B33 + the R28 sweep's 0 % paths): the chain's SC execution
+# (process_transaction_sc) and Prune_Blockchain on a throw-away simulator chain (blockchain/r28_sc_flow_test.go,
+# package blockchain_test), the DVM meta codecs / balance keys / RawLoad / RANDOM() KATs and the RANDOM() stream
+# against an independent Python implementation (dvm/r28_dvm_kat_test.go), the B19 integer fee rank
+# (blockchain/mempool/r28_fee_rank_test.go). Tests only; none is env-gated.
+for _pkg, _pat in {
+    './blockchain/': 'TestR28SimulatorChainSCInstallCallKAT|TestR28PruneHistoryPreservesStateKAT|TestR28BurnTxNeverVerifiesKAT',
+    './dvm/': 'TestR28SCMetaCodecsKAT|TestR28BalanceKeyKAT|TestR28RawLoadKAT|TestR28RandomKAT|TestR28RNDCrossImpl',
+    './blockchain/mempool/': 'TestR28FeeRankIsIntegerPerByte',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
 # Round 27 (group p2p-config, dero-rft §7 B99/B47 + the r26 sweep's 0 % paths and config pins): the TestR27* of
 # p2p/r27_p2p_config_test.go, config/r27_consensus_params_test.go, cmd/derod/config_env_r27_test.go and
 # cmd/derod/rpc/r27_syncinfo_bans_test.go (none is env-gated; the loopback scenario skips only under -short).
@@ -1052,10 +1064,24 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
+# Round 28 (group p2p-config, dero-rft §7 B47/B48/B57/B99, ledger L24-21, config documented vs used): the chunk-path
+# PoW census (p2p/r28_chunk_pow.go), the deterministic event scenarios (harness/intel/event_scenarios.py reads their
+# records), the p2p 0 % sweep and derod's help text vs its code defaults; none is env-gated (the simulator-chain ones
+# skip only under -short); each guards gm-r28-p2pcfg-* mutations in harness/intel/go_mutations.json.
+for _pkg, _pat in {
+    './p2p/': 'TestR28ChunkPowValidCountsAndStops|TestR28ChunkPowCountersOnMetricsFromStart|TestR28ChunkLoopbackScenario'
+              '|TestR28ProvenLaneAdmissionScenario|TestR28MemorySourceAccessors|TestR28BlockEncodingsRoundTrip'
+              '|TestR28ConnectionPoolCounts|TestR28ConnectionPendingClear|TestR28RttOffsetMath|TestR28BackoffExpires'
+              '|TestR28HandleConnectionPanicExits|TestR28SafeLocatePruneTopoWithoutChain|TestR28MalformedObjectRequestsRefused'
+              '|TestR28HandshakeFillAndChainHelpers|TestR28PeerListPersistAndRotate|TestR28AccessorsAndOwnBroadcastReport',
+    './cmd/derod/': 'TestR28UsageDefaultsMatchCode|TestR28UsageStillParses',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
 # Round 27 (glue-global group: globals clock/amount, glue/rwc nhooyr adapter, glue/emission archive + series payees,
 # glue/txprecheck PeekWindow); none is env-gated; each guards a gm-r27-glue-* mutation in harness/intel/go_mutations.json.
 for _pkg, _pat in {
-    './globals/': 'TestR27TimeOffsetRules|TestR27ClockOffsetRace|TestR27InitNetwork'
+    './globals/': 'TestR27TimeOffsetRules|TestR27ClockOffsetRace|TestR27InitNetwork|TestR27GetOffsetIsTheAppliedCorrection|TestR27ParseAmountExact|TestR27FormatMoneyExact'
                   '|TestR27InitializeDataDirAndProxy|TestR27InitializeLogLevelsAndCaller|TestR27RecoverCounts'
                   '|TestR27CryptoRandSource',
     './glue/rwc/': 'TestR27NhooyrWriteHandlesShortWrites|TestR27WriteErrorSurvivesClose|TestR27NhooyrRoundTripMessages'
@@ -1088,6 +1114,16 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
+# Round 28 (tools-kats, dero-rft §7 B139 residual, B21): the -archive report (printArchive) and archiveMain end to end on a
+# forged topo.map (tools/emission-audit r28_archive_print_test.go); the walletapi credit KAT (r28_simulator_credit_test.go); not env-gated
+for _pkg, _pat in {
+    './tools/emission-audit/': 'TestR28PrintArchivePayeeAndSeriesLines|TestR28ArchiveMainPrintsPayeeLineEndToEnd',
+    # B21: the simulator registration credit the walletapi fixtures are stated against (Test_Payload_TX and
+    # Test_Creation_TX_morecheck, red on the pristine base since upstream 39569dee, now pass)
+    './walletapi/': 'TestR28SimulatorCreditMatchesChain',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
 
 # Round 27 (rpc-metrics, dero-rft §7 B132/B143/B100/B104; registered at the R27 merge: the group's patch carried no
 # NEW_TESTS block and test_new_tests_registered_r24 NT1 listed these 16 as unregistered). None is env-gated.
@@ -1101,6 +1137,37 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
+# Round 28 (glue-global, dero-rft §7 B144/B147, L24-25, N28-07): globals pinned by tests (b147_landed switch), the
+# rpc FormatMoney copy, the cryptography/ verify-path guards, the glue consensus citations, precheck on mainnet txs and
+# the wasm wallet transport. Left out: TestR28WasmInnerLargeReply (js/wasm build, opt-in: the registered
+# TestR28WasmWalletTransportLargeReply runs it under node). Fuzz targets run their seed corpora.
+for _pkg, _pat in {
+    './globals/': 'TestR28ExactMoneyOracle|TestR28FormatMoneyAgreesBelowTheDefectRegion|TestR28FormatMoneyDefectRegion'
+                  '|TestR28ParseAmountAgreementAndRoundTrip|TestR28ParseAmountDefectsPinned'
+                  '|TestR28ParseAmountLongExponentBounded|TestR28GetOffsetSignPinned|TestR28ParseValidateAddressNetworks'
+                  '|TestR28LoggerWithAndStackTrace',
+    './rpc/': 'TestR28RPCFormatMoneyCopy',
+    './cryptography/crypto/': 'TestR28VerifyRefusesMismatchedStatement|TestR28VerifyRefusesWrappedOpenValue'
+                              '|TestR28VerifyParityStagePinned|TestR28InnerProductLengthGuard',
+    './glue/rwc/': 'TestR28WasmWalletTransportLargeReply',
+    './glue/txprecheck/': 'TestR28ConsensusCitationsHold|TestR28PrecheckAdmitsEveryMainnetTx|TestR28PrecheckByteSweep'
+                          '|FuzzR28PrecheckDecodedNoPanic',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+
+# Round 28 (rpc-metrics, dero-rft §7 B42/B43/B51/B61 + the R28 sweep: /metrics HELP/TYPE from the metric registry,
+# rpc/ and metrics/ zero-coverage functions, error bodies written outside jrpc2). None is env-gated; the B51 A/B
+# (TestR28DecoySlackAB) is opt-in (R28_DECOY_TREE) and deliberately not registered.
+for _pkg, _pat in {
+    './metrics/': 'TestR28RegistryLoads|TestR28AnnotateAddsHelpAndType|TestR28WritePrometheusAnnotated'
+                  '|TestR28DumpImportURLAndJob|TestR28DumpMetricsLoop',
+    './rpc/': 'TestR28DataTypeAndArgumentString|TestR28ArgumentUnmarshalJSON|TestR28EntryProcessPayloadAndString'
+              '|TestR28WalletFormatMoney',
+    './cmd/derod/rpc/': 'TestR28HTTPLayerErrorBodiesCounted|TestR28GetInfoTxPoolUnmined|TestR28MetricsPageFullyRegistered'
+                        '|TestR28TopoEqualsHeightAndAltBlockMiners|TestR28DecoyWindowEqualsUpstreamAboveFloor',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
 UPSTREAM_BASE = 'bf274e5'           # pristine Release153 content (harness/baseline); rule #28 compares against it
 NEW_TESTS_BASE = 'HEAD'
@@ -1229,6 +1296,29 @@ def _roundtracks():
 
 RT = _roundtracks()
 MINER_TRACK = RT.track_state(ROUND_REG) if RT else ('active', 'kit/roundtracks.py not found: the track runs')
+
+
+def _stepbudget():
+    """r28 (B133): kit/stepbudget.py, or None in a copy without kit/ (then no budget is reported, nothing fails)"""
+    try:
+        spec = importlib.util.spec_from_file_location(f'stepbudget_for_pipeline_{id(HARNESS)}', HARNESS / 'kit/stepbudget.py')
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+    except (OSError, ImportError, SyntaxError):
+        return None
+
+
+def budget_report(events, root=None):
+    """r28 (B133): the project event's `over_budget` field from this run's events (report-only), or a reason string
+    when the budget file or the kit is missing. Never raises."""
+    sb = _stepbudget()
+    if sb is None:
+        return 'pending (kit/stepbudget.py not found)'
+    try:
+        return sb.report(events, sb.load(root or ROOT))
+    except (OSError, ValueError) as e:
+        return f'pending (harness/loop/STEP_BUDGETS.json unreadable: {type(e).__name__})'
 
 
 def miner_sources_changed(base):
@@ -1512,10 +1602,12 @@ def heavy_preflight(stage, planned, ri=None, r=None):
             r = ri.readings(scratch=[], quick=True)
         d = ri.preflight(r, planned, 'jobs')
     except Exception as e:                                   # noqa: BLE001 — a probe failure never blocks a gate
-        event('preflight', 'INFO', stage=stage, level='unreadable', planned=planned, recommended=planned,
+        event('preflight', 'INFO', for_stage=stage, level='unreadable', planned=planned, recommended=planned,
               why=f'{type(e).__name__}: {e}'[:200])
         return planned
-    event('preflight', 'INFO', stage=stage, level=d['level'], planned=d['planned'], recommended=d['recommended'],
+    # r28 (B171, full run 1 pipeline_20261106T045640): the field is for_stage; event(stage, status, **kv) already takes
+    # 'stage' (the event's own name 'preflight'), so stage=stage raised TypeError at S3b and stopped the full run.
+    event('preflight', 'INFO', for_stage=stage, level=d['level'], planned=d['planned'], recommended=d['recommended'],
           reasons=d['reasons'])
     notes = os.environ.get('DERO_ROUND_NOTES')
     if notes:
@@ -2640,10 +2732,12 @@ def s7_project():
         key = next((k for k in JUDGED if Path(st[1]).stem == k), None)   # r24: the script's own name (see judged_step)
         pat = JUDGED[key][1] if key else None
         before = [(p.name, p.stat().st_mtime_ns) for p in (HARNESS / 'runtime').glob(pat)] if pat else []
+        t_step = time.monotonic()
         rc, out, err = sh(st, timeout=2400)
+        secs = round(time.monotonic() - t_step, 1)                         # r28 (B133): the step's own wall seconds
         after = [(p.name, p.stat().st_mtime_ns) for p in (HARNESS / 'runtime').glob(pat)] if pat else []
         last = (out + err).strip().splitlines()[-1:] if (out + err).strip() else []
-        event('project', 'INFO', step=' '.join(st[1:3]), rc=rc, last=last)
+        event('project', 'INFO', step=' '.join(st[1:3]), rc=rc, last=last, secs=secs)
         ok_step, why = judged_step(st[1], rc, before, after)
         if not ok_step:
             event('project', 'FAIL', step=' '.join(st[1:3]), why=why, tail=(out + err)[-800:])
@@ -2656,9 +2750,13 @@ def s7_project():
     else:
         passed, paused, failing = sum(1 for l in gl if '| PASS |' in l), 0, [l.split('|')[3].strip() for l in gl if '| PASS |' not in l]
     ok = kat['ok'] == kat['total'] and kat['mut_proved'] == kat['muts'] and passed + paused == len(gl) and not failing and gl
+    try:                                                                  # r28 (B133): report-only step budgets
+        _ev = [json.loads(l) for l in EVENTS.read_text().splitlines() if l.strip()]
+    except (OSError, ValueError):
+        _ev = []
     event('project', 'PASS' if ok else 'FAIL', kats=f"{kat['ok']}/{kat['total']}",
           mutations=f"{kat['mut_proved']}/{kat['muts']}", gates=f'{passed}/{len(gl)}' + (f' (+{paused} PAUSED, miner)' if paused else ''),
-          failing=failing)
+          failing=failing, over_budget=budget_report(_ev))
     if not ok:
         finish(10)
 

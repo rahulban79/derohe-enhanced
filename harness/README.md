@@ -219,6 +219,15 @@ python3 -I kat/test_peer_intel_r27.py            # r27: PI26..PI28 + 9 mutations
 python3 -I intel/b99_scenario.py                 # r27: B99 sync-hold life cycle on a loopback simulator chain + fake peer
                                                  #   (never the live store, never 11011) -> runtime/b99_scenario_<ts>.json
 python3 -I kat/test_b99_scenario_r27.py          # r27: BS1..BS3 + 4 mutations on b99_scenario.verify()
+python3 -I intel/event_scenarios.py [--metrics SCRAPE]  # r28: every p2p event the live node has not had (B47/B99 sync hold,
+                                                 #   B57 attributed rejection, B48 proven lane, L24-21 chunk PoW census),
+                                                 #   one go test call -> runtime/event_scenarios_<ts>.json; with a saved
+                                                 #   read-only /metrics scrape it also grades each live series
+                                                 #   (absent / registered, no event / event seen)
+python3 -I intel/config_truth.py [--go]          # r28: documented vs used: each p2p/config value the rft states vs the Go
+                                                 #   source (AGREE/DRIFT/MISSING/UNDOCUMENTED), the build-tag rule against
+                                                 #   round.json, --go: derod --help vs its code defaults (cmd/derod TestR28Usage*)
+python3 -I kat/test_p2p_config_r28.py            # r28: ES1..ES5 + CT1..CT3 + 14 mutations on both tools
 ```
 S7 runs `peer_intel.py --live` after metrics_intel and before area_intel (whose `peers` area reads it: metric source
 kind `peerintel`, anchored on the KPI line of the timestamped capture), and `mine_peers.py` with the other miners.

@@ -2519,3 +2519,52 @@ series read 0 before their event, the reloaded ban as `p2p_bans_active` / `p2p_b
 checkpoints (14 / 296 / 960), duplicate_race 742 with insert_failed absent, reorg monitor `starts` 3
 (`harness/runtime/r27_live_probes_20261105.txt`, `r27_live_emission_20261105.txt`). Pending an event: strike decay and
 forgiveness, B47, B48, B57, B61. Self-detected B149: the area registry lacked the r27 round (fixed at measurement).
+
+## 46. ★ Round 28: the closure round — every open item of R1–R27 audited, closures with records, the pending-event scenarios, typed /metrics, the B147 landing, dataset v3 and a self-checking backlog (+22102026.r28, 2026-11-06)
+
+> Filled from the R28 records: the merge record (`harness/runtime/r28_merge_20261106.txt`), the closure audit
+> (`harness/runtime/r28_closure_audit_20261106.txt`), the closed-loop record (`harness/runtime/r28_closedloop_20261106.txt`),
+> the pipeline records (`harness/loop/runs/pipeline_20261106T045640.jsonl`, `pipeline_20261106T055413.jsonl`,
+> `pipeline_20261106T060036.jsonl`, `pipeline_20261106T080005.jsonl`), the registry (`harness/round.json` r28) and rft §7 B150–B174. Live r28
+> figures: §46.7 (OPEN until measured). The miner track is PAUSED (artifacts/dero-rft.md §0.3).
+
+**46.1 The closure method.** R28 treats an open item as a claim to be closed with a record or kept open with its blocker.
+Part A built the inventory from the ledger's "Open after Round N" lists and rft §7 (140 entries); each of nine groups
+owned a slice, and its verifier refused any closure without a record path. A fresh-context audit then re-derived the
+inventory from the sources (161 entries, 156 unique) and found 21 merge-created rows missing, one closure resting on a
+stale record (N28-08) and 32 open entries without an exact blocker; every open entry now carries `blocker_class`,
+`r28_blocker` and `closing_observable`. `harness/intel/backlog_truth.py` keeps rft §7 equal to the records (0 drifts over
+179 rows), and coherence check `rows` runs it every S7.
+
+**46.2 P2P and config (p2p-config; B47, B48, B57, B99, B1, B141, L24-21).** A pending-event row is closed by a unit test plus
+an executable scenario that drives the real code path (`harness/intel/event_scenarios.py`, 22/22), and its live reading
+says "registered, no event" until the event happens; a field merely present at 0 does not close a row (B63, B64, B67, BD5
+stay implemented · pending-event). `config_truth.py --go` compares every documented flag and environment name with the
+code. `p2p/r28_chunk_pow.go` counts the chunk PoW verification pool (`p2p_chunk_pow_*`) so the cache-miss rate of
+L24-21 can be read on r28.
+
+**46.3 RPC and metrics (rpc-metrics; B42, B150, B151, B61, B51).** GetInfo `tx_pool_unmined`; every JSON-RPC error body that
+derod writes outside jrpc2 (405/415 −32600, the abuse table's 429s, the over-bound −32602, the reserved rpc.* −32601) is
+counted once at its writer; `metrics/registry_r28.go` embeds `metrics/metric_registry.json` so every family on /metrics
+has HELP and TYPE (304 families; `harness/intel/metric_registry.py build|check`). B61 cannot occur: consensus accepts one
+tip only, so topoheight equals height for every topo-ordered block.
+
+**46.4 Glue and globals (glue-global; B147, B144, B36, B32).** The held globals fixes landed at the merge (ParseAmount exact and
+bounded, FormatMoneyPrecision at 128-bit precision, GetOffset's sign); `harness/forensics/pinsnap.py` resolves the sealed
+r25 dataset's pins from git objects, so the sealed version is re-verified although `globals/globals.go` moved on. The
+landing made one Go mutation equivalent and left another naming a test without its input (B173, fixed in run 3).
+`harness/intel/b36_payee_read.py` is the 24 h payee read (EQUAL only at a checkpoint of the same segment).
+
+**46.5 DVM and blockchain (tests only; B146, B33, B10, B11, B31, B45, B145, B157).** `blockchain/r28_sc_flow_test.go` drives SC
+install and call through the simulator chain: process_transaction_sc 0.0 → 96.4 %, blockchain/ 55.5 → 68.1 %;
+`dvm/r28_dvm_kat_test.go` and the RND cross-implementation vectors. The consensus-visible rows stay report-only with
+the guard's reading of each candidate fix (exit 5 = consensus change).
+
+**46.6 Forensics, harness and the closed loop.** r26 sealed in the §6 order; v3 `forensics/r28` re-pinned after the merge
+(manifest 6226081969f0, audit-3 24/24 HOLDS, replays byte-exact). Harness: `kit/roundlists.py` (B149), a KAT for every tool,
+masked raw scrapes (B135), memory KPIs (B140; REF_RX no longer reads a '-backup' name as its prefix, B172), the closure audit; backlog_truth H4 now follows coherence's rule that §1 holds the next round's prompt once the current one is implemented (B174). Closed loop: run 1 `pipeline_20261106T045640` S3b crash
+(B171: the preflight event keyword), run 2 `pipeline_20261106T055413` stopped before a known G22 failure (the fifth
+`cryptography/` test file), run 3 `pipeline_20261106T060036` S3b 1578/1580 (B173), run 4 `pipeline_20261106T080005`: PASS S1–S7; guard 7 consensus-package files vs bf274e5, all pre-existing; flaky 67 ×3, 0 flaky; soundness 29 tests; KATs 65 files; mutations 1579/1579 (upstream failures recorded 1); race 27 packages 0 races; S4b ran its offline A/B because globals/ and metrics/, which the miner links, changed (the paused-track rule: a miner-linked change needs its A/B; staged vs installed 1.002 H/cpu-s like for like; no live miner, no getwork connection); S4c SKIP (server unchanged); shadow 120 blocks, 240 treehashes, 0 mismatches, 0 regressions (control `bin/derod` = the live r27 build); S7 KATs 35/35, harness mutations 34/34, gates 29/32 (+3 PAUSED, miner), src-arch 6,886/6,886 anchors, coherence 2,677 statements 0 drifts; project wall 2,346 s (budget 1,840 s: test_miners_r28 440 s, test_tools_kats_r28 364 s over their 60 s step budgets); records e36a918e.
+Installed +22102026.r28 by atomic rename (backups `bin/*.22102026.r27-backup`), `bin/derod` sha256 `2dad9f246bbf038b5c079704f98d5d2c9ec9c4f31a9fe51127b8d132c7bcbee7`.
+
+**46.7 Live (measured 2026-11-06, rft §13 R28).** restart 16:10:24 (pid 80281), before the B36 24 h mark of the r27 segment; 60 min read-only (`harness/runtime/r28_live_window_20261106.txt`, 16:11:53 → 17:10:53, first sample 89 s after the start): 60/60 synced, lag 0, 13–14 out / 0 in, tip block age 4.3 s at 17:12:55; 0 ERROR / 0 WARN in 1,180 lines since the restart (G15 clear, `harness/runtime/error_census_20261106T171236.json`), 0 recovered panics; 193 blocks, 0 txs, 2 reorgs. CONFIRMED (`harness/runtime/r28_live_probes_20261106.txt`): GetInfo `tx_pool_unmined` in 60/60 samples (B42; pool 0 throughout); the `p2p_chunk_pow_*` counters with slow = checks − pool_seen in 13/13 scrapes, 10 checks per block, cache miss 10.0 % over the window (B46/L24-21); GET /json_rpc → 405 with a −32600 body counted, `rpc_error_responses_total{code="-32600"}` 0 → 1 (B150); HELP on 283/283 families and TYPE on 273/283 (B151: 9 vmrange histograms by design plus `dero_tip_age_seconds`, B176); `metrics_dump_posts_total` at 0 (B153); env overrides 0, the reloaded ban, the 18 pre-registered rpc series, insert_failed absent and the reorg monitor (`starts` 4) hold. Emission 221 audited, 0 alerts, payees 1,417/1,417. B36, offline over 22.3 h (the r27 segment 17:51:49 → 16:09:32; `harness/runtime/r28_b36_emission22h_20261106.txt`): `emission-audit -archive` 7,861,956..7,866,297 on an APFS clone outside the datadir, 4,342 ok, 0 alerts, issued = formula 133,516,500, payees 28,461 = explained (28,459 verified), 43/43 checkpoints equal the live series. Pending an event: B47, B48, B57, B99 (event_scenarios 22/22), B61, B85. New: B175 (a malformed body is answered by the upstream bridge as HTTP 500 plain text, −32700 uncounted), B176.

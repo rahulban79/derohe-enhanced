@@ -183,6 +183,9 @@ def check(pins, root=ROOT, lister=None):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] in (['-h'], ['--help']):   # R28 (N28-08): --help prints the usage instead of running `go list`
+        print(__doc__)
+        return 0
     if argv[:1] == ['--check'] and len(argv) == 2:
         m = json.loads(Path(argv[1]).read_text())
         f = check(m.get('content_pins'))

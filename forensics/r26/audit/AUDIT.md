@@ -2,9 +2,9 @@
 
 Auditor: a second implementation (`audit2-1`, `harness/forensics/audit2.py` on the primitives of `audit_check.py`) that shares no code with the v2 builder. Refute by default (rft §0.8.5).
 
-Bound to the dataset data `2eca35695f5e0877a8f267132fb11c49fb417c37310f85afa166f04754de3879` (26 files outside audit/), audited from manifest `c353ab3f2a78ff8c7ef09b63151dd705d8ce564946f8be3fdc84ca43a2daf88b`. Rerun block SHA-256 `97e81202ceca1d9b057c1ed88d087130967088422dc3bddc6749bbee683e6b97`.
+Bound to the dataset data `9980b66c010e433ce0d41b50169525a1fc01d50cd9aa83e4563e45c796f30556` (26 files outside audit/), audited from manifest `94e355a3c5fdce3eacbb2d01343e2015682e5c814ef9d68e12981824b8e39cd6`. Rerun block SHA-256 `fd0ab6e265d34fe833677a75e68e743302e000a936ba037d2b15aa2ab856f2e8`.
 
-**Result: 24 challenges, 20 HOLD, 3 FAIL (overturned), 1 UNRESOLVED; overturns over all runs of this version: 7 (distinct claims overturned: 4).**
+**Result: 24 challenges, 22 HOLD, 1 FAIL (overturned), 1 UNRESOLVED; overturns over all runs of this version: 8 (distinct claims overturned: 4).**
 
 ## What was re-run
 
@@ -14,8 +14,8 @@ Every v1 store block and every v2 wall-1 block was decoded by this implementatio
 
 | id | claim | method | result | evidence |
 |---|---|---|---|---|
-| D2-01 | the ledger entry of r26 names the manifest the dataset now has | sha256(manifest.json) vs forensics/ledger.json manifest_sha256 of the open version | **HOLDS** | RAW: ledger c353ab3f2a78ff8c, manifest c353ab3f2a78ff8c, sealed False |
-| D2-02 | every dataset file re-hashes to the manifest, none missing or unlisted, class files listed | own SHA-256 of every file under the dataset (audit/ excluded) vs manifest files | **HOLDS** | RAW: listed 30, on disk 30, mismatch 0, missing 0, unlisted 0, class files listed True |
+| D2-01 | the ledger entry of r26 names the manifest the dataset now has | sha256(manifest.json) vs forensics/ledger.json manifest_sha256 of the open version | **HOLDS** | RAW: ledger 94e355a3c5fdce3e, manifest 94e355a3c5fdce3e, sealed False |
+| D2-02 | every dataset file re-hashes to the manifest, none missing or unlisted, class files listed | own SHA-256 of every file under the dataset (audit/ excluded) vs manifest files | **HOLDS** | RAW: listed 33, on disk 33, mismatch 0, missing 0, unlisted 0, class files listed True |
 | D2-03 | the v1 inputs v2 reads are pinned and unchanged; v1 is sealed and unchanged | own SHA-256 of each pinned v1 input; v1 manifest vs its sealed ledger entry | **HOLDS** | RAW: 7 inputs, changed 0; v1 sealed True, manifest equal True |
 | D2-04 | the RAW chain 7,412,665..7,498,540 is one tips chain from our anchor, and the 2,799 wall-1 link blocks are its blocks 7,412,665..7,415,463 | own decode of every v1 store blob and every v2 wall-1 blob; SHA3-256 ids; tips walk from the anchor | **HOLDS** | RAW: walk 85,876 blocks 7,498,540->7,412,665, contiguous True, multi-tip 0; wall-1 rows equal 2,799/2,799 |
 | D2-05 | the 1,796 RAW tx bodies are every body the window + gap + wall-1 window need, each passing check (iii), 0 missing | own tx lists from the walk; own Keccak-256 TXID of each body's core statement; blob SHA-256 | **HOLDS** | RAW: needed (own) 1,796 (window+gap 1,794, wall-1 window 2), verified 1,796, missing 0, extra 0, txid mismatch 0 |
@@ -32,8 +32,8 @@ Every v1 store block and every v2 wall-1 block was decoded by this implementatio
 | D2-16 | A10c (carried from v1): the archive roots 7,453,290..7,467,515 are the canonical roots of those topos | needs an end-state check that binds the archive base: a replay from the archive top to our anchor ending at our treehash, IN THE DATASET | **UNRESOLVED** | DERIVED: dataset claim: pending: no complete replay run; own replay end-state match True (audit evidence, not a dataset file) |
 | D2-17 | G31 bound honesty: the 12 figures each carry class, scope, coverage, bound_type, and no forbidden phrase | own rules over classes.json (exact needs full coverage, unbounded never 0, DC2 never 0, lower bound never a total) + phrase scan of derived/ | **HOLDS** | DERIVED: problems none; forbidden phrases none |
 | D2-18 | FQ1 / DC0: the census figures (window distinct TXIDs, multi-block TXIDs, all in the table, carriers, parity) equal an independent count; DC0 = 0 | own walk and own HF3 table parser | **HOLDS** | RAW: own {'carriers_total': 142, 'dc0_window_duplicates': 0, 'duplicates_two_carriers': 67, 'false_parity_one_carrier': 8, 'of_which_in_table': 66, 'table_txids_outside_window_carrier': 1, 'tx_parity_true': 17, 'window_distinct_txids': 1769, 'window_tx_carrying_blocks': 1726, 'window_txids_in_two_or_more_blocks': 66}; DERIVED: claimed {'carriers_total': 142, 'dc0_window_duplicates': 0, 'duplicates_two_carriers': '67 of 67', 'false_parity_one_carrier': '8 of 8', 'of_which_in_table': 66, 'tx_parity_true': 17, 'window_distinct_txids': 1769, 'window_tx_carrying_blocks': 1726, 'window_txids_in_two_or_more_blocks': 66} |
-| D2-19 | classes.json DC3 figures reflect dataset v2 (fees and public burns of the window) | classes.json DC3 figures vs the audit's own v2 totals | **FAILS** | DERIVED: classes base r25: fees {'bound_type': 'lower-bound', 'value': 16800} over 80902 blocks, burns {'bound_type': 'lower-bound', 'value': 0}; v2 own: fees 855,173, burns 230,470,000 over 82477/82477 |
-| D2-20 | G32 records half: every v2 derived/raw record carries its defect class | own count of the `class` slot over txs, blocks_fees, roots_window and tx_bodies | **FAILS** | DERIVED: v2 records 5,369: tagged 0, pending 5,369; classes.json records {'block': {'DC3': 605}, 'tx': {'DC1': 75, 'DC3': 19}, 'window_rows': {'DC3': 82477}} (v1 layout) |
+| D2-19 | classes.json DC3 figures reflect dataset v2 (fees and public burns of the window) | classes.json DC3 figures vs the audit's own v2 totals | **HOLDS** | DERIVED: classes base r25: fees {'bound_type': 'exact', 'value': 855173} over 82477 blocks, burns {'bound_type': 'exact', 'value': 230470000}; v2 own: fees 855,173, burns 230,470,000 over 82477/82477 |
+| D2-20 | G32 records half: every v2 derived/raw record carries its defect class | own count of the `class` slot over txs, blocks_fees, roots_window and tx_bodies | **HOLDS** | DERIVED: v2 records 5,369: tagged 5369, pending 0; classes.json records {'derived/blocks_fees.jsonl.gz': {'DC3': 1747}, 'derived/roots_window.jsonl.gz': {'DC3': 30}, 'derived/txs.jsonl.gz': {'DC1': 75, 'DC3': 1721}, 'raw/tx_bodies.jsonl.gz': {'DC1': 75, 'DC3': 1721}, 'raw/wall1_blocks.jsonl.gz': {'DC3': 2799}} (v1 layout) |
 | D2-21 | presence.json: every anchor re-reads as recorded at its rev (36 anchors); DC2 present at the head is the headline | own re-read of file:line at each rev (git show; HEAD = working tree) | **HOLDS** | SRC: re-read equal 36/36; differ none; revs not in clone none; DC2 present at head True |
 | D2-22 | invariant.json: its Q-CS2/Q-CS3 anchors exist at the head, and the Q-CS1 census root is the held archive root | own file:line existence check; v1 archive roots at the census topo | **HOLDS** | SRC: anchors ok 9/9; Q-CS1 root == v1 archive root at 7467515: True |
 | D2-23 | the v2 dataset text holds no exploit content and no private information (no address, path, IP, host) | G24 exploit patterns + privacy patterns + private terms over every text file | **HOLDS** | DERIVED: files 27, patterns 15, private terms 34, hits 0 |
@@ -43,12 +43,11 @@ Every v1 store block and every v2 wall-1 block was decoded by this implementatio
 
 - **D2-14 FAILS**: wall 4: the node's own checks reject block 7,467,546 (tx not in the HF3 table), so the replay ends at 7,467,545 and the end-state check is pending. Overturned: the stop is an artifact of the replay tool, which called Add_Complete_Block without the HF3 table step (the merge found it through TestR23bAddCompleteBlockCensus, B123). Through the sync path's entry the node accepts every block to our anchor and ends at our own treehash. The dataset still carries the pre-fix runs and "pending" end-state claims: they are corrected only by a rebuilt v2 (B123), never in place. Affects: V2-END-STATE, V-STATE-ROOTS.
 - **D2-16 UNRESOLVED**: A10c (carried from v1): the archive roots 7,453,290..7,467,515 are the canonical roots of those topos. The audit's own replay binds the archive top root to our treehash (the replay from it reaches ca11cc21), which is the end-state check A10c asked for; it stays UNRESOLVED for this dataset because v2 does not carry that run (B123: rebuild v2 with it, then it can HOLD). Affects: V-STATE-ROOTS.
-- **D2-19 FAILS**: classes.json DC3 figures reflect dataset v2 (fees and public burns of the window). The figures are honest lower bounds over v1 (G31 holds), but stale: v2 settled every pending block, so the window fee and burn figures can be exact; classes.json still reads v1 (base r25, B126). Affects: V2-FEES.
-- **D2-20 FAILS**: G32 records half: every v2 derived/raw record carries its defect class. B126: classes.py tags the v1 record layout, so G32's record check passes vacuously on v2. Affects: V2-FEES, V2-DUP-BODY, V2-END-STATE, V-STATE-ROOTS, V-DC2.
 
 ## Audit history (earlier runs, kept unchanged under audit/history/)
 
 - **audit-1** (manifest `181ab956a6644433…`, report `9a559cce64088af7…`): 24 challenges, 19 HOLD, 4 FAIL (overturned: D2-01, D2-14, D2-19, D2-20), 1 UNRESOLVED (D2-16).
+- **audit-2** (manifest `c353ab3f2a78ff8c…`, report `11700b411052ee87…`): 24 challenges, 20 HOLD, 3 FAIL (overturned: D2-14, D2-19, D2-20), 1 UNRESOLVED (D2-16).
 
 ## Verdicts after the audit
 

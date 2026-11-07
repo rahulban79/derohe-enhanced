@@ -164,12 +164,14 @@ func Test_Payload_TX(t *testing.T) {
 	wdst.Sync_Wallet_Memory_With_Daemon()
 	wsrc.Sync_Wallet_Memory_With_Daemon()
 
-	if wdst.account.Balance_Mature != 1520000 {
-		t.Fatalf("Failed receiver balance check, expected 1520000 actual %d", wdst.account.Balance_Mature)
+	// r28 (dero-rft §7 B21): the fixture assumed the 800000 registration credit; upstream 39569dee raised it
+	// (r28_simulator_credit_test.go), so both balances are stated relative to the credit
+	if want := uint64(1520000 - upstreamFixtureCredit + simulatorRegistrationCredit); wdst.account.Balance_Mature != want {
+		t.Fatalf("Failed receiver balance check, expected %d actual %d", want, wdst.account.Balance_Mature)
 	}
 
-	if wsrc.account.Balance_Mature != 0 {
-		t.Fatalf("Failed sender balance check, expected 0 actual %d", wsrc.account.Balance_Mature)
+	if want := uint64(0 - upstreamFixtureCredit + simulatorRegistrationCredit); wsrc.account.Balance_Mature != want {
+		t.Fatalf("Failed sender balance check, expected %d actual %d", want, wsrc.account.Balance_Mature)
 	}
 
 	time.Sleep(time.Second)

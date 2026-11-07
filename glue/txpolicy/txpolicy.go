@@ -25,7 +25,7 @@
 //     follower that verified second got "rejected by pool by mempool": an error, never a second relay).
 //  2. Known-invalid bytes (negative verdict cache). A transaction whose PROOF failed (Add_TX_To_Pool: "could not be
 //     verified, err transaction statement N verification failed") fails again for the same bytes: the statement is
-//     expanded from the balance snapshot of tx.BLID, and transaction_verify.go:345 refuses it unless that
+//     expanded from the balance snapshot of tx.BLID, and transaction_verify.go:336 refuses it unless that
 //     snapshot's merkle root equals the Roothash inside the tx, so the inputs of Proof.Verify are fixed by the bytes.
 //     Upstream re-verified every replay (~75 ms at ring 16, ~1 s at ring 128). The verdict is remembered by
 //     Keccak256(raw) for NEG_TTL (NEG_MAX entries) and the same error text is returned, so p2p still scores the peer

@@ -433,7 +433,7 @@ def committed():
 MUTATIONS = [  # (file under harness/forensics, old, new)
     ('verify_dataset.py', "        if e.get('sealed') is not True and sha(mb) != e.get('manifest_sha256'):", "        if False:"),
     ('audit_check.py', "    for v in vs:\n        f, s = g29_check(fx / v, repo)", "    for v in vs[-1:]:\n        f, s = g29_check(fx / v, repo)"),
-    ('audit_check.py', "                       'r26': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-14')}", "                       'r26': ()}"),
+    ('audit_check.py', "                       'r26': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-14'),", "                       'r26': (),"),
     ('audit_check.py', "    if 'dataset' in rep and rep.get('dataset') != ds.name:", "    if False:"),
     ('audit_check.py', "        core['tools'] = man['tools']\n        core['inputs'] = man.get('inputs')", "        core['git_base_commit'] = man.get('git_base_commit')"),
     ('audit2.py', "    if b[32] not in (0, 1):", "    if b[32] > 2:"),

@@ -19,6 +19,14 @@ shown. 'pending' is the only stand-in for an unmeasured value. A paused area (re
 paused in harness/round.json) is reported as PAUSED, never as failing; what would have been flagged is kept, visibly,
 in its scorecard's 'held' list.
 
+r28 (harness-measure): a metric may carry "track": "<track>" (it measures an event only that track produces, e.g. the
+getwork final flips need a connected miner) or "single_round": "<rid>" (a one-round record such as a verifier's
+mutation count, never re-measured). While its track is paused in harness/round.json, or always for a single-round
+record, the metric does not count toward stale-evidence (N28-03: getworkops was 'stale since r24' while its counters
+read 0 under the paused miner); the card lists it under 'not_stale' with the reason. `record <round>` pins the round's
+pipeline records into areas.json rounds when they are unpinned (N28-02 / B52: r27 was booked from
+pipeline_20261105T163040 and a later r27 run then recomputed kats 25/25 -> 26/26).
+
   python3 -I harness/intel/area_intel.py [--live]        # scorecards + proposals (exit 0; 2 = the registry is invalid)
   python3 -I harness/intel/area_intel.py check           # validate the registry and every anchor (exit 0 / 2)
   python3 -I harness/intel/area_intel.py fix-lines       # fill missing anchor 'line' fields (a quote found exactly once)
@@ -284,6 +292,21 @@ def unpinned_rounds(reg, current):
             if any(not r.get(k) or is_pending(r.get(k)) for k in ('pipeline_full', 'pipeline_project'))]
 
 
+def pin_round(reg, rid, recs):
+    """r28 (N28-02): pin round `rid`'s pipeline_full / pipeline_project in the registry `reg` (in place) to `recs`
+    where they are unpinned, so a later run still labelled `rid` cannot move its booked values. Returns the
+    'field=id' pins made (empty when already pinned or nothing was discovered)."""
+    ent = next((r for r in reg.get('rounds', []) if r.get('id') == rid), None)
+    made = []
+    if ent is None:
+        return ''
+    for k, v in (('pipeline_full', recs.get('full')), ('pipeline_project', recs.get('project'))):
+        if v and (not ent.get(k) or is_pending(ent.get(k))):
+            ent[k] = v
+            made.append(f'{k}={v}')
+    return ', '.join(made)
+
+
 def current_round(root):
     try:
         rr = json.loads(paths(root)['round'].read_text())
@@ -292,6 +315,34 @@ def current_round(root):
     cur = rr.get('current')
     ent = next((r for r in rr.get('rounds', []) if r.get('id') == cur), {})
     return cur, ent.get('tracks') or {}
+
+
+def stale_exempt(m, tracks):
+    """r28 (N28-03): why metric `m` does not count toward stale-evidence, or None. A metric of a paused track measures
+    an event that cannot happen while the track is paused; a single-round record is never re-measured. Pure."""
+    t = m.get('track')
+    if t and (tracks or {}).get(t) == 'paused':
+        return f'PAUSED ({t}): harness/round.json tracks.{t} = paused; the event needs that track'
+    if m.get('single_round'):
+        return f"single-round record ({m['single_round']}): measured once, never re-measured"
+    return None
+
+
+def staleness(mcards, metric_defs, tracks, order, cur, stale_n):
+    """(not_stale {metric: why}, finding or None) of one area: stale-evidence when no own metric (AUTO and exempt
+    ones excluded, r28 N28-03) was measured in the last stale_n rounds before `cur`; no-metrics when the area has
+    none at all; nothing when every own metric is exempt (paused track or single-round). Pure."""
+    not_stale = {m['id']: why for m in metric_defs for why in [stale_exempt(m, tracks)] if why}
+    defined = [mc for mc in mcards if mc['id'] not in AUTO and mc['id'] not in not_stale]
+    if not defined and not_stale:
+        return not_stale, None
+    if not defined:
+        return not_stale, ('no-metrics', 'low', 'the area registers no metric of its own', [], 'metrics')
+    lastr = max((order.index(mc['last']['round']) for mc in defined if mc['last']), default=-1)
+    if cur in order and order.index(cur) - lastr > stale_n:
+        return not_stale, ('stale-evidence', 'medium', f'no registered metric measured since '
+                           f'{order[lastr] if lastr >= 0 else "never"} (more than {stale_n} rounds before {cur})', [], 'stale')
+    return not_stale, None
 
 
 def area_paused(a, tracks):
@@ -1180,14 +1231,9 @@ def evaluate(root, live=False, cur_override=None):
         cov = len(kat_present) + mut_now['total'] + len(a.get('gates', []))
         if cov == 0:
             found.append(('zero-coverage', 'high', 'no KAT file, no go_mutate mutation and no gate covers this area', [], 'cov'))
-        defined = [mc for mc in mcards if mc['id'] not in AUTO]
-        if defined:
-            lastr = max((order.index(mc['last']['round']) for mc in defined if mc['last']), default=-1)
-            if cur in order and order.index(cur) - lastr > stale_n:
-                found.append(('stale-evidence', 'medium', f'no registered metric measured since '
-                              f'{order[lastr] if lastr >= 0 else "never"} (more than {stale_n} rounds before {cur})', [], 'stale'))
-        else:
-            found.append(('no-metrics', 'low', 'the area registers no metric of its own', [], 'metrics'))
+        not_stale, sf = staleness(mcards, a.get('metrics', []), tracks, order, cur, stale_n)
+        if sf:
+            found.append(sf)
         # track mismatch (registry vs round.json)
         if a.get('track') and tracks.get(a['track']) and (a.get('status') == 'paused') != (tracks[a['track']] == 'paused'):
             found.append(('track-mismatch', 'high', f"registry status {a.get('status')} but round.json tracks.{a['track']} = {tracks[a['track']]}",
@@ -1211,6 +1257,7 @@ def evaluate(root, live=False, cur_override=None):
             state = 'NO-DATA'
         cards.append({'id': aid, 'title': a['title'], 'owner_dim': a['owner_dim'], 'status': 'paused' if paused else 'active',
                       'state': state, 'paused_why': pwhy, 'paused_anchor': a.get('paused_why') if paused else None,
+                      'not_stale': not_stale,
                       'code_paths': a.get('code_paths'), 'kat_files': {'registered': a.get('kat_files', []), 'present': kat_present},
                       'mutations_now': mut_now, 'gates_now': {'cycle': cyc_last, 'state': gcard}, 'backlog': bl,
                       'metrics': mcards, 'anchors': {'values': total_vals, 'refused': len(refused), 'refused_ids': refused},
@@ -1427,6 +1474,9 @@ def record(root, rid):
                         continue
                     vals[aid].setdefault(k, e)
     added, kept = 0, (skipped_live if rid == cur else [])
+    pinned = pin_round(reg, rid, discover_round_records(root, reg, rid))       # r28 N28-02 (B52 at record time)
+    if pinned:
+        kept.append(f'{rid}: pipeline records pinned in areas.json rounds ({pinned})')
     sealed = seal_volatile(root, rid, vals)
     for a in reg['areas']:
         h = a.setdefault('history', {}).setdefault(rid, {})

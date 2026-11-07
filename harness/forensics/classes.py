@@ -28,6 +28,14 @@ WINDOW = (7415466, 7497942)
 BOUND_TYPES = ('exact', 'lower-bound', 'upper-bound', 'unbounded')
 CLASS_IDS = ('DC0', 'DC1', 'DC2', 'DC3')
 SLOT_VALUES = (None, 'pending: defect class')
+V2_SLOT_VALUES = (None, 'pending', 'pending: defect class')   # v2.py writes the literal 'pending' (B126, R28)
+# R28 B126: the v2 record layout. Every per-tx / per-block record of a v2+ dataset lives in one of these JSON-lines files
+# and carries the defect class in `class` itself (v2 manifest class_slot; `evidence_class` holds RAW/DERIVED/EXT). The
+# derived/ ones are tagged by v2.derive (so the G28 re-derivation reproduces the tags byte for byte); the raw/ ones are
+# tagged in place by tag_dataset (their bodies are blobs in the tier B store and never change).
+V2_RECORD_FILES = {'derived/txs.jsonl.gz': 'tx', 'derived/blocks_fees.jsonl.gz': 'block',
+                   'derived/roots_window.jsonl.gz': 'block', 'raw/tx_bodies.jsonl.gz': 'tx',
+                   'raw/wall1_blocks.jsonl.gz': 'block'}
 SCHEMA = 'r26 classes v1 (rft §0.8.9)'
 
 
@@ -72,6 +80,8 @@ class Inputs:
 
     def tx_records(self):
         out = []
+        if (self.ds / 'derived' / 'txs.jsonl.gz').exists():          # R28 B126: v2 layout (one JSON line per tx)
+            return [json.loads(l) for l in gz_lines(self.bytes('derived/txs.jsonl.gz'))]
         for d in (self.ds, self.base):
             if d is not None and (d / 'derived' / 'tx').is_dir():
                 for p in sorted((d / 'derived' / 'tx').glob('*.json')):
@@ -110,6 +120,8 @@ def tag_dataset(ds, root=ROOT):
     led = json.loads((Path(root) / 'forensics' / 'ledger.json').read_text())
     if any(v.get('version') == ds.name and v.get('sealed') for v in led.get('versions', [])) or ds.name == 'r25':
         raise SystemExit(f'refused: {ds.name} is a sealed dataset version (rft §0.8.1 rule 4: build on, never rewrite)')
+    if is_v2_layout(ds):
+        return tag_dataset_v2(ds, root)
     hf3 = json.loads((ds / 'derived' / 'hf3.json').read_text())
     table = {r['txid'] for r in hf3['rows']}
     n = collections.Counter()
@@ -127,6 +139,97 @@ def tag_dataset(ds, root=ROOT):
         w.write_bytes(gzip.compress(''.join(json.dumps(_fill(r, tag_block(r)), sort_keys=True) + '\n' for r in rows).encode(), mtime=0))
         n['window_DC3'] = len(rows)
     return dict(n)
+
+
+def hf3_txids(root=ROOT):
+    """the 75 table TXIDs read from the HF3 table source (blockchain/hardfork_fixes.go: one quoted TXID per Bl_Tips
+    line), the same parse v2.derive uses for walls/inclusions; never from a derived file, so v2 and v3 need no hf3.json"""
+    out = set()
+    for l in (Path(root) / 'blockchain' / 'hardfork_fixes.go').read_text().splitlines():
+        l = l.strip()
+        if l.startswith('"') and 'Bl_Tips' in l:
+            out.add(l.split('"')[1])
+    return out
+
+
+def is_v2_layout(ds):
+    return (Path(ds) / 'derived' / 'txs.jsonl.gz').exists()
+
+
+def tag_v2_row(rec, kind, table):
+    """one v2 record -> its defect class in `class` (only when `class` is still a slot value; DC2 is never per record)"""
+    cls = tag_tx(rec, table) if kind == 'tx' else tag_block(rec)
+    if rec.get('class') in V2_SLOT_VALUES:
+        rec['class'] = cls
+    return rec
+
+
+def tag_v2_lines(lines, kind, table):
+    """JSON lines (str) -> tagged JSON lines, serialized exactly as v2.jl (sorted keys, compact separators)"""
+    out = []
+    for l in lines:
+        r = tag_v2_row(json.loads(l), kind, table)
+        out.append(json.dumps(r, sort_keys=True, separators=(',', ':')))
+    return out
+
+
+def gz_lines(b):
+    return [l for l in gzip.decompress(b).decode().splitlines() if l.strip()]
+
+
+def gz_encode(lines):
+    """byte-identical to v2.gz_bytes (gzip, filename '', mtime 0, level 9)"""
+    import io
+    buf = io.BytesIO()
+    with gzip.GzipFile(filename='', mode='wb', fileobj=buf, mtime=0, compresslevel=9) as g:
+        for l in lines:
+            g.write((l + '\n').encode())
+    return buf.getvalue()
+
+
+def tag_v2_files(files, table, kinds=None):
+    """{relpath: gz bytes} -> the same with every record of V2_RECORD_FILES tagged (v2.derive calls this on its output)"""
+    kinds = V2_RECORD_FILES if kinds is None else kinds
+    out = dict(files)
+    for rel, kind in kinds.items():
+        if rel in out:
+            out[rel] = gz_encode(tag_v2_lines(gz_lines(out[rel]), kind, table))
+    return out
+
+
+def v2_record_census(ds):
+    """{file: {class: n}} over the v2 record files that exist (G32 record half, classes.json records)"""
+    ds = Path(ds)
+    res = {}
+    for rel in V2_RECORD_FILES:
+        p = ds / rel
+        if p.exists():
+            res[rel] = dict(sorted(collections.Counter(str(json.loads(l).get('class')) for l in gz_lines(p.read_bytes())).items()))
+    return res
+
+
+def _sealed(ds, root):
+    led = json.loads((Path(root) / 'forensics' / 'ledger.json').read_text())
+    return any(v.get('version') == ds.name and v.get('sealed') for v in led.get('versions', [])) or ds.name == 'r25'
+
+
+def tag_dataset_v2(ds, root=ROOT):
+    """R28 B126: tag every v2 record file in place (refuses a sealed version, like tag_dataset)"""
+    ds = Path(ds)
+    if _sealed(ds, root):
+        raise SystemExit(f'refused: {ds.name} is a sealed dataset version (rft §0.8.1 rule 4: build on, never rewrite)')
+    table = hf3_txids(root)
+    n = collections.Counter()
+    for rel, kind in V2_RECORD_FILES.items():
+        p = ds / rel
+        if not p.exists():
+            continue
+        new = gz_encode(tag_v2_lines(gz_lines(p.read_bytes()), kind, table))
+        if new != p.read_bytes():
+            p.write_bytes(new)
+        for c, k in v2_record_census(ds)[rel].items():
+            n[f'{rel}:{c}'] += k
+    return dict(sorted(n.items()))
 
 
 # ───────────────────────────── figures ─────────────────────────────
@@ -147,7 +250,7 @@ def struct_census(stats, table):
     """FQ3 structural census over held bodies: payloads whose randomness-commitment digest equals one in ANOTHER tx
     (or another payload of the same tx). Counts only; the per-tx list is limited to the 75 table TXIDs (rule 13)."""
     d2tx = collections.defaultdict(set)
-    payloads, intra, ok = 0, 0, 0
+    payloads, intra, ok, intra_table = 0, 0, 0, 0
     for s in stats:
         if not s.get('ok'):
             continue
@@ -156,6 +259,7 @@ def struct_census(stats, table):
         payloads += len(s['payloads'])
         if len(ds) != len(set(ds)):
             intra += 1
+            intra_table += s['txid'] in table
         for d in ds:
             d2tx[d].add(s['txid'])
     shared = {d: t for d, t in d2tx.items() if len(t) > 1}
@@ -163,7 +267,7 @@ def struct_census(stats, table):
     return {'bodies_decoded': ok, 'bodies_given': len(stats), 'payloads': payloads, 'distinct_commitments': len(d2tx),
             'commitments_shared_across_txs': len(shared), 'txs_with_a_shared_commitment': len(txs),
             'table_txs_with_a_shared_commitment': sorted(t for t in txs if t in table),
-            'txs_with_intra_tx_shared_commitment': intra}
+            'txs_with_intra_tx_shared_commitment': intra, 'table_txs_with_intra_tx_shared_commitment': intra_table}
 
 
 def build(I, presence=None, invariant=None, stats=None, track=None):
@@ -177,6 +281,8 @@ def build(I, presence=None, invariant=None, stats=None, track=None):
     groups = collections.Counter(r['group'] for r in hf3['rows'])
     carriers = collections.Counter((r['group'], len(r['carriers'])) for r in hf3['rows'])
     tag = collections.Counter(tag_tx(r, table) for r in txr)
+    v2 = is_v2_layout(I.ds)
+    v2fees = (I.json('derived/fees.json') or {}).get('v2') if v2 else None
 
     # FQ1 census: TXIDs in the window's block tx lists
     occ = collections.Counter(t for r in rows for t in r.get('tx_hashes', []))
@@ -234,13 +340,28 @@ def build(I, presence=None, invariant=None, stats=None, track=None):
         figure('dc3-window-emission', 'DC3', 'window emission (formula coinbase) = CalcSupply difference', em['window_emission_atomic'], W,
                pf['supply_identity_ok'], pf['blocks'], 'derived/emission.json per_block.supply_identity_ok', 'derived/emission.json per_block.blocks',
                'exact' if pf['supply_identity_ok'] == pf['blocks'] else 'lower-bound', unit='atomic'),
+    ]
+    if v2fees is None:
+        figs += [
         figure('dc3-window-fees', 'DC3', 'window fees, known blocks', em['fees']['known_sum_atomic'], W, em['fees']['known_blocks'],
                em['fees']['known_blocks'] + em['fees']['pending_blocks'], 'derived/emission.json fees.known_blocks', 'derived/emission.json fees',
                'exact' if em['fees']['pending_blocks'] == 0 else 'lower-bound', unit='atomic'),
         figure('dc3-window-public-burns', 'DC3', 'window public burns, known blocks', pf['burn_known_sum'], W, em['fees']['known_blocks'],
                em['fees']['known_blocks'] + em['fees']['pending_blocks'], 'derived/emission.json fees.known_blocks (bodies held)',
                'derived/emission.json fees', 'exact' if em['fees']['pending_blocks'] == 0 else 'lower-bound', unit='atomic'),
-    ]
+        ]
+    else:   # R28 B126 / audit2 D2-19: v2 settled v1's pending-fee blocks; the window figures read v2's own sums
+        known = em['fees']['known_blocks'] + (v2fees['settled'] if v2fees['still_pending'] == 0 else 0)
+        den = em['fees']['known_blocks'] + em['fees']['pending_blocks']
+        ex = 'exact' if v2fees['window_fee_pending_blocks'] == 0 and v2fees['still_pending'] == 0 and known == den else 'lower-bound'
+        figs += [
+            figure('dc3-window-fees', 'DC3', 'window fees, every block', v2fees['window_fee_sum'], W, known, den,
+                   'derived/fees.json v2 (v1 known blocks + v1 pending blocks settled)', 'derived/emission.json fees (v1 window blocks)',
+                   ex, unit='atomic'),
+            figure('dc3-window-public-burns', 'DC3', 'window public burns, every block', v2fees['window_burn_sum'], W, known, den,
+                   'derived/fees.json v2 (v1 known blocks + v1 pending blocks settled)', 'derived/emission.json fees (v1 window blocks)',
+                   ex, unit='atomic'),
+        ]
     by = collections.defaultdict(list)
     for f in figs:
         by[f['class']].append(f['id'])
@@ -271,7 +392,12 @@ def build(I, presence=None, invariant=None, stats=None, track=None):
             'no_cross_class_sum': 'a figure has exactly one class; a figure derived from others names only figures of its own class',
             'fix_is_not_restore': 'a fix status never changes a historical grade (rule 10)',
         },
-        'records': {'tx': dict(sorted(tag.items())), 'block': {'DC3': len(I.block_records())}, 'window_rows': {'DC3': N}},
+        'records': ({rel: c for rel, c in v2_record_census(I.ds).items()} if v2 else
+                    {'tx': dict(sorted(tag.items())), 'block': {'DC3': len(I.block_records())}, 'window_rows': {'DC3': N}}),
+        'records_rule': ('v2 layout (R28 B126): per record file, the count of each defect class in `class`; a tx record is DC1 '
+                         'when its TXID is in the HF3 table, else DC3; a block record (fees, state roots, wall-1 link blocks) '
+                         'is DC3; DC2 is never per record; the base version\'s window rows are the base\'s records'
+                         if v2 else 'v1 layout: derived/tx, derived/block, derived/window.jsonl.gz'),
         'classes': classes,
         'figures': figs,
         'headline': {'dc2_present_now': dc2_present if dc2_present is not None else 'pending',
@@ -297,10 +423,11 @@ def build(I, presence=None, invariant=None, stats=None, track=None):
                          f'lists show {len(multi) - len(dc0)} table TXIDs twice while derived/hf3.json counts {dual_raw} with two carriers')
                         if len(multi) - len(dc0) != dual_raw else 'window and carrier counts agree'},
         'FQ2': {'question': 'DC1 amount observability: is a DC1 tx amount determined by public data?',
-                'status': 'answered for the recorded criteria; S-R22 window-wide pending B96 bodies' if sc else 'pending: structural census not run',
+                'status': ('answered for the recorded criteria, window-wide (every window TXID held)' if sc and held_window_txids == len(occ)
+                           else 'answered for the recorded criteria; S-R22 window-wide pending B96 bodies' if sc else 'pending: structural census not run'),
                 'criteria': {
                     'P1': {'what': 'a public plaintext value field (tx value, payload burn) of the DC1 tx', 'result': f'{public_value} of {len(hf3["rows"])}',
-                           'anchor': 'derived/tx/<txid>.json value_field, burn_total'},
+                           'anchor': ('derived/txs.jsonl.gz value_field, burn_total' if v2 else 'derived/tx/<txid>.json value_field, burn_total')},
                     'S-R22': {'what': 'the R22 C3 structural signature (a randomness commitment shared by two payloads); recorded as counts only',
                               'result': (f'{len(sc["table_txs_with_a_shared_commitment"])} of {len(hf3["rows"])} within held bodies' if sc else 'pending'),
                               'scope': (f'{sc["bodies_decoded"]} held bodies ({held_window_txids} of {len(occ)} window TXIDs)' if sc else 'pending'),
@@ -310,12 +437,18 @@ def build(I, presence=None, invariant=None, stats=None, track=None):
                 'lower_bound_sum': obs_amount,
                 'consequence': 'the external 23,886,517.3 figure stays EXT (disclosure track C6); no DERIVED input reproduces it'},
         'FQ3': {'question': 'the randomness-reuse boundary: which wallet versions reused payload randomness, from which height the signature stops',
-                'status': 'partial: code side answered, on-chain boundary pending',
+                'status': ('answered for the window: code side and on-chain census (no boundary inside the window)'
+                           if sc and held_window_txids == len(occ) and sc['commitments_shared_across_txs'] == 0
+                           else 'partial: code side answered, on-chain boundary pending'),
                 'code_side': {'upstream_tags_with_deterministic_r': 'see presence of walletapi/transaction_build.go (FQ3 rows below)',
                               'local_fix': 'walletapi/transaction_build.go:355 pick_ring_order (R22, local only, not upstream)'},
                 'census': sc if sc else 'pending: --structstats not given',
-                'boundary_height': 'pending: no height boundary can be read while the signature is absent from every held body and the upstream '
-                                   'code never changed; window-wide census needs the B96 bodies',
+                'boundary_height': (('not inside the window: the cross-tx signature is absent from all '
+                                     f'{sc["bodies_decoded"]:,} held bodies ({held_window_txids:,} of {len(occ):,} window TXIDs), so no '
+                                     'height in the window separates signature / no signature; the upstream code never changed (code_side)')
+                                    if sc and held_window_txids == len(occ) and sc['commitments_shared_across_txs'] == 0 else
+                                    'pending: no height boundary can be read while the signature is absent from every held body and the upstream '
+                                    'code never changed; window-wide census needs the B96 bodies'),
                 'mechanism_link_to_dc1': 'pending (rft §0.8.9 FQ3: candidate, not established)'},
         'FQ4': {'question': 'DC2 presence in the current code (head, Release152, genesis-era tag) + structural transcript KAT',
                 'status': 'answered' if presence else 'pending',

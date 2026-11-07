@@ -22,7 +22,7 @@ derived/classes.json render as <span class="fcl" ...> (harness/forensics/bounds.
 untraced-number scan and checks them with bounds.check_page, so a page has one rule for every number. G30 also checks
 the soundness page's generated section (<!--known:begin--> ... <!--known:end-->, harness/kit/soundpage.py).
 """
-import argparse, base64, gzip, hashlib, html, json, re, sys
+import argparse, base64, gzip, hashlib, html, json, os, re, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -329,7 +329,7 @@ CLASS_IDS = ('DC0', 'DC1', 'DC2', 'DC3')
 
 
 def is_v2(m):
-    return m.get('version') == 2
+    return isinstance(m.get('version'), int) and m.get('version') >= 2   # R28: v3 (forensics/r28) has the v2 layout
 
 
 def _short(v, n=16):
@@ -428,11 +428,20 @@ def build_v2(F):
     F.add('fee_v1_disagree', FE, len(fe.get('v1_known_rows_disagreeing') or []), 'len(v1_known_rows_disagreeing)')
     # state roots, node replay runs, walls, (a2), inclusions
     SR = 'derived/state_roots.json'
+    sr0, _ = F.json(SR)
+    # R28 v3: runs of two entry points (pre-fix A/B, HF3-entry C) are compared per entry; v2 has one flag
+    ident = (['runs_byte_identical_per_entry', 'blockchain.Add_Complete_Block (pre-fix tool, B123)']
+             if 'runs_byte_identical_per_entry' in (sr0 or {}) else ['runs_byte_identical'])
+    if 'C' in ((sr0 or {}).get('runs') or {}):
+        for fid, path in (('runc_end_state', ['runs', 'C', 'end_state_check']), ('runc_topos', ['runs', 'C', 'topos']),
+                          ('runc_first', ['runs', 'C', 'topo_range', 0]), ('runc_last', ['runs', 'C', 'topo_range', 1]),
+                          ('runs_identical_hf3', ['runs_byte_identical_per_entry', 'p2p.Add_Complete_Block_HF3'])):
+            F.j(fid, SR, path)
     for fid, path in (('roots_topos', ['window_coverage', 'topos_with_pre_post_root']), ('roots_window_topos', ['window_coverage', 'window_topos']),
                       ('roots_pending_first', ['window_coverage', 'pending_range', 0]), ('roots_pending_last', ['window_coverage', 'pending_range', 1]),
                       ('run_fail_topo', ['runs', 'A', 'fail_topo']), ('run_fail_error', ['runs', 'A', 'fail_error']),
                       ('run_topos', ['runs', 'A', 'topos']), ('run_first', ['runs', 'A', 'topo_range', 0]), ('run_last', ['runs', 'A', 'topo_range', 1]),
-                      ('runs_identical', ['runs_byte_identical']), ('wit_equal', ['roothash_witnesses', 'equal']),
+                      ('runs_identical', ident), ('wit_equal', ['roothash_witnesses', 'equal']),
                       ('wit_differ', ['roothash_witnesses', 'differ']), ('wit_archive_equal', ['roothash_witnesses', 'archive_equal']),
                       ('wit_archive_differ', ['roothash_witnesses', 'archive_differ']), ('wit_outside', ['roothash_witnesses', 'outside_held_roots']),
                       ('a10c_answer', ['a10c', 'answer']), ('anchor_topo', ['anchor_topo'])):
@@ -685,8 +694,45 @@ def page_inputs(root=ROOT, dyn_root=None):
     dyn = Path(dyn_root) if dyn_root else root
     if (dyn / 'forensics' / 'ledger.json').exists():
         led = json.loads((dyn / 'forensics' / 'ledger.json').read_text())
-        return root / 'forensics' / led['versions'][-1]['version'], dyn
+        e = led['versions'][-1]
+        return dataset_at(root, e['version'], e.get('manifest_sha256')), dyn
     return newest_dataset(root), root
+
+
+def dataset_at(root, version, manifest_sha):
+    """R28: the dataset directory whose manifest.json hashes to manifest_sha. The tree's copy when it matches; else the
+    version as it was committed with that manifest, extracted from the git object store into a per-user cache (a closed
+    page froze an OPEN version that was later tagged and sealed, B126: the page keeps reading exactly the bytes it named).
+    No match anywhere: the tree's copy, so the page check FAILS on the differing hashes instead of passing silently."""
+    import subprocess, tarfile, io, tempfile
+    root = Path(root)
+    cur = root / 'forensics' / version
+    rel = f'forensics/{version}/manifest.json'
+    if not manifest_sha or not (cur / 'manifest.json').exists() or \
+            hashlib.sha256((cur / 'manifest.json').read_bytes()).hexdigest() == manifest_sha:
+        return cur
+    log = subprocess.run(['git', '-C', str(root), 'log', '--all', '--format=%H', '--', rel], capture_output=True, text=True)
+    for c in log.stdout.split():
+        b = subprocess.run(['git', '-C', str(root), 'show', f'{c}:{rel}'], capture_output=True)
+        if b.returncode or hashlib.sha256(b.stdout).hexdigest() != manifest_sha:
+            continue
+        tag = hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:12]   # one cache per tree: the base links point into it
+        cache = Path(tempfile.gettempdir()) / f'fx_dataset_at_{os.getuid()}' / f'{tag}_{manifest_sha[:32]}'
+        d = cache / 'forensics' / version
+        if not (d / 'manifest.json').exists():
+            arc = subprocess.run(['git', '-C', str(root), 'archive', '--format=tar', c, f'forensics/{version}'], capture_output=True)
+            if arc.returncode:
+                break
+            cache.mkdir(parents=True, exist_ok=True)
+            with tarfile.open(fileobj=io.BytesIO(arc.stdout)) as t:
+                t.extractall(cache, filter='data')
+        for sib in sorted((root / 'forensics').iterdir()):   # the sealed base versions it reads by repo-relative path
+            if sib.is_dir() and sib.name != version and not (cache / 'forensics' / sib.name).exists():
+                (cache / 'forensics' / sib.name).symlink_to(sib.resolve())
+        if hashlib.sha256((d / 'manifest.json').read_bytes()).hexdigest() == manifest_sha:
+            return d
+        break
+    return cur
 
 
 def page_dyn_root(root, page):
@@ -971,11 +1017,15 @@ def g30(root=ROOT, page=None, srcarch=None, sound=None):
         cl = json.loads((F.ds / 'derived' / 'classes.json').read_text()) if (F.ds / 'derived' / 'classes.json').exists() else None
         if cl is None:
             fails.append('derived/classes.json missing (the class blocks cannot be checked)')
+        # R28: a closed ledger page is checked against the class file of the dataset it was built from (FP.ds, possibly
+        # an earlier version as committed, dataset_at), the live pages against the newest dataset's
+        clp = (json.loads((FP.ds / 'derived' / 'classes.json').read_text())
+               if FP is not F and (FP.ds / 'derived' / 'classes.json').exists() else cl)
         for pg in (Path(page), sa, sp):
             if pg is None or not pg.exists() or cl is None:
                 continue
             t = pg.read_text()
-            bp, k = BD.check_page(t, cl, need=True, root=root)
+            bp, k = BD.check_page(t, clp if pg == Path(page) else cl, need=True, root=root)
             ncl += k
             fails += [f'{pg.name} (class block): {x}' for x in bp]
         extra = (f' and {n3} on {sp.name if sp else "the soundness page"} (plus {ncl} class figures checked against '

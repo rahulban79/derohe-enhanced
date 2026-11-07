@@ -586,11 +586,20 @@ func maintain_connection_to_peers() {
 	}
 }
 
+// P2P_BIND_DEFAULT is where the p2p server listens when --p2p-bind is absent: every interface, a random port at each
+// start (r28: named so derod's help text can be checked against it; a router forward needs an explicit --p2p-bind).
+const P2P_BIND_DEFAULT = "0.0.0.0:0"
+
+// the shared pre-TLS accept budget of every unknown inbound session (upstream literals, named in r28 so the documented
+// "~10/s all unknown inbound" of rft §7 B30 is checked against them: harness/intel/config_truth.py)
+const INBOUND_ACCEPT_RATE = 10.0
+const INBOUND_ACCEPT_BURST = 40
+
 func P2P_Server_v2() {
 
-	var accept_limiter = rate.NewLimiter(10.0, 40) // 10 incoming per sec, burst of 40 is okay
+	var accept_limiter = rate.NewLimiter(INBOUND_ACCEPT_RATE, INBOUND_ACCEPT_BURST) // 10 incoming per sec, burst of 40 is okay
 
-	default_address := "0.0.0.0:0" // be default choose a random port
+	default_address := P2P_BIND_DEFAULT // be default choose a random port
 	if _, ok := globals.Arguments["--p2p-bind"]; ok && globals.Arguments["--p2p-bind"] != nil {
 		addr, err := net.ResolveTCPAddr("tcp", globals.Arguments["--p2p-bind"].(string))
 		if err != nil {

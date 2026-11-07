@@ -216,11 +216,15 @@ const TOTAL_SUPPLY_BASIS = "formula: blockchain.CalcSupply(height) / 100000 (who
 type GetInfo_Result_R25 struct {
 	rpc.GetInfo_Result
 	Total_Supply_Basis string `json:"total_supply_basis"`
+	Tx_Pool_Unmined    uint64 `json:"tx_pool_unmined"` // r28 B42: tx_pool_size minus the recently mined txs (r28_rpcmetrics.go)
 }
 
 // GetInfoR25 is what DERO.GetInfo / getinfo / get_info serve from r25 (websocket_server.go).
 func GetInfoR25(ctx context.Context) (result GetInfo_Result_R25, err error) {
 	result.GetInfo_Result, err = GetInfo(ctx)
 	result.Total_Supply_Basis = TOTAL_SUPPLY_BASIS
+	if err == nil && chain != nil {
+		result.Tx_Pool_Unmined = pool_unmined(chain.Mempool.Mempool_List_TX(), recently_mined())
+	}
 	return
 }

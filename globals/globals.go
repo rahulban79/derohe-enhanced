@@ -108,8 +108,15 @@ func TimeSkipP2P() time.Time {
 	return time.Now()
 }
 
+// GetOffset is the correction Time() applies to the local clock (0 when --timeisinsync or before NTP has run).
+// r27: it was time.Now().Sub(Time()), the NEGATED correction plus the jitter between two clock reads, so the status
+// line printed "offset|ntp|p2p" with offset = -ntp for the same correction. Time() itself is unchanged.
 func GetOffset() time.Duration {
-	return time.Now().Sub(Time())
+	if TimeIsInSync {
+		return 0
+	}
+	off, _ := ntp_offset()
+	return off
 }
 func GetOffsetNTP() time.Duration {
 	return time.Duration(atomic.LoadInt64((*int64)(&ClockOffsetNTP)))
@@ -321,10 +328,15 @@ func FormatMoney12(amount uint64) string {
 }
 
 // format money with specific precision
+// r27: the quotient was computed at big.Float's default 64-bit precision, so amounts of 19-20 digits printed a wrong
+// last digit (FormatMoney(MaxUint64) gave ...51614, not ...51615). 128 bits hold every uint64/1e5 to far below the
+// fifth decimal, so the five decimals are exact; the rounding of shorter precisions is unchanged.
+const money_prec = 128
+
 func FormatMoneyPrecision(amount uint64, precision int) string {
-	hard_coded_decimals := new(big.Float).SetInt64(100000)
-	float_amount, _, _ := big.ParseFloat(fmt.Sprintf("%d", amount), 10, 0, big.ToZero)
-	result := new(big.Float)
+	hard_coded_decimals := new(big.Float).SetPrec(money_prec).SetInt64(100000)
+	float_amount := new(big.Float).SetPrec(money_prec).SetUint64(amount)
+	result := new(big.Float).SetPrec(money_prec)
 	result.Quo(float_amount, hard_coded_decimals)
 	return result.Text('f', precision) // 5 is display precision after floating point
 }
@@ -354,8 +366,29 @@ func ParseValidateAddress(str string) (addr *rpc.Address, err error) {
 	return
 }
 
+// the largest amount ParseAmount accepts before the exact conversion: (2^64-1)/1e5 DERO (the uint64 check follows)
+var max_amount_dero, _, _ = big.ParseFloat("184467440737095.51615", 10, money_prec, big.ToZero)
+
+// the longest amount text ParseAmount reads: "184467440737095.51615" is 21 characters; 128 leaves room for padding zeros
+const max_amount_text = 128
+
 // this will covert an amount in string form to atomic units
 func ParseAmount(str string) (amount uint64, err error) {
+	// r28 (GG28-2): checked before any big-number work. A long exponent made ParseFloat/Text build the whole number
+	// (1e9999999: 10.5 s, 323 MB and a 10 MB error string; 1e99999999 > 300 s), and a binary exponent was accepted as
+	// decimal input ('1p3' was 8 DERO): amounts are decimal, so 'p'/'P' is refused and an e/E exponent is bounded.
+	if t := strings.TrimSpace(str); len(t) > max_amount_text {
+		err = fmt.Errorf("Amount is too long (%d characters, at most %d)", len(t), max_amount_text)
+		return
+	} else if strings.ContainsAny(t, "pP") {
+		err = fmt.Errorf("Amount should be in base 10 (0123456789)")
+		return
+	} else if e := strings.IndexAny(t, "eE"); e >= 0 {
+		if x, xerr := strconv.Atoi(t[e+1:]); xerr != nil || x > 64 || x < -64 {
+			err = fmt.Errorf("Amount exponent is out of range")
+			return
+		}
+	}
 	float_amount, base, err := big.ParseFloat(strings.TrimSpace(str), 10, 0, big.ToZero)
 
 	if err != nil {
@@ -371,22 +404,35 @@ func ParseAmount(str string) (amount uint64, err error) {
 		return
 	}
 
-	// multiply by 5 zeroes
-	hard_coded_decimals := new(big.Float).SetInt64(100000)
-	float_amount.Mul(float_amount, hard_coded_decimals)
-
-	/*if !float_amount.IsInt() {
-	    err =  fmt.Errorf("Amount  is invalid %s ", float_amount.Text('f',0))
-	    return
-	}*/
-
-	// convert amount to uint64
-	//amount, _ = float_amount.Uint64() // sanity checks again
-	amount, err = strconv.ParseUint(float_amount.Text('f', 0), 10, 64)
-	if err != nil {
-		err = fmt.Errorf("Amount  is invalid %s ", float_amount.Text('f', 0))
+	// r27: the amount was multiplied by 1e5 in a 64-bit big.Float and rounded to an integer, so digits past the fifth
+	// decimal were silently rounded (0.000009 DERO became 1 atomic unit, 0.000005 became 0, 1.000005 became 1.00000)
+	// and amounts of 19-20 digits lost their last unit (92233720368547.75807 became ...806). The syntax checks above
+	// are unchanged; the value is now converted exactly (big.Rat) and an amount that is not a whole number of atomic
+	// units is refused instead of being changed.
+	if float_amount.Cmp(max_amount_dero) > 0 { // also bounds the exact conversion below
+		err = fmt.Errorf("Amount  is invalid (above %s)", max_amount_dero.Text('f', 5)) // r28: never prints the input's value
 		return
 	}
+	text := strings.TrimSpace(str)
+	if strings.HasPrefix(text, "-") { // "-0" passed the sign check above and was refused only by the old ParseUint
+		err = fmt.Errorf("Amount cannot be negative")
+		return
+	}
+	exact, ok := new(big.Rat).SetString(text)
+	if !ok {
+		err = fmt.Errorf("Amount could not be parsed")
+		return
+	}
+	exact.Mul(exact, new(big.Rat).SetInt64(100000)) // multiply by 5 zeroes
+	if !exact.IsInt() {
+		err = fmt.Errorf("Amount has more than 5 decimal places (the smallest unit is 0.00001)")
+		return
+	}
+	if !exact.Num().IsUint64() {
+		err = fmt.Errorf("Amount  is invalid (above %s)", max_amount_dero.Text('f', 5))
+		return
+	}
+	amount = exact.Num().Uint64()
 	//if amount == 0 {
 	//	err = fmt.Errorf("0 cannot be transferred")
 	//	return

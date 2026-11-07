@@ -368,7 +368,7 @@ MUTATIONS = [
     ('AI6', "BAD_MUT = ('MISSED', 'STALE', 'INVALID', 'BROKEN', 'NEWFAIL')", "BAD_MUT = ('MISSED', 'STALE', 'BROKEN', 'NEWFAIL')",
      'an INVALID mutation is not reported'),
     ('AI6', "        for p in lis[-6:-1]:", "        for p in lis[-6:]:", 'new ERROR kinds are compared against the snapshot itself'),
-    ('AI6', "            if cur in order and order.index(cur) - lastr > stale_n:", "            if cur in order and order.index(cur) - lastr > stale_n + 5:",
+    ('AI6', "    if cur in order and order.index(cur) - lastr > stale_n:", "    if cur in order and order.index(cur) - lastr > stale_n + 5:",   # r28: re-anchored (staleness() is a function now, N28-03)
      'stale evidence is never reported'),
     ('AI6', "        (ok if ((root / t).exists() or Path(t).name in files) else bad).append(t)", "        ok.append(t)",
      'a §7 anchor to a file that is gone still resolves'),

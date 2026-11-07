@@ -127,7 +127,11 @@ func (c *r24_decoy_bcache) put(name string, b int) {
 }
 
 // r24_decoy_B_from returns round(log2(mean 2^b)) + slack
-func r24_decoy_B_from(bs []int) int {
+func r24_decoy_B_from(bs []int) int { return r24_decoy_B_slack(bs, R24_DECOY_SLACK) }
+
+// r24_decoy_B_slack is r24_decoy_B_from with the slack as a parameter (r28 B51: the slack 1 vs 2 A/B,
+// TestR28DecoySlackAB; the node always uses R24_DECOY_SLACK).
+func r24_decoy_B_slack(bs []int, slack int) int {
 	if len(bs) == 0 {
 		return -1
 	}
@@ -135,12 +139,17 @@ func r24_decoy_B_from(bs []int) int {
 	for _, b := range bs {
 		s += math.Exp2(float64(b))
 	}
-	return int(math.Round(math.Log2(s/float64(len(bs))))) + R24_DECOY_SLACK
+	return int(math.Round(math.Log2(s/float64(len(bs))))) + slack
 }
 
 // r24_decoy_draws draws leaves of t until want are accepted or the budget is spent. B comes from the cache, else from
 // a pilot of raw draws charged to the same budget. Draws that fail (empty tree, store error) count against the budget.
 func r24_decoy_draws(t r24_decoy_tree, name string, cache *r24_decoy_bcache, want, budget int, coin func(int) bool) (out []r24_draw, st r24_decoy_stats) {
+	return r24_decoy_draws_slack(t, name, cache, want, budget, coin, R24_DECOY_SLACK)
+}
+
+// r24_decoy_draws_slack is r24_decoy_draws with the slack as a parameter (r28 B51 A/B only).
+func r24_decoy_draws_slack(t r24_decoy_tree, name string, cache *r24_decoy_bcache, want, budget int, coin func(int) bool, slack int) (out []r24_draw, st r24_decoy_stats) {
 	next := func() (r24_draw, bool) {
 		st.Draws++
 		k, v, err := t.Random()
@@ -174,7 +183,7 @@ func r24_decoy_draws(t r24_decoy_tree, name string, cache *r24_decoy_bcache, wan
 			st.Accepted, st.B = len(out), -1
 			return
 		}
-		B = r24_decoy_B_from(bs)
+		B = r24_decoy_B_slack(bs, slack)
 		cache.put(name, B)
 	}
 	for st.Draws < budget && len(out) < want {

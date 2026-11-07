@@ -48,8 +48,11 @@ var startTime = time.Now()
 var Set = metrics.NewSet() //all metrics are stored here
 
 // this is used if an agent wants to scrap
+// r28: with the registry's HELP/TYPE lines (registry_r28.go; DERO_METRICS_METADATA=0 writes the r27 text)
 func WritePrometheus(w http.ResponseWriter, req *http.Request) {
-	writePrometheusMetrics(w)
+	var buf bytes.Buffer
+	writePrometheusMetrics(&buf)
+	WriteAnnotated(w, buf.Bytes())
 }
 
 // WriteProcessMetrics writes the Go runtime (go_*) and process_* metrics only. r21: dero-miner exported neither, so
@@ -81,14 +84,58 @@ func writePrometheusMetrics(w io.Writer) {
 
 }
 
+// Dump_metrics_data_directly pushes the exposition to $METRICS_SERVER's VictoriaMetrics import endpoint every 2 s,
+// for as long as the process runs (upstream). r28 (rpc-metrics, R28 sweep: 0.0 % covered): the URL builder and the
+// loop are split out so a test can run them against a local server and stop the loop; a non-string name no longer
+// panics the caller (an unchecked type assertion); the job/instance labels are query-escaped (a hostname or binary
+// name with a space or '&' broke the import URL); and each push is counted, metrics_dump_posts_total{result}, where
+// upstream discarded every error silently.
 func Dump_metrics_data_directly(logger logr.Logger, specificnamei interface{}) {
 	if os.Getenv("METRICS_SERVER") == "" { // daemon must have been started with this data
 		return
 	}
+	dump_metrics_loop(logger, os.Getenv("METRICS_SERVER"), specificnamei, nil)
+}
 
-	metrics_url := os.Getenv("METRICS_SERVER")
-	databuffer := bytes.NewBuffer(nil)
+var dump_interval = 2 * time.Second
 
+var dump_posts_ok = Set.NewCounter(`metrics_dump_posts_total{result="ok"}`)
+var dump_posts_err = Set.NewCounter(`metrics_dump_posts_total{result="error"}`)
+
+// dump_job_name is <hostname>_<binary>[_<specificname>], as upstream built it.
+func dump_job_name(specificnamei interface{}) string {
+	job_name := ""
+	if hname, err := os.Hostname(); err == nil {
+		job_name = hname
+	}
+	if binary_name, err := os.Executable(); err == nil {
+		job_name += "_" + filepath.Base(binary_name)
+	}
+	if specificname, ok := specificnamei.(string); ok && specificname != "" {
+		job_name += "_" + specificname
+	}
+	return job_name
+}
+
+// dump_import_url turns the configured server into its import URL: scheme and host kept, path/query/fragment
+// dropped, /api/v1/import/prometheus with the job and instance labels.
+func dump_import_url(server string, job string, pid int) (string, error) {
+	u, err := url.Parse(server)
+	if err != nil {
+		return "", err
+	}
+	u.RawQuery, u.Fragment, u.Path, u.RawPath, u.RawFragment = "", "", "", "", ""
+	return u.String() + "/api/v1/import/prometheus" + "?extra_label=" + url.QueryEscape("job="+job) +
+		"&extra_label=" + url.QueryEscape(fmt.Sprintf("instance=%d", pid)), nil
+}
+
+// dump_metrics_loop posts every dump_interval until stop is closed (nil: forever, as upstream).
+func dump_metrics_loop(logger logr.Logger, server string, specificnamei interface{}, stop <-chan struct{}) {
+	metrics_url, err := dump_import_url(server, dump_job_name(specificnamei), os.Getpid())
+	if err != nil {
+		logger.Error(err, "err parsing metrics url", "url", server)
+		return
+	}
 	var netTransport = &http.Transport{
 		Dial: (&net.Dialer{
 			Timeout: 5 * time.Second,
@@ -99,50 +146,23 @@ func Dump_metrics_data_directly(logger logr.Logger, specificnamei interface{}) {
 		Timeout:   time.Second * 5,
 		Transport: netTransport,
 	}
-
-	u, err := url.Parse(metrics_url)
-	if err != nil {
-		logger.Error(err, "err parsing metrics url", "url", metrics_url)
-		return
-	}
-	// remove any extra paths
-	u.RawQuery = ""
-	u.Fragment = ""
-	u.Path = ""
-	u.RawPath = ""
-	u.RawFragment = ""
-
-	metrics_url = u.String() + "/api/v1/import/prometheus"
-
-	job_name := ""
-	if hname, err := os.Hostname(); err == nil {
-		job_name = hname
-	}
-
-	if binary_name, err := os.Executable(); err == nil {
-		job_name += "_" + filepath.Base(binary_name)
-	}
-
-	if specificnamei != nil {
-		if specificname := specificnamei.(string); specificname != "" {
-			job_name += "_" + specificname
-		}
-	}
-
-	metrics_url += "?extra_label=job=" + job_name
-	metrics_url += "&extra_label=instance=" + fmt.Sprintf("%d", os.Getpid())
-
+	databuffer := bytes.NewBuffer(nil)
 	logger.Info("metrics will be dispatched every 2 secs", "url", metrics_url)
 	for {
-		time.Sleep(2 * time.Second)
+		select {
+		case <-stop:
+			return
+		case <-time.After(dump_interval):
+		}
 		databuffer.Reset()
 		writePrometheusMetrics(databuffer)
 
 		resp, err := netClient.Post(metrics_url, "text/plain", databuffer)
 		if err == nil {
 			resp.Body.Close()
+			dump_posts_ok.Inc()
 		} else {
-			//fmt.Printf("err dispatching metrics to server '%s' err: '%s'\n",metrics_url,err)
+			dump_posts_err.Inc()
 		}
 	}
 }

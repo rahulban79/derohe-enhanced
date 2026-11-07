@@ -1128,7 +1128,9 @@ def verdict_problems(verdicts, challenges):
 # challenges an audit of a version must carry (R26: v2 is audited by audit2.py). A version not named here needs the v1
 # list A1-A4 (the rule before R26), so a new version fails closed until its own list is added here.
 REQUIRED_BY_VERSION = {'r25': ('A1', 'A2', 'A3', 'A4'),
-                       'r26': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-14')}
+                       'r26': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-14'),
+                       # R28: v3 corrects v2 (run C through the HF3 entry); its audit must answer A10c (D2-16) too
+                       'r28': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-13', 'D2-14', 'D2-16', 'D2-20')}
 
 
 def g29_check(ds, repo=None, private=None):

@@ -52,6 +52,36 @@ STEPS = [
 ]
 
 
+def select_derod(rows, repo, cwd_of):
+    """r28 (tools-kats, N28-05): the pid (str) of the running derod, or '' when there is none or it is ambiguous.
+    rows = [(pid, ucomm)] from `ps -axo pid=,ucomm=`: only a process whose accounting name is EXACTLY 'derod' is a
+    candidate, so a shell, a `tail -f derod.log` or a wait loop that merely carries 'bin/derod --data-dir' in its
+    command line can never be picked (the old `pgrep -f '^./bin/derod|bin/derod --data-dir' | head -1` matched full
+    command lines, rft §5 asks for pid-based waits). Two or more derods (the S5 shadow beside the user's node): the
+    one whose working directory is `repo` (cwd_of(pid) -> path or None); still ambiguous -> ''. Pure apart from
+    cwd_of."""
+    cands = sorted({str(p).strip() for p, c in rows if str(c).strip() == 'derod' and str(p).strip().isdigit()}, key=int)
+    if len(cands) <= 1:
+        return cands[0] if cands else ''
+    want = os.path.realpath(str(repo))
+    mine = [p for p in cands if (cwd_of(p) or '') and os.path.realpath(cwd_of(p)) == want]
+    return mine[0] if len(mine) == 1 else ''
+
+
+def ps_rows():
+    """[(pid, ucomm)] of every process (read-only `ps`); [] when ps fails"""
+    out = sh(['ps', '-axo', 'pid=,ucomm='])
+    if out.startswith('ERR'):
+        return []
+    return [tuple(l.split(None, 1)) for l in out.splitlines() if len(l.split(None, 1)) == 2]
+
+
+def cwd_of(pid):
+    """the working directory of pid from `lsof -a -p PID -d cwd -Fn` (read-only), or None"""
+    out = sh(['lsof', '-a', '-p', str(pid), '-d', 'cwd', '-Fn'])
+    return next((l[1:] for l in out.splitlines() if l.startswith('n/')), None)
+
+
 def sh(cmd, cwd=None, timeout=60):
     try:
         return subprocess.run(cmd, cwd=cwd, shell=isinstance(cmd, str), capture_output=True, text=True,
@@ -165,8 +195,8 @@ def snapshot():
         proj_pass = ok if not full else proj_pass
     ver = sh([str(REPO / 'bin/derod'), '--version'])
     run_ver = ''
-    pid = sh("pgrep -f '^./bin/derod|bin/derod --data-dir' | head -1")
-    if pid and not pid.startswith('ERR'):
+    pid = select_derod(ps_rows(), REPO, cwd_of)           # r28 N28-05: exact process name, never a pattern
+    if pid:
         lines = sh(f"grep '\"Version\"' {HOME}/dero-data/logs/derod.log | tail -1")
         m = re.search(r'STARGATE\+([\w.]+)', lines)
         run_ver = m.group(1) if m else ''

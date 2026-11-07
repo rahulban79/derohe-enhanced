@@ -64,7 +64,7 @@ FACT_STATUS = ('CONFIRMED', 'MEASURED', 'PLAUSIBLE', 'INTERPRETATION', 'pending'
 INTERP_MIN_ANCHORS = 2   # r26 (FQ5): an INTERPRETATION fact argues from source, so it needs two own anchors and a refuted_if
 FIX_KINDS = ('FORK-REQUIRED', 'NODE-LOCAL')
 FIX_STATUS = ('design', 'implemented', 'implemented-earlier', 'feasible-not-implemented', 'infeasible', 'pending')
-ANCHOR_OK = ('OK', 'DRIFT', 'OK-AT-HEAD')
+ANCHOR_OK = ('OK', 'DRIFT', 'OK-AT-HEAD', 'OK-AT-SEED')
 REGISTRY = HARNESS / 'round.json'
 
 
@@ -86,6 +86,18 @@ def round_heads(track, root=ROOT):
                 break
     out.update({k: v for k, v in (track.get('round_heads') or {}).items() if v})
     return out
+
+
+def seed_of(track):
+    """r28: (rev, rounds) of the track's `seeded_at` {rev, rounds, why}: the tree at which the history of the rounds
+    before the track was written down; (None, ()) when absent or malformed. Pure."""
+    sa = track.get('seeded_at') if isinstance(track, dict) else None
+    if not isinstance(sa, dict) or not re.fullmatch(r'[0-9a-f]{7,40}', str(sa.get('rev') or '')):
+        return None, ()
+    rr = sa.get('rounds')
+    return sa['rev'], tuple(x for x in rr if isinstance(x, str)) if isinstance(rr, list) else ()
+
+
 EXTERNAL = 'harness/external/'
 MIN_QUOTE = 12
 
@@ -218,6 +230,15 @@ def evaluate(track, root=ROOT, rev=None, legacy=None, pages=None):
                 h = resolve(a, root, heads[rnd])
                 if h['status'] == 'OK':
                     r = {**r, 'status': 'OK-AT-HEAD', 'head': heads[rnd]}
+            # r28 (backlog-sweep, the R23 X-SUPPLY drift emission_audit.go:578 -> :580): the history of the rounds
+            # BEFORE the track existed (R8, R23, R23b) was written at the seed tree, so its lines are that tree's lines,
+            # not their round's (R23's quote was on line 392 at R23's head and on 578 at the seed). Such an anchor that
+            # drifts and is not OK at its round's head is re-read at `seeded_at.rev`: OK there = OK-AT-SEED. A MISSING
+            # quote is still a re-test, and a round outside seeded_at.rounds never gets this reading.
+            seed = seed_of(track)
+            if r['status'] == 'DRIFT' and rnd and rnd in seed[1] and seed[0]:
+                if resolve(a, root, seed[0])['status'] == 'OK':
+                    r = {**r, 'status': 'OK-AT-SEED', 'head': seed[0]}
             r['where'] = where
             rs.append(r)
             resolved.append(r)

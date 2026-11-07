@@ -14,7 +14,7 @@ package emission
 // blocks, recomputes the TXID, and reports plaintext fields; it never builds or alters a transaction.
 //
 // What a node CAN state: the table's own facts (height, the tips the nonce bypass is pinned to, Tx_Parity, and the
-// Parity the sync path derives from them, p2p/chain_sync.go:397), and, when a body is in a store: that it hashes to
+// Parity p2p derives from them on every block path, p2p/hf3_parity.go:77), and, when a body is in a store: that it hashes to
 // its TXID, its type, reference height and BLID, plaintext fees and burns, ring sizes, the proof's parity bit, the
 // Keccak256 of the full body (so different bodies of one TXID are told apart), which block(s) carry it and whether
 // one of them has the table's tips.
@@ -102,7 +102,7 @@ type HF3Record struct {
 
 	Blocks     []BlockRef `json:"blocks,omitempty"`
 	TableBlock string     `json:"table_block,omitempty"` // the block whose tips are Bl_Tips, when found
-	// at the table block, the Parity execution swaps in (transaction_execute.go:244 with chain_sync.go:397), and
+	// at the table block, the Parity execution swaps in (transaction_execute.go:244 with hf3_parity.go:77), and
 	// whether it equals the held body's own Proof.Parity() for every payload (nil: no table block or no body)
 	ExecParity             *bool  `json:"exec_parity_at_table_block,omitempty"`
 	ExecParityMatchesProof *bool  `json:"exec_parity_matches_proof,omitempty"`

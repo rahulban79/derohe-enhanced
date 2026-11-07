@@ -13,6 +13,15 @@ node. This tool is that pair, tracked, with a KAT (harness/kat/test_harness_meas
   * the summary is pure over the series file and the /metrics scrapes (summarise()); `--live` adds the read-only
     GetBlockHeadersRange / GetEmissionAudit reads, refused below the node's prunedheight (rft §5).
 
+r28 (harness-measure):
+  * B135: every raw /metrics scrape is written through privkit.mask (scrub_prom): a non-reserved IPv4 in a label value
+    becomes '<peer>' before the file exists, so a scratchpad scrape no longer holds peer IPv4 labels (the 13 r27
+    window scrapes held 1-5 such lines each, 50 in all; rft B135 counted 9 in one live scrape);
+    the summary's `name{peer=*}` aggregation is unchanged (it sums the masked series).
+  * pending events with denominators (event_lines): each still-pending live event (rft §7 B47 B48 B57 B61 B85 B99,
+    PENDING_EVENTS) is stated as 'no event in S s / N blocks (node uptime U s)' or 'EVENT +n', with its counter's
+    first -> last value, so 'still no event' is a reading with a denominator (B54 rule), never an absent line.
+
 READ-ONLY. Only JSON-RPC POSTs of read methods (READ_METHODS) and GET /metrics to a loopback URL; the default is
 127.0.0.1:10102 with Content-Type: application/json. The getwork port 10100 and the P2P port 11011 are refused
 (rft §5), as is any non-loopback host. GetPeerInfo is not read (it carries peer addresses): peer counts come from
@@ -24,6 +33,10 @@ GetSyncInfo. Writes only the --out series file, its *_metrics_NNN.prom scrapes a
 Exit 0 · 2 bad arguments or a refused endpoint · 3 the window has no usable sample · 4 --wait-restart saw no restart.
 """
 import argparse, glob, json, os, re, statistics, sys, time, urllib.parse, urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'kit'))
+import privkit                                                       # noqa: E402  r28 B135: one masking rule (kit/privkit.py)
 
 RPC_URL = 'http://127.0.0.1:10102/json_rpc'
 REFUSED_PORTS = (10100, 11011)        # getwork, P2P (rft §5): a live-window read never touches them
@@ -131,7 +144,7 @@ def poll(out, end, rpc, metrics=None, step=60.0, metrics_every=5, clock=time.tim
         if metrics and metrics_every and i % metrics_every == 0:
             p = out[:-len('.jsonl')] if out.endswith('.jsonl') else out
             with open(f'{p}_metrics_{i:03d}.prom', 'w') as f:
-                f.write(metrics())
+                f.write(scrub_prom(metrics()))           # r28 B135: no peer address reaches the raw scrape
             rec['metrics'] = i
         with open(out, 'a') as f:
             f.write(json.dumps(rec) + '\n')
@@ -162,6 +175,86 @@ def metric_map(text):
     for name, tot in agg.items():
         out[name + '{peer=*}'] = str(int(tot)) if float(tot).is_integer() else repr(tot)
     return out
+
+
+def scrub_prom(text):
+    """r28 B135: the /metrics text as it may be written to disk: every non-reserved IPv4 (peer labels such as
+    p2p_first_relay_total{peer="<ip>"}) becomes privkit.TOKEN. Loopback and documentation addresses stay. Pure."""
+    return privkit.mask(text or '')
+
+
+# r28: the live events rft §7 still waits for (§13 'still no event' lines). Each: (id, what, counters summed over all
+# their labelled series, sync field read per sample or None). The counters are derod /metrics names (r27 binary).
+PENDING_EVENTS = (
+    ('B47', 'sync hold of a peer that cannot serve what it advertises', ('p2p_sync_peer_holds_total',), None),
+    ('B48', 'an inbound peer (proven-lane admit / refusal / quota eviction)',
+     ('p2p_inbound_proven_lane_admits_total', 'p2p_inbound_proven_lane_refusals_total',
+      'p2p_inbound_proven_quota_evictions_total'), 'peers_incoming'),
+    ('B57', 'a rejected block (any reason)', ('blockchain_block_rejected_total',), None),
+    ('B61', 'topoheight != height (header miners[] read at a topoheight)', (), 'topo_ne_height'),
+    ('B85', 'an RPC answer with code -32031 (state below the prune point)', ('rpc_error_responses_total{code="-32031"}',), None),
+    ('B99', 'sync-hold forgiveness / decay / held fallback',
+     ('p2p_sync_relay_forgiven_total', 'p2p_sync_served_forgiven_total', 'p2p_sync_strike_decays_total',
+      'p2p_sync_held_fallbacks_total'), None),
+)
+
+
+def counter_sum(mm, name):
+    """sum of a metric_map's series named `name` (any labels; `name{...}` exact when labels are given), or None when
+    no such series is present. Pure."""
+    if '{' in name:
+        v = mm.get(name)
+        return float(v) if v is not None else None
+    vals = [float(v) for k, v in mm.items() if k == name or k.startswith(name + '{')]
+    return sum(vals) if vals else None
+
+
+def event_lines(rows, prom=()):
+    """one line per PENDING_EVENTS entry: its counters first -> last, and 'no event in S s / N blocks (node uptime
+    U s)' or 'EVENT +n'; a counter absent from both scrapes is 'pending (absent)'. Pure."""
+    good = [r for r in rows if ok(r.get('cs')) and ok(r.get('sync'))]          # the samples summarise() uses
+    if not good:
+        return []
+    f, l = good[0], good[-1]
+    span = round(l.get('epoch', 0) - f.get('epoch', 0)) if isinstance(l.get('epoch'), (int, float)) else 'pending'
+    h0, h1 = f['sync'].get('height'), l['sync'].get('height')
+    blocks = h1 - h0 if isinstance(h0, int) and isinstance(h1, int) else 'pending'
+    den = f"{span} s / {blocks} blocks (node uptime {uptime(l) if uptime(l) is not None else 'pending'} s, {len(good)} samples)"
+    prom = list(prom)
+    m0, m1 = (metric_map(prom[0]), metric_map(prom[-1])) if prom else ({}, {})
+    L = []
+    for eid, what, names, field in PENDING_EVENTS:
+        parts, delta, seen = [], 0.0, False
+        for n in names:
+            a, b = counter_sum(m0, n), counter_sum(m1, n)
+            if a is None and b is None:
+                parts.append(f'{n} absent')
+                continue
+            seen = True
+            parts.append(f"{n} {a if a is not None else 'absent'} -> {b if b is not None else 'absent'}")
+            delta += (b or 0.0) - (a or 0.0) if len(prom) > 1 else (b or 0.0)
+        if field == 'peers_incoming':
+            vals = [r['sync'].get('peers_incoming') for r in good if isinstance(r['sync'].get('peers_incoming'), (int, float))]
+            if vals:
+                seen = True
+                parts.append(f'peers_incoming max {max(vals)}')
+                delta += max(vals)
+        elif field == 'topo_ne_height':
+            pairs = [(r['sync'].get('height'), r['sync'].get('topoheight')) for r in good]
+            pairs = [p for p in pairs if all(isinstance(x, int) for x in p)]
+            if pairs:
+                seen = True
+                ne = sum(1 for h, t in pairs if h != t)
+                parts.append(f'samples with topoheight != height {ne}/{len(pairs)}')
+                delta += ne
+        if not seen:
+            verdict = 'pending (absent)'
+        elif delta > 0:
+            verdict = f'EVENT +{delta:g} in {den}'
+        else:
+            verdict = f'no event in {den}'
+        L.append(f"pending-event {eid} ({what}): {verdict}; " + '; '.join(parts))
+    return L
 
 
 def summarise(rows, prom=(), restart_note=None):
@@ -211,6 +304,7 @@ def summarise(rows, prom=(), restart_note=None):
         for k in sorted(set(d0) | set(d1)):
             if d1.get(k, '0') not in ('0', '0.0') or d0.get(k) != d1.get(k):
                 w(f"  {k} {d0.get(k, 'absent')} -> {d1.get(k, 'absent')}")
+    L += event_lines(rows, prom)                             # r28: pending events with their denominators
     return L
 
 

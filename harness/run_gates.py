@@ -95,7 +95,7 @@ Appends one row per gate to loop/GATES.md. Exit 0 all pass (or PAUSED) · 3 any 
 if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
     print(__doc__ or 'usage: see the header of this file')
     raise SystemExit(0)
-import datetime, html, html.parser, json, re, subprocess, sys, tempfile, urllib.request
+import datetime, html, html.parser, json, os, re, subprocess, sys, tempfile, urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -467,6 +467,42 @@ def miner_gates(mi, mt, mr, tree_ver, track, now=None):
 TRACK = RT.track_state(RT.load(HERE / 'round.json'))   # r24: (state, why) of the miner track of the current round
 
 
+class TimedResults(list):
+    """r28 (B133): the gate results with the wall seconds each took (time since the previous result; the first
+    since main() started), so the per-gate share of run_gates (17 s at r25 -> 87 s at r27 in the project-only record)
+    is measured, not guessed. DERO_GATE_TIMING=<file> writes {gate: seconds} there as JSON and prints the five
+    slowest; unset, nothing changes."""
+
+    def __init__(self, clock=None):
+        super().__init__()
+        import time as _t
+        self.clock = clock or _t.monotonic
+        self.t0 = self.clock()
+        self.secs = []
+
+    def append(self, item):
+        now = self.clock()
+        self.secs.append((item[0].split(' ', 1)[0] if item and item[0] else '?', round(now - self.t0, 3)))
+        self.t0 = now
+        super().append(item)
+
+    def timing(self):
+        out = {}
+        for g, s in self.secs:
+            out[g] = round(out.get(g, 0.0) + s, 3)
+        return out
+
+
+def write_timing(res, env=None):
+    """r28 (B133): when DERO_GATE_TIMING names a file, write res.timing() to it and return the five slowest lines."""
+    dest = (os.environ if env is None else env).get('DERO_GATE_TIMING')
+    if not dest or not hasattr(res, 'timing'):
+        return []
+    tm = res.timing()
+    Path(dest).write_text(json.dumps(tm, indent=1, sort_keys=True) + '\n')
+    return [f'{g} {s:.1f}s' for g, s in sorted(tm.items(), key=lambda x: -x[1])[:5]]
+
+
 def run(cmd, **k):
     return subprocess.run(cmd, capture_output=True, text=True, **k)
 
@@ -477,7 +513,7 @@ def main():
     st = json.loads(STAMP.read_text())
     s = st['stats']
     V = json.loads((MODEL / 'verified.json').read_text())
-    res = []
+    res = TimedResults()                     # r28 (B133): per-gate wall seconds (DERO_GATE_TIMING)
 
     ev = [e for r in V for e in r['evidence']]
     bad = [e for e in ev if e.get('status') not in ('OK', 'MULTI') or not e.get('line')]
@@ -849,6 +885,9 @@ def main():
             f.write(f"| {now} | {label} | {g} | {RT.word(ok)} | {str(d).replace('|', '/')[:600]} |\n")
     for g, ok, d in res:
         print(f"{RT.word(ok)}  {g}: {str(d)[:360]}")
+    slow = write_timing(res)
+    if slow:
+        print('gate timing (slowest):', ' · '.join(slow))
     run([PY, str(HERE / 'gen_deroarch.py'), 'sync-skill'])
     sys.exit(0 if RT.all_ok(res) else 3)
 

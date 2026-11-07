@@ -163,10 +163,12 @@ def am4(TI, bad):
         (root / 'harness/runtime').mkdir(parents=True)
         (root / 'artifacts').mkdir()
         (root / 'harness/runtime/r24_live_hour_20261102.txt').write_text('x')
+        (root / 'bin').mkdir()
+        (root / 'bin/derod.round5-backup').write_text('x')   # r28 B172: an existing '-suffix' name
         md.mkdir()
         (md / 'a.md').write_text('read harness/runtime/r24_live_hour_20261102.txt and harness/runtime/r24_live_first/'
                                  'hour_20261102.txt; 18 s/block, artifacts/GitHub, harness/Nope, harness/runtime/x_<ts>.json, '
-                                 'elsewhere/y.txt, `harness/runtime/gone.json`.\n')
+                                 'elsewhere/y.txt, `harness/runtime/gone.json`, kept as `bin/derod.round5-backup`.\n')
         got = TI.dead_refs(md, root)
         want = ['a.md: harness/runtime/gone.json', 'a.md: harness/runtime/r24_live_first/hour_20261102.txt']
         if got != want:
@@ -287,8 +289,9 @@ MUTATIONS = [
     ('AM3', 'TI', "    if isinstance(k.get('memory_index_ranges'), list) and k['memory_index_ranges']:", "    if False:",
      'a range mismatch is no target violation'),
     ('AM4', 'TI', "            if m.split('/')[0] in tops and not (root / m).exists():", "            if False:", 'dead refs never reported'),
-    ('AM4', 'TI', r"[\w-][\w.-]*\.[A-Za-z]\w{0,5})(?![\w/<*{])", r"[\w-][\w.-]*(?:\.[A-Za-z]\w{0,5})?)(?![\w/<*{])",
+    ('AM4', 'TI', r"[\w-][\w.-]*\.[A-Za-z]\w{0,5})(?![\w/<*{-])", r"[\w-][\w.-]*(?:\.[A-Za-z]\w{0,5})?)(?![\w/<*{-])",
      'prose without an extension counts as a path'),
+    ('AM4', 'TI', r"\w{0,5})(?![\w/<*{-])')", r"\w{0,5})(?![\w/<*{])')", 'B172: a -suffix name is read as its prefix'),
     ('AM5', 'GI', 'href="../memory-mirror/{E(m["file"])}"', 'href="vscode://file{E(str(home or Path.home()))}/{E(m["file"])}"',
      'memory rows link the home path again'),
     ('AM5', 'GI', "if mirrored.get(m['file'])", "if True", 'a file the mirror does not hold is linked'),

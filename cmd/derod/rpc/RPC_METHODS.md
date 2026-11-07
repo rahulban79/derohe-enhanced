@@ -147,9 +147,17 @@ Typed answers from r27 (rpc-metrics, r27_rpcmetrics.go; same compat rule; codes 
 |---|---|---|
 | Any method whose parameters do not decode (unknown name on the strict explorer methods, a wrong JSON type, an array) | `-32602 invalid parameters: [-32602] invalid parameters` (the code doubled into the text, no field named; jrpc2's handler wrapper drops the decoder text) | `-32602 invalid parameters: unknown field "start" (accepted: start_topoheight, end_topoheight)`, `... field topoheight: want uint64, got string`, `... want a JSON object, got array (accepted fields: ...)`; `data` = `{"field", "accepted"}`; `rpc_params_refused_total` |
 | Every error response | counted per method only (`rpc_request_errors_total{method}`, no code) | also `rpc_error_responses_total{code}`: one series per listed code (-32700, -32600, -32601, -32602, -32603, -32098, -32097, -32096, -32029, -32030, -32031, -32032) and `other`, all present at 0 from the start |
+| A JSON-RPC error body written by the HTTP layer before the bridge (405/415 shape refusal -32600, the abuse table's 429 -32029/-32030, an over-bound remote body -32602, a reserved `rpc.*` name on remote /json_rpc -32601) | counted only by its reason counter, never in `rpc_error_responses_total{code}` (r27 counted jrpc2's LogResponse only) | (r28) also `rpc_error_responses_total{code}`, once per answer (r28_rpcmetrics.go) |
+| GetInfo pool counts | `tx_pool_size` counts mined txs until HouseKeeping purges them (stable height >= the tx's height) | (r28 B42) unchanged, plus additive `tx_pool_unmined`: the same list minus the txs of the recent blocks (the RecentlyMined window GetTxPool skips) |
 | A topo record that names no block on a node with prune floor 0 | `-32031 ... topoheight N is below pruned topoheight 0` (false) | `-32031 state not available: the record at topoheight N names no block (pruned topoheight P)` whenever N >= P |
 | NameToAddress echo of a long unknown name | cut at byte 64, possibly inside a multi-byte rune | cut on a rune boundary at or below byte 64, then `...` |
 | GetEmissionAudit / GetMonetaryIntegrity / GetSupplyAudit after a recovered panic | `-32098 panic occured. stack trace r ...`, no ERROR line, not in `rpc_recovered_panics_total` | `-32098 internal error: ...`, ERROR + stack, counted, like every other handler |
+
+/metrics metadata (r28): every family on the page has a `# HELP` line and, unless it is a VictoriaMetrics vmrange
+histogram (not Prometheus le-buckets), a `# TYPE` line, written from `metrics/metric_registry.json` (name, type, unit,
+area, help; generated and checked by `harness/intel/metric_registry.py`, embedded by `metrics/registry_r28.go`). Sample
+lines are byte for byte as before; `DERO_METRICS_METADATA=0` writes the unannotated r27 page. A family not in the
+registry is written without metadata and fails TestR28MetricsPageFullyRegistered.
 
 First-event counters (`rpc_state_unavailable_total{method}`, `rpc_input_refused_total{method,kind}`,
 `rpc_name_not_found_total`, `rpc_tx_not_found_total`, `rpc_block_not_found_total{method}`, `rpc_limited_total`, ...)

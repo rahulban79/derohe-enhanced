@@ -62,7 +62,7 @@ var command_line string = `derod
 DERO : A secure, private blockchain with smart-contracts
 
 Usage:
-  derod [--help] [--version] [--testnet] [--debug]  [--sync-node] [--timeisinsync] [--fastsync] [--socks-proxy=<socks_ip:port>] [--data-dir=<directory>] [--p2p-bind=<0.0.0.0:18089>] [--add-exclusive-node=<ip:port>]... [--add-priority-node=<ip:port>]... [--min-peers=<11>] [--max-peers=<100>] [--lowlatency] [--p2p-nat=<off>] [--rpc-bind=<127.0.0.1:9999>] [--rpc-tx-cache] [--getwork-bind=<0.0.0.0:18089>] [--node-tag=<unique name>] [--prune-history=<50>] [--integrator-address=<address>] [--clog-level=1] [--flog-level=1] [--log-dir=<dir>] [--log-max-size=<100>] [--log-max-backups=<2>] [--log-max-age=<0>] [--log-compress]
+  derod [--help] [--version] [--testnet] [--debug]  [--sync-node] [--timeisinsync] [--fastsync] [--socks-proxy=<socks_ip:port>] [--data-dir=<directory>] [--p2p-bind=<ip:port>] [--add-exclusive-node=<ip:port>]... [--add-priority-node=<ip:port>]... [--min-peers=<31>] [--max-peers=<101>] [--lowlatency] [--p2p-nat=<off>] [--rpc-bind=<127.0.0.1:10102>] [--rpc-tx-cache] [--getwork-bind=<0.0.0.0:10100>] [--node-tag=<unique name>] [--prune-history=<50>] [--integrator-address=<address>] [--clog-level=1] [--flog-level=1] [--log-dir=<directory>] [--log-max-size=<100>] [--log-max-backups=<2>] [--log-max-age=<0>] [--log-compress]
   derod -h | --help
   derod --version
 
@@ -77,9 +77,9 @@ Options:
   --timeisinsync  Confirms to daemon that time is in sync, so daemon doesn't try to sync
   --socks-proxy=<socks_ip:port>  Use a proxy to connect to network.
   --data-dir=<directory>    Store blockchain data at this location
-  --rpc-bind=<127.0.0.1:9999>    RPC listens on this ip:port
+  --rpc-bind=<127.0.0.1:10102>    RPC listens on this ip:port (testnet: 127.0.0.1:40402)
   --rpc-tx-cache	  Cache DERO.GetTransaction answers for mined txs (each hit re-proved against the chain; ~5-7x less CPU per repeated call). Off by default: hit and miss replies differ in time, which tells anyone who can reach --rpc-bind whether that tx was fetched recently. Use it on a loopback-only or single-tenant RPC.
-  --p2p-bind=<0.0.0.0:18089>    p2p server listens on this ip:port, specify port 0 to disable listening server
+  --p2p-bind=<ip:port>    p2p server listens on this ip:port (UDP, KCP). Not given: a random port at every start, so a router forward needs a fixed one (mainnet peers use :11011). Specify port 0 to disable listening server
   --getwork-bind=<0.0.0.0:10100>    getwork server listens on this ip:port, specify port 0 to disable listening server
   --add-exclusive-node=<ip:port>	Connect to specific peer only 
   --add-priority-node=<ip:port>	Maintain persistant connection to specified peer
@@ -98,6 +98,10 @@ Options:
   --log-compress  Gzip rotated logs (the live log stays plain text)
 
   `
+
+// PRUNE_HISTORY_DEFAULT is the --prune-history value used when the flag is absent (r28: named so the help text can be
+// checked against it, TestR28UsageDefaultsMatchCode).
+const PRUNE_HISTORY_DEFAULT = 50
 
 var Exit_In_Progress = make(chan bool)
 var exit_once sync.Once
@@ -286,7 +290,7 @@ func main() {
 	params := map[string]interface{}{}
 
 	// check  whether we are pruning, if requested do so
-	prune_topo := int64(50)
+	prune_topo := int64(PRUNE_HISTORY_DEFAULT)
 	if _, ok := globals.Arguments["--prune-history"]; ok && globals.Arguments["--prune-history"] != nil { // user specified a limit, use it if possible
 		i, err := strconv.ParseInt(globals.Arguments["--prune-history"].(string), 10, 64)
 		if err != nil {

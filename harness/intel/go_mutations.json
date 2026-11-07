@@ -7923,8 +7923,8 @@
    "file": "cmd/derod/rpc/r24_decoy_sampler.go",
    "pkg": "./cmd/derod/rpc/",
    "test": "TestR24DecoyBFromPilot",
-   "find": "return int(math.Round(math.Log2(s/float64(len(bs))))) + R24_DECOY_SLACK",
-   "replace": "return int(math.Round(math.Log2(s/float64(len(bs))))) + R24_DECOY_SLACK - 1"
+   "find": "return int(math.Round(math.Log2(s/float64(len(bs))))) + slack",
+   "replace": "return int(math.Round(math.Log2(s/float64(len(bs))))) + slack - 1"
   },
   {
    "id": "gm-r24-cryptoinfl-decoy-failed-pilot",
@@ -11593,6 +11593,1054 @@
    "test": "TestR27SeriesReadPayees",
    "find": "\tif !r.PayeesKnown() {\n\t\treturn \"pending (not recorded before r27)\"",
    "replace": "\tif false {\n\t\treturn \"pending (not recorded before r27)\""
+  },
+  {
+   "id": "gm-r28-tk-archive-payee-line",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR28PrintArchivePayeeAndSeriesLines",
+   "find": "\tfmt.Fprintf(w, \"archive %s (over %d audited blocks)\\n\", run.payees, sum.Audited) // r27: the live mode's payee line\n",
+   "replace": "\t// r28 mutated: -archive prints no payee line (B139 residual)\n"
+  },
+  {
+   "id": "gm-r28-tk-archive-main-report",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR28ArchiveMainPrintsPayeeLineEndToEnd",
+   "find": "\tprintArchive(os.Stdout, from, to, fromH, toH, sum, run, seriesOut, cpu, wall)\n",
+   "replace": "\t_, _ = cpu, wall // r28 mutated: archiveMain prints no report\n"
+  },
+  {
+   "id": "gm-r28-tk-archive-series-count",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR28PrintArchivePayeeAndSeriesLines",
+   "find": "checkpoints appended to %s (%d write errors)\\n\", run.written, seriesOut, run.werr)",
+   "replace": "checkpoints appended to %s (%d write errors)\\n\", 0, seriesOut, run.werr)"
+  },
+  {
+   "id": "gm-r28-tk-b21-credit-payload",
+   "file": "walletapi/r28_simulator_credit_test.go",
+   "pkg": "./walletapi/",
+   "test": "Test_Payload_TX",
+   "find": "\tsimulatorRegistrationCredit = 100000000 //",
+   "replace": "\tsimulatorRegistrationCredit = 800000 //"
+  },
+  {
+   "id": "gm-r28-tk-b21-fixture-morecheck",
+   "file": "walletapi/r28_simulator_credit_test.go",
+   "pkg": "./walletapi/",
+   "test": "Test_Creation_TX_morecheck",
+   "find": "\tupstreamFixtureCredit       = 800000    //",
+   "replace": "\tupstreamFixtureCredit       = 0    //"
+  },
+  {
+   "id": "gm-r28-tk-b21-credit-kat",
+   "file": "walletapi/r28_simulator_credit_test.go",
+   "pkg": "./walletapi/",
+   "test": "TestR28SimulatorCreditMatchesChain",
+   "find": "\tsimulatorRegistrationCredit = 100000000 //",
+   "replace": "\tsimulatorRegistrationCredit = 100000001 //"
+  },
+  {
+   "id": "gm-r28-p2pcfg-chunkpow-stop",
+   "file": "p2p/r28_chunk_pow.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ChunkPowValidCountsAndStops",
+   "find": "\t\tif !ok {\n\t\t\treturn false\n\t\t}\n",
+   "replace": "\t\t_ = ok\n"
+  },
+  {
+   "id": "gm-r28-p2pcfg-chunkpow-poolseen",
+   "file": "p2p/r28_chunk_pow.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ChunkPowValidCountsAndStops",
+   "find": "\t\t\tchunk_pow_pool_seen.Inc()\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r28-p2pcfg-chunkpow-threshold",
+   "file": "p2p/r28_chunk_pow.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ChunkPowValidCountsAndStops",
+   "find": ">= CHUNK_POW_SLOW {",
+   "replace": "> CHUNK_POW_SLOW {"
+  },
+  {
+   "id": "gm-r28-p2pcfg-chunkpow-seconds",
+   "file": "p2p/r28_chunk_pow.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ChunkPowValidCountsAndStops",
+   "find": "\tdefer func() { chunk_pow_seconds.Add(now().Sub(t0).Seconds()) }()\n",
+   "replace": "\tdefer func() { _ = t0 }()\n"
+  },
+  {
+   "id": "gm-r28-p2pcfg-chunkpow-wired-seen",
+   "file": "p2p/chunk_server.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ChunkLoopbackScenario",
+   "find": "chunk_pow_valid(bl.MiniBlocks, chain.MiniBlocks.IsCollision,",
+   "replace": "chunk_pow_valid(bl.MiniBlocks, nil,"
+  },
+  {
+   "id": "gm-r28-p2pcfg-chunkpow-wired",
+   "file": "p2p/chunk_server.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ChunkLoopbackScenario",
+   "find": "\t\tif !chunk_pow_valid(bl.MiniBlocks, chain.MiniBlocks.IsCollision, func(mbl block.MiniBlock) bool { return chain.VerifyMiniblockPoW(&bl, mbl) },\n\t\t\ttime.Now) {\n\t\t\tconnection.penalize(\"invalid_pow\")\n\t\t\treturn errormsg.ErrInvalidPoW\n\t\t}",
+   "replace": "\t\tfor _, mbl := range bl.MiniBlocks {\n\t\t\tif !chain.VerifyMiniblockPoW(&bl, mbl) {\n\t\t\t\tconnection.penalize(\"invalid_pow\")\n\t\t\t\treturn errormsg.ErrInvalidPoW\n\t\t\t}\n\t\t}"
+  },
+  {
+   "id": "gm-r28-p2pcfg-b57-chunk-attrib",
+   "file": "p2p/rpc_notifications.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ChunkLoopbackScenario",
+   "find": "\t\tnote_block_result(c, &cbl, err, ok) // r25 (CO24-C3): counted by reason, the sender named by its peer_id\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r28-p2pcfg-b48-lane-fallback",
+   "file": "p2p/controller.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ProvenLaneAdmissionScenario",
+   "find": "\treturn proven_lane_allow(ip, time.Now()) // r24 (B30): the shared bucket was drained (proven_lane.go)",
+   "replace": "\treturn false"
+  },
+  {
+   "id": "gm-r28-p2pcfg-b48-cap-count",
+   "file": "p2p/controller.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ProvenLaneAdmissionScenario",
+   "find": "\t\t\tatomic.AddUint64(&inbound_group_refusals, 1)\n\t\t\tlogger.V(2).Info(\"Incoming netgroup already holds its inbound share\"",
+   "replace": "\t\t\tlogger.V(2).Info(\"Incoming netgroup already holds its inbound share\""
+  },
+  {
+   "id": "gm-r28-p2pcfg-b48-quota-evict-count",
+   "file": "p2p/proven_lane.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ProvenLaneAdmissionScenario",
+   "find": "\t\t\tatomic.AddUint64(&proven_quota_evictions, 1)\n",
+   "replace": ""
+  },
+  {
+   "id": "gm-r28-p2pcfg-usage-peers",
+   "file": "cmd/derod/main.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR28UsageDefaultsMatchCode",
+   "find": "[--min-peers=<31>] [--max-peers=<101>]",
+   "replace": "[--min-peers=<11>] [--max-peers=<100>]"
+  },
+  {
+   "id": "gm-r28-p2pcfg-usage-rpcbind",
+   "file": "cmd/derod/main.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR28UsageDefaultsMatchCode",
+   "find": "[--rpc-bind=<127.0.0.1:10102>]",
+   "replace": "[--rpc-bind=<127.0.0.1:9999>]"
+  },
+  {
+   "id": "gm-r28-p2pcfg-usage-getwork",
+   "file": "cmd/derod/main.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR28UsageDefaultsMatchCode",
+   "find": "[--getwork-bind=<0.0.0.0:10100>]",
+   "replace": "[--getwork-bind=<0.0.0.0:18089>]"
+  },
+  {
+   "id": "gm-r28-p2pcfg-usage-p2pbind",
+   "file": "cmd/derod/main.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR28UsageDefaultsMatchCode",
+   "find": "Not given: a random port at every start",
+   "replace": "Not given: port 18089"
+  },
+  {
+   "id": "gm-r28-p2pcfg-usage-prune",
+   "file": "cmd/derod/main.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR28UsageDefaultsMatchCode",
+   "find": "const PRUNE_HISTORY_DEFAULT = 50",
+   "replace": "const PRUNE_HISTORY_DEFAULT = 40"
+  },
+  {
+   "id": "gm-r28-p2pcfg-usage-parses",
+   "file": "cmd/derod/main.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR28UsageStillParses",
+   "find": "[--p2p-bind=<ip:port>]",
+   "replace": "[--p2p-bindx=<ip:port>]"
+  },
+  {
+   "id": "gm-r28-p2pcfg-cov-pending-ban",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ConnectionPendingClear",
+   "find": "\t\tif IsAddressInBanList(Address(v)) {\n\t\t\tv.exit()\n\t\t\tConnection_Delete(v)",
+   "replace": "\t\tif false {\n\t\t\tv.exit()\n\t\t\tConnection_Delete(v)"
+  },
+  {
+   "id": "gm-r28-p2pcfg-cov-peercount-self",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ConnectionPoolCounts",
+   "find": "if v.State.Load() != HANDSHAKE_PENDING && GetPeerID() != v.Peer_ID {\n\t\t\tCount++",
+   "replace": "if v.State.Load() != HANDSHAKE_PENDING {\n\t\t\tCount++"
+  },
+  {
+   "id": "gm-r28-p2pcfg-cov-backoff-expiry",
+   "file": "p2p/controller.go",
+   "pkg": "./p2p/",
+   "test": "TestR28BackoffExpires",
+   "find": "\t\tif v < now {\n\t\t\tdelete(backoff, k)\n\t\t}\n",
+   "replace": "\t\t_, _, _ = k, v, now\n"
+  },
+  {
+   "id": "gm-r28-p2pcfg-cov-treesection-refuse",
+   "file": "p2p/rpc_treesection.go",
+   "pkg": "./p2p/",
+   "test": "TestR28MalformedObjectRequestsRefused",
+   "find": "return fmt.Errorf(\"malformed tree section request\") // upstream fell through and served it anyway",
+   "replace": "_ = fmt.Sprint(); return nil"
+  },
+  {
+   "id": "gm-r28-p2pcfg-cov-getobject-chunks",
+   "file": "p2p/rpc_object_request.go",
+   "pkg": "./p2p/",
+   "test": "TestR28MalformedObjectRequestsRefused",
+   "find": "len(request.Chunk_list) > 128",
+   "replace": "len(request.Chunk_list) > 129"
+  },
+  {
+   "id": "gm-r28-p2pcfg-cov-eligible-window",
+   "file": "p2p/tx_flow.go",
+   "pkg": "./p2p/",
+   "test": "TestR28HandshakeFillAndChainHelpers",
+   "find": "(our_height-ph) > 25",
+   "replace": "(our_height-ph) > 26"
+  },
+  {
+   "id": "gm-r28-p2pcfg-cov-chunks-cleanup",
+   "file": "p2p/chunk_server.go",
+   "pkg": "./p2p/",
+   "test": "TestR28BlockEncodingsRoundTrip",
+   "find": "time.Second*180",
+   "replace": "time.Second*18000"
+  },
+  {
+   "id": "gm-r28-p2pcfg-cov-pending-handshake",
+   "file": "p2p/connection_pool.go",
+   "pkg": "./p2p/",
+   "test": "TestR28ConnectionPendingClear",
+   "find": "v.State.Load() == HANDSHAKE_PENDING && time.Now().Sub(v.Created) > 10*time.Second",
+   "replace": "v.State.Load() == HANDSHAKE_PENDING && time.Now().Sub(v.Created) > 100*time.Second"
+  },
+  {
+   "id": "gm-r28-p2pcfg-cov-rtt-clamp",
+   "file": "p2p/time.go",
+   "pkg": "./p2p/",
+   "test": "TestR28RttOffsetMath",
+   "find": "\tb := xmt.Sub(rec)\n\trtt := a - b\n\tif rtt < 0 {\n\t\trtt = 0\n\t}\n",
+   "replace": "\tb := xmt.Sub(rec)\n\trtt := a - b\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-help-sample",
+   "file": "metrics/registry_r28.go",
+   "pkg": "./metrics/",
+   "test": "TestR28AnnotateAddsHelpAndType",
+   "find": "\t\t\t\tif !done[f.Name] {\n\t\t\t\t\tout.WriteString(\"# HELP \" + f.Name + \" \" + escape_help(f.Help) + \"\\n\")\n",
+   "replace": "\t\t\t\tif !done[f.Name] { // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-vmhist-typed",
+   "file": "metrics/registry_r28.go",
+   "pkg": "./metrics/",
+   "test": "TestR28AnnotateAddsHelpAndType",
+   "find": "\tcase \"counter\", \"gauge\", \"histogram\", \"summary\":\n",
+   "replace": "\tcase \"counter\", \"gauge\", \"histogram\", \"summary\", \"vmhistogram\": // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-own-type-help",
+   "file": "metrics/registry_r28.go",
+   "pkg": "./metrics/",
+   "test": "TestR28AnnotateAddsHelpAndType",
+   "find": "if f, ok := reg[fields[2]]; ok && strings.HasPrefix(s, \"# TYPE \") {",
+   "replace": "if f, ok := reg[fields[2]]; ok && false && strings.HasPrefix(s, \"# TYPE \") { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-once",
+   "file": "metrics/registry_r28.go",
+   "pkg": "./metrics/",
+   "test": "TestR28AnnotateAddsHelpAndType",
+   "find": "\t\t\t\tif !done[f.Name] {\n",
+   "replace": "\t\t\t\tif true { // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-escape",
+   "file": "metrics/registry_r28.go",
+   "pkg": "./metrics/",
+   "test": "TestR28AnnotateAddsHelpAndType",
+   "find": "\treturn strings.NewReplacer(`\\`, `\\\\`, \"\\n\", `\\n`).Replace(s)\n",
+   "replace": "\treturn s // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-optout",
+   "file": "metrics/registry_r28.go",
+   "pkg": "./metrics/",
+   "test": "TestR28WritePrometheusAnnotated",
+   "find": "os.Getenv(\"DERO_METRICS_METADATA\") != \"0\"",
+   "replace": "os.Getenv(\"DERO_METRICS_METADATA\") != \"never\" /* r28 mutated */"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-wired",
+   "file": "metrics/metrics.go",
+   "pkg": "./metrics/",
+   "test": "TestR28WritePrometheusAnnotated",
+   "find": "\tWriteAnnotated(w, buf.Bytes())\n",
+   "replace": "\tw.Write(buf.Bytes()) // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-dump-escape",
+   "file": "metrics/metrics.go",
+   "pkg": "./metrics/",
+   "test": "TestR28DumpImportURLAndJob",
+   "find": "url.QueryEscape(\"job=\"+job)",
+   "replace": "\"job=\"+job /* r28 mutated */"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-dump-strip",
+   "file": "metrics/metrics.go",
+   "pkg": "./metrics/",
+   "test": "TestR28DumpImportURLAndJob",
+   "find": "\tu.RawQuery, u.Fragment, u.Path, u.RawPath, u.RawFragment = \"\", \"\", \"\", \"\", \"\"\n",
+   "replace": "\t// r28 mutated: path/query kept\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-dump-assert",
+   "file": "metrics/metrics.go",
+   "pkg": "./metrics/",
+   "test": "TestR28DumpImportURLAndJob",
+   "find": "\tif specificname, ok := specificnamei.(string); ok && specificname != \"\" {\n",
+   "replace": "\tif specificname := specificnamei.(string); specificname != \"\" { // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-dump-errcount",
+   "file": "metrics/metrics.go",
+   "pkg": "./metrics/",
+   "test": "TestR28DumpMetricsLoop",
+   "find": "\t\t\tdump_posts_err.Inc()\n",
+   "replace": "\t\t\t// r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-dump-okcount",
+   "file": "metrics/metrics.go",
+   "pkg": "./metrics/",
+   "test": "TestR28DumpMetricsLoop",
+   "find": "\t\t\tdump_posts_ok.Inc()\n",
+   "replace": "\t\t\t// r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-dump-stop",
+   "file": "metrics/metrics.go",
+   "pkg": "./metrics/",
+   "test": "TestR28DumpMetricsLoop",
+   "find": "\t\tcase <-stop:\n\t\t\treturn\n",
+   "replace": "\t\tcase <-stop: // r28 mutated\n\t\t\ttime.Sleep(time.Hour)\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-page-annotated",
+   "file": "cmd/derod/rpc/node_metrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28MetricsPageFullyRegistered",
+   "find": "\tmetrics.WriteAnnotated(w, buf.Bytes())\n",
+   "replace": "\tw.Write(buf.Bytes()) // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-abuse-counted",
+   "file": "cmd/derod/rpc/rpc_abuse.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28HTTPLayerErrorBodiesCounted",
+   "find": "\tcount_error_code(e) // r28: written outside jrpc2",
+   "replace": "\t_ = e // r28 mutated: written outside jrpc2"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-shape-counted",
+   "file": "cmd/derod/rpc/r24_rpcws.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28HTTPLayerErrorBodiesCounted",
+   "find": "\tcount_error_code(e) // r28: a 405/415 body",
+   "replace": "\t_ = e // r28 mutated: a 405/415 body"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-bound-counted",
+   "file": "cmd/derod/rpc/param_bounds.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28HTTPLayerErrorBodiesCounted",
+   "find": "\tcount_error_answer(err) // r28:",
+   "replace": "\t// r28 mutated:"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-other-counted",
+   "file": "cmd/derod/rpc/r28_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28HTTPLayerErrorBodiesCounted",
+   "find": "\t\treturn\n\t}\n\trpc_error_code_other.Inc()\n}\n",
+   "replace": "\t\treturn\n\t}\n}\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-nil-skipped",
+   "file": "cmd/derod/rpc/r28_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28HTTPLayerErrorBodiesCounted",
+   "find": "\tif err == nil {\n\t\treturn\n\t}\n\tvar je *jrpc2.Error\n",
+   "replace": "\tvar je *jrpc2.Error // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-unmined-filter",
+   "file": "cmd/derod/rpc/r28_rpcmetrics.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28GetInfoTxPoolUnmined",
+   "find": "\t\tif !mined[h] {\n",
+   "replace": "\t\tif mined[h] || true { // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-unmined-wired",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28GetInfoTxPoolUnmined",
+   "find": "\t\tresult.Tx_Pool_Unmined = pool_unmined(chain.Mempool.Mempool_List_TX(), recently_mined())\n",
+   "replace": "\t\t// r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-unmined-window",
+   "file": "cmd/derod/rpc/r25_rpcrobust.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28GetInfoTxPoolUnmined",
+   "find": "pool_unmined(chain.Mempool.Mempool_List_TX(), recently_mined())",
+   "replace": "pool_unmined(chain.Mempool.Mempool_List_TX(), RecentlyMined()) /* r28 mutated */"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-b61-alt-tips",
+   "file": "cmd/derod/rpc/blockheader.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28TopoEqualsHeightAndAltBlockMiners",
+   "find": "\tif state_topo < 0 {\n\t\tfor i := range bl.Tips {\n",
+   "replace": "\tif state_topo < -1 { // r28 mutated\n\t\tfor i := range bl.Tips {\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-b43-clamp",
+   "file": "cmd/derod/rpc/rpc_dero_getrandomaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28DecoyWindowEqualsUpstreamAboveFloor",
+   "find": "\tif old < floor {\n\t\told = floor\n\t}\n",
+   "replace": "\t// r28 mutated: no clamp\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-b43-window",
+   "file": "cmd/derod/rpc/rpc_dero_getrandomaddress.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28DecoyWindowEqualsUpstreamAboveFloor",
+   "find": "\told := top - DECOY_WINDOW\n",
+   "replace": "\told := top - DECOY_WINDOW + 1 // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-datatype-string",
+   "file": "rpc/rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28DataTypeAndArgumentString",
+   "find": "\t\treturn \"hash\"\n",
+   "replace": "\t\treturn \"hash256\" // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-arg-float-verb",
+   "file": "rpc/rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28DataTypeAndArgumentString",
+   "find": "return fmt.Sprintf(\"Name:%s Type:%s Value:'%f'\", arg.Name, arg.DataType, arg.Value)",
+   "replace": "return fmt.Sprintf(\"Name:%s Type:%s Value:'%v'\", arg.Name, arg.DataType, arg.Value) // r28 mutated"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-unmarshal-int64",
+   "file": "rpc/rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28ArgumentUnmarshalJSON",
+   "find": "\tcase DataInt64:\n\t\tvar x int64\n",
+   "replace": "\tcase DataInt64:\n\t\tvar x float64 // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-unmarshal-time",
+   "file": "rpc/rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28ArgumentUnmarshalJSON",
+   "find": "\tcase DataTime:\n\t\tvar x time.Time\n\t\tif err = json.Unmarshal(raw.Value, &x); err == nil {\n",
+   "replace": "\tcase DataTime:\n\t\tvar x time.Time\n\t\tif json.Unmarshal(raw.Value, &x); true { // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-payload-dport",
+   "file": "rpc/wallet_rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28EntryProcessPayloadAndString",
+   "find": "\t\t\te.DestinationPort = args.Value(RPC_DESTINATION_PORT, DataUint64).(uint64)\n",
+   "replace": "\t\t\t// r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-payload-error",
+   "file": "rpc/wallet_rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28EntryProcessPayloadAndString",
+   "find": "\t\te.PayloadError = err.Error()\n",
+   "replace": "\t\t// r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-entry-txid",
+   "file": "rpc/wallet_rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28EntryProcessPayloadAndString",
+   "find": "\t\tfmt.Fprintf(&b, \"Type: Received\\n\")\n\t\tfmt.Fprintf(&b, \"Amount: %s\\n\", FormatMoney(e.Amount))\n\t\tfmt.Fprintf(&b, \"TXID: %s\\n\", e.TXID)\n",
+   "replace": "\t\tfmt.Fprintf(&b, \"Type: Received\\n\")\n\t\tfmt.Fprintf(&b, \"Amount: %s\\n\", FormatMoney(e.Amount))\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-money-precision",
+   "file": "rpc/wallet_rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28WalletFormatMoney",
+   "find": "\treturn result.Text('f', precision) // 5 is display precision after floating point\n",
+   "replace": "\treturn result.Text('f', 5) // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-slack-from",
+   "file": "cmd/derod/rpc/r24_decoy_sampler.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR24DecoyBFromPilot",
+   "find": "func r24_decoy_B_from(bs []int) int { return r24_decoy_B_slack(bs, R24_DECOY_SLACK) }",
+   "replace": "func r24_decoy_B_from(bs []int) int { return r24_decoy_B_slack(bs, 1) } // r28 mutated"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-slack-draws",
+   "file": "cmd/derod/rpc/r24_decoy_sampler.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR24DecoySamplerIsDepthCorrected",
+   "find": "\treturn r24_decoy_draws_slack(t, name, cache, want, budget, coin, R24_DECOY_SLACK)\n",
+   "replace": "\treturn r24_decoy_draws_slack(t, name, cache, want, budget, coin, R24_DECOY_SLACK-2) // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-rpcmetrics-mnf-counted",
+   "file": "cmd/derod/rpc/rpc_abuse.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR28HTTPLayerErrorBodiesCounted",
+   "find": "\tcount_error_code(e) // r28 verify: a reserved rpc.* name",
+   "replace": "\t_ = e // r28 verify mutated: a reserved rpc.* name"
+  },
+  {
+   "id": "gm-r28-glue-global-crypto-len-guard",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR28VerifyRefusesMismatchedStatement",
+   "find": "\tif len(s.C) != len(s.Publickeylist) {\n\t\treturn false",
+   "replace": "\tif false && len(s.C) != len(s.Publickeylist) { // r28 mutated\n\t\treturn false"
+  },
+  {
+   "id": "gm-r28-glue-global-crypto-open-value-overflow",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR28VerifyRefusesWrappedOpenValue",
+   "find": "if total_open_value < s.Fees || total_open_value < extra_value {",
+   "replace": "if false && (total_open_value < s.Fees || total_open_value < extra_value) { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-crypto-parity",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR28VerifyParityStagePinned",
+   "find": "\tif anonsupport.w.Cmp(proof.f.vector[0]) == 0 || anonsupport.w.Cmp(proof.f.vector[m]) == 0 {\n",
+   "replace": "\tif true || anonsupport.w.Cmp(proof.f.vector[0]) == 0 || anonsupport.w.Cmp(proof.f.vector[m]) == 0 { // r28 mutated\n"
+  },
+  {
+   "id": "gm-r28-glue-global-crypto-recover-key",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26HonestPerturbationRefused",
+   "find": "\tif stored.String() != computed.String() { // if failed bail out",
+   "replace": "\tif false && stored.String() != computed.String() { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-crypto-c-check",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26HonestPerturbationRefused",
+   "find": "if reducedhash(input).Text(16) != proof.c.Text(16) { // we must fail here",
+   "replace": "if false && reducedhash(input).Text(16) != proof.c.Text(16) { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-crypto-ip-check",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26HonestPerturbationRefused",
+   "find": "\tif !proof.ip.Verify(hPrimes, u_x, P, o, gparams) {",
+   "replace": "\tif false && !proof.ip.Verify(hPrimes, u_x, P, o, gparams) { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-crypto-ip-len",
+   "file": "cryptography/crypto/proof_innerproduct.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR28InnerProductLengthGuard",
+   "find": "\tif len(ip.ls) != len(ip.rs) { // length must be same\n\t\treturn false",
+   "replace": "\tif false && len(ip.ls) != len(ip.rs) { // r28 mutated\n\t\treturn false"
+  },
+  {
+   "id": "gm-r28-glue-global-crypto-ip-final",
+   "file": "cryptography/crypto/proof_innerproduct.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR26HonestPerturbationRefused",
+   "find": "\tif P_calculated.String() != P.String() { // need something better here",
+   "replace": "\tif false && P_calculated.String() != P.String() { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-validate-network",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28ParseValidateAddressNetworks",
+   "find": "\tif IsMainnet() != addr.IsMainnet() {",
+   "replace": "\tif false && IsMainnet() != addr.IsMainnet() { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-validate-trim",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28ParseValidateAddressNetworks",
+   "find": "rpc.NewAddress(strings.TrimSpace(str))",
+   "replace": "rpc.NewAddress(str) // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-money8",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28FormatMoneyAgreesBelowTheDefectRegion",
+   "find": "\treturn FormatMoneyPrecision(amount, 8)",
+   "replace": "\treturn FormatMoneyPrecision(amount, 5) // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-money12",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28FormatMoneyAgreesBelowTheDefectRegion",
+   "find": "\treturn FormatMoneyPrecision(amount, 12) //",
+   "replace": "\treturn FormatMoneyPrecision(amount, 8) // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-money0",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28FormatMoneyAgreesBelowTheDefectRegion",
+   "find": "\treturn FormatMoneyPrecision(amount, 0)",
+   "replace": "\treturn FormatMoneyPrecision(amount, 5) // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-parse-maxuint",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28ParseAmountDefectsPinned",
+   "find": "\tif amount == math.MaxUint64 {",
+   "replace": "\tif false && amount == math.MaxUint64 { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-parse-trim",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28ParseAmountAgreementAndRoundTrip",
+   "find": "big.ParseFloat(strings.TrimSpace(str), 10, 0, big.ToZero)",
+   "replace": "big.ParseFloat(str, 10, 0, big.ToZero) // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-format-landed-prec",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28FormatMoneyDefectRegion",
+   "find": "const money_prec = 128",
+   "replace": "const money_prec = 64 // r28 mutated (merge): the landed 128-bit quotient back to the 64-bit default"
+  },
+  {
+   "id": "gm-r28-glue-global-getoffset-sign",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28GetOffsetSignPinned",
+   "find": "\toff, _ := ntp_offset()\n\treturn off\n",
+   "replace": "\toff, _ := ntp_offset()\n\treturn -off // r28 mutated (merge): the negated correction\n"
+  },
+  {
+   "id": "gm-r28-glue-global-rpc-copy",
+   "file": "rpc/wallet_rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28RPCFormatMoneyCopy",
+   "find": "\tresult := new(big.Float)\n\tresult.Quo(float_amount, hard_coded_decimals)",
+   "replace": "\tresult := new(big.Float).SetPrec(128) // r28 mutated: one copy fixed\n\tresult.Quo(float_amount, hard_coded_decimals)"
+  },
+  {
+   "id": "gm-r28-glue-global-nhooyr-wasm-limit",
+   "file": "glue/rwc/rwc_nhyoor.go",
+   "pkg": "./glue/rwc/",
+   "test": "TestR28WasmWalletTransportLargeReply",
+   "find": "\t\trwc.WS.SetReadLimit(NhooyrReadLimit)",
+   "replace": "\t\trwc.WS.SetReadLimit(2 << 20) // r28 mutated"
+  },
+  {
+   "id": "gm-r28-glue-global-logger-with",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR28LoggerWithAndStackTrace",
+   "find": "\treturn &removeCallerCore{c.Core.With(fields)}",
+   "replace": "\treturn c.Core.With(fields) // r28 mutated: the caller strip lost on With"
+  },
+  {
+   "id": "gm-r28-glue-global-citation-stale",
+   "file": "glue/emission/emission.go",
+   "pkg": "./glue/txprecheck/",
+   "test": "TestR28ConsensusCitationsHold",
+   "find": "(the snapshot of Tips[0], blockchain.go:958)",
+   "replace": "(the snapshot of Tips[0], blockchain.go:964)"
+  },
+  {
+   "id": "gm-r28-glue-global-citation-table",
+   "file": "glue/txprecheck/txprecheck.go",
+   "pkg": "./glue/txprecheck/",
+   "test": "TestR28ConsensusCitationsHold",
+   "find": "//   - BURN_TX with Value 0                               :263",
+   "replace": "//   - BURN_TX with Value 0                               :264"
+  },
+  {
+   "id": "gm-r28-glue-global-precheck-overrefuse",
+   "file": "glue/txprecheck/txprecheck.go",
+   "pkg": "./glue/txprecheck/",
+   "test": "TestR28PrecheckAdmitsEveryMainnetTx",
+   "find": "\t\tif uint64(len(st.C)) < st.RingSize || st.D == nil",
+   "replace": "\t\tif uint64(len(st.C)) <= st.RingSize || st.D == nil"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-init-entry",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\tentrypoint := \"Initialize\"\n",
+   "replace": "\t\tentrypoint := \"Initialise\" // r28 mutated\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-private-meta",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\t\tmeta.Type = 1\n",
+   "replace": "\t\t\tmeta.Type = 0 // r28 mutated\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-incoming-burn",
+   "file": "blockchain/transaction_execute.go",
+   "find": "incoming_value[payload.SCID] = payload.BurnValue",
+   "replace": "incoming_value[payload.SCID] = 0 // r28 mutated",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-sanity-skip",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\terr = dvm.SanityCheckExternalTransfers(w_sc_data_tree, balance_tree, scid)\n",
+   "replace": "\t\t_ = balance_tree // r28 mutated\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-revert-no-refund",
+   "file": "blockchain/transaction_execute.go",
+   "find": "return funds to him\n\t\t\tdvm.ErrorRevert(ss, cache, balance_tree, signer, scid, incoming_value)\n",
+   "replace": "return funds to him\n\t\t\t_ = signer // r28 mutated\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-commit-skip",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\tdvm.ProcessExternal(ss, cache, balance_tree, signer, scid, w_sc_data_tree, w_sc_tree)\n",
+   "replace": "\t_ = w_sc_tree // r28 mutated\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-call-scid",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\tscid = tx.SCDATA.Value(rpc.SCID, rpc.DataHash).(crypto.Hash)\n",
+   "replace": "\t\t_ = tx.SCDATA.Value(rpc.SCID, rpc.DataHash).(crypto.Hash) // r28 mutated\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-signer-parity",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\t\t\tif (i%2 == 0) == parity { // this condition is well thought out and works good enough\n\t\t\t\t\tcopy(signer",
+   "replace": "\t\t\t\tif (i%2 == 0) != parity { // r28 mutated\n\t\t\t\t\tcopy(signer",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-unknown-scid-refund",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\t\terr = fmt.Errorf(\"scid %s not installed\", scid)\n\t\t\treturn\n",
+   "replace": "\t\t\terr = fmt.Errorf(\"scid %s not installed\", scid) // r28 mutated: falls through to the refund\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-init-fail-refund",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\t\terr = fmt.Errorf(\"SC not found %s\", scid)\n\t\t}\n\n\t\tif err != nil {\n\t\t\treturn\n\t\t}\n",
+   "replace": "\t\t\terr = fmt.Errorf(\"SC not found %s\", scid)\n\t\t}\n\n\t\tif err != nil { // r28 mutated: falls through to the refund\n\t\t}\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-unknown-action-refund",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\terr = fmt.Errorf(\"unknown action what to do scid %x\", scid)\n\t\treturn\n",
+   "replace": "\t\terr = fmt.Errorf(\"unknown action what to do scid %x\", scid) // r28 mutated: falls through to the refund\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-nocode-refund",
+   "file": "blockchain/transaction_execute.go",
+   "find": "// but only it is present\n\t\t\tbreak\n",
+   "replace": "// but only it is present\n\t\t\terr = fmt.Errorf(\"r28 mutated\")\n\t\t\tbreak\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-sc-empty-code-noerr",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\t\terr = fmt.Errorf(\"no code provided\")\n",
+   "replace": "\t\t\t// r28 mutated: no error\n",
+   "test": "TestR28SimulatorChainSCInstallCallKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-prune-diff-balance",
+   "file": "blockchain/prune_history.go",
+   "find": "\t// diff and update balance tree\n\tclone_tree_changes(old_tree, new_tree, write_tree)\n",
+   "replace": "\t// diff and update balance tree\n\t_ = new_tree // r28 mutated\n",
+   "test": "TestR28PruneHistoryPreservesStateKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-prune-diff-modified-sc",
+   "file": "blockchain/prune_history.go",
+   "find": "\t\tclone_tree_changes(old_tree, new_tree, write_tree)\n\n\t\tsc_trees = append(sc_trees, write_tree)\n\t}\n\n\tlatest_commit_version",
+   "replace": "\t\t_ = new_tree // r28 mutated\n\n\t\tsc_trees = append(sc_trees, write_tree)\n\t}\n\n\tlatest_commit_version",
+   "test": "TestR28PruneHistoryPreservesStateKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-prune-diff-new-sc",
+   "file": "blockchain/prune_history.go",
+   "find": "\t\tfor k, v, err := c.First(); err == nil; k, v, err = c.Next() {\n\t\t\twrite_tree.Put(k, v)\n\t\t}\n\t\tsc_trees",
+   "replace": "\t\tfor k, v, err := c.First(); err == nil; k, v, err = c.Next() {\n\t\t\t_, _ = k, v // r28 mutated\n\t\t}\n\t\tsc_trees",
+   "test": "TestR28PruneHistoryPreservesStateKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-prune-clone-sc-data",
+   "file": "blockchain/prune_history.go",
+   "find": "\t\t\twrite_sc_tree.Put(k, v)\n",
+   "replace": "\t\t\t_, _ = k, v // r28 mutated\n",
+   "test": "TestR28PruneHistoryPreservesStateKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-prune-gap-fill",
+   "file": "blockchain/prune_history.go",
+   "find": "store.Topo_store.Write(i, toporecord.BLOCK_ID, major_copy, toporecord.Height)",
+   "replace": "store.Topo_store.Write(i, toporecord.BLOCK_ID, toporecord.State_Version+0*major_copy, toporecord.Height) // r28 mutated",
+   "test": "TestR28PruneHistoryPreservesStateKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-prune-discard-keep",
+   "file": "blockchain/prune_history.go",
+   "find": "\t\t\t\t_ = store.Block_tx_store.DeleteBlock(blid)\n",
+   "replace": "\t\t\t\t_ = blid // r28 mutated\n",
+   "test": "TestR28PruneHistoryPreservesStateKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-prune-min-50",
+   "file": "blockchain/prune_history.go",
+   "find": "if max_topoheight-prune_topoheight < 50 {",
+   "replace": "if max_topoheight-prune_topoheight < 5 { // r28 mutated",
+   "test": "TestR28PruneHistoryPreservesStateKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-prune-modify-dropped",
+   "file": "blockchain/prune_history.go",
+   "find": "\t\tnew_value, _ := new_tree.Get(k)\n\t\twrite_tree.Put(k, new_value)\n\t}\n\n\tdelete_handler",
+   "replace": "\t\tnew_value, _ := new_tree.Get(k)\n\t\t_ = new_value // r28 mutated: modification dropped\n\t}\n\n\tdelete_handler",
+   "test": "TestR28PruneHistoryPreservesStateKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-prune-block-version",
+   "file": "blockchain/prune_history.go",
+   "find": "err = store.Block_tx_store.WriteBlock(old_toporecord.BLOCK_ID, block_data, diff, commit_versions[i], bl.Height)",
+   "replace": "err = store.Block_tx_store.WriteBlock(old_toporecord.BLOCK_ID, block_data, diff, old_toporecord.State_Version, bl.Height) // r28 mutated",
+   "test": "TestR28PruneHistoryPreservesStateKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-meta-old-codec-fixed",
+   "file": "dvm/sc.go",
+   "find": "\tcopy(buf[1+len(meta.DataHash):], meta.DataHash[:])\n\treturn\n",
+   "replace": "\tcopy(buf[1:], meta.DataHash[:]) // r28 mutated: the pre-HF2 codec \"fixed\"\n\treturn\n",
+   "test": "TestR28SCMetaCodecsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-meta-good-nohash",
+   "file": "dvm/sc.go",
+   "find": "\tbuf = append(buf, meta.DataHash[:]...)\n",
+   "replace": "\tbuf = append(buf, make([]byte, 32)...) // r28 mutated\n",
+   "test": "TestR28SCMetaCodecsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-meta-good-len",
+   "file": "dvm/sc.go",
+   "find": "func (meta *SC_META_DATA) UnmarshalBinaryGood(buf []byte) (err error) {\n\tif len(buf) != 1+32 {",
+   "replace": "func (meta *SC_META_DATA) UnmarshalBinaryGood(buf []byte) (err error) {\n\tif len(buf) < 1 { // r28 mutated",
+   "test": "TestR28SCMetaCodecsKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-balance-key-raw",
+   "file": "dvm/dvm_store.go",
+   "find": "ser = append(ser, ([]byte(dkey.Key.ValueString))...) // string",
+   "replace": "ser = append(ser, 'b') // r28 mutated",
+   "test": "TestR28BalanceKeyKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-rawload-disk-first",
+   "file": "dvm/dvm_store.go",
+   "find": "if value, found = tx_store.RawKeys[string(key)]; !found {",
+   "replace": "if value, found = tx_store.RawKeys[string(key)]; true { // r28 mutated",
+   "test": "TestR28RawLoadKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-random-args",
+   "file": "dvm/dvm_functions.go",
+   "find": "if len(expr.Args) >= 2 {\n\t\tpanic(\"RANDOM",
+   "replace": "if len(expr.Args) >= 3 { // r28 mutated\n\t\tpanic(\"RANDOM",
+   "test": "TestR28RandomKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-checkargs-off",
+   "file": "dvm/dvm_functions.go",
+   "find": "if expected != actual {\n\t\tpanic(\"incorrect number of arguments\")",
+   "replace": "if false { // r28 mutated\n\t\tpanic(\"incorrect number of arguments\")",
+   "test": "TestR28RandomKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-random-mod",
+   "file": "dvm/deterministic_random_number.go",
+   "find": "return r.Random() % input",
+   "replace": "return r.Random() % (input + 1) // r28 mutated",
+   "test": "TestR28RNDCrossImpl",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-rnd-seed",
+   "file": "dvm/deterministic_random_number.go",
+   "find": "tmp := crypto.Keccak256(SCID[:], BLID[:], TXID[:])",
+   "replace": "tmp := crypto.Keccak256(SCID[:], TXID[:]) // r28 mutated",
+   "test": "TestR28RNDCrossImpl",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-rnd-pos",
+   "file": "dvm/deterministic_random_number.go",
+   "find": "r.Pos = 1 // we start at 1",
+   "replace": "r.Pos = 0 // r28 mutated; we start at 1",
+   "test": "TestR28RNDCrossImpl",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-dvm-rnd-const",
+   "file": "dvm/deterministic_random_number.go",
+   "find": "salsa.HSalsa20(&out, &in, &key, &in)",
+   "replace": "salsa.HSalsa20(&out, &in, &key, &salsa.Sigma) // r28 mutated",
+   "test": "TestR28RNDCrossImpl",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-mempool-milli-rank",
+   "file": "blockchain/mempool/mempool.go",
+   "find": "object.FEEperBYTE = tx.Fees() / object.Size",
+   "replace": "object.FEEperBYTE = (tx.Fees() * 1000) / object.Size // r28 mutated: the B19 fix shape (milli-unit rank)",
+   "test": "TestR28FeeRankIsIntegerPerByte",
+   "pkg": "./blockchain/mempool/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-burn-zero-check-off",
+   "file": "blockchain/transaction_verify.go",
+   "find": "\t\tif tx.Value == 0 {\n\t\t\treturn fmt.Errorf(\"Burn Value cannot be zero\")",
+   "replace": "\t\tif false { // r28 mutated\n\t\t\treturn fmt.Errorf(\"Burn Value cannot be zero\")",
+   "test": "TestR28BurnTxNeverVerifiesKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-dvm-blockchain-burn-value-serialised",
+   "file": "transaction/transaction.go",
+   "find": "\tif tx.TransactionType == PREMINE || tx.TransactionType == SC_TX {\n\t\tn := binary.PutUvarint(buf, tx.Value)",
+   "replace": "\tif tx.TransactionType == PREMINE || tx.TransactionType == SC_TX || tx.TransactionType == BURN_TX { // r28 mutated\n\t\tn := binary.PutUvarint(buf, tx.Value)",
+   "test": "TestR28BurnTxNeverVerifiesKAT",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r28-forensics-closure-globals-getoffset-sign",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27GetOffsetIsTheAppliedCorrection",
+   "find": "\toff, _ := ntp_offset()\n\treturn off\n",
+   "replace": "\treturn time.Now().Sub(Time()) // r28 mutated: the pre-B147 negated correction\n"
+  },
+  {
+   "id": "gm-r28-forensics-closure-globals-money-prec",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27FormatMoneyExact",
+   "find": "const money_prec = 128",
+   "replace": "const money_prec = 64 // r28 mutated: big.Float default precision"
+  },
+  {
+   "id": "gm-r28-forensics-closure-globals-parse-negzero",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27ParseAmountExact",
+   "find": "\tif strings.HasPrefix(text, \"-\") {",
+   "replace": "\tif false && strings.HasPrefix(text, \"-\") { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-forensics-closure-globals-parse-exponent",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27ParseAmountExact",
+   "find": "xerr != nil || x > 64 || x < -64 {",
+   "replace": "xerr != nil || x > 1000 || x < -1000 { // r28 mutated"
+  },
+  {
+   "id": "gm-r28-forensics-closure-globals-parse-isint",
+   "file": "globals/globals.go",
+   "pkg": "./globals/",
+   "test": "TestR27ParseAmountExact",
+   "find": "\tif !exact.IsInt() {",
+   "replace": "\tif false && !exact.IsInt() { // r28 mutated: sub-atomic amounts accepted"
   }
  ]
 }

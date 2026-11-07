@@ -415,7 +415,7 @@ def ht11(P):
 
 
 # ───────────────────────────── HT12 B131 ─────────────────────────────
-B131_SHAPES = ['M1' + '-Ultra', 'M1 hard' + 'ware', 'm1' + 'ultra', '.' + 'claude/projects/', '.' + 'claude/settings.json',
+B131_SHAPES = ['M1' + '-Ultra', 'M1 hard' + 'ware', 'm1' + 'ultra', '.' + 'claude/' + 'projects/', '.' + 'claude/settings.json',
                '.' + 'claude/settings.local.json']
 
 
@@ -477,6 +477,20 @@ KATS = [('HT1', ht1), ('HT2', ht2), ('HT3', ht3), ('HT4', ht4), ('HT5', ht5), ('
         ('HT9', ht9), ('HT10', ht10), ('HT11', ht11), ('HT12', ht12)]
 PATHS = {'fbv': FBV, 'logi': LOGI, 'gda': GDA, 'area': AREA, 'rpcp': RPCP, 'disc': DISC, 'tool': TOOL, 'triage': TRIAGE,
          'priv': PRIV, 'rt': RUNTIME_MINER, 'evo': EVO}
+
+def order_tail_mutation(src, why):
+    """r28 (tools-kats, N28-01): the HT11 mutation drops the LAST round of mine_evolution's last 'ORDER += [...]' line,
+    read from the source at run time. Until R28 it was the literal "ORDER += ['R25', ..., 'R29']": every round open
+    appends a round, so the literal stopped matching ('find text occurs 0 times') and had to be re-anchored by hand at
+    each open (R28 Part A: R28 -> R29; B149 class). Round-independent: ('evo', find, replace, why). Pure."""
+    import re
+    lines = [m for m in re.finditer(r"^ORDER \+= \[([^\]]*)\]", src, re.M)]
+    if not lines:
+        return ('evo', 'ORDER += [<no such line>]', '', why)
+    m = lines[-1]
+    items = [x.strip() for x in m.group(1).split(',') if x.strip()]
+    return ('evo', m.group(0), 'ORDER += [' + ', '.join(items[:-1]) + ']', why)
+
 
 MUTATIONS = [   # (key, find, replace, why)
     ('fbv', "                if junk.is_dir():\n                    shutil.rmtree(junk, ignore_errors=True)\n",
@@ -550,8 +564,8 @@ MUTATIONS = [   # (key, find, replace, why)
     ('tool', "    out['skill_fresh'] = int(fresh and required > 0)", "    out['skill_fresh'] = int(fresh)",
      'B92: no skill recording the round counts as fresh'),
     ('tool', "        if len(t.splitlines()) > SKILL_MAX_LINES:", "        if False:", 'B92: a skill over its budget is not reported'),
-    ('tool', "MODEL_TOOL_PLANTS = ['M1' + '-Ultra', '\"M1 hard' + 'ware ceiling\"', 'm1' + 'ultra', '~/.' + 'claude/projects/x/memory/',",
-     "MODEL_TOOL_PLANTS = ['~/.' + 'claude/projects/x/memory/',", 'B131: the machine-model plants are dropped from the control'),
+    ('tool', "MODEL_TOOL_PLANTS = ['M1' + '-Ultra', '\"M1 hard' + 'ware ceiling\"', 'm1' + 'ultra', '~/.' + 'claude/' + 'projects/x/memory/',",
+     "MODEL_TOOL_PLANTS = ['~/.' + 'claude/' + 'projects/x/memory/',", 'B131: the machine-model plants are dropped from the control'),
     ('tool', "                     '.' + 'claude/settings.json', '.' + 'claude/settings.local.json']",
      "                     ]", 'B131: the session settings-file plants are dropped from the control'),
     ('tool', "        plants += MODEL_TOOL_PLANTS                                       # r26 B131",
@@ -560,7 +574,7 @@ MUTATIONS = [   # (key, find, replace, why)
      "    tool = tool_path('pubscrub')", 'B131: scrub_control ignores the root and scrubber it is given (r27 coupling)'),
     ('tool', "    fn = sum(1 for p in plants if p and p in scrubbed)", "    fn = 0",
      'B131: the control never counts a false negative (r27)'),
-    ('evo', "ORDER += ['R25', 'R26', 'R27', 'R28']", "ORDER += ['R25', 'R26', 'R27']", 'B90: the next planned round is missing from ORDER'),
+    order_tail_mutation(EVO.read_text(encoding='utf-8'), 'B90: the next planned round is missing from ORDER'),
 ]
 
 

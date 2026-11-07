@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -106,26 +107,8 @@ func archiveMain(src *fsSource, tm *emission.TopoMap, fromH, toH int64, p emissi
 	run := &archiveRun{segStart: unix(), seriesOut: seriesOut, every: every, now: unix}
 	cpu0, wall0 := cpuTime(), time.Now()
 	sum := emission.ArchiveRange(src, tm, from, to, p, run.each)
-	written, werr := run.written, run.werr
 	cpu, wall := cpuTime()-cpu0, time.Since(wall0)
-	fmt.Printf("archive topo %d..%d (heights %d..%d requested): audited %d unavailable %d errors %d verdicts %v\n",
-		from, to, fromH, toH, sum.Audited, sum.Unavailable, sum.Errors, sum.Verdicts)
-	fmt.Printf("archive %s (over %d audited blocks)\n", run.payees, sum.Audited) // r27: the live mode's payee line
-	for i, c := range sum.Segments {
-		fmt.Printf("segment %d topo %d..%d heights %d..%d: verified %d unverified %d observed %d formula %d issued %d fees %d burns %d sc_deposits %d sc_payouts %d payees %d payees_verified %d payees_explained %d consistent %v issued_matches_formula %v\n",
-			i, sum.Available[i][0], sum.Available[i][1], c.From, c.To, c.Verified, c.Unverified, c.Observed, c.Formula, c.Issued,
-			c.Fees, c.Burns, c.SCDeposits, c.SCPayouts, c.Payees, c.PayeesVerified, c.PayeesExplained, c.Consistent, c.IssuedMatchesFormula)
-	}
-	for _, r := range sum.Flagged {
-		fmt.Printf("flagged height %d %s alerts=%v notes=%v\n", r.Height, r.Verdict, r.Alerts, r.Notes)
-	}
-	if sum.Audited > 0 {
-		fmt.Printf("cost: process cpu %.3f s for %.3f s wall over %d audited blocks (%.2f ms cpu/block, audit wall mean %d us)\n",
-			cpu.Seconds(), wall.Seconds(), sum.Audited, cpu.Seconds()*1000/float64(sum.Audited), sum.MicrosTotal/sum.Audited)
-	}
-	if seriesOut != "" {
-		fmt.Printf("series: %d checkpoints appended to %s (%d write errors)\n", written, seriesOut, werr)
-	}
+	printArchive(os.Stdout, from, to, fromH, toH, sum, run, seriesOut, cpu, wall)
 	if jsonOut != "" {
 		b, _ := json.MarshalIndent(sum, "", " ")
 		os.WriteFile(jsonOut, b, 0600)
@@ -134,6 +117,29 @@ func archiveMain(src *fsSource, tm *emission.TopoMap, fromH, toH int64, p emissi
 		return 3
 	}
 	return 0
+}
+
+// printArchive writes the -archive report. r28 (tools-kats, B139 residual): split out of archiveMain so the printed
+// lines (the payee line the B36 24 h read quotes above all) are under test; archiveMain was 0.0 % covered.
+func printArchive(w io.Writer, from, to, fromH, toH int64, sum emission.ArchiveSummary, run *archiveRun, seriesOut string, cpu, wall time.Duration) {
+	fmt.Fprintf(w, "archive topo %d..%d (heights %d..%d requested): audited %d unavailable %d errors %d verdicts %v\n",
+		from, to, fromH, toH, sum.Audited, sum.Unavailable, sum.Errors, sum.Verdicts)
+	fmt.Fprintf(w, "archive %s (over %d audited blocks)\n", run.payees, sum.Audited) // r27: the live mode's payee line
+	for i, c := range sum.Segments {
+		fmt.Fprintf(w, "segment %d topo %d..%d heights %d..%d: verified %d unverified %d observed %d formula %d issued %d fees %d burns %d sc_deposits %d sc_payouts %d payees %d payees_verified %d payees_explained %d consistent %v issued_matches_formula %v\n",
+			i, sum.Available[i][0], sum.Available[i][1], c.From, c.To, c.Verified, c.Unverified, c.Observed, c.Formula, c.Issued,
+			c.Fees, c.Burns, c.SCDeposits, c.SCPayouts, c.Payees, c.PayeesVerified, c.PayeesExplained, c.Consistent, c.IssuedMatchesFormula)
+	}
+	for _, r := range sum.Flagged {
+		fmt.Fprintf(w, "flagged height %d %s alerts=%v notes=%v\n", r.Height, r.Verdict, r.Alerts, r.Notes)
+	}
+	if sum.Audited > 0 {
+		fmt.Fprintf(w, "cost: process cpu %.3f s for %.3f s wall over %d audited blocks (%.2f ms cpu/block, audit wall mean %d us)\n",
+			cpu.Seconds(), wall.Seconds(), sum.Audited, cpu.Seconds()*1000/float64(sum.Audited), sum.MicrosTotal/sum.Audited)
+	}
+	if seriesOut != "" {
+		fmt.Fprintf(w, "series: %d checkpoints appended to %s (%d write errors)\n", run.written, seriesOut, run.werr)
+	}
 }
 
 type hf3Dir struct {

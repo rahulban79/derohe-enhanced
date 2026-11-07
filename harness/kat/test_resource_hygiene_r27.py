@@ -424,8 +424,9 @@ def rh8(P):
 def rh9(P):
     R = load(P['ri'], 'ri9')
     ev = []
-    F = extract(P['fbv'], ['heavy_preflight', 'race_args'],
-                {'event': lambda *a, **kv: ev.append((a[0], a[1], kv)), 'RESOURCE_INTEL': P['ri']})
+    def event(stage, status, **kv):        # r28: the real signature, so a 'stage' keyword collides here as in the pipeline
+        ev.append((stage, status, kv))
+    F = extract(P['fbv'], ['heavy_preflight', 'race_args'], {'event': event, 'RESOURCE_INTEL': P['ri']})
     with tempfile.TemporaryDirectory() as td:
         notes = Path(td) / 'n.md'
         os.environ['DERO_ROUND_NOTES'] = str(notes)
@@ -445,6 +446,7 @@ def rh9(P):
     src_ok = ("race_args(heavy_preflight('race', cpus), cpus)" in s3c and '*pargs' in s3c and 'timeout=tmo' in s3c
               and "heavy_preflight('mutate'" in s3b)
     ok = (a == 1 and ev[0][0] == 'preflight' and ev[0][2].get('level') == 'HOLD' and 'preflight pipeline race: HOLD' in nl
+          and ev[0][2].get('for_stage') == 'race' and ev[-1][2].get('for_stage') == 'mutate'
           and b == 7 and ev[-1][2].get('level') == 'unreadable'
           and ra == ((['-p', '1'], 21600), ([], 3600), (['-p', '10'], 7200)) and src_ok)
     return ok, f'hold -> {a} event {ev[:1]} notes {nl[:80]!r} · probe down -> {b} · race_args {ra} · stages wired {src_ok}'
@@ -503,11 +505,16 @@ MUTATIONS = [   # (key, find, replace, why)
     ('fbv', "    return ['-p', str(p)], min(6 * 3600, int(base_timeout * cpus / max(1, p)))", "    return ['-p', str(p)], base_timeout",
      'r27b RH9: a serial S3c keeps the full-width timeout (it would time out, not run)'),
     ('fbv', "    heavy_preflight('mutate', 1)", "    pass", 'r27b RH9: S3b records no preflight'),
+    ('fbv', "    event('preflight', 'INFO', for_stage=stage, level=d['level'],", "    event('preflight', 'INFO', stage=stage, level=d['level'],",
+     'B171: the stage keyword collides with event(stage, ...) (pipeline_20261106T045640 S3b TypeError)'),
+    ('fbv', "        event('preflight', 'INFO', for_stage=stage, level='unreadable',", "        event('preflight', 'INFO', stage=stage, level='unreadable',",
+     'B171: the unreadable-probe event collides the same way'),
 ]
 
 # katmut (harness/kit/katmut.py, rft §0.9 rule 1): each mutation's reason starts with its defect id; the KAT(s) that own it
 OWNERS = {f'r27b RH{i}': [f'RH{i}'] for i in range(1, 10)}
 OWNERS['r27b RH2-RH3'] = ['RH2', 'RH3']      # memory free % decides the level (RH2) and the REDUCE concurrency (RH3)
+OWNERS['B171'] = ['RH9']                    # r28: heavy_preflight's event keyword (pipeline_20261106T045640 S3b TypeError)
 
 
 def katmut():

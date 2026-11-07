@@ -29,7 +29,7 @@ BASE_TAG = 'Release152'
 SNAP = 'harness/runtime/evolution_git.tsv'
 # the ledger's round axis, in order; R23c stays listed so a not-yet-committed round renders as pending, never as zero
 ORDER = ['R1-3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9'] + [f'R{n}' for n in range(11, 24)] + ['R23b', 'R23c', 'R24']
-ORDER += ['R25', 'R26', 'R27', 'R28']  # r28 listed at the R27 open loop (tools-kats: HT11 FAILED at cee1d80f, the registry's next planned round r28 was missing); r27 listed at the R26 open loop (B90 early warning: before its first 'R27' commit); r26 listed at the R25 artifacts (B90: before its first 'R26' commit); r25 plan (2026-11-03): listed before its first 'R25 plan:' commit lands, so it renders as pending, never as zero (rft §6 step 13)
+ORDER += ['R25', 'R26', 'R27', 'R28', 'R29']  # r29 listed at the R28 open (Part A, B149: the registry's next planned round r29); r28 listed at the R27 open loop (tools-kats: HT11 FAILED at cee1d80f, the registry's next planned round r28 was missing); r27 listed at the R26 open loop (B90 early warning: before its first 'R27' commit); r26 listed at the R25 artifacts (B90: before its first 'R26' commit); r25 plan (2026-11-03): listed before its first 'R25 plan:' commit lands, so it renders as pending, never as zero (rft §6 step 13)
 # r24 (pipeline run 1): ORDER ended at R23c, so the first 'R24 ...' commit crashed this miner with KeyError: 'R24' (S7 FAIL).
 # A round that git names but ORDER does not list is now refused by name (unknown_rounds); harness/kat/
 # test_evolution_order_r24.py checks every non-planned harness/round.json round and every commit since the base.
@@ -49,6 +49,30 @@ SOURCE_EXT = ('.go', '.c', '.h', '.s', '.py', '.swift', '.metal', '.sh', '.js', 
 DOC = {'R1-3': (r'^## 18\. ', r'^# ROUND 3 '), 'R4': (r'^## 20\. ', r'^# ROUND 4 '), 'R5': (r'^## 21\. ', r'^## ROUND 5 '),
        'R6': (r'^## 22\. ', r'^## ROUND 6 '), 'R7': (r'^## 24\. ', r'^## ROUND 7 '), 'R8': (r'^## 25\. ', r'^## ROUND 8 '),
        'R9': (r'^## 26\. ', r'^## Round 9b / Round 10 ')}
+
+
+def planned_keys(root=None):
+    """r28 (tools-kats): the ledger keys ('r29' -> 'R29') that harness/round.json marks 'planned'. ORDER lists the next
+    planned round early (B90) and its row renders as pending; until R28 the same round was ALSO counted as an item 'a
+    miner could not anchor' (evolution.json unverified 1 at the R28 open: 'R29: no commit ... names this round yet'), so
+    the page's unverified KPI mixed a planned round with a real anchoring gap. An empty set when the registry is
+    unreadable (then every commit-less round stays unverified, the old behaviour)."""
+    import json
+    try:
+        reg = json.loads((Path(root or M.ROOT) / 'harness/round.json').read_text())
+    except (OSError, ValueError):
+        return set()
+    return {'R' + str(r.get('id', ''))[1:] for r in reg.get('rounds') or [] if r.get('status') == 'planned'}
+
+
+def commitless_unverified(k, commits, planned):
+    """the unverified entry of a round with no commit, or None: a round the registry still marks planned has nothing to
+    anchor yet (its row says 'pending measurement'); any other commit-less round is a real gap. Pure."""
+    if commits or k in planned:
+        return None
+    return {'title': f'{LABEL.get(k, k)}: no commit in {BASE_TAG}..HEAD names this round yet',
+            'why': 'pending measurement: the round has not been committed, so git holds nothing to count; '
+                   'the page shows it as pending, never as zero'}
 
 
 def git(*a):
@@ -239,6 +263,7 @@ def main():
                      f"{c['subject'][:72].rstrip()}")   # r23c (review): no trailing blank where the cut lands on a space
 
     rows, unv = [], []
+    planned = planned_keys()
     cum_go = cum_code = cum_all = 0
     for k in ORDER:
         g = R[k]
@@ -253,10 +278,9 @@ def main():
                f"go={go}\tcode={code}\tcum_go={cum_go}\tcum_code={cum_code}\t{sline or 'no-commits'}")
         lines.append(tsv)
         docs, secno, what = doc_anchors(k)
-        if not g['commits']:
-            unv.append({'title': f'{LABEL.get(k, k)}: no commit in {BASE_TAG}..HEAD names this round yet',
-                        'why': 'pending measurement: the round has not been committed, so git holds nothing to count; '
-                               'the page shows it as pending, never as zero'})
+        u = commitless_unverified(k, g['commits'], planned)        # r28: a planned round is pending, not unanchored
+        if u:
+            unv.append(u)
         rows.append({'id': f'evo-{k.lower()}', 'section': 'evolution', 'kind': 'evo-round', 'class': 'HARNESS',
                      'title': LABEL.get(k, k), 'round': k, 'order': ORDER.index(k),
                      'claim': (f"{LABEL.get(k, k)}: {len(g['commits'])} commit(s), {len(g['paths'])} path(s), "

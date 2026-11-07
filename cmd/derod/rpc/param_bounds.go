@@ -165,6 +165,7 @@ func remote_body_items(body []byte) ([]int, error) {
 func write_bound_error(w interface {
 	Write([]byte) (int, error)
 }, err error) {
+	count_error_answer(err) // r28: an over-bound body is refused before the bridge; count its code like LogResponse would
 	body, _ := json.Marshal(map[string]interface{}{"jsonrpc": "2.0", "id": nil, "error": err})
 	w.Write(body)
 }

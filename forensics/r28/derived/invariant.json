@@ -1,0 +1,115 @@
+{
+ "Q-CS1": {
+  "answer": "every registered account and SC tree entry is enumerable from the state tree (a key count is public); the balances they hold are ciphertexts, so enumeration does not make them summable (Q-CS2)",
+  "balance_key_lengths": {
+   "33": 2141530
+  },
+  "balance_tree_keys": 2141530,
+  "census_output_sha256": "3fdf65e2849c08f943d3bef5832e25e577d4d04bbff3a7a854d9a813afe9e487",
+  "r22_comparison": {
+   "class": "EXT to this dataset (an earlier round's measurement, not re-derivable here)",
+   "count": 2141950,
+   "difference_r22_minus_this": 420,
+   "note": "different scope: R22 counted the live store at a later version; the difference is not a finding",
+   "source": "memory dero-crypto-audit-r22 (APFS clone of the live store, 2026-10-29)",
+   "version": 337537
+  },
+  "root_check": {
+   "census_root": "d3345594b8bb324b60940c0bea625c57567f09ac889704dba57935de407bd324",
+   "equal": true,
+   "recorded_in": "derived/archive_state/roots.jsonl.gz",
+   "recorded_root": "d3345594b8bb324b60940c0bea625c57567f09ac889704dba57935de407bd324"
+  },
+  "sc_meta_keys": 50276,
+  "sc_tree_keys_length_33": 173338,
+  "sc_tree_keys_length_33_note": "structural only: a 33-byte key has the length of a compressed point (candidate holder-balance entry); not decoded",
+  "sc_tree_keys_total": 1319156,
+  "scope": {
+   "state_version": 18960,
+   "store": "APFS clone of the replaywall archive copy (read through a clone, never in place)",
+   "topo": 7467515
+  },
+  "status": "answered (scope: the held replaywall archive at topo 7467515, not our anchor 7,498,540)"
+ },
+ "Q-CS2": {
+  "anchors": [
+   {
+    "anchor": "cryptography/crypto/algebra_elgamal.go:34",
+    "id": "balance_encoding",
+    "ok": true,
+    "what": "an account balance is an ElGamal pair (Left, Right)"
+   },
+   {
+    "anchor": "blockchain/transaction_execute.go:74",
+    "id": "per_account_key",
+    "ok": true,
+    "what": "a new balance is an encryption of zero under the account's own public key"
+   },
+   {
+    "anchor": "blockchain/transaction_execute.go:239",
+    "id": "homomorphic_update_delta",
+    "ok": true,
+    "what": "each payload adds a per-account ciphertext delta built from the statement (C[i], D)"
+   },
+   {
+    "anchor": "blockchain/transaction_execute.go:241",
+    "id": "homomorphic_update",
+    "ok": true,
+    "what": "the stored balance is updated by ciphertext addition only"
+   },
+   {
+    "anchor": "cryptography/crypto/algebra_elgamal.go:69",
+    "id": "ciphertext_add",
+    "ok": true,
+    "what": "ciphertext addition is component-wise point addition"
+   },
+   {
+    "anchor": "walletapi/daemon_communication.go:573",
+    "id": "opening_needs_secret",
+    "ok": true,
+    "what": "opening a balance uses the holder's secret key"
+   },
+   {
+    "anchor": "cmd/derod/rpc/rpc_dero_getinfo.go:83",
+    "id": "supply_is_formula",
+    "ok": true,
+    "what": "the reported supply is the emission formula, not a sum of balances"
+   },
+   {
+    "anchor": "blockchain/transaction_verify.go:454",
+    "id": "sole_magnitude_gate",
+    "ok": true,
+    "what": "consensus accepts a payload on one proof boolean"
+   },
+   {
+    "anchor": "cmd/derod/rpc/monetary_integrity.go:109",
+    "id": "node_limit_stated",
+    "ok": true,
+    "what": "the node's own integrity report states that encrypted value is invisible to it"
+   }
+  ],
+  "answer": "no",
+  "question": "Is the aggregate of balances bound by a publicly checkable conservation relation?",
+  "reason": "every balance is a ciphertext under its holder's own key and changes only by ciphertext addition; opening any balance needs that holder's secret key, and no aggregate key or aggregate opening exists in the code; consensus checks one proof boolean per payload and never compares any aggregate with the formula supply, which RPC reports as CalcSupply",
+  "status": "answered (INTERPRETATION of SRC; audit refutes by default)"
+ },
+ "Q-CS3": {
+  "answer": "no",
+  "certificate": {
+   "absence_shown_by": [
+    "blockchain/transaction_execute.go:74",
+    "blockchain/transaction_execute.go:241",
+    "walletapi/daemon_communication.go:573",
+    "cmd/derod/rpc/rpc_dero_getinfo.go:83",
+    "blockchain/transaction_verify.go:454"
+   ],
+   "consequence": "a complete public accounting of the supply of this ledger cannot be derived from public data; every aggregate over hidden balances is unbounded while DC2 is open",
+   "joins": "disclosure track FX-N7 (summing the balance tree: infeasible)",
+   "missing_invariant": "a publicly checkable opening of the aggregate of all balances (or a consensus-checked relation between it and CalcSupply)"
+  },
+  "question": "Can a supply statement be proven from the current state alone?",
+  "status": "answered (INTERPRETATION of SRC; audit refutes by default)"
+ },
+ "schema": "r26 invariant v1 (rft \u00a70.8.9 Q-CS1..3)",
+ "status": "answered"
+}

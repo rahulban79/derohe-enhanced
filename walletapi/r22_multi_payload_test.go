@@ -129,15 +129,39 @@ func Test_R22_MultiPayload_Distinct_Blinders(t *testing.T) {
 	if err := chain.Add_TX_To_Pool(&dtx); err != nil {
 		t.Fatalf("the two-payload transaction was refused: %v", err)
 	}
-	simulator_chain_mineblock(chain, wgenesis.GetAddress(), t)
-	simulator_chain_mineblock(chain, wgenesis.GetAddress(), t)
-	if err = wdst.Sync_Wallet_Memory_With_Daemon(); err != nil {
-		t.Fatal(err)
+	// r28 (tools-kats, dero-rft §7 B21): the test mined exactly two blocks and then read the receiver once; it failed 1
+	// of 8 under load ('receiver got 0, want 3000', 2026-11-02) without saying whether the tx was not mined or the
+	// wallet had not caught up. It now mines until the chain holds the tx as valid (at most r22MinedWithin blocks, two
+	// suffice unloaded), then re-syncs the receiver until the amount shows (at most 10 s); each failure names its side.
+	// The property under test (distinct blinders, accepted, mined, paid) is unchanged.
+	mined := 0
+	for ; mined < r22MinedWithin; mined++ {
+		if _, _, valid := chain.IS_TX_Valid(dtx.GetHash()); valid && mined >= 2 {
+			break
+		}
+		simulator_chain_mineblock(chain, wgenesis.GetAddress(), t)
 	}
-	if got := wdst.account.Balance_Mature - before; got != 3000 {
-		t.Fatalf("receiver got %d, want 3000", got)
+	if _, _, valid := chain.IS_TX_Valid(dtx.GetHash()); !valid {
+		t.Fatalf("the two-payload transaction was not mined in %d blocks (mempool %d): the pool/miner side, not the wallet",
+			mined, len(chain.Mempool.Mempool_List_TX_SortedInfo()))
 	}
+	got := uint64(0)
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(250 * time.Millisecond) {
+		if err = wdst.Sync_Wallet_Memory_With_Daemon(); err != nil {
+			t.Fatal(err)
+		}
+		if got = wdst.account.Balance_Mature - before; got == 3000 || time.Now().After(deadline) {
+			break
+		}
+	}
+	if got != 3000 {
+		t.Fatalf("receiver got %d, want 3000 (the tx is mined after %d blocks: the wallet side)", got, mined)
+	}
+	t.Logf("the two-payload transaction paid 3000 after %d mined blocks", mined)
 }
+
+// r22MinedWithin bounds the blocks mined while waiting for the two-payload tx (r28, B21)
+const r22MinedWithin = 6
 
 // r22_chain_start_with_daemon_address is simulator_chain_start_at with --daemon-address set in globals.Arguments
 // BEFORE the RPC server starts (r22 merge: the server reads that map, websocket_server.go; writing it afterwards races).

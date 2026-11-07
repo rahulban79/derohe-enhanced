@@ -86,6 +86,11 @@ def kats(mods):
         shutil.rmtree(tmp, ignore_errors=True)
     # FE2: committed pages
     led = ROOT / 'artifacts' / f'dero-r1-{ds.name}.html'
+    if not led.exists():   # R28: the newest dataset (v3) precedes its round's ledger page; check the newest page there is
+        import re as _re
+        have = sorted((q for q in (ROOT / 'artifacts').glob('dero-r1-r*.html') if int(_re.search(r'r(\d+)\.html$', q.name).group(1)) >= 26),
+                      key=lambda q: int(_re.search(r'r(\d+)\.html$', q.name).group(1)))
+        led = have[-1] if have else led
     sa = ROOT / 'artifacts' / 'dero-src-arch.html'
     snd = ROOT / SP.rel(ROOT)
     okk, det = FX.g30(ROOT, led, sa, snd)
@@ -234,7 +239,8 @@ MUTATIONS = [
     ('facts', "+ (('rroots',) if 'rroots' in want else ())", "+ ()"),
     # verify: the required-section and identifier-span fixes
     ('facts', "                fails.append(f'{sp.name}: no {KN_BEGIN} … {KN_END} section (required on a v2 dataset)')", "                pass"),
-    ('facts', "            bp, k = BD.check_page(t, cl, need=True, root=root)", "            bp, k = BD.check_page(t, cl, need=False, root=root)"),
+    ('facts', "            bp, k = BD.check_page(t, clp if pg == Path(page) else cl, need=True, root=root)",
+     "            bp, k = BD.check_page(t, clp if pg == Path(page) else cl, need=False, root=root)"),
     ('facts', "    seg = FXID.sub(_fxid_text, seg)", "    seg = FXID.sub(' ', seg)"),
     ('bounds', "    seg = FXN.sub(' ', seg)   # r26", "    seg = seg   # r26"),
     ('bounds', "    blocks = _visible(BLOCK_CLOSE.sub(' \\u00b6 ', FXN.sub(lambda m: ' ' + m.group(1) + ' ', SPAN.sub(",

@@ -65,7 +65,7 @@
    "per_tx": "never graded per tx",
    "present_now": true,
    "track_c1": {
-    "round": "R25",
+    "round": "R26",
     "state": "upstream",
     "verdict": "CONFIRMED"
    }
@@ -295,16 +295,16 @@
    "value": 2536167750
   },
   {
-   "bound_type": "lower-bound",
+   "bound_type": "exact",
    "class": "DC3",
    "coverage": {
     "den": 82477,
-    "den_anchor": "derived/emission.json fees",
-    "num": 80902,
-    "num_anchor": "derived/emission.json fees.known_blocks"
+    "den_anchor": "derived/emission.json fees (v1 window blocks)",
+    "num": 82477,
+    "num_anchor": "derived/fees.json v2 (v1 known blocks + v1 pending blocks settled)"
    },
    "id": "dc3-window-fees",
-   "label": "window fees, known blocks",
+   "label": "window fees, every block",
    "scope": {
     "heights": [
      7415466,
@@ -313,19 +313,19 @@
     "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
    },
    "unit": "atomic",
-   "value": 16800
+   "value": 855173
   },
   {
-   "bound_type": "lower-bound",
+   "bound_type": "exact",
    "class": "DC3",
    "coverage": {
     "den": 82477,
-    "den_anchor": "derived/emission.json fees",
-    "num": 80902,
-    "num_anchor": "derived/emission.json fees.known_blocks (bodies held)"
+    "den_anchor": "derived/emission.json fees (v1 window blocks)",
+    "num": 82477,
+    "num_anchor": "derived/fees.json v2 (v1 known blocks + v1 pending blocks settled)"
    },
    "id": "dc3-window-public-burns",
-   "label": "window public burns, known blocks",
+   "label": "window public burns, every block",
    "scope": {
     "heights": [
      7415466,
@@ -334,7 +334,7 @@
     "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
    },
    "unit": "atomic",
-   "value": 0
+   "value": 230470000
   }
  ],
  "headline": {
@@ -352,114 +352,30 @@
   "forensics/r25/derived/emission.json": "af361cd765e079c510070bbe375bfdd3b30b0c24142ae996f8bbf841ba84ac9f",
   "forensics/r25/derived/grades.json": "0aaa3da9cc2ee731e9400c81b6e1b2eb7120dbcbedcd263b19d8fd8b86f9ee71",
   "forensics/r25/derived/hf3.json": "339e3c667810ceea07a8f0e98298a4d8bd94f9d573a04fed7e9b0ba44ad87d43",
-  "forensics/r25/derived/tx/00000007998ef3f504cfd1076a58d7a6f3a8a4b60215584c81924c33129e15ad.json": "10182ae3a7c435ee56e93df1e7abea90e5e35a42db2d7376756006672c9c9e1c",
-  "forensics/r25/derived/tx/0000001b8382a56f29b367251938b473fe10dc1d989b6ae68f7761bd4a33aa25.json": "fa0637bf151ac370150711420111ea81c21cad0cda5b6c74461d61fbcc70d926",
-  "forensics/r25/derived/tx/0000001e021d2aa3af88d384f90173c5750f4ff6e4f41fd2af3e2f18317279c7.json": "00f37fad3aba4609aaac0d9a7bc688ced58a715e4403b3ec179cd64e4f267777",
-  "forensics/r25/derived/tx/0000002bfefd357d35e9b2848fa4958291cc334e6950df859adc7c272a1bb093.json": "da1de61a2209970399cfec549824fe28c76932b3586c6f02ffac2590b81e1dbf",
-  "forensics/r25/derived/tx/00000072cad098e71fc2f09b4855a52a0624649655395706966353174e67ba98.json": "29c852e9c9a49b35f9203ff801b77c02fe170fac51bba7bd10b6fb8b8c53af74",
-  "forensics/r25/derived/tx/00000080f7dc35f6ee7ee6b736fde2b5596836474fd16c7f572d4d68bfb2086b.json": "9fb3ae152bae83962f67f3c4aec9b0f7b3a7f82d9d8e965222da20b1cb35523e",
-  "forensics/r25/derived/tx/0000009f7c39a3c7ebe47940679c444045e46367d9aa6274e2e0e29f3b6f496f.json": "28bfc9fed860b35ce271d44cc0d689c1780fad5ef594295538f417d13ea6336b",
-  "forensics/r25/derived/tx/000000b662a440ed91b787de6f410783ea0730290beb9f16ab2861b388a8d010.json": "2a16385266a0be5c1f6c0fc98943bb27b733183facac9ec0b2d042b6b82fccd8",
-  "forensics/r25/derived/tx/000000d29ec2ea9ff20267402a3f6fb23fbcd125557ec783c47bea568ee35c8d.json": "6c4971bbc9698243a1b596252884214ef740d3851f6fe5f867a7737073e833ee",
-  "forensics/r25/derived/tx/000000f1c115782fa67ff1794135f6f3b252d38bdf8decbdb36aebf490091a41.json": "5f3fe5e2df4ae11932bac743ccd0147dfb2ed4ab270248006a95d68cec703f0c",
-  "forensics/r25/derived/tx/000000f82c7ba99cc00992d2d2d640357ee356b46337576f29614ae35c0bcff1.json": "dfa0a1ef4a80ccdc96d7398fd219273c3ed62e5e03f7bbb09c3ad33b2b5c5a3f",
-  "forensics/r25/derived/tx/0045a6d4c51a8578b6c97f2b376415653583505f21032eb6a808cd1643a300a7.json": "8706860ecc6ecdd5ef9bc7177a8f975fb5c96adcabc7c14bf39895ef8367de41",
-  "forensics/r25/derived/tx/00c6c9a78c4b40a03dc08e3637ee4e34103b39cfe2c6efaa803829509f0506d6.json": "1d170fe6b178e4794b95ba74b5b0504b732bf65da9181bd59cd8f1e9b584c2fb",
-  "forensics/r25/derived/tx/0511f2b2a8ee9408b216cb1db6129937119fb76e99a1dcd1544f49462da58a38.json": "adf3a3b3d6e95d36d3c34e9275d9ca410f84d6a7dffc45d00f8257a948c51c62",
-  "forensics/r25/derived/tx/09d0260ea572349c4869b58cb59638348e1ed4bc57c511619d36fd1fd484211f.json": "620471f162206cdd663d5eda9ef4acd8ca19ebea7dff06f5f6ee6f562919bcd7",
-  "forensics/r25/derived/tx/0a0671cf132cc2c353df8d28631581c762acefac200123c84dd039c34e7cd336.json": "21b94b7b4709e1948ab1b088708d500fa3d944f3c4db54f873a8a9848f99e47e",
-  "forensics/r25/derived/tx/0e75ae6662c08627470a7ea97d2115830f2b0e392efdba3c58ace068adc99aa6.json": "2a37c4001bb322274edb53158a0983a74218428d1a2981b3a6963e01766705dd",
-  "forensics/r25/derived/tx/17cd5710eee2cb27cdb1a68dfe63e955260ea8dc3e59e234a20bed14cb409970.json": "995aebae03bf3227919717659ce188d969a53a7ce39554f59d1af242fffe695b",
-  "forensics/r25/derived/tx/1877ddc33990d521dbd1702f8872441c642641cbb528042432da8d22b722fdbe.json": "11f4bd3d11298e2a1ffdb1b736bd0025aecbc0a2e3b9afbd08dabe0c23a6374b",
-  "forensics/r25/derived/tx/1e8c9c7764ea63e39a9b5fa59013578bf3a7cdf00edfa059cf5f1da6dc08b0d9.json": "1018ee0ecf06bd5d5dec82660fea1a70f72bc8e2c6f8481ad6b269a1801ba234",
-  "forensics/r25/derived/tx/1eb43df8ab1abd8934c74cc0d08b5d9fef02604ca6500a7cf947d263b882cafe.json": "d4d6ae0278e135a23e92172275ddbad10d02c8389be7a36310462c4db4b93286",
-  "forensics/r25/derived/tx/211082955f1fda468ba0cd604e14dc5d84f4eb096f3c349f4ad05757c979dce6.json": "1439d7ecff3a5ad645256cb7105890a2adacaba8dcb6b96e12bed90c9479b4b4",
-  "forensics/r25/derived/tx/2aabb168b2b7210bc2d1620ddbbd038de4ae45847cc77a27be4389aea388a5e9.json": "4fb66e2f6d6944116178202415a79421df23d3a06f3582fb39e01c5005267075",
-  "forensics/r25/derived/tx/2e2b49f284f9d206fdb6dcf4a9ac9259426c61036bdf52036f1baf24b21269ac.json": "e1fe3bf8f2c098fbabd4634c429a8033c07b28140bb8586b015878751124d9d2",
-  "forensics/r25/derived/tx/2f39de57b82f02787fc15537a29da2e4cdd8c350d2d2bc7f96b0d49ac57fcbaa.json": "2e0111b958d592be329877e83164e1c2ec00e0189e82804f71849701335fd786",
-  "forensics/r25/derived/tx/337677e2cad7c2633099ab65b5f5ce5a099b9c76a5cc7846c587d189f55ad95d.json": "a8352035798ef1108bb5f9f27477d2c5f523d0e041347a92de3a5609c57c185a",
-  "forensics/r25/derived/tx/3478d883230b579a88607d5f5d1a52aadd4355b38ba794352d54a829f45f5656.json": "1855ccbf4830330d973a451fe5225fac10d47da78405715c8e2c73b57e6e6dc0",
-  "forensics/r25/derived/tx/364538c7073f9c5e3b99eeec33a9bfb830a5d3d0cefb6c44d63b22b90c82a655.json": "a264aea6c16eb6a9f03b0ca2dd553b87a9424123217337e25165a982725ffce1",
-  "forensics/r25/derived/tx/3659ae2be646c4384bcc4adc94bdf9cfc23b366faa128a88f9ea5522e3d08d61.json": "25e72d066c0f826aee822f22ab89c3110f8a770ac525cdb07bedf53aeaf6872a",
-  "forensics/r25/derived/tx/37df76020e1823aade3b130fe53571b93d6c5c34e35d1d522c7c5cd449e84370.json": "ba8f10863b22a884f09802bc93b81b123671e80802c2504bf80af7b3ec6c52cf",
-  "forensics/r25/derived/tx/3ccf648db6d26295d68ec1c88cdc736a10caa35ad83b856cb9bb304f893c5043.json": "fc3eb1aaf563be6a92f5306c83f8b9e6617eefecdbc56e02707d3dd1f2ff79b8",
-  "forensics/r25/derived/tx/404180f833143669d3b347f4d8ceb1067b7a1ed057efcad7abcd7ad539745138.json": "79efc8dd61e2d3def0f957f090ade815510e1039aa56d59dcfc98e5125e87c61",
-  "forensics/r25/derived/tx/411012a7711794d2c641acbd4e1cd14dfd5e20d6085ab4748af28e7d6a3a5b99.json": "76050ce54b64c948a274855f44d2abbb42b186c22e5e4dc7c363d2707f704269",
-  "forensics/r25/derived/tx/414f79b8ff3c862eaa5727c6591542218881c751ba4fe052c9aaeeec0cfedfcd.json": "bf1658300009423096657444737c4e1c1804faef5fbdb7e39a15f432bc0f9085",
-  "forensics/r25/derived/tx/42f2876c90522812085556e7f6e0f51ef7edd84f1f99fba48acc84b52321f30d.json": "755c16546ad344f2675202e9acbb259ab06eb3ddcce2928e03768ddf95a0e00b",
-  "forensics/r25/derived/tx/4ad3ef9af337b1e92d895f9342ad9a9235d601291cb42fb6b726fbda35933fe7.json": "d819d370bab761349aebdcd1057431c207c2d85d9462dc52a07845308b9d836a",
-  "forensics/r25/derived/tx/4b3e162ea00acd4c56922e4205740330d3e601d19e25dfc6833dffc0c9e2c2cc.json": "1d055782608caa0f45919bd99d8483020d26f5ce6ff309ef459ba0978e330260",
-  "forensics/r25/derived/tx/4d56a1a150063b6bd810a33fc669df8e2698475f0b3c17d96cab738b25ba8393.json": "896f11bc0f85ea448c40567d4158415f34dd2ea55de38cb0a55c20779f44b61c",
-  "forensics/r25/derived/tx/556d78cfc579c2897be7d875e08a702860b867e63650ad2d07c393e50e1e484c.json": "549801796414a749fe3c5cb232877085b1bda1c758292410bdb503950f3e91da",
-  "forensics/r25/derived/tx/5a14d8516288648133b8cea98afa1b9a2f783a3ea345b191e57d388b64ca5ecf.json": "ec4e58b3f2f0df1465d90ba3c99dfdc13d9c59f226f70602bb2f150a484a2c40",
-  "forensics/r25/derived/tx/6034f404619a7fa7bad529eb6758a6ba30184b100a5f8a8f921c99bebe309514.json": "92508e8a1fcf655c3259ab33b3ff082ae007bf431cc8453ed6146674289a7243",
-  "forensics/r25/derived/tx/60bfbd73a60060d6502b13871f55a47ebfb732bcb8f5685602688f7eae36fa3e.json": "58b17fc0d7fd32af5a49d3ed9bbaef376b4ee74d4eaf16bb1742a274b23b7e7e",
-  "forensics/r25/derived/tx/60e4547d48b624555081cb8f7c97f8583234c3a112bb586c868ad5ff00eddaa4.json": "004b6c3030ab224a4030b562a5b22da6cea1dee87b8f23952de6a43a340e1311",
-  "forensics/r25/derived/tx/62fa2cc6f10da7275d54f0448bd7028a1d1d7a92a99e204c3f4e2c08571032f7.json": "d99ccebe4154dc79172b487c21377202fb2df9fa26471124bf35ec45b3a512a6",
-  "forensics/r25/derived/tx/6843437e70503ed702d5adad3d29e7aa0ed8427dd98eda0e42b77d24e7567bc8.json": "1b7daf435bd2b460e7dd58c32b1ee205805eb2b5259927e835325c217c1a410e",
-  "forensics/r25/derived/tx/6aa20567ff23705aa91a4c607e8387d147b309f8eeb9f8198149c21c439c3692.json": "866f626a1b2cd5990cc7811bbed58129ccb97ecc47593e0d4d1bae8a23af7c0b",
-  "forensics/r25/derived/tx/6d882984bad971d4becb9ac15ecd8cb3e3e0ee783d6d6c1d1ce95df12625732f.json": "306d88496af20c3f1cdb70e17dcb200580b9379d527e44fcc3bdf94ea786a299",
-  "forensics/r25/derived/tx/6e59f6b56453219ab9722a47870c4b2d76b29ddda068c069dcf59ba14e3e98aa.json": "11782f14644fa3a0ef3502f9af5da293db76a99f0c714b25b9d4c8e865f96283",
-  "forensics/r25/derived/tx/7046a75c65eb402733021fe7234d09e3d027dcaca7e080cabd505ca73465b21d.json": "e0781628f77d6cc0462678afe7c5e6771475f390fbf1597bc70b98abe7e172e8",
-  "forensics/r25/derived/tx/71588148dade214248f46fb912ac933fc60f2a0ba7d69b3b7317067c366e8312.json": "5fdd0fcce937af4c1a751a696229afd5e10311d22336df24b8a0e8a237e82641",
-  "forensics/r25/derived/tx/74b79178426990bcd071cd26829900027e78b6d36e77b57e050a0bba4398ed1f.json": "91c738bea4533a225f774c88c1c39b3c3af822d434ed327244bde7f6c73d25d7",
-  "forensics/r25/derived/tx/7e90daf3cb805d51c3d5e878e47baa8363ec7b17ee81bc5ad63bbcf0af10a488.json": "e935c8136e6f7f21c9d2df737c07310d830adae2b6bda2881eda1ecf95a7a4e8",
-  "forensics/r25/derived/tx/85d52fe6f310f4af1d11611ef3577d477b76af3c0d050e2f4493e16822f68a18.json": "ed23a88b367fc004530d907f9b57f3bc7c4265109d1bbe1f0d004bdc3dbe9832",
-  "forensics/r25/derived/tx/8692d178675b0ab019f765ab8b8f5b739c0668f36151931223c4e3b63883f89a.json": "b6a15d580fd6860b94fb0424b978d23b68deb73c920e5ad97b6f41782f740e70",
-  "forensics/r25/derived/tx/86a15dad0a5ca6b8b317398a56113e95850a1628868fb3284963e30e046aac5d.json": "661f3cad2e5c6c6348027f0b02f72fd11feaaf91b2c14d2f776bbb8c0b068faf",
-  "forensics/r25/derived/tx/879f99d24bde3eaadd0ee348d3eef5e61b13b11bc9ab7c554ef6fc1a679b7de6.json": "11b8963b308540f76bb54d5034e013ede7f3abeb7d3062ec73c15c3b68b2432e",
-  "forensics/r25/derived/tx/912dbaf8980086dd5627193c4ae3264da9bba2167637f078380f5b0f06a24520.json": "aaa45389081b9acaf7540ffd5102198b8ace55e85983f1ddff6c5599efbfc4b4",
-  "forensics/r25/derived/tx/92dce2c52528732ef76ba717f582b784a50bca61bc839426838cc641d28f545a.json": "452ba2d2c986d7b7f9ae2a97b194188d0d82f35a9aea1032cb932a91b8767e2b",
-  "forensics/r25/derived/tx/94f8ced9b3cd40993173c53ea0bffc99d1db3a8d7a8cfea2cbed7a7fba524684.json": "231e0d5dee9f98be5973389f18e8f71dcb705a0605526ae8ec49791fb1d5dda2",
-  "forensics/r25/derived/tx/95ea45cf1969013a9c89ac8c1c748075ebc02f67215b36fa70d31e3dfa71bb19.json": "6d2116c50718e9895c4009e81fda7a918bc25d84ed75eef083a1c9a6029998e4",
-  "forensics/r25/derived/tx/9b75eb3bc2c2f10cb84977e4648e5a9f4bebcfb73075dd27a1fa1a14d0f6dfb0.json": "21563ebb282612b4e482e4c76c58694d803707fa5c5d8aa9f30ab405964f2f50",
-  "forensics/r25/derived/tx/9becfdff8e750fcd741f240ae701ca134fd54b1c3d1db9dbf9f0254f5a794046.json": "0aacb8cd4e728ed62f1beba19894ba8bced0aef7575ff4ae5667dcaed1b08ba3",
-  "forensics/r25/derived/tx/9eba39af652ee2a0d4835d964cffcd0be4ac6f103138e87c80953902e4ce0026.json": "4f54d5f1f364789ccc1c97528e6657eadd893914685760f1e44f4fe9e908156b",
-  "forensics/r25/derived/tx/9fba85d0ed98249e9b36ffbbaf15f6ae9bf9be061f3200b2f572c3e2f34b39ea.json": "308b176b0512fefdd665b395c7d3d25b47ae4475d9b4ae52fd28d1f0b1e4ab8d",
-  "forensics/r25/derived/tx/a16a9d939518fc4ad2a1f1ac3a878ca35d9d819e0dd3086e495f3c2f4a089db1.json": "f40a1b528c728867d0ba31b3b4d808d77b4fe68388613d9dc9c64b0e8f66be04",
-  "forensics/r25/derived/tx/a70950ff17747e3b347d30b3db5631a5f97cd967a937eac2dcc11763c7685490.json": "fe6de22415dc1d50c7c8c46e178d1fc7d8aef0216c6f27938749389d18d3ab57",
-  "forensics/r25/derived/tx/a86a316b2d9f33e5e8552925e7cd504999033b38c4e2aba6aa3a25f7a2eba003.json": "23597187c9729703b23dca16dbc224cbf79171adb179ba75916c829bc8121df0",
-  "forensics/r25/derived/tx/a9b0c1d112958534b5f3eec186832cce85986278afe1729937469fff18c1684a.json": "0bf0bb51ae1b370c5cccccce8d7c4f9969fd8c58b6605a49a7caa6df7a5f7ddc",
-  "forensics/r25/derived/tx/aa0faf67a2856ee30ed4e275c1079d1572b1bcb03d4a9ca682bd825e11d81a43.json": "3bcf978b9dd0a866f6a4a0b1cc486d8639c650622cbf7c70326e0da7ea37416f",
-  "forensics/r25/derived/tx/ab1da121afe17852ee24f19b836e602d3389b569048838223acd754247d7ff91.json": "a630ce6625e20d4842caa93450432133bb32ccbd91aab31a4733209486dfae17",
-  "forensics/r25/derived/tx/ab6cca96748292825e8188550f3fadcd43734d4a1e73514c03702adb456f8926.json": "ae4577eb15e730db04e5e37cf8deb13d7c36c695ed806162ab1475423df54df8",
-  "forensics/r25/derived/tx/b43be6528061e4eb1ca6e7bcfcd419e42839bbeec5cdcbf7e664be2fd501dad2.json": "5b80485427d7701adcb141728adae1dd81b2ee3a501958cb1d23de88a51161c8",
-  "forensics/r25/derived/tx/b6cf0ef15e9af69d7b2f040ba2e0a75f41a414201069187fdec994584298e8f7.json": "53df3506e3a8519e3860f157dff3d08bed50e2a2de0a8b05a4229e2c93582e33",
-  "forensics/r25/derived/tx/b9c2b724a684eb1b278bb3f185a807e46b3ef22a87c5cb8ed694a32df1661df0.json": "16ab9c205146a4a26670369530ee3474f5d3edc4da6f1cdd98b49eb595e7ca40",
-  "forensics/r25/derived/tx/ba3834ef15b7d714836e9944c46c8795066b328ff678c5cc44c7cdf0a3fa5ebd.json": "d8ef1bc8f799f776ec2ded25e311f60fac713c21ad87f11f8971c4e5434b71e6",
-  "forensics/r25/derived/tx/bba77f85c72d2b896e1fca1e39327a3a57eca4d722326a524db2042df04766ee.json": "1c63a4dc4eabd587fb9678e515f8871d4f5b3e92129c55e294fe3f15f9c609e8",
-  "forensics/r25/derived/tx/c4b90a587273f354834a237b01dba9c02121e4390f4ca9faf43d74e8a8686c31.json": "b173911cc770478a3a96ea83e973075594aa147cde6c6330f9a89d50f0194c6c",
-  "forensics/r25/derived/tx/ca63e2c4d51902906ab1391284f9237f592416d1545521b218fc433734bde649.json": "7f96a8e05def45e930a79e10ab6a3dfb4b84e8f491b39051fa438a9de2107c95",
-  "forensics/r25/derived/tx/d81f2d3911e388f88b2e427d3f6cc8ddc272c69aa80fe84e15ce865462071328.json": "bdbc2f9b0f1f9818e34465bef02f9fefec2040a4f0335318ce263e49cde805f0",
-  "forensics/r25/derived/tx/d856184d636c3ef8545979c902df15d6a1bf41b4a4b81d81762f519a6acfb689.json": "b8bfec28950fe95bf5136411f8425bc9111d7f7031219363f0a10ce06488fa22",
-  "forensics/r25/derived/tx/d9d7e7de41ca9c81693eca4e3ea56ae02b6680887c35fc1b1b2da71967335404.json": "9c149c1caaf6caf60f65a1e59009f30b7aa9645e53014a7c8450b1c39bf76b6c",
-  "forensics/r25/derived/tx/dd47855eae313ca07643fb7ac540b5282db7cdba476f1c82109b7ce6558fc490.json": "314fbf4123cc8187f0fdc9b0a98b5405d4457928a386f11c64e9e7534495eb67",
-  "forensics/r25/derived/tx/e0a6f89071b89ee8f479845399e78c17d31f3dbc8e1c4370e22ec5a4fcd214bc.json": "b76f342bdf90f358e5fa817f2d506a53b44ee28c004a28dc839822a9c59eff93",
-  "forensics/r25/derived/tx/e0d83b72e7ab11213f78ca7994598d2b988799d36786e94a2018c76513339ba8.json": "a72f514886884bcf574a2e1531a562cb5127c0515dec6eedd6dcf4efebbb0b8b",
-  "forensics/r25/derived/tx/e2fdb507438dc80667e73d60a17658811a1181234e9bbddcf81ec05de1c7a51d.json": "bed06212cd4cbf17d6e0fcc97eecaaa7d9bc6765abd7992216d3d87bba414dca",
-  "forensics/r25/derived/tx/e42eb301e2f0863de346ada3a531cdf70ca224a90dae2e861a21407a0c76bfc5.json": "c4e0a473625d45b1399abb650a782335522367f1d60834f4f7e311fa3c6622f5",
-  "forensics/r25/derived/tx/e53ea2a813bdccbff19ef24010e7e5bef0bf2408423eb71a86dbca3cbca22530.json": "e5d06c3081d7f48f1047ab8d60722b49e6d6c5ad39244622ce765ce66915a5b5",
-  "forensics/r25/derived/tx/e5676c4e2cc98429c890a30bdc1db231935dd52c91d17aa077a24a87a2dc35f9.json": "c1336463bda6a288301dda1adecffac8f47652777890ed4e7b961cab4922347c",
-  "forensics/r25/derived/tx/e9cb8fc784e2589317cd125b1e5e51d01bd46a3252b91db5cccda28977a30270.json": "1c90b046a627c5c004a30c91d9b065d74318ac95bea04485c2c6fe3b845e45be",
-  "forensics/r25/derived/tx/ea445f18926af580fe8bf95466f3f7b9eea3eea0295a791323ee1d0ab4eddb0c.json": "b68e8e476e7f6bede9b7d51655f64c3ea0f823fda2d1bc520a801dc00363a584",
-  "forensics/r25/derived/tx/ed09fcce52484862a01fcb0e03d6799ba16d7304e4b0af1d60cde4ce399c1207.json": "dfacb1468a2e36c3057d6f5a4a8ebcf142e0169eab29dae0495eb11c4f37cb93",
-  "forensics/r25/derived/tx/f00cc25c28947e52c48b450d259b5a06daf9bce580bb5503e978087d236d4f90.json": "adfa769056f74d9677313551e93463e2de70e5cf97455b5ee9a43579202b6df4",
-  "forensics/r25/derived/tx/f389f4b63e9256d052445589ca06eee694bac0eefda658add5d4dbd37b29d60c.json": "2ed676359c3ac14de03673bca27e20c2c75ba37c827c2416c4b9872a2f5ac6fd",
-  "forensics/r25/derived/tx/fd79549ad416cbec243d9ce54014b26f888f1cfd0cfe1aed5dde978a11dcaeab.json": "b732092a49cc67728f2e5f41516c5ec5b856914671eba336d3258b9ff3673202",
-  "forensics/r25/derived/window.jsonl.gz": "f5f79b13856ec50c8e1f5c26cdb1162b5fb50754133096401312a23770bc94f3"
+  "forensics/r25/derived/window.jsonl.gz": "f5f79b13856ec50c8e1f5c26cdb1162b5fb50754133096401312a23770bc94f3",
+  "forensics/r26/derived/fees.json": "aebd4f1451403d1657501291c9465ee7347320f0eec0b26390bf7ce3db2bcc22",
+  "forensics/r26/derived/txs.jsonl.gz": "1cca01fe27e3cbeb3c284bc07ff5db1758a624dd3e5b21f3830ba7852a25e336"
  },
  "records": {
-  "block": {
-   "DC3": 605
+  "derived/blocks_fees.jsonl.gz": {
+   "DC3": 1747
   },
-  "tx": {
+  "derived/roots_window.jsonl.gz": {
+   "DC3": 30
+  },
+  "derived/txs.jsonl.gz": {
    "DC1": 75,
-   "DC3": 19
+   "DC3": 1721
   },
-  "window_rows": {
-   "DC3": 82477
+  "raw/tx_bodies.jsonl.gz": {
+   "DC1": 75,
+   "DC3": 1721
+  },
+  "raw/wall1_blocks.jsonl.gz": {
+   "DC3": 2799
   }
  },
+ "records_rule": "v2 layout (R28 B126): per record file, the count of each defect class in `class`; a tx record is DC1 when its TXID is in the HF3 table, else DC3; a block record (fees, state roots, wall-1 link blocks) is DC3; DC2 is never per record; the base version's window rows are the base's records",
  "rules": {
   "exact": "coverage num == den (both integers) and no pending member of the figure's own class in its scope",
   "fix_is_not_restore": "a fix status never changes a historical grade (rule 10)",

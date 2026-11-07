@@ -41,34 +41,35 @@
   },
   "criteria": {
    "P1": {
-    "anchor": "derived/tx/<txid>.json value_field, burn_total",
+    "anchor": "derived/txs.jsonl.gz value_field, burn_total",
     "result": "0 of 75",
     "what": "a public plaintext value field (tx value, payload burn) of the DC1 tx"
    },
    "S-R22": {
     "anchor": "derived/fq.json FQ3.census",
     "result": "0 of 75 within held bodies",
-    "scope": "94 held bodies (92 of 1769 window TXIDs)",
+    "scope": "1796 held bodies (1769 of 1769 window TXIDs)",
     "what": "the R22 C3 structural signature (a randomness commitment shared by two payloads); recorded as counts only"
    }
   },
   "lower_bound_sum": "none determinable: DC1-obs is empty under the recorded criteria",
   "question": "DC1 amount observability: is a DC1 tx amount determined by public data?",
-  "status": "answered for the recorded criteria; S-R22 window-wide pending B96 bodies"
+  "status": "answered for the recorded criteria, window-wide (every window TXID held)"
  },
  "FQ3": {
-  "boundary_height": "pending: no height boundary can be read while the signature is absent from every held body and the upstream code never changed; window-wide census needs the B96 bodies",
+  "boundary_height": "not inside the window: the cross-tx signature is absent from all 1,796 held bodies (1,769 of 1,769 window TXIDs), so no height in the window separates signature / no signature; the upstream code never changed (code_side)",
   "census": {
-   "bodies_decoded": 94,
-   "bodies_given": 94,
+   "bodies_decoded": 1796,
+   "bodies_given": 1796,
    "commitments_shared_across_txs": 0,
-   "distinct_commitments": 104,
-   "payloads": 104,
+   "distinct_commitments": 2981,
+   "payloads": 3004,
    "table_txs_with_a_shared_commitment": [],
+   "table_txs_with_intra_tx_shared_commitment": 0,
    "txs_with_a_shared_commitment": 0,
-   "txs_with_intra_tx_shared_commitment": 0
+   "txs_with_intra_tx_shared_commitment": 21
   },
-  "census_input_sha256": "0ec5f55304e0000c7879c0777166c038873527bbc1e40853e866311a132e9dc1",
+  "census_input_sha256": "3a25bdd43cb4b0141e5c081f2a36b71f06a717b8a8ff354dccced7994f43a55f",
   "code_side": {
    "local_fix": "walletapi/transaction_build.go:355 pick_ring_order (R22, local only, not upstream)",
    "upstream_tags_with_deterministic_r": {
@@ -87,7 +88,7 @@
   },
   "mechanism_link_to_dc1": "pending (rft \u00a70.8.9 FQ3: candidate, not established)",
   "question": "the randomness-reuse boundary: which wallet versions reused payload randomness, from which height the signature stops",
-  "status": "partial: code side answered, on-chain boundary pending"
+  "status": "answered for the window: code side and on-chain census (no boundary inside the window)"
  },
  "FQ4": {
   "answer": {

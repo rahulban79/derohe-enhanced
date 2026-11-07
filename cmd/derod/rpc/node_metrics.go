@@ -33,6 +33,7 @@ package rpc
 //     DISABLE_METRICS=1 turns it off everywhere. /dashboard follows /metrics.
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -153,10 +154,14 @@ func write_node_metrics(w io.Writer, s node_snapshot) {
 }
 
 // metrics_handler: everything metrics.WritePrometheus wrote before, then the node-state block.
+// r28: the whole page is annotated once with the metric registry's HELP/TYPE (metrics/registry_r28.go), node block
+// included; the sample lines are unchanged.
 func metrics_handler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-	metrics.WritePrometheus(w, req)
-	write_node_metrics(w, collect_node_snapshot())
+	var buf bytes.Buffer
+	metrics.WritePrometheusRaw(&buf)
+	write_node_metrics(&buf, collect_node_snapshot())
+	metrics.WriteAnnotated(w, buf.Bytes())
 }
 
 // register_metrics_routes is called with the address the server will listen on.
