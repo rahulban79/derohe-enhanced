@@ -1708,3 +1708,42 @@ B171, B172, B173, and B174 (coherence.py and backlog_truth H4 disagreed on which
   B144 (the rpc money copy's guard entry), B169 (the handle in the private registry).
 - Data unavailable: B76, B97, B110. R29 work: B107, B152, B155, B166, B168, B170.
 - Miner track paused (11 rows): B2–B7, B20, B25–B27, B37.
+
+## Round 28d (2026-11-06/07) — the community-dev merge sub-round (miner paused): the verified DEROFDN community-dev items merged into Release151 (NEW or measured-BETTER only), the D3 node run, installed as +22102026.r28d and measured live
+
+**Why.** The user asked (2026-11-06, rft §2.17) to evaluate the DEROFDN `community-dev` branch, merge everything relevant
+into Release151 and dero-rft.md with no further dependency on the evaluation clone or its document, without degrading or
+duplicating the existing work (decisions D1–D4: round name r28d; NEW or measured-BETTER only; one node run on an APFS
+clone of the data dir; CD-22b out of scope). Base 8a8698fc (CD1–CD3 applied to rft §7 B177–B191); registry `r28d`,
+tracks miner `paused`, node `active`.
+
+**Shipped** (consensus guard PASS; 3 non-test Go files changed, 0 files deleted, 0 tests removed):
+- **M-1 B177** `p2p/rpc_chain_request.go`: `chain_block_list` stops at the first unreadable topo index instead of sending
+  a zero block id; `p2p/r28d_chain_block_list_test.go` (fails before: "position 30 (topo 40) carries a zero block id"),
+  3/3 mutations.
+- **M-2 B178** `walletapi/rpcserver/rpc_scinvoke.go`: optional `fees` on scinvoke (0 keeps the automatic fee; the
+  consensus-guarded `rpc/` package unchanged); `r28d_scinvoke_fees_test.go`, 1/1 mutation.
+- **M-3 B179 + B190**: the range-proof binding census (128 rows, the only free scalar `mu` at `proof_verify.go:452` = C1)
+  and the Bulletproofs assumption table (18 hypotheses: 14 DISCHARGED, 2 VIOLATED = C1, 2 UNCLEAR), as tests
+  (`cryptography/crypto/r28d_binding_census_test.go`, `r28d_assumption_anchors_test.go`) and evidence under
+  `harness/model/evidence/`; no forging content (rft §9).
+- **M-4 B180**: forensics dataset v4 `forensics/r28d` (`harness/forensics/v4.py`; r28 sealed first): 75/75 DC1 bodies,
+  split 53/14/7/1, 60/75 ring-2 legacy-format; FQ2 dated correction; audit 26/26; 14/14 KAT mutations.
+- **M-5 B181**: the nonce-comparison mutations (ring 2 and ring 16) and `walletapi/r28d_hf3_replay_ring16_test.go`.
+- **B188** `harness/external/r28d_inputs_manifest.json` (hashes only, 7/7); **B182** report-only pin
+  `blockchain/r28d_registration_pow_test.go`.
+
+**Closed loop.** Full run 1 `pipeline_20261106T222539` S3k FAIL (KAT HS1: roundlists did not require the parent ledger
+page of a sub-round; fixed e821de90); run 2 `pipeline_20261106T233228` S1–S6 PASS incl. install (mutations 1,588/1,588,
+race 27 packages 0, shadow 120 blocks 0 mismatches), S7 G22 FAIL (two new cryptography test files; fixed 6719490d);
+project-only `pipeline_20261107T025211` PASS (miner gates PAUSED).
+
+**Live.** The r28 B36 24 h payee read came first (CONFIRMED 2026-11-07 16:27:46: EQUAL at 7,871,000, span 87,436 s,
+31,320 = 31,320, 0 alerts). D3 (B189): the community-dev build on an APFS clone 16:35:24 → 17:47:44 followed the same
+chain (version 3, 120/120 hashes equal with r28d, formula supply equal). The user restarted onto r28d 17:47:55; window
+17:51:03 → 18:52:03: 62/62 synced, 0 ERROR/WARNING, B177's path served 6 chain requests with 0 refused, emission 0 alerts
+(`harness/runtime/r28d_live_window_20261107.txt`, `r28d_live_probes_20261107.txt`).
+
+**Not taken from community-dev** (rft §7): duplicates of work already in Release151, B183 (refuted), B191 (churn),
+the consensus-visible rows B182 B184 B185 B186 B187 (report-only; the version-4 fork row stays a user decision, B184),
+CD-22b (out of scope, D4). The evaluation document and skill in the clone are RETIRED.

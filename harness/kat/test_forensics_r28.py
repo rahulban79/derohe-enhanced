@@ -24,7 +24,7 @@ repositories in temp dirs; the committed checks read this tree.
       D2-14/D2-16, and a forged rerun whose dataset run roots differ from the audit's own replay turns D2-14 to FAILS and
       D2-16 to UNRESOLVED.
   FX9 B124: v1's store index reads blobs/ only, so a staging dir beside blobs/ never changes it; a new blob does.
-  Committed: r26 sealed, r28 newest and open; G32 non-vacuous on r28; r28 content pins include the decoder inputs
+  Committed: r26 sealed, r28 newest and open (r28d: or sealed and superseded by v4); G32 non-vacuous on the newest; r28 content pins include the decoder inputs
   (globals/globals.go among them); the sealed r25 pins resolve (pinsnap).
 
   python3 -I harness/kat/test_forensics_r28.py   # exit 0 ok · 3 a KAT failed · 4 a mutation not caught / INVALID
@@ -380,8 +380,12 @@ def committed():
     by = {v['version']: v for v in led}
     if not by.get('r26', {}).get('sealed'):
         f.append('committed: r26 is not sealed (§6 step 3a)')
-    if led[-1]['version'] != 'r28' or led[-1].get('supersedes') != ['r26']:
-        f.append(f'committed: newest version {led[-1]}')
+    # r28d: r28 stays the v3 that supersedes r26; it is the newest version, or sealed once a later version (r28d, v4)
+    # supersedes it (rft §6 step 3a seal order)
+    r28 = by.get('r28', {})
+    if r28.get('supersedes') != ['r26'] or not (led[-1]['version'] == 'r28' or (r28.get('sealed') and any(
+            v.get('supersedes') == ['r28'] for v in led))):
+        f.append(f'committed: r28 entry {r28} (newest {led[-1]})')
     B = load(HARNESS, 'forensics/bounds.py', 'bc')
     ok, det = B.g32(ROOT)
     if not ok or ' 0 tagged records' in det:
@@ -425,7 +429,7 @@ MUTATIONS = [   # (file under harness/forensics, old, new)
     ('v3.py', "    s.update({'a2_binary_sha256': rec['a2_binary_sha256'], 'entry': HF3_ENTRY,", "    s.update({'a2_binary_sha256': rec['a2_binary_sha256'],"),
     ('facts.py', "            hashlib.sha256((cur / 'manifest.json').read_bytes()).hexdigest() == manifest_sha:", "            True:"),
     ('facts.py', "        if b.returncode or hashlib.sha256(b.stdout).hexdigest() != manifest_sha:", "        if b.returncode:"),
-    ('audit_check.py', "'D2-13', 'D2-14', 'D2-16', 'D2-20')}", "'D2-13', 'D2-14', 'D2-20')}"),
+    ('audit_check.py', "'D2-13', 'D2-14', 'D2-16', 'D2-20'),", "'D2-13', 'D2-14', 'D2-20'),"),   # r28d: the r28 entry now ends ',' (r28d follows)
     ('replay.py', "    blobs = sorted(p.name for p in (Path(store) / 'blobs').glob('*'))", "    blobs = sorted(p.name for p in Path(store).rglob('*') if p.is_file())"),
     ('audit2.py', "        c14 = bool(OR) and ok14 and all(r['roots_jsonl_sha256'] == OR['roots_sha256'] and r['stopped'] == 'completed' for r in hf)",
      "        c14 = bool(OR) and ok14"),

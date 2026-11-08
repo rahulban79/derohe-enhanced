@@ -34,7 +34,13 @@ ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 import manifest_check  # noqa: E402
 
-VDIR = re.compile(r'^r(\d+)$')
+VDIR = re.compile(r'^r(\d+)([a-z]?)$')   # r28d: a sub-round version (r28d) sorts after r28, before r29
+
+
+def vkey(name):
+    """'r28' -> (28, ''), 'r28d' -> (28, 'd'); the order of dataset versions. Pure."""
+    m = VDIR.match(name)
+    return (int(m.group(1)), m.group(2))
 RECORD = 'harness/runtime/forensics_replay.json'
 
 
@@ -52,7 +58,7 @@ def versions_on_disk(fx):
     for d in Path(fx).iterdir():
         if d.is_dir() and VDIR.match(d.name) and (d / 'manifest.json').exists():
             out[d.name] = d
-    return dict(sorted(out.items(), key=lambda kv: int(VDIR.match(kv[0]).group(1))))
+    return dict(sorted(out.items(), key=lambda kv: vkey(kv[0])))
 
 
 def verify(fx, root=ROOT, committed=None, check_tools=True):
@@ -73,8 +79,8 @@ def verify(fx, root=ROOT, committed=None, check_tools=True):
     for v in names:
         if v not in disk:
             fails.append(f'L1 {v} is in the ledger but its directory or manifest is gone')
-    order = [int(VDIR.match(v).group(1)) if v and VDIR.match(v) else -1 for v in names]
-    if order != sorted(order) or -1 in order:
+    order = [vkey(v) if v and VDIR.match(v) else (-1, '') for v in names]
+    if order != sorted(order) or (-1, '') in order:
         fails.append('L1 ledger versions are not r<N> in increasing order')
     newest = names[-1] if names else None
     sealed_before = set()

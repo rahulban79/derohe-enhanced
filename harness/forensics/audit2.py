@@ -675,8 +675,53 @@ def run(ds, repo, v1store, v2store, archive, stage, replay_dir, private, jobs):
                  'private_terms_loaded': sc['private_terms_loaded']}
     a2 = json.loads((ds / 'derived/a2.json').read_text())
     R['a2'] = {'class': a2.get('class'), 'verdict_head': str(a2.get('verdict'))[:40]}
+    # ---------------------------------------------------------------- r28d D2-26/D2-27 the DC1 structure (v4, B180)
+    if (ds / 'derived/dc1_structure.json').exists():
+        R['dc1_structure'] = audit_dc1_structure(ds, repo, table, carriers, dec)
     R['result'] = 'done'
     return R
+
+
+def audit_dc1_structure(ds, repo, table, carriers, dec):
+    """r28d (v4, rft §7 B180): the DC1 structural census recounted from the audit's OWN parts only: the DC1 set is the
+    audit's own HF3 table parse, the one/two-carrier split its own walk, ring size and payload format its own wire
+    decoder of the held bodies; then the builder's derived/dc1_structure.json and the FQ2 correction are read as CLAIMS.
+    Counts only (no amount, address or TXID leaves this function)."""
+    own, n2, decoded = {}, 0, 0
+    for t in sorted(table):
+        two = len(carriers.get(t, [])) > 1
+        n2 += two
+        d = dec.get(t)
+        if d is None:
+            continue
+        decoded += 1
+        rings = sorted({p['ring'] for p in d['payloads']})
+        fmts = sorted({p['rpc_type'] for p in d['payloads']})
+        key = '+'.join([f'ring{x}' for x in rings] + [f'rpctype{x}' for x in fmts])
+        g = 'two_inclusions' if two else 'single_inclusion'
+        for k in (key, f'{g}:{key}'):
+            own[k] = own.get(k, 0) + 1
+        if rings == [2] and fmts == [0]:
+            for k in ('criterion', f'criterion:{g}'):
+                own[k] = own.get(k, 0) + 1
+    claim = json.loads((ds / 'derived/dc1_structure.json').read_text())
+    fq = json.loads((ds / 'derived/fq.json').read_text())
+    sup = (json.loads((ds / 'manifest.json').read_text()).get('supersedes') or [None])[0]
+    base = json.loads((Path(repo) / 'forensics' / sup / 'derived/fq.json').read_text()) if sup else {}
+    q, qb = dict(fq.get('FQ2', {})), dict(base.get('FQ2', {}))
+    srt = (q.get('criteria') or {}).get('S-RT') or {}
+    q['criteria'] = {k: v for k, v in (q.get('criteria') or {}).items() if k != 'S-RT'}
+    q.pop('corrections', None)
+    rest_equal = ({k: v for k, v in fq.items() if k != 'FQ2'} == {k: v for k, v in base.items() if k != 'FQ2'} and q == qb)
+    want = f"{own.get('criterion', 0)} of {len(table)}"
+    return {'dc1_table': len(table), 'decoded_own': decoded, 'two_carriers_own': n2, 'own_counts': dict(sorted(own.items())),
+            'claimed_counts': claim.get('counts'), 'counts_equal': claim.get('counts') == dict(sorted(own.items())),
+            'claimed_coverage': claim.get('coverage'), 'class': claim.get('class'),
+            'fq2_srt_result': srt.get('result'), 'fq2_srt_agrees': str(srt.get('result', '')).startswith(want + ' '),
+            'fq2_dc1_obs': (fq.get('FQ2', {}).get('coverage') or {}).get('dc1_obs'),
+            'fq2_dc1_obs_base': (qb.get('coverage') or {}).get('dc1_obs'),
+            'fq2_corrections': len(fq.get('FQ2', {}).get('corrections') or []),
+            'fq_rest_equal_base': rest_equal, 'base': sup}
 
 
 # =============================================================================================== classes re-audit
@@ -1012,6 +1057,19 @@ def build_challenges(R):
     out.append(ch('D2-24', '(a2) TreeSection from ONE source stays BLOCKED and pending, with evidence, never graded',
                   'derived/a2.json class and the scan above', R['a2']['class'] == 'pending',
                   [{'class': 'DERIVED', 'what': f"class {R['a2']['class']}; verdict '{R['a2']['verdict_head']}...'"}], ['V2-END-STATE']))
+    X = R.get('dc1_structure')
+    if X:   # r28d (v4, B180)
+        out.append(ch('D2-26', f"dc1_structure.json: the ring size / payload format counts of the {X['dc1_table']} DC1 txs equal an independent count (own HF3 parse, own walk, own decoder)",
+                      'own wire decoder over the held DC1 bodies, own one/two-carrier split; counts compared key by key',
+                      X['counts_equal'] and X['decoded_own'] == X['dc1_table'] and X['class'] == 'DC1'
+                      and (X['claimed_coverage'] or {}).get('num') == X['dc1_table'] == (X['claimed_coverage'] or {}).get('den'),
+                      [{'class': 'DERIVED', 'what': f"own {X['own_counts']}; decoded {X['decoded_own']}/{X['dc1_table']}, two carriers {X['two_carriers_own']}; claimed equal {X['counts_equal']}"}],
+                      ['V2-DUP-BODY']))
+        out.append(ch('D2-27', f"fq.json: the FQ2 correction adds only criterion S-RT and a dated note to {X['base']}'s fq.json; S-RT agrees with the own count; DC1-obs unchanged",
+                      f"fq.json vs the sealed {X['base']}/derived/fq.json less FQ2 S-RT and corrections; S-RT result vs own criterion count; FQ2 coverage dc1_obs",
+                      X['fq_rest_equal_base'] and X['fq2_srt_agrees'] and X['fq2_dc1_obs'] == X['fq2_dc1_obs_base'] == 0 and X['fq2_corrections'] >= 1,
+                      [{'class': 'DERIVED', 'what': f"rest equal {X['fq_rest_equal_base']}; S-RT '{X['fq2_srt_result']}', agrees {X['fq2_srt_agrees']}; dc1_obs {X['fq2_dc1_obs']} (base {X['fq2_dc1_obs_base']}); corrections {X['fq2_corrections']}"}],
+                      ['V2-DUP-BODY']))
     return out
 
 
@@ -1053,6 +1111,7 @@ AFFECTS_ALWAYS = {
     'D2-13': ['V2-END-STATE'], 'D2-14': ['V2-END-STATE', 'V-STATE-ROOTS'], 'D2-24': ['V2-END-STATE'],
     'D2-15': ['V-STATE-ROOTS'], 'D2-16': ['V-STATE-ROOTS'], 'D2-17': ALL_V, 'D2-18': ['V2-DUP-BODY'],
     'D2-19': ['V2-FEES'], 'D2-20': ALL_V, 'D2-21': ['V-DC2'], 'D2-22': ['V-DC2'],
+    'D2-26': ['V2-DUP-BODY'], 'D2-27': ['V2-DUP-BODY'],   # r28d (v4, B180): the DC1 structural census and FQ2 S-RT
 }
 
 

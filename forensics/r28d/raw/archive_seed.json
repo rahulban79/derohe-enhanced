@@ -1,0 +1,16 @@
+{
+ "archive": "archive:replaywall-20260819 (copy, APFS-cloned)",
+ "archive_copy": "~/derohe-persist/forensics_archive_copy (APFS clone of ~/dero-data/mainnet.replaywall-20260819, never opened in place)",
+ "chain_topoheight_after_open": 7467515,
+ "class": "pending",
+ "clone_b_identical": true,
+ "clones": 2,
+ "evidence_class": "DERIVED (our own 2026-08 node replay); EXT base at 7,453,290 (its fastsync)",
+ "kind": "a2_seed_archive",
+ "slice_first_topo": 7453290,
+ "slice_records": 14632,
+ "top_blid": "5460bce958ff0642dcbabbade30fee81589c69bee6d1a1e987df99768d2b2579",
+ "top_root": "d3345594b8bb324b60940c0bea625c57567f09ac889704dba57935de407bd324",
+ "top_state_version": 18960,
+ "top_topo": 7467515
+}

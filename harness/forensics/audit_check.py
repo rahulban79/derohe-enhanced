@@ -1130,7 +1130,11 @@ def verdict_problems(verdicts, challenges):
 REQUIRED_BY_VERSION = {'r25': ('A1', 'A2', 'A3', 'A4'),
                        'r26': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-14'),
                        # R28: v3 corrects v2 (run C through the HF3 entry); its audit must answer A10c (D2-16) too
-                       'r28': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-13', 'D2-14', 'D2-16', 'D2-20')}
+                       'r28': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-13', 'D2-14', 'D2-16', 'D2-20'),
+                       # r28d: v4 corrects v3 (FQ2 criterion S-RT, B180); its audit must also re-count the DC1 structure
+                       # with the auditor's own decoder (D2-26) and check the FQ2 correction (D2-27)
+                       'r28d': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-13', 'D2-14', 'D2-16', 'D2-20',
+                                'D2-26', 'D2-27')}
 
 
 def g29_check(ds, repo=None, private=None):

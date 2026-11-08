@@ -31,7 +31,12 @@ def main(argv=None):
     store = store if (store / 'blobs').is_dir() else None
     arch = arch if arch.is_dir() else None
     man = json.loads((ds / 'manifest.json').read_text())
-    if man.get('replay_tool') == 'harness/forensics/v3.py':  # R28: dataset v3 (content pins + v2.derive + run C corrections)
+    if man.get('replay_tool') == 'harness/forensics/v4.py':  # r28d: dataset v4 (v3.derive + the DC1 structure + FQ2 S-RT)
+        import v4
+        s4 = Path(os.environ.get('FORENSICS_R28_STORE', Path.home() / 'derohe-persist/forensics_raw_r26'))
+        rep = v4.replay(ds, s4 if (s4 / 'blobs').is_dir() else None)
+        txt = v4.v2.dumps(rep)
+    elif man.get('replay_tool') == 'harness/forensics/v3.py':  # R28: dataset v3 (content pins + v2.derive + run C corrections)
         import v3
         s3 = Path(os.environ.get('FORENSICS_R28_STORE', Path.home() / 'derohe-persist/forensics_raw_r26'))
         rep = v3.replay(ds, s3 if (s3 / 'blobs').is_dir() else None)

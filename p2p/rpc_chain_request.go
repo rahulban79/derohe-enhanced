@@ -72,10 +72,7 @@ func (c *Connection) Chain(request Chain_Request_Struct, response *Chain_Respons
 	// we can serve maximum of 512 BLID = 16K KB
 	const MAX_BLOCKS = 512
 
-	for i := start_topoheight; i <= chain.Load_TOPO_HEIGHT() && len(response.Block_list) <= MAX_BLOCKS; i++ {
-		hash, _ := chain.Load_Block_Topological_order_at_index(i)
-		response.Block_list = append(response.Block_list, [32]byte(hash))
-	}
+	response.Block_list = chain_block_list(response.Block_list, start_topoheight, chain.Load_TOPO_HEIGHT, chain.Load_Block_Topological_order_at_index, MAX_BLOCKS)
 
 	// we must also fill blocks for the  last top 10 heights, so client can sync faster to alt tips
 	top_height := chain.Get_Height()
@@ -96,4 +93,18 @@ func (c *Connection) Chain(request Chain_Request_Struct, response *Chain_Respons
 	c.update(&request.Common)     // update common information
 
 	return nil
+}
+
+// chain_block_list appends to list the topo-ordered block ids from start while start <= tip() (re-read every step) and
+// len(list) <= max; it stops at the first index that cannot be read instead of sending a zero id, so every id is a real
+// block and position i still means topoheight start+i (first seen upstream, commit 8ef3fb1d)
+func chain_block_list(list [][32]byte, start int64, tip func() int64, at func(int64) (crypto.Hash, error), max int) [][32]byte {
+	for i := start; i <= tip() && len(list) <= max; i++ {
+		hash, err := at(i)
+		if err != nil {
+			break
+		}
+		list = append(list, [32]byte(hash))
+	}
+	return list
 }

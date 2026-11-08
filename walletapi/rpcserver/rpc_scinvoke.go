@@ -25,7 +25,14 @@ import (
 	"github.com/deroproject/derohe/rpc"
 )
 
-func ScInvoke(ctx context.Context, p rpc.SC_Invoke_Params) (result rpc.Transfer_Result, err error) {
+// SC_Invoke_Fees_Params is scinvoke's request: the rpc package's params plus the optional "fees" (atomic units; 0 keeps
+// the automatic fee). Kept in this package so the rpc package (consensus-guarded) is unchanged.
+type SC_Invoke_Fees_Params struct {
+	rpc.SC_Invoke_Params
+	Fees uint64 `json:"fees"`
+}
+
+func ScInvoke(ctx context.Context, p SC_Invoke_Fees_Params) (result rpc.Transfer_Result, err error) {
 	defer func() { // safety so if anything wrong happens, we return error
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic occured. stack trace %s", debug.Stack())
@@ -45,18 +52,30 @@ func ScInvoke(ctx context.Context, p rpc.SC_Invoke_Params) (result rpc.Transfer_
 		return result, fmt.Errorf("SCID cannot be empty")
 	}
 
-	// if destination is "", we will choose a random address automatically
+	tp, err := scinvoke_transfer_params(p, w.wallet.Random_ring_members)
+	if err != nil {
+		return result, err
+	}
 
-	var tp rpc.Transfer_Params
+	//fmt.Printf("transfers %+v\n", tp)
+
+	return Transfer(ctx, tp)
+
+}
+
+// scinvoke_transfer_params translates scinvoke arguments into the transfer that carries the SC call (refactor of the
+// inline code of ScInvoke; ring supplies random ring members for the DERO deposit)
+func scinvoke_transfer_params(p SC_Invoke_Fees_Params, ring func(crypto.Hash) []string) (tp rpc.Transfer_Params, err error) {
+	// if destination is "", we will choose a random address automatically
 
 	// we must burn this much native currency
 	if p.SC_DERO_Deposit >= 1 {
 
 		var mainscid crypto.Hash
-		random := w.wallet.Random_ring_members(mainscid)
+		random := ring(mainscid)
 
 		if len(random) < 3 {
-			return result, fmt.Errorf("SCID could not obtain ring members")
+			return tp, fmt.Errorf("SCID could not obtain ring members")
 		}
 		tp.Transfers = append(tp.Transfers, rpc.Transfer{Destination: random[0], Amount: 0, Burn: p.SC_DERO_Deposit})
 	}
@@ -67,9 +86,7 @@ func ScInvoke(ctx context.Context, p rpc.SC_Invoke_Params) (result rpc.Transfer_
 	tp.SC_RPC = p.SC_RPC
 	tp.SC_ID = p.SC_ID
 	tp.Ringsize = p.Ringsize
+	tp.Fees = p.Fees // optional; 0 keeps the automatic fee (first seen upstream, commit 9d7a4c70)
 
-	//fmt.Printf("transfers %+v\n", tp)
-
-	return Transfer(ctx, tp)
-
+	return tp, nil
 }

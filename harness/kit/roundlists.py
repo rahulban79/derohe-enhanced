@@ -93,7 +93,9 @@ def problems(L):
             out.append(f'areas: {rid} missing from {FILES["areas"]} rounds')
         if evolution_label(rid) not in L['evolution']:
             out.append(f'evolution: {evolution_label(rid)} missing from {FILES["evolution"]} ORDER')
-    n = ledger_number(cur)
+    # r28d: a sub-round (r28d) renders its parent round's page (dero-r1-r28.html), so the parent number must be listed
+    m = re.fullmatch(r'r(\d+)[a-z]', str(cur))
+    n = ledger_number(cur) if ledger_number(cur) is not None else (int(m.group(1)) if m else None)
     if n is not None and n not in L['ledger']:
         out.append(f'ledger: {n} missing from {FILES["ledger"]} LAST_CHOICES (current round {cur})')
     order = L['registry']

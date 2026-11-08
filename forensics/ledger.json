@@ -15,11 +15,19 @@
   },
   {
    "manifest_sha256": "6226081969f056723da7ce478e5543adf5a2615e8db0b798f7af68b7ac3544f3",
-   "sealed": false,
+   "sealed": true,
    "supersedes": [
     "r26"
    ],
    "version": "r28"
+  },
+  {
+   "manifest_sha256": "68ab4016a317b5b17ed2ba0033e014d384825bff743fc201eb2964c894881411",
+   "sealed": false,
+   "supersedes": [
+    "r28"
+   ],
+   "version": "r28d"
   }
  ]
 }

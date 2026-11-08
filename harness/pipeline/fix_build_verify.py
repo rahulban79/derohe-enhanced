@@ -1078,6 +1078,22 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
+# Round 28d (the community-dev merge, dero-rft §2.17 and §8 R28d plan; rows B177-B181): the chain-sync block list stops
+# at an unreadable topo index (p2p, B177), scinvoke carries `fees` (walletapi/rpcserver, B178), the range-proof binding
+# census and the Bulletproofs assumption anchors (cryptography/crypto, test files only, B179/B190) and the HF3 replay
+# controls at ring 16 (walletapi, !race like its ring-2 original, B181); none is env-gated; each guards a gm-r28d-*
+# mutation in harness/intel/go_mutations.json.
+for _pkg, _pat in {
+    './p2p/': 'TestR28dChainBlockListNoZeroHash|TestR28dChainBlockListUnchangedWithoutErrors',
+    './walletapi/rpcserver/': 'TestR28dScInvokeFeesReachTransferParams',
+    './cryptography/crypto/': 'TestR28dBindingCensusComplete|TestR28dBindingCensusControls'
+                              '|TestR28dAssumptionAnchorsResolve|TestR28dAssumptionAnchorsControls',
+    './walletapi/': 'Test_R28d_HF3_Exemption_Ring16',
+    './blockchain/': 'TestR28dRegistrationPoWChecks|TestR28dRegistrationPoWChecksControls',  # B182/B186 report-only pin
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+NORACE_NEW_TESTS['./walletapi/'] = NORACE_NEW_TESTS.get('./walletapi/', []) + ['Test_R28d_HF3_Exemption_Ring16']  # r28d: !race file, port 26233
+
 # Round 27 (glue-global group: globals clock/amount, glue/rwc nhooyr adapter, glue/emission archive + series payees,
 # glue/txprecheck PeekWindow); none is env-gated; each guards a gm-r27-glue-* mutation in harness/intel/go_mutations.json.
 for _pkg, _pat in {
@@ -2716,7 +2732,8 @@ def s7_project():
     # track at render time, and this S7 rewrote area_intel.json (step 1): re-render it BEFORE run_gates, so G25 and the
     # coherence step compare it with the scorecard of THIS run (found by G25: ledger 'docs WATCH' vs scorecard 'docs OK';
     # re-rendering after run_gates still failed G25, which runs inside run_gates).
-    _lm = re.fullmatch(r'r(\d+)', str(CUR_ROUND.get('id') or ''))
+    # r28d: a sub-round (r28d, like r23b/r23c) has no ledger page of its own and re-renders its parent's page (dero-r1-r28.html)
+    _lm = re.fullmatch(r'r(\d+)[a-z]?', str(CUR_ROUND.get('id') or ''))
     if _lm and (ROOT / f'artifacts/dero-r1-r{_lm.group(1)}.html').exists():
         steps += [[sys.executable, 'artifacts/src/gen_ledger.py', '--last', _lm.group(1), f'artifacts/dero-r1-r{_lm.group(1)}.html']]
     steps += [[sys.executable, 'harness/run_gates.py', f'pipeline-{TS}'],

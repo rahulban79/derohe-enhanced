@@ -1,0 +1,392 @@
+{
+ "base": "r25",
+ "classes": {
+  "DC0": {
+   "detected": 0,
+   "detected_txids": [],
+   "detection_scope": {
+    "anchor": "derived/window.jsonl.gz",
+    "of": 82477,
+    "window_blocks_tx_lists": 82477
+   },
+   "figures": [
+    "dc0-window-duplicates"
+   ],
+   "name": "unclassified finding",
+   "what": "a finding that fits no class; goes to the disclosure track as a new fact"
+  },
+  "DC1": {
+   "anchor": "blockchain/hardfork_fixes.go:27",
+   "claims": [
+    "X-EXEMPT",
+    "C6"
+   ],
+   "detected_raw": 75,
+   "detection_scope": {
+    "anchor": "derived/window.jsonl.gz",
+    "heights_raw": 82477,
+    "of": 82477
+   },
+   "figures": [
+    "dc1-table-entries",
+    "dc1-bodies-raw",
+    "dc1-dual-carrier",
+    "dc1-single-carrier",
+    "dc1-two-bodies",
+    "dc1-obs-coverage",
+    "dc1-obs-amount"
+   ],
+   "grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA (per tx, derived/grades.json)",
+   "groups": {
+    "duplicates": 67,
+    "no duplicates, but false parity": 8
+   },
+   "name": "duplication ladder",
+   "subclass_rule": "DC1-hidden only beyond an evidenced FQ3 boundary (none known), so the rest is DC1-pending",
+   "subclasses": {
+    "DC1-hidden": 0,
+    "DC1-obs": 0,
+    "DC1-pending": 75
+   },
+   "table_entries": 75
+  },
+  "DC2": {
+   "claims": [
+    "C1",
+    "C2",
+    "C3",
+    "C5"
+   ],
+   "figures": [
+    "dc2-created-value"
+   ],
+   "grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA (once, at class level, scope genesis .. now)",
+   "name": "proof soundness",
+   "per_tx": "never graded per tx",
+   "present_now": true,
+   "track_c1": {
+    "round": "R26",
+    "state": "upstream",
+    "verdict": "CONFIRMED"
+   }
+  },
+  "DC3": {
+   "anchor": "blockchain/supply.go:5",
+   "figures": [
+    "dc3-window-emission",
+    "dc3-window-fees",
+    "dc3-window-public-burns"
+   ],
+   "grade": "PROVEN-NO-INFLATION-IN-SCOPE (scope: window 7,415,466..7,497,942 (82,477 blocks); public emission only)",
+   "name": "public-value identities"
+  }
+ },
+ "dataset": "r28",
+ "figures": [
+  {
+   "bound_type": "exact",
+   "class": "DC1",
+   "coverage": {
+    "den": 75,
+    "den_anchor": "blockchain/hardfork_fixes.go:27 (derived/hf3.json table.entries)",
+    "num": 75,
+    "num_anchor": "derived/hf3.json rows"
+   },
+   "id": "dc1-table-entries",
+   "label": "HF3 table entries (the DC1 TXIDs consensus code names)",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "count",
+   "value": 75
+  },
+  {
+   "bound_type": "exact",
+   "class": "DC1",
+   "coverage": {
+    "den": 75,
+    "den_anchor": "derived/hf3.json rows",
+    "num": 75,
+    "num_anchor": "derived/hf3.json counts.bodies_raw"
+   },
+   "id": "dc1-bodies-raw",
+   "label": "DC1 bodies held RAW (checks i-iii)",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "count",
+   "value": 75
+  },
+  {
+   "bound_type": "exact",
+   "class": "DC1",
+   "coverage": {
+    "den": 67,
+    "den_anchor": "derived/hf3.json table.groups.duplicates",
+    "num": 67,
+    "num_anchor": "derived/hf3.json rows[].carriers"
+   },
+   "id": "dc1-dual-carrier",
+   "label": "\"duplicates\" entries carried by two RAW blocks",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "count",
+   "value": 67
+  },
+  {
+   "bound_type": "exact",
+   "class": "DC1",
+   "coverage": {
+    "den": 8,
+    "den_anchor": "derived/hf3.json table.groups",
+    "num": 8,
+    "num_anchor": "derived/hf3.json rows[].carriers"
+   },
+   "id": "dc1-single-carrier",
+   "label": "\"false parity\" entries carried by one RAW block",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "count",
+   "value": 8
+  },
+  {
+   "bound_type": "unbounded",
+   "class": "DC1",
+   "coverage": {
+    "den": 75,
+    "den_anchor": "derived/hf3.json rows",
+    "num": "pending",
+    "num_anchor": "derived/tx/*.json duplicates"
+   },
+   "id": "dc1-two-bodies",
+   "label": "DC1 TXIDs with two different bodies held",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "count",
+   "value": "pending: one body was fetched per TXID; a block tx list carries only the TXID, which excludes the proof (transaction/transaction.go:509), so a second body is not observable from RAW blocks"
+  },
+  {
+   "bound_type": "lower-bound",
+   "class": "DC1",
+   "coverage": {
+    "den": 75,
+    "den_anchor": "derived/hf3.json rows",
+    "num": 0,
+    "num_anchor": "derived/fq.json FQ2"
+   },
+   "id": "dc1-obs-coverage",
+   "label": "DC1 TXIDs whose amount public data determines (DC1-obs)",
+   "note": "lower bound: criteria P1 (public plaintext value fields) and S-R22 (shared randomness commitment, held bodies only); the rest is DC1-pending, not DC1-hidden, until the FQ3 boundary is known",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "count",
+   "value": 0
+  },
+  {
+   "bound_type": "lower-bound",
+   "class": "DC1",
+   "coverage": {
+    "den": 75,
+    "den_anchor": "derived/hf3.json rows",
+    "num": 0,
+    "num_anchor": "derived/fq.json FQ2"
+   },
+   "id": "dc1-obs-amount",
+   "label": "sum of DC1-obs amounts",
+   "note": "never a supply figure (rule 8); the external 23,886,517.3 figure stays EXT (C6)",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "atomic",
+   "value": "none determinable: DC1-obs is empty under the recorded criteria"
+  },
+  {
+   "bound_type": "exact",
+   "class": "DC0",
+   "coverage": {
+    "den": 82477,
+    "den_anchor": "derived/window.jsonl.gz rows",
+    "num": 82477,
+    "num_anchor": "derived/window.jsonl.gz rows[].tx_hashes"
+   },
+   "id": "dc0-window-duplicates",
+   "label": "TXIDs in two or more window blocks outside the HF3 table",
+   "note": "1,769 distinct TXIDs in 1,726 tx-carrying blocks; bodies are not compared (one body per TXID)",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "count",
+   "value": 0
+  },
+  {
+   "bound_type": "unbounded",
+   "class": "DC2",
+   "coverage": {
+    "den": "pending",
+    "den_anchor": "pending: every proof since genesis",
+    "num": 0,
+    "num_anchor": "no public-data test separates the cases (fq.json FQ5)"
+   },
+   "id": "dc2-created-value",
+   "label": "value created under the proof-soundness defect",
+   "note": "lower bound 0, no upper bound; graded once: NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "scope": {
+    "heights": "genesis..now",
+    "text": "genesis .. now"
+   },
+   "unit": "atomic",
+   "value": "unbounded"
+  },
+  {
+   "bound_type": "exact",
+   "class": "DC3",
+   "coverage": {
+    "den": 82477,
+    "den_anchor": "derived/emission.json per_block.blocks",
+    "num": 82477,
+    "num_anchor": "derived/emission.json per_block.supply_identity_ok"
+   },
+   "id": "dc3-window-emission",
+   "label": "window emission (formula coinbase) = CalcSupply difference",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "atomic",
+   "value": 2536167750
+  },
+  {
+   "bound_type": "exact",
+   "class": "DC3",
+   "coverage": {
+    "den": 82477,
+    "den_anchor": "derived/emission.json fees (v1 window blocks)",
+    "num": 82477,
+    "num_anchor": "derived/fees.json v2 (v1 known blocks + v1 pending blocks settled)"
+   },
+   "id": "dc3-window-fees",
+   "label": "window fees, every block",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "atomic",
+   "value": 855173
+  },
+  {
+   "bound_type": "exact",
+   "class": "DC3",
+   "coverage": {
+    "den": 82477,
+    "den_anchor": "derived/emission.json fees (v1 window blocks)",
+    "num": 82477,
+    "num_anchor": "derived/fees.json v2 (v1 known blocks + v1 pending blocks settled)"
+   },
+   "id": "dc3-window-public-burns",
+   "label": "window public burns, every block",
+   "scope": {
+    "heights": [
+     7415466,
+     7497942
+    ],
+    "text": "window 7,415,466..7,497,942 (the 75 HF3 entries min..max)"
+   },
+   "unit": "atomic",
+   "value": 230470000
+  }
+ ],
+ "headline": {
+  "dc2_present_now": true,
+  "text": "DC2 (proof soundness) is present in the current consensus code at the round head: its three C1 anchors re-read OK; any aggregate over genesis .. now is unbounded"
+ },
+ "historical_grades": {
+  "counts": {
+   "NOT-DECIDABLE-FROM-PUBLIC-DATA/E1": 2,
+   "NOT-DECIDABLE-FROM-PUBLIC-DATA/E2": 73
+  },
+  "source": "derived/grades.json"
+ },
+ "inputs": {
+  "forensics/r25/derived/emission.json": "af361cd765e079c510070bbe375bfdd3b30b0c24142ae996f8bbf841ba84ac9f",
+  "forensics/r25/derived/grades.json": "0aaa3da9cc2ee731e9400c81b6e1b2eb7120dbcbedcd263b19d8fd8b86f9ee71",
+  "forensics/r25/derived/hf3.json": "339e3c667810ceea07a8f0e98298a4d8bd94f9d573a04fed7e9b0ba44ad87d43",
+  "forensics/r25/derived/window.jsonl.gz": "f5f79b13856ec50c8e1f5c26cdb1162b5fb50754133096401312a23770bc94f3",
+  "forensics/r28/derived/fees.json": "aebd4f1451403d1657501291c9465ee7347320f0eec0b26390bf7ce3db2bcc22",
+  "forensics/r28/derived/txs.jsonl.gz": "1cca01fe27e3cbeb3c284bc07ff5db1758a624dd3e5b21f3830ba7852a25e336"
+ },
+ "records": {
+  "derived/blocks_fees.jsonl.gz": {
+   "DC3": 1747
+  },
+  "derived/roots_window.jsonl.gz": {
+   "DC3": 31025
+  },
+  "derived/txs.jsonl.gz": {
+   "DC1": 75,
+   "DC3": 1721
+  },
+  "raw/tx_bodies.jsonl.gz": {
+   "DC1": 75,
+   "DC3": 1721
+  },
+  "raw/wall1_blocks.jsonl.gz": {
+   "DC3": 2799
+  }
+ },
+ "records_rule": "v2 layout (R28 B126): per record file, the count of each defect class in `class`; a tx record is DC1 when its TXID is in the HF3 table, else DC3; a block record (fees, state roots, wall-1 link blocks) is DC3; DC2 is never per record; the base version's window rows are the base's records",
+ "rules": {
+  "exact": "coverage num == den (both integers) and no pending member of the figure's own class in its scope",
+  "fix_is_not_restore": "a fix status never changes a historical grade (rule 10)",
+  "forbidden_phrases": [
+   "supply audit",
+   "audited supply",
+   "total inflation",
+   "true supply"
+  ],
+  "forbidden_unless": "bound_type exact over genesis .. now (no figure qualifies while DC2 is open)",
+  "no_cross_class_sum": "a figure has exactly one class; a figure derived from others names only figures of its own class"
+ },
+ "schema": "r26 classes v1 (rft \u00a70.8.9)"
+}

@@ -2568,3 +2568,34 @@ masked raw scrapes (B135), memory KPIs (B140; REF_RX no longer reads a '-backup'
 Installed +22102026.r28 by atomic rename (backups `bin/*.22102026.r27-backup`), `bin/derod` sha256 `2dad9f246bbf038b5c079704f98d5d2c9ec9c4f31a9fe51127b8d132c7bcbee7`.
 
 **46.7 Live (measured 2026-11-06, rft §13 R28).** restart 16:10:24 (pid 80281), before the B36 24 h mark of the r27 segment; 60 min read-only (`harness/runtime/r28_live_window_20261106.txt`, 16:11:53 → 17:10:53, first sample 89 s after the start): 60/60 synced, lag 0, 13–14 out / 0 in, tip block age 4.3 s at 17:12:55; 0 ERROR / 0 WARN in 1,180 lines since the restart (G15 clear, `harness/runtime/error_census_20261106T171236.json`), 0 recovered panics; 193 blocks, 0 txs, 2 reorgs. CONFIRMED (`harness/runtime/r28_live_probes_20261106.txt`): GetInfo `tx_pool_unmined` in 60/60 samples (B42; pool 0 throughout); the `p2p_chunk_pow_*` counters with slow = checks − pool_seen in 13/13 scrapes, 10 checks per block, cache miss 10.0 % over the window (B46/L24-21); GET /json_rpc → 405 with a −32600 body counted, `rpc_error_responses_total{code="-32600"}` 0 → 1 (B150); HELP on 283/283 families and TYPE on 273/283 (B151: 9 vmrange histograms by design plus `dero_tip_age_seconds`, B176); `metrics_dump_posts_total` at 0 (B153); env overrides 0, the reloaded ban, the 18 pre-registered rpc series, insert_failed absent and the reorg monitor (`starts` 4) hold. Emission 221 audited, 0 alerts, payees 1,417/1,417. B36, offline over 22.3 h (the r27 segment 17:51:49 → 16:09:32; `harness/runtime/r28_b36_emission22h_20261106.txt`): `emission-audit -archive` 7,861,956..7,866,297 on an APFS clone outside the datadir, 4,342 ok, 0 alerts, issued = formula 133,516,500, payees 28,461 = explained (28,459 verified), 43/43 checkpoints equal the live series. Pending an event: B47, B48, B57, B99 (event_scenarios 22/22), B61, B85. New: B175 (a malformed body is answered by the upstream bridge as HTTP 500 plain text, −32700 uncounted), B176.
+
+## 47. ★ Round 28d: the community-dev merge sub-round — a third party's branch merged by verified rows, each with its own test in this tree, and its build measured once on a clone (+22102026.r28d, 2026-11-07)
+
+> Filled from the R28d records: the merge record (`harness/runtime/r28d_merge_20261106.txt`), the inputs manifest
+> (`harness/external/r28d_inputs_manifest.json`), the D3 node-run record (`harness/runtime/r28d_d3_noderun_20261107.txt`),
+> the live window (`harness/runtime/r28d_live_window_20261107.txt`, `r28d_live_probes_20261107.txt`), the pipeline records
+> (`pipeline_20261106T222539`, `pipeline_20261106T233228`, `pipeline_20261107T025211`) and rft §7 B177–B192, §8 R28d plan.
+> The miner track is PAUSED (artifacts/dero-rft.md §0.3).
+
+**47.1 Method.** The DEROFDN `community-dev` branch (head 058889ca, merge base 1d3c4b7b) was evaluated in a separate clone
+(CD1–CD3) and every result became an rft §7 row; the merge took only the NEW or measured-BETTER rows (D2), each with a
+fail-before test and a registered mutation here. Nothing in this tree depends on the clone or its (retired) document.
+
+**47.2 Node and wallet.** `p2p/rpc_chain_request.go` `chain_block_list` stops at an unreadable topo index (B177; live: 6
+chain requests served, 0 refused); `walletapi/rpcserver/rpc_scinvoke.go` takes an optional `fees` (B178). Both are
+outside the consensus-guarded packages (guard S1 PASS).
+
+**47.3 Proof review.** `cryptography/crypto/r28d_binding_census_test.go` (128 scalar × base sites; the one free scalar is
+`mu` at `proof_verify.go:452`, disclosure C1) and `r28d_assumption_anchors_test.go` (18 hypotheses of the Bulletproofs
+soundness theorem mapped to file:line: 14 DISCHARGED, 2 VIOLATED = the two halves of C1, 2 UNCLEAR pending a Zether
+input). Hypotheses and anchors only; no construction (rft §9).
+
+**47.4 Forensics.** Dataset v4 `forensics/r28d` adds the ring-size × payload-format criterion to FQ2 (60 of 75 DC1 txs);
+G28 re-verifies r25, r26, r28 and r28d on the measured build.
+
+**47.5 Report-only.** The registration PoW mismatch (B182: 0 of 487 on-chain registrations below 3 zero bytes in the
+ranges read), the unreleased version-4 fork row at 8,000,000 (B184, watched every round), the display "spendable supply"
+(B185), the no-effect HF4 registration check (B186) and the gated-verifier notes (B187) stay rows, not code.
+
+**47.6 Live.** D3: the community-dev build followed the same chain below 8,000,000 (120/120 hashes, formula supply equal).
+r28d window 17:51:03 → 18:52:03: 62/62 synced, 0 ERROR/WARNING, emission 0 alerts.

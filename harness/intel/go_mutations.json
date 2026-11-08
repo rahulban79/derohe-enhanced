@@ -12641,6 +12641,78 @@
    "test": "TestR27ParseAmountExact",
    "find": "\tif !exact.IsInt() {",
    "replace": "\tif false && !exact.IsInt() { // r28 mutated: sub-atomic amounts accepted"
+  },
+  {
+   "id": "gm-r28d-m1-chainlist-ignore-err",
+   "file": "p2p/rpc_chain_request.go",
+   "pkg": "./p2p/",
+   "test": "TestR28dChainBlockListNoZeroHash",
+   "find": "\t\thash, err := at(i)\n\t\tif err != nil {\n\t\t\tbreak\n\t\t}\n",
+   "replace": "\t\thash, _ := at(i) // r28d mutated: the read error ignored again (B177)\n"
+  },
+  {
+   "id": "gm-r28d-m1-chainlist-skip-not-stop",
+   "file": "p2p/rpc_chain_request.go",
+   "pkg": "./p2p/",
+   "test": "TestR28dChainBlockListNoZeroHash",
+   "find": "\t\tif err != nil {\n\t\t\tbreak\n\t\t}\n",
+   "replace": "\t\tif err != nil {\n\t\t\tcontinue // r28d mutated: skip instead of stop (positions shift)\n\t\t}\n"
+  },
+  {
+   "id": "gm-r28d-m1-chainlist-max-bound",
+   "file": "p2p/rpc_chain_request.go",
+   "pkg": "./p2p/",
+   "test": "TestR28dChainBlockListUnchangedWithoutErrors",
+   "find": "\tfor i := start; i <= tip() && len(list) <= max; i++ {",
+   "replace": "\tfor i := start; i <= tip(); i++ { // r28d mutated: MAX_BLOCKS bound dropped"
+  },
+  {
+   "id": "gm-r28d-m2-scinvoke-fees-dropped",
+   "file": "walletapi/rpcserver/rpc_scinvoke.go",
+   "pkg": "./walletapi/rpcserver/",
+   "test": "TestR28dScInvokeFeesReachTransferParams",
+   "find": "\ttp.Fees = p.Fees // optional;",
+   "replace": "\t_ = p.Fees // r28d mutated: fees not passed on (B178);"
+  },
+  {
+   "id": "gm-r28d-m3-census-ipa-base",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR28dBindingCensusComplete",
+   "find": "\tu_x := new(bn256.G1).ScalarMult(gparams.H, o)",
+   "replace": "\tu_x := new(bn256.G1).ScalarMult(gparams.G, o) // r28d mutated: the census row of the IPA base changes (B179)"
+  },
+  {
+   "id": "gm-r28d-m3-anchor-line-moved",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR28dAssumptionAnchorsResolve",
+   "find": "\tu_x := new(bn256.G1).ScalarMult(gparams.H, o)",
+   "replace": "\t// r28d mutated: one line inserted, every anchor below moves (B190)\n\tu_x := new(bn256.G1).ScalarMult(gparams.H, o)"
+  },
+  {
+   "id": "gm-r28d-m5-nonce-ring2",
+   "file": "blockchain/transaction_verify.go",
+   "pkg": "./walletapi/",
+   "test": "Test_R23_HF3_Exemption_Is_Height_Bound",
+   "find": "\t\t\t\tif tip_nb.NonceHeight > tx_nb.NonceHeight {",
+   "replace": "\t\t\t\tif false && tip_nb.NonceHeight > tx_nb.NonceHeight { // r28d mutated: nonce comparison neutered (B181)"
+  },
+  {
+   "id": "gm-r28d-m5-nonce-ring16",
+   "file": "blockchain/transaction_verify.go",
+   "pkg": "./walletapi/",
+   "test": "Test_R28d_HF3_Exemption_Ring16",
+   "find": "\t\t\t\tif tip_nb.NonceHeight > tx_nb.NonceHeight {",
+   "replace": "\t\t\t\tif false && tip_nb.NonceHeight > tx_nb.NonceHeight { // r28d mutated: nonce comparison neutered (B181)"
+  },
+  {
+   "id": "gm-r28d-b182-block-check-tightened",
+   "file": "blockchain/blockchain.go",
+   "pkg": "./blockchain/",
+   "test": "TestR28dRegistrationPoWChecks",
+   "find": "\t\t\t\tif chain.simulator == false && tx_hash[0] != 0 && tx_hash[1] != 0 {",
+   "replace": "\t\t\t\tif chain.simulator == false && (tx_hash[0] != 0 || tx_hash[1] != 0 || tx_hash[2] != 0) { // r28d mutated: block demands the pool's three zero bytes (the pin must notice, B182)"
   }
  ]
 }

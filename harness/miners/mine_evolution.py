@@ -29,7 +29,7 @@ BASE_TAG = 'Release152'
 SNAP = 'harness/runtime/evolution_git.tsv'
 # the ledger's round axis, in order; R23c stays listed so a not-yet-committed round renders as pending, never as zero
 ORDER = ['R1-3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9'] + [f'R{n}' for n in range(11, 24)] + ['R23b', 'R23c', 'R24']
-ORDER += ['R25', 'R26', 'R27', 'R28', 'R29']  # r29 listed at the R28 open (Part A, B149: the registry's next planned round r29); r28 listed at the R27 open loop (tools-kats: HT11 FAILED at cee1d80f, the registry's next planned round r28 was missing); r27 listed at the R26 open loop (B90 early warning: before its first 'R27' commit); r26 listed at the R25 artifacts (B90: before its first 'R26' commit); r25 plan (2026-11-03): listed before its first 'R25 plan:' commit lands, so it renders as pending, never as zero (rft §6 step 13)
+ORDER += ['R25', 'R26', 'R27', 'R28', 'R28d', 'R29']  # r28d listed at the R28d open (Part A, D1: the community-dev merge sub-round, between R28 and R29); r29 listed at the R28 open (Part A, B149: the registry's next planned round r29); r28 listed at the R27 open loop (tools-kats: HT11 FAILED at cee1d80f, the registry's next planned round r28 was missing); r27 listed at the R26 open loop (B90 early warning: before its first 'R27' commit); r26 listed at the R25 artifacts (B90: before its first 'R26' commit); r25 plan (2026-11-03): listed before its first 'R25 plan:' commit lands, so it renders as pending, never as zero (rft §6 step 13)
 # r24 (pipeline run 1): ORDER ended at R23c, so the first 'R24 ...' commit crashed this miner with KeyError: 'R24' (S7 FAIL).
 # A round that git names but ORDER does not list is now refused by name (unknown_rounds); harness/kat/
 # test_evolution_order_r24.py checks every non-planned harness/round.json round and every commit since the base.
@@ -89,7 +89,7 @@ def round_of(subject):
     n, x = int(m.group(1)), m.group(2)
     if n in (4, 6) or n in (9, 10):
         return {4: 'R4', 6: 'R6', 9: 'R9', 10: 'R9'}[n]
-    return f'R{n}{x}' if n == 23 and x in ('b', 'c') else f'R{n}'
+    return f'R{n}{x}' if (n, x) in ((23, 'b'), (23, 'c'), (28, 'd')) else f'R{n}'   # r28d: the community-dev merge sub-round
 
 
 def assign(commits):

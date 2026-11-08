@@ -96,6 +96,16 @@
     "quote": "\"evidence\": \"R28 opened 2026-11-05 from 8fb2916f (R27",
     "line": 141
    }
+  },
+  {
+   "id": "r28d",
+   "pipeline_full": "pending",
+   "pipeline_project": "pending",
+   "anchor": {
+    "file": "harness/round.json",
+    "quote": "\"evidence\": \"R28d opened 2026-11-06 from 8a8698fc (R28",
+    "line": 161
+   }
   }
  ],
  "areas": [

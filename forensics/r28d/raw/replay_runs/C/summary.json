@@ -1,0 +1,17 @@
+{
+ "a2_binary_sha256": "515ce9232324e724a6682c972ac570500a5476e2221cf77eb96fb67ce14ce9c6",
+ "added": 31025,
+ "end_state_match": true,
+ "entry": "p2p.Add_Complete_Block_HF3",
+ "expect_root": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7",
+ "from": 7467516,
+ "kind": "a2_replay",
+ "last_root": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7",
+ "last_topo": 7498540,
+ "provenance": "the R26 merge run (harness/runtime/r26_merge_a2_hf3_replay_20261104.json); roots bytes equal to the recorded SHA-256 (two audit2 reproductions are byte-identical, forensics/r26/audit D2-14)",
+ "resumed_at": 7467515,
+ "roots_jsonl_sha256": "7a4a620913da4ea151188470b363939c02fc10013a0ab90ed2c733d324041f82",
+ "stopped": "completed",
+ "to": 7498540,
+ "txs": 918
+}

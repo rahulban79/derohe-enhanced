@@ -67,9 +67,9 @@ def classes_dataset(root=ROOT):
     """the newest forensics/r<N>/ (N >= 26) holding derived/classes.json, or None"""
     ds = []
     for d in (Path(root) / 'forensics').glob('r*'):
-        m = re.fullmatch(r'r(\d+)', d.name)
+        m = re.fullmatch(r'r(\d+)([a-z]?)', d.name)   # r28d: a sub-round version sorts after its round
         if m and int(m.group(1)) >= 26 and (d / 'derived' / 'classes.json').exists():
-            ds.append((int(m.group(1)), d))
+            ds.append(((int(m.group(1)), m.group(2)), d))
     return max(ds)[1] if ds else None
 
 
@@ -299,7 +299,8 @@ def headline_ok(text):
 def pages(root, ds):
     """(ledger page of the dataset's round, soundness page of the current round, src-arch)"""
     root = Path(root)
-    led = root / 'artifacts' / f'dero-r1-{ds.name}.html'
+    # r28d: a sub-round's dataset (r28d) is rendered on its parent round's ledger page (sub-rounds have no page of their own)
+    led = root / 'artifacts' / f"dero-r1-{re.sub(r'^(r\d+)[a-z]$', r'\1', ds.name)}.html"
     try:
         sp = _load('harness/kit/soundpage.py', 'soundpage_for_bounds', root)
         snd = root / sp.rel(root)

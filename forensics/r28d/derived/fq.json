@@ -1,0 +1,288 @@
+{
+ "FQ1": {
+  "anchors": [
+   "derived/hf3.json rows[].carriers",
+   "derived/window.jsonl.gz rows[].tx_hashes",
+   "blockchain/hardfork_fixes.go:27",
+   "blockchain/transaction_verify.go:232-237"
+  ],
+  "answer": {
+   "carriers_nonce_bypassed": 74,
+   "carriers_total": 142,
+   "dc0_window_duplicates": 0,
+   "duplicates_two_carriers": "67 of 67",
+   "false_parity_one_carrier": "8 of 8",
+   "of_which_in_table": 66,
+   "table_groups_match_raw_carriers": true,
+   "two_bodies_under_one_txid": "pending: one body was fetched per TXID; a block tx list carries only the TXID, which excludes the proof (transaction/transaction.go:509), so a second body is not observable from RAW blocks",
+   "tx_parity_true": 17,
+   "window_distinct_txids": 1769,
+   "window_tx_carrying_blocks": 1726,
+   "window_txids_in_two_or_more_blocks": 66
+  },
+  "carriers_outside_window": [
+   {
+    "carriers": [
+     7497942,
+     7497948
+    ],
+    "txid_prefix": "ab1da121"
+   }
+  ],
+  "note": "1 table TXID(s) carried by a block outside the window (carriers_outside_window), so the window tx lists show 66 table TXIDs twice while derived/hf3.json counts 67 with two carriers",
+  "question": "DC1 census: two bodies under one TXID, parity, exception path; any duplicate outside the table (DC0)",
+  "status": "answered (partial: two-bodies pending)"
+ },
+ "FQ2": {
+  "consequence": "the external 23,886,517.3 figure stays EXT (disclosure track C6); no DERIVED input reproduces it",
+  "corrections": [
+   {
+    "date": "2026-11-06",
+    "row": "rft \u00a77 B180",
+    "version": "r28d",
+    "what": "FQ2 tested P1 and S-R22 only, so its 0 of 75 was complete for those two criteria, not for every structural criterion; S-RT is added (counts only). DC1-obs is unchanged (coverage dc1_obs 0): S-RT is a precondition, not an observation of an amount (amount recovery is out of scope, rft \u00a79, D4)"
+   }
+  ],
+  "coverage": {
+   "dc1_detected": 75,
+   "dc1_obs": 0
+  },
+  "criteria": {
+   "P1": {
+    "anchor": "derived/txs.jsonl.gz value_field, burn_total",
+    "result": "0 of 75",
+    "what": "a public plaintext value field (tx value, payload burn) of the DC1 tx"
+   },
+   "S-R22": {
+    "anchor": "derived/fq.json FQ3.census",
+    "result": "0 of 75 within held bodies",
+    "scope": "1796 held bodies (1769 of 1769 window TXIDs)",
+    "what": "the R22 C3 structural signature (a randomness commitment shared by two payloads); recorded as counts only"
+   },
+   "S-RT": {
+    "anchor": "derived/dc1_structure.json criterion",
+    "result": "60 of 75 carry it (53 of 67 two-inclusion, 7 of 8 single)",
+    "scope": "75 of 75 DC1 bodies decoded by the node decoder",
+    "what": "the structural precondition an EXT explainer relies on for readable amounts: every payload ring 2 and the legacy payload format (RPCType 0); a precondition, not an observed amount"
+   }
+  },
+  "lower_bound_sum": "none determinable: DC1-obs is empty under the recorded criteria",
+  "question": "DC1 amount observability: is a DC1 tx amount determined by public data?",
+  "status": "answered for the recorded criteria, window-wide (every window TXID held)"
+ },
+ "FQ3": {
+  "boundary_height": "not inside the window: the cross-tx signature is absent from all 1,796 held bodies (1,769 of 1,769 window TXIDs), so no height in the window separates signature / no signature; the upstream code never changed (code_side)",
+  "census": {
+   "bodies_decoded": 1796,
+   "bodies_given": 1796,
+   "commitments_shared_across_txs": 0,
+   "distinct_commitments": 2981,
+   "payloads": 3004,
+   "table_txs_with_a_shared_commitment": [],
+   "table_txs_with_intra_tx_shared_commitment": 0,
+   "txs_with_a_shared_commitment": 0,
+   "txs_with_intra_tx_shared_commitment": 21
+  },
+  "census_input_sha256": "3a25bdd43cb4b0141e5c081f2a36b71f06a717b8a8ff354dccced7994f43a55f",
+  "code_side": {
+   "local_fix": "walletapi/transaction_build.go:355 pick_ring_order (R22, local only, not upstream)",
+   "upstream_tags_with_deterministic_r": {
+    "earliest_tag": "DeroHE",
+    "file": "walletapi/transaction_build.go",
+    "head_deterministic_r_line": 127,
+    "head_pick_ring_order_line": 355,
+    "newest_tag": "Release153",
+    "quote": "r := crypto.ReducedHash(rencrypted.EncodeCompressed())",
+    "reading": "every tag derives r from (roothash, ring public keys in order, sender key); no upstream tag carries a ring-order fix, so no wallet-version boundary exists upstream; the head fix is local (R22)",
+    "rows_sha256": "18f03f3d55e7da81e7ed6139322d07a85f47ad5c81a75a03dabe462f9924543a",
+    "tags_total": 69,
+    "tags_with_deterministic_r": 69,
+    "tags_with_pick_ring_order": 0
+   }
+  },
+  "mechanism_link_to_dc1": "pending (rft \u00a70.8.9 FQ3: candidate, not established)",
+  "question": "the randomness-reuse boundary: which wallet versions reused payload randomness, from which height the signature stops",
+  "status": "answered for the window: code side and on-chain census (no boundary inside the window)"
+ },
+ "FQ4": {
+  "answer": {
+   "DeroHE": {
+    "admits": true,
+    "anchors": [
+     "crypto/proof_verify.go:410",
+     "crypto/proof_verify.go:432",
+     "crypto/proof_innerproduct.go:307"
+    ]
+   },
+   "HEAD": {
+    "admits": true,
+    "anchors": [
+     "cryptography/crypto/proof_verify.go:430",
+     "cryptography/crypto/proof_verify.go:452",
+     "cryptography/crypto/proof_innerproduct.go:307"
+    ]
+   },
+   "Release152": {
+    "admits": true,
+    "anchors": [
+     "cryptography/crypto/proof_verify.go:430",
+     "cryptography/crypto/proof_verify.go:452",
+     "cryptography/crypto/proof_innerproduct.go:307"
+    ]
+   },
+   "Release153": {
+    "admits": true,
+    "anchors": [
+     "cryptography/crypto/proof_verify.go:430",
+     "cryptography/crypto/proof_verify.go:452",
+     "cryptography/crypto/proof_innerproduct.go:307"
+    ]
+   }
+  },
+  "kat": "harness/kat/test_forensics_classes_r26.py CL4 pins the head transcript digest",
+  "question": "DC2 presence in the current code (head, Release152, genesis-era tag) + structural transcript KAT",
+  "status": "answered",
+  "transcript": {
+   "DeroHE": {
+    "challenges": 10,
+    "challenges_by_func": {
+     "innerproduct": 1,
+     "proof": 9
+    },
+    "fields_named_in_preimages": [
+     "A",
+     "B",
+     "BA",
+     "BS",
+     "CLnG",
+     "CRnG",
+     "C_0G",
+     "C_XG",
+     "DG",
+     "T_1",
+     "T_2",
+     "c",
+     "gG",
+     "ls",
+     "rs",
+     "y_0G",
+     "y_XG"
+    ],
+    "file": "crypto/proof_verify.go",
+    "found": true,
+    "mu_in_a_preimage": false,
+    "preimage_sha256": "8ee6c7c5fc4e632c0aa863aafd5a7f61e828fb546ab35d4c3765073ad36c1878"
+   },
+   "HEAD": {
+    "challenges": 10,
+    "challenges_by_func": {
+     "innerproduct": 1,
+     "proof": 9
+    },
+    "fields_named_in_preimages": [
+     "A",
+     "B",
+     "BA",
+     "BS",
+     "CLnG",
+     "CRnG",
+     "C_0G",
+     "C_XG",
+     "DG",
+     "T_1",
+     "T_2",
+     "c",
+     "gG",
+     "ls",
+     "rs",
+     "y_0G",
+     "y_XG"
+    ],
+    "file": "cryptography/crypto/proof_verify.go",
+    "found": true,
+    "mu_in_a_preimage": false,
+    "preimage_sha256": "af17aac24a335435c992f49bdf694d2b7b10001044713e18999ff947b63792c6"
+   },
+   "Release152": {
+    "challenges": 10,
+    "challenges_by_func": {
+     "innerproduct": 1,
+     "proof": 9
+    },
+    "fields_named_in_preimages": [
+     "A",
+     "B",
+     "BA",
+     "BS",
+     "CLnG",
+     "CRnG",
+     "C_0G",
+     "C_XG",
+     "DG",
+     "T_1",
+     "T_2",
+     "c",
+     "gG",
+     "ls",
+     "rs",
+     "y_0G",
+     "y_XG"
+    ],
+    "file": "cryptography/crypto/proof_verify.go",
+    "found": true,
+    "mu_in_a_preimage": false,
+    "preimage_sha256": "af17aac24a335435c992f49bdf694d2b7b10001044713e18999ff947b63792c6"
+   },
+   "Release153": {
+    "challenges": 10,
+    "challenges_by_func": {
+     "innerproduct": 1,
+     "proof": 9
+    },
+    "fields_named_in_preimages": [
+     "A",
+     "B",
+     "BA",
+     "BS",
+     "CLnG",
+     "CRnG",
+     "C_0G",
+     "C_XG",
+     "DG",
+     "T_1",
+     "T_2",
+     "c",
+     "gG",
+     "ls",
+     "rs",
+     "y_0G",
+     "y_XG"
+    ],
+    "file": "cryptography/crypto/proof_verify.go",
+    "found": true,
+    "mu_in_a_preimage": false,
+    "preimage_sha256": "af17aac24a335435c992f49bdf694d2b7b10001044713e18999ff947b63792c6"
+   }
+  }
+ },
+ "FQ5": {
+  "anchors": [
+   "blockchain/transaction_verify.go:454",
+   "harness/loop/disclosure_track.json C3 (R24, NF24-4)",
+   "FX-N3",
+   "FX-N6"
+  ],
+  "answer": "no public-data test separates a proof accepted under the defect from an honest one: consensus reads one boolean per payload, the proof shape is fixed by the ring size, and scalar canonicality is already censused (FX-N3); a shape or size detector is infeasible (FX-N6)",
+  "question": "DC2 detectability from public data",
+  "status": "answered (INTERPRETATION, re-tested every round)"
+ },
+ "FQ6": {
+  "question": "what would restore a verifiable baseline (design only, FORK-REQUIRED)",
+  "status": "pending: FX-F5 / FX-F6 rows belong to the disclosure track (B114)"
+ },
+ "Q-CS": {
+  "file": "derived/invariant.json",
+  "status": "answered"
+ },
+ "schema": "r26 fq v1 (rft \u00a70.8.9 research questions)"
+}

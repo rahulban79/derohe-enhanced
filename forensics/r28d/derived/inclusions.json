@@ -1,0 +1,629 @@
+{
+ "class": "pending",
+ "evidence_class": "DERIVED",
+ "in_hf3_table": 67,
+ "not_in_hf3_table": [],
+ "rows": [
+  {
+   "class": "pending",
+   "heights": [
+    7470648,
+    7470651
+   ],
+   "in_hf3_table": true,
+   "txid": "00c6c9a78c4b40a03dc08e3637ee4e34103b39cfe2c6efaa803829509f0506d6"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470386,
+    7470387
+   ],
+   "in_hf3_table": true,
+   "txid": "0a0671cf132cc2c353df8d28631581c762acefac200123c84dd039c34e7cd336"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7415466,
+    7415470
+   ],
+   "in_hf3_table": true,
+   "txid": "0e75ae6662c08627470a7ea97d2115830f2b0e392efdba3c58ace068adc99aa6"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493772,
+    7493778
+   ],
+   "in_hf3_table": true,
+   "txid": "17cd5710eee2cb27cdb1a68dfe63e955260ea8dc3e59e234a20bed14cb409970"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470452,
+    7470455
+   ],
+   "in_hf3_table": true,
+   "txid": "1877ddc33990d521dbd1702f8872441c642641cbb528042432da8d22b722fdbe"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470896,
+    7470897
+   ],
+   "in_hf3_table": true,
+   "txid": "1e8c9c7764ea63e39a9b5fa59013578bf3a7cdf00edfa059cf5f1da6dc08b0d9"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493600,
+    7493606
+   ],
+   "in_hf3_table": true,
+   "txid": "1eb43df8ab1abd8934c74cc0d08b5d9fef02604ca6500a7cf947d263b882cafe"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493898,
+    7493903
+   ],
+   "in_hf3_table": true,
+   "txid": "211082955f1fda468ba0cd604e14dc5d84f4eb096f3c349f4ad05757c979dce6"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497921,
+    7497926
+   ],
+   "in_hf3_table": true,
+   "txid": "2aabb168b2b7210bc2d1620ddbbd038de4ae45847cc77a27be4389aea388a5e9"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7471053,
+    7471055
+   ],
+   "in_hf3_table": true,
+   "txid": "2e2b49f284f9d206fdb6dcf4a9ac9259426c61036bdf52036f1baf24b21269ac"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470879,
+    7470883
+   ],
+   "in_hf3_table": true,
+   "txid": "2f39de57b82f02787fc15537a29da2e4cdd8c350d2d2bc7f96b0d49ac57fcbaa"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497568,
+    7497569
+   ],
+   "in_hf3_table": true,
+   "txid": "337677e2cad7c2633099ab65b5f5ce5a099b9c76a5cc7846c587d189f55ad95d"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7417631,
+    7417635
+   ],
+   "in_hf3_table": true,
+   "txid": "3478d883230b579a88607d5f5d1a52aadd4355b38ba794352d54a829f45f5656"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7471828,
+    7471832
+   ],
+   "in_hf3_table": true,
+   "txid": "364538c7073f9c5e3b99eeec33a9bfb830a5d3d0cefb6c44d63b22b90c82a655"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7467538,
+    7467544
+   ],
+   "in_hf3_table": true,
+   "txid": "3659ae2be646c4384bcc4adc94bdf9cfc23b366faa128a88f9ea5522e3d08d61"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7483214,
+    7483220
+   ],
+   "in_hf3_table": true,
+   "txid": "3ccf648db6d26295d68ec1c88cdc736a10caa35ad83b856cb9bb304f893c5043"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7467569,
+    7467572
+   ],
+   "in_hf3_table": true,
+   "txid": "404180f833143669d3b347f4d8ceb1067b7a1ed057efcad7abcd7ad539745138"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497675,
+    7497679
+   ],
+   "in_hf3_table": true,
+   "txid": "411012a7711794d2c641acbd4e1cd14dfd5e20d6085ab4748af28e7d6a3a5b99"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7416808,
+    7416813
+   ],
+   "in_hf3_table": true,
+   "txid": "42f2876c90522812085556e7f6e0f51ef7edd84f1f99fba48acc84b52321f30d"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7468150,
+    7468152
+   ],
+   "in_hf3_table": true,
+   "txid": "4ad3ef9af337b1e92d895f9342ad9a9235d601291cb42fb6b726fbda35933fe7"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497836,
+    7497838
+   ],
+   "in_hf3_table": true,
+   "txid": "4d56a1a150063b6bd810a33fc669df8e2698475f0b3c17d96cab738b25ba8393"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470582,
+    7470587
+   ],
+   "in_hf3_table": true,
+   "txid": "556d78cfc579c2897be7d875e08a702860b867e63650ad2d07c393e50e1e484c"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7494167,
+    7494172
+   ],
+   "in_hf3_table": true,
+   "txid": "5a14d8516288648133b8cea98afa1b9a2f783a3ea345b191e57d388b64ca5ecf"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470924,
+    7470925
+   ],
+   "in_hf3_table": true,
+   "txid": "6034f404619a7fa7bad529eb6758a6ba30184b100a5f8a8f921c99bebe309514"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470802,
+    7470805
+   ],
+   "in_hf3_table": true,
+   "txid": "60e4547d48b624555081cb8f7c97f8583234c3a112bb586c868ad5ff00eddaa4"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470527,
+    7470529
+   ],
+   "in_hf3_table": true,
+   "txid": "62fa2cc6f10da7275d54f0448bd7028a1d1d7a92a99e204c3f4e2c08571032f7"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7422487,
+    7422490
+   ],
+   "in_hf3_table": true,
+   "txid": "6843437e70503ed702d5adad3d29e7aa0ed8427dd98eda0e42b77d24e7567bc8"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7482968,
+    7482973
+   ],
+   "in_hf3_table": true,
+   "txid": "6aa20567ff23705aa91a4c607e8387d147b309f8eeb9f8198149c21c439c3692"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470910,
+    7470915
+   ],
+   "in_hf3_table": true,
+   "txid": "6e59f6b56453219ab9722a47870c4b2d76b29ddda068c069dcf59ba14e3e98aa"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497519,
+    7497521
+   ],
+   "in_hf3_table": true,
+   "txid": "71588148dade214248f46fb912ac933fc60f2a0ba7d69b3b7317067c366e8312"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493663,
+    7493664
+   ],
+   "in_hf3_table": true,
+   "txid": "74b79178426990bcd071cd26829900027e78b6d36e77b57e050a0bba4398ed1f"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7494011,
+    7494017
+   ],
+   "in_hf3_table": true,
+   "txid": "85d52fe6f310f4af1d11611ef3577d477b76af3c0d050e2f4493e16822f68a18"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470403,
+    7470409
+   ],
+   "in_hf3_table": true,
+   "txid": "8692d178675b0ab019f765ab8b8f5b739c0668f36151931223c4e3b63883f89a"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7422548,
+    7422553
+   ],
+   "in_hf3_table": true,
+   "txid": "86a15dad0a5ca6b8b317398a56113e95850a1628868fb3284963e30e046aac5d"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7471414,
+    7471415
+   ],
+   "in_hf3_table": true,
+   "txid": "879f99d24bde3eaadd0ee348d3eef5e61b13b11bc9ab7c554ef6fc1a679b7de6"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7418504,
+    7418510
+   ],
+   "in_hf3_table": true,
+   "txid": "912dbaf8980086dd5627193c4ae3264da9bba2167637f078380f5b0f06a24520"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470477,
+    7470480
+   ],
+   "in_hf3_table": true,
+   "txid": "92dce2c52528732ef76ba717f582b784a50bca61bc839426838cc641d28f545a"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497892,
+    7497897
+   ],
+   "in_hf3_table": true,
+   "txid": "94f8ced9b3cd40993173c53ea0bffc99d1db3a8d7a8cfea2cbed7a7fba524684"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470983,
+    7470986
+   ],
+   "in_hf3_table": true,
+   "txid": "9b75eb3bc2c2f10cb84977e4648e5a9f4bebcfb73075dd27a1fa1a14d0f6dfb0"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7482959,
+    7482960
+   ],
+   "in_hf3_table": true,
+   "txid": "9becfdff8e750fcd741f240ae701ca134fd54b1c3d1db9dbf9f0254f5a794046"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493588,
+    7493591
+   ],
+   "in_hf3_table": true,
+   "txid": "9eba39af652ee2a0d4835d964cffcd0be4ac6f103138e87c80953902e4ce0026"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470282,
+    7470283
+   ],
+   "in_hf3_table": true,
+   "txid": "9fba85d0ed98249e9b36ffbbaf15f6ae9bf9be061f3200b2f572c3e2f34b39ea"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7417290,
+    7417295
+   ],
+   "in_hf3_table": true,
+   "txid": "a16a9d939518fc4ad2a1f1ac3a878ca35d9d819e0dd3086e495f3c2f4a089db1"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470706,
+    7470711
+   ],
+   "in_hf3_table": true,
+   "txid": "a70950ff17747e3b347d30b3db5631a5f97cd967a937eac2dcc11763c7685490"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497722,
+    7497728
+   ],
+   "in_hf3_table": true,
+   "txid": "a86a316b2d9f33e5e8552925e7cd504999033b38c4e2aba6aa3a25f7a2eba003"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497847,
+    7497852
+   ],
+   "in_hf3_table": true,
+   "txid": "a9b0c1d112958534b5f3eec186832cce85986278afe1729937469fff18c1684a"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497942,
+    7497948
+   ],
+   "in_hf3_table": true,
+   "txid": "ab1da121afe17852ee24f19b836e602d3389b569048838223acd754247d7ff91"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7497706,
+    7497710
+   ],
+   "in_hf3_table": true,
+   "txid": "ab6cca96748292825e8188550f3fadcd43734d4a1e73514c03702adb456f8926"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493246,
+    7493249
+   ],
+   "in_hf3_table": true,
+   "txid": "b43be6528061e4eb1ca6e7bcfcd419e42839bbeec5cdcbf7e664be2fd501dad2"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7471011,
+    7471016
+   ],
+   "in_hf3_table": true,
+   "txid": "b6cf0ef15e9af69d7b2f040ba2e0a75f41a414201069187fdec994584298e8f7"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7421790,
+    7421793
+   ],
+   "in_hf3_table": true,
+   "txid": "b9c2b724a684eb1b278bb3f185a807e46b3ef22a87c5cb8ed694a32df1661df0"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493682,
+    7493683
+   ],
+   "in_hf3_table": true,
+   "txid": "ba3834ef15b7d714836e9944c46c8795066b328ff678c5cc44c7cdf0a3fa5ebd"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493238,
+    7493239
+   ],
+   "in_hf3_table": true,
+   "txid": "bba77f85c72d2b896e1fca1e39327a3a57eca4d722326a524db2042df04766ee"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7421470,
+    7421476
+   ],
+   "in_hf3_table": true,
+   "txid": "d81f2d3911e388f88b2e427d3f6cc8ddc272c69aa80fe84e15ce865462071328"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7483355,
+    7483358
+   ],
+   "in_hf3_table": true,
+   "txid": "d856184d636c3ef8545979c902df15d6a1bf41b4a4b81d81762f519a6acfb689"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7421416,
+    7421417
+   ],
+   "in_hf3_table": true,
+   "txid": "d9d7e7de41ca9c81693eca4e3ea56ae02b6680887c35fc1b1b2da71967335404"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7471775,
+    7471779
+   ],
+   "in_hf3_table": true,
+   "txid": "e0a6f89071b89ee8f479845399e78c17d31f3dbc8e1c4370e22ec5a4fcd214bc"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7418813,
+    7418817
+   ],
+   "in_hf3_table": true,
+   "txid": "e0d83b72e7ab11213f78ca7994598d2b988799d36786e94a2018c76513339ba8"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7421309,
+    7421312
+   ],
+   "in_hf3_table": true,
+   "txid": "e2fdb507438dc80667e73d60a17658811a1181234e9bbddcf81ec05de1c7a51d"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7482913,
+    7482919
+   ],
+   "in_hf3_table": true,
+   "txid": "e42eb301e2f0863de346ada3a531cdf70ca224a90dae2e861a21407a0c76bfc5"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7421373,
+    7421377
+   ],
+   "in_hf3_table": true,
+   "txid": "e53ea2a813bdccbff19ef24010e7e5bef0bf2408423eb71a86dbca3cbca22530"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493786,
+    7493789
+   ],
+   "in_hf3_table": true,
+   "txid": "e5676c4e2cc98429c890a30bdc1db231935dd52c91d17aa077a24a87a2dc35f9"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7470357,
+    7470361
+   ],
+   "in_hf3_table": true,
+   "txid": "ea445f18926af580fe8bf95466f3f7b9eea3eea0295a791323ee1d0ab4eddb0c"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493752,
+    7493756
+   ],
+   "in_hf3_table": true,
+   "txid": "ed09fcce52484862a01fcb0e03d6799ba16d7304e4b0af1d60cde4ce399c1207"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7417751,
+    7417757
+   ],
+   "in_hf3_table": true,
+   "txid": "f00cc25c28947e52c48b450d259b5a06daf9bce580bb5503e978087d236d4f90"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7468300,
+    7468303
+   ],
+   "in_hf3_table": true,
+   "txid": "f389f4b63e9256d052445589ca06eee694bac0eefda658add5d4dbd37b29d60c"
+  },
+  {
+   "class": "pending",
+   "heights": [
+    7493549,
+    7493551
+   ],
+   "in_hf3_table": true,
+   "txid": "fd79549ad416cbec243d9ce54014b26f888f1cfd0cfe1aed5dde978a11dcaeab"
+  }
+ ],
+ "rule": "tx lists of RAW blocks (v1 headerchain, checks i-ii); the same TXID in two blocks is one body executed twice (TXID = Keccak256 of the core statement); structural fact only",
+ "scope": [
+  7415466,
+  7498540
+ ],
+ "txids": 1794,
+ "txids_in_more_than_one_block": 67,
+ "wall1_link_range": {
+  "in_hf3_table": 0,
+  "raw_blocks": 2799,
+  "rows": [],
+  "scope": [
+   7412665,
+   7415463
+  ],
+  "txids": 327,
+  "txids_in_more_than_one_block": 0
+ }
+}
