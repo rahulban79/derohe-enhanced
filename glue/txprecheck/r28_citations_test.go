@@ -43,7 +43,7 @@ var r28_citation_holds = map[string]string{
 	"transaction_execute.go:244": "HF3_Affected_Txs", "hf3_parity.go:77": "t.Parity = (height > t.Height) == t.Tx_Parity",
 	"transaction_verify.go:225-319": "tx.Version != 1", "transaction_verify.go:232": "HF3_Affected_Txs",
 	"transaction_verify.go:236": "tips_string", "transaction_verify.go:336": "Roothash",
-	"transaction_verify.go:466": "chain.cache_enabled", "mempool.go:106": "v.Tx.Height",
+	"transaction_verify.go:466": "chain.cache_enabled", "mempool.go:111": "v.Tx.Height",
 	"miner_block.go:247": "STARGATE_HE_MAX_BLOCK_SIZE", "miner_block.go:529-547": "Tx not found in pool or DB",
 	"proof_generate.go:84": "func (p *Proof) Serialize(", "proof_innerproduct.go:42": "func (ip *InnerProduct) Serialize(",
 	"transaction.go:321": `panic("unknown transaction type")`,

@@ -93,6 +93,7 @@ func main() {
 	toH := flag.Int64("to-height", 0, "archive: last height (default: newest minus 3 topoheights)")
 	seriesOut := flag.String("series-out", "", "archive: append cumulative checkpoints to this file")
 	every := flag.Uint64("every", 100, "archive: checkpoint interval in heights")
+	scOut := flag.String("sc-blocks-out", "", "archive: write one JSON line per audited block with SC calls (r29, B110)")
 	hf3 := flag.Bool("hf3", false, "HF3 forensic report (r23b)")
 	datadirs := flag.String("datadirs", "", "hf3: comma-separated datadirs (each with bltx_store/ and topo.map), read only")
 	seriesRead := flag.String("series-read", "", "check and summarise a series file")
@@ -126,7 +127,7 @@ func main() {
 		p.HF3Height = uint64(config.Mainnet.MAJOR_HF3_HEIGHT) // re-registration is consensus-legal below it
 	}
 	if *archive {
-		os.Exit(archiveMain(src, tm, *fromH, *toH, p, *jsonOut, *seriesOut, *every))
+		os.Exit(archiveMain(src, tm, *fromH, *toH, p, *jsonOut, *seriesOut, *scOut, *every))
 	}
 	var reports []emission.Report
 	var micros []int64

@@ -13,12 +13,12 @@ package rpc
 //   - blockchain.go:480-483: a node at chain height H refuses every block of height below H - STABLE_LIMIT.
 //     So once H - STABLE_LIMIT > L, i.e. H >= L + STABLE_LIMIT + 1 (rebuild_safe_height), no block this node can
 //     still accept can include the tx: a wallet that rebuilds the payment from then on cannot pay twice.
-//   - HouseKeeping (blockchain.go:284 -> mempool.go:106, every 60 s) drops it from this pool once the stable height
+//   - HouseKeeping (blockchain.go:284 -> mempool.go:111, every 60 s) drops it from this pool once the stable height
 //     H - STABLE_LIMIT reaches tx.Height (pool_purge_height = tx.Height + STABLE_LIMIT, up to 60 s later).
 // Order: Mempool_List_TX_SortedInfo, the list the template walks (miner_block.go:229-247), with the template's byte
 // budget (BLOCK_TX_CAPACITY): next_block says whether the tx is inside that budget in this order. An estimate, as in
-// GetFeeEstimate: the template also skips txs for nonce, history and reference reasons, and txs of equal integer
-// FeesPerByte are listed in no defined order (B19).
+// GetFeeEstimate: the template also skips txs for nonce, history and reference reasons, and txs of equal milli-unit
+// fee per byte are listed in no defined order (B19; the pool sorts by MilliFeesPerByte since r29).
 
 import (
 	"github.com/deroproject/derohe/blockchain"

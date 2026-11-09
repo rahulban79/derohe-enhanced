@@ -1747,3 +1747,46 @@ chain (version 3, 120/120 hashes equal with r28d, formula supply equal). The use
 **Not taken from community-dev** (rft §7): duplicates of work already in Release151, B183 (refuted), B191 (churn),
 the consensus-visible rows B182 B184 B185 B186 B187 (report-only; the version-4 fork row stays a user decision, B184),
 CD-22b (out of scope, D4). The evaluation document and skill in the clone are RETIRED.
+
+## Round 29 (2026-11-07/08) — node-only round (miner paused): the community-dev residue, the observability gaps closed live, the user's nine decisions implemented, the B182 deep census of 7.4 M blocks, long-job liveness in the stack; installed as +22102026.r29 and measured live
+
+**Why.** The user asked (2026-11-07, rft §1) to run R29 by dero-rft.md and to include the four items left open at r28d
+(B190 A15/A18, the B182 ranges, the B183 cost bench, the B192 budget); on 2026-11-08 the user answered the standing
+decision list (B1 (a), B19 (a), B35 (b), B111 (A), B141 (a), B144 (a), B148 (a), B157 (a), B169 (b), Miner (b), B182 (a)
+then (ii)) and asked that every stuck task become a fix in the harness, tools, skills and pipeline (B198). Base 7bbe2340;
+registry `r29`, tracks miner `paused`, node `active`.
+
+**Shipped** (seven dimension branches merged 74d8de71 … 9ce118cb; consensus guard S1 PASS with the reviewed constructs
+`mempool-milli-fee-rank`, `rpc-money-copy-128bit`; 1,619 Go mutations, 31 new):
+- **Observability**: the 8 lazy /metrics families created at start (B152), a jhttp bridge 500 answered as a JSON-RPC error
+  body and counted (B175), a TYPE line for a family that writes its own HELP (B176).
+- **Decisions**: the pool orders by milli-units of fee per byte (B19); derod refuses to start on a consensus env override
+  (B141); both money-format copies exact at 128 bits (B144, walletapi and rpc/); the SC recover log line gated by verbosity
+  (B157); the private handle reworded (B169).
+- **Community-dev residue**: B190 re-graded against the Zether and many-out-of-many papers (hashes only: 16 DISCHARGED,
+  3 VIOLATED = C1, 2 UNCLEAR; no construction); B182 FINAL: 542,692 of 2,141,434 registrations below 7,398,265 have
+  fewer than 3 leading zero bytes (4.37 h deep census, 0 errors); B183 CD-04 cost +0.50/+0.75 ms, stays REJECTED; B192
+  step budgets re-derived.
+- **Forensics**: B107 closed (walls and inclusions tagged), B110 run-C SC payouts exact (800 atomic units), B97 closed
+  (5 holders), the B111 anchor answered from the replayed state.
+- **Consensus and peers**: the D20 capture skew fixed (B194), D16 annotated (B195), the one-identity-two-slots reading
+  (B196), the B184 HF4 watch unchanged.
+- **Tooling and liveness**: roundlists the one reader (B166), STALE for a missing test (B168), per-value pins (B170), the
+  G29 memo (B155), the memory index under its R28 size (B193); `harness/kit/hangkit.py`, `kit/coproc.py`, gate G33,
+  bounded pipeline steps and `stallwatch` (B198); B199 (lag-chart label), B200 (triage anchor, --no-merges).
+
+**Closed loop.** Full run 1 `pipeline_20261108T051138` S3k FAIL (fixed cb17c794); run 2 `pipeline_20261108T062853`
+(--no-install) S1–S5 PASS (mutations 1,619/1,619, race PASS, shadow 120/120), S7 s7_replay (r28d re-pinned 28f9a2ce,
+f39a6242); closing project-only runs 1–3 found B199, B200 and the G22 test count; run 4 `pipeline_20261108T123859` PASS
+(KATs 35/35, harness mutations 34/34, gates 30/33 + 3 PAUSED miner). Installed ~13:30 by atomic rename of the staged build
+(backups `bin/*.22102026.r28d-backup`).
+
+**Live.** The user stopped r28d at 15:31:49; the B111 (A) APFS clone was taken 15:31:49–52; the user started r29 at
+15:33:00. Window 15:33:40 → 16:33:40: 61/61 synced, lag 0, 0 ERROR/WARN, inbound 4 → 27 (B1 (a)), 192 blocks, 0 reorgs,
+emission 0 alerts; B152, B175, B176 and B194 CONFIRMED live; event scenarios 22/22; G26, G27, G28 PASS. B111 (A): at
+7,498,540 2,141,704 balance keys, root equal to the recorded root (`harness/runtime/r29_live_window_20261108.txt`,
+`r29_live_probes_20261108.txt`, `r29_b111_qcs1.json`).
+
+**Open after Round 29** (rft §7, §8): the B111 residual (1 key vs 2,141,703 registrations); B201 (the observatories with
+inbound live: peers D2 D6 D9 D11, consensus D15 D16 D19); B48's proven lane (no event yet); B42/B19 with a non-empty pool;
+B110's residual (89 SC txs below 7,467,516); the B184 watch; the miner rows PAUSED.

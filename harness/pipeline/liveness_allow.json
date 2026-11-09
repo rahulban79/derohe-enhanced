@@ -1,0 +1,4 @@
+{
+ "_doc": "G33 (harness/pipeline/liveness_lint.py) accepts a hang-shape hit only through an entry here: {path, func, rule, reason}. An entry that matches no hit, or has no reason, is itself a finding (stale).",
+ "allow": []
+}

@@ -811,7 +811,12 @@ def now():
     return datetime.datetime.now().astimezone().isoformat(timespec='seconds')
 
 
+LAST_START = ['run']                  # r29: the stage that last STARTed (a HUNG outside S7 is booked to it)
+
+
 def event(stage, status, **kv):
+    if status == 'START':
+        LAST_START[0] = stage
     rec = {'t': now(), 'stage': stage, 'status': status, **kv}
     with EVENTS.open('a') as f:
         f.write(json.dumps(rec) + '\n')
@@ -820,10 +825,60 @@ def event(stage, status, **kv):
         SUMMARY['stages'][stage] = {'status': status, **{k: v for k, v in kv.items()}}
 
 
+def _hangkit():
+    """r29 (rft §5 long-job liveness): kit/hangkit.py, loaded ONCE (sh() and S7 must share one Hung class, or S7's
+    isinstance check misses sh()'s Hung — found by KAT PH2), or None in a copy without kit/ (sh() is then plain
+    subprocess.run)"""
+    if hasattr(_hangkit, 'mod'):
+        return _hangkit.mod
+    try:
+        spec = importlib.util.spec_from_file_location(f'hangkit_for_pipeline_{id(HARNESS)}', HARNESS / 'kit/hangkit.py')
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+    except (OSError, ImportError, SyntaxError):
+        m = None
+    _hangkit.mod = m
+    return m
+
+
 def sh(cmd, timeout=1800, cwd=ROOT, env=None):
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, shell=isinstance(cmd, str),
-                       env={**os.environ, **(env or {})})
-    return r.returncode, r.stdout, r.stderr
+    """r29: every command runs in its own process group under kit/hangkit.run_bounded: past `timeout` the WHOLE group
+    is stopped (go test's test binaries included) and hangkit.Hung (a subprocess.TimeoutExpired) carries the leaf
+    frames and the last output lines; a 'hang' event records them before it propagates."""
+    HK = _hangkit()
+    env = {**os.environ, **(env or {})}
+    if HK is None:
+        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, shell=isinstance(cmd, str), env=env)
+        return r.returncode, r.stdout, r.stderr
+    try:
+        return HK.run_bounded(cmd, timeout, cwd=cwd, env=env, shell=isinstance(cmd, str))
+    except HK.Hung as e:
+        event('hang', 'INFO', cmd=' '.join(map(str, cmd)) if not isinstance(cmd, str) else cmd, timeout=timeout,
+              diagnosis=e.diagnosis, tail=e.tail)
+        raise
+
+
+def step_timeout(step, budgets, hk):
+    """r29: the hard limit of one S7 step = hangkit.budget_timeout(its STEP_BUDGETS row, else the default row);
+    2400 s (the pre-r29 literal) when the budget document or the kit is missing. Pure."""
+    if hk is None or not isinstance(budgets, dict):
+        return 2400
+    import re as _re
+    key = _re.sub(r'pipeline-\d{8}T\d{6}', 'pipeline-<TS>', str(step).strip())
+    b = (budgets.get('steps') or {}).get(key, budgets.get('default_s', 60))
+    return hk.budget_timeout(b)
+
+
+def run_step(st, timeout, sh_fn, hk):
+    """r29: (rc, out, err, hung) of one S7 step; a step past its hard limit is hung = {timeout, diagnosis, tail} with
+    rc None (reported as HUNG by the caller) instead of a pipeline that waits without end or dies on a traceback."""
+    try:
+        rc, out, err = sh_fn(st, timeout=timeout)
+        return rc, out, err, None
+    except Exception as e:                                           # noqa: BLE001 — only a Hung is turned into a verdict
+        if hk is None or not isinstance(e, hk.Hung):
+            raise
+        return None, e.tail or '', '', {'timeout': timeout, 'diagnosis': e.diagnosis, 'tail': e.tail}
 
 
 LAST_RPC_ERROR = {}
@@ -1093,6 +1148,26 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 NORACE_NEW_TESTS['./walletapi/'] = NORACE_NEW_TESTS.get('./walletapi/', []) + ['Test_R28d_HF3_Exemption_Ring16']  # r28d: !race file, port 26233
+# Round 29 decisions (the user's decisions 2026-11-08, dero-rft §7): the pool sorts by milli-unit fee per byte (B19 (a),
+# guard construct mempool-milli-fee-rank), derod refuses to start on a consensus env override (B141 (a)), the SC recover
+# logs at V(2) Info (B157 (a)); the B144 (a) rpc copy is guarded by the existing TestR28RPCFormatMoneyCopy (switch on).
+# None is env-gated; each guards a gm-r29-dc-* mutation in harness/intel/go_mutations.json.
+for _pkg, _pat in {
+    './blockchain/mempool/': 'TestR29PoolOrdersByMilliFeePerByte',
+    './cmd/derod/': 'TestR29RefuseToStartOnConsensusEnvOverride',
+    './blockchain/': 'TestR29SCRecoverLogIsVerbosityGated',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 29 wallet-glue (dero-rft §7 B144, B178): the walletapi FormatMoneyPrecision copy uses the exact globals
+# implementation (walletapi), and scinvoke's `fees` reaches the pooled tx end to end on a simulator chain
+# (walletapi/rpcserver, port 26291); none is env-gated; each guards a gm-r29-wg-* mutation in harness/intel/go_mutations.json.
+for _pkg, _pat in {
+    './walletapi/': 'TestR29WalletFormatMoneyExactAt12_8_5|TestR29WalletFormatMoneyEqualsGlobals',
+    './walletapi/rpcserver/': 'TestR29ScInvokeFeesReachThePoolOnASimulatorChain',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+NORACE_NEW_TESTS['./walletapi/rpcserver/'] = NORACE_NEW_TESTS.get('./walletapi/rpcserver/', []) + ['TestR29ScInvokeFeesReachThePoolOnASimulatorChain']  # r29: the online wallet's sync loop races upstream
 
 # Round 27 (glue-global group: globals clock/amount, glue/rwc nhooyr adapter, glue/emission archive + series payees,
 # glue/txprecheck PeekWindow); none is env-gated; each guards a gm-r27-glue-* mutation in harness/intel/go_mutations.json.
@@ -1182,6 +1257,33 @@ for _pkg, _pat in {
               '|TestR28WalletFormatMoney',
     './cmd/derod/rpc/': 'TestR28HTTPLayerErrorBodiesCounted|TestR28GetInfoTxPoolUnmined|TestR28MetricsPageFullyRegistered'
                         '|TestR28TopoEqualsHeightAndAltBlockMiners|TestR28DecoyWindowEqualsUpstreamAboveFloor',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 29 live-observability (dero-rft §7 B152, B175, B176): the lazily created families are on a fresh page at 0
+# with their closed label sets, a family with its own HELP and no TYPE gets the registry TYPE, and the jhttp bridge's
+# own error answers are JSON-RPC bodies counted by code. None is env-gated; each guards a gm-r29-lo-* mutation.
+for _pkg, _pat in {
+    './metrics/': 'TestR29OwnHelpWithoutTypeGetsRegistryType|TestR29EveryTypedFamilyHasTypeOnThePage',
+    './p2p/': 'TestR29LazyP2PFamiliesVisibleAtZero|TestR29BusyMethodsAreTheHeavyCallSites'
+              '|TestR29BroadcastFailReasonsClosedSet',
+    './cmd/derod/rpc/': 'TestR29LazyFamiliesOnAFreshPage|TestR29OrphanedReasonsAreResolveFates'
+                        '|TestR29BridgeParseErrorCountedAsJSONRPC|TestR29BridgeErrorText',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 29 cd-residue (dero-rft §7 B190): the r29 assumption table's anchors resolve against IN-7/IN-8 and the
+# controls R1-R7 catch a moved or broken anchor (cryptography/crypto/r29_assumption_anchors_test.go, test file only);
+# not env-gated; guards gm-r29-cd-a15-u-term and gm-r29-cd-a20-mu-line-moved
+for _pkg, _pat in {
+    './cryptography/crypto/': 'TestR29AssumptionAnchorsResolve|TestR29AssumptionAnchorsControls',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 29 (forensics, dero-rft §7 B110): -archive -sc-blocks-out, the SC-payout export over run C's range
+# (tools/emission-audit r29_sc_export_test.go); not env-gated
+for _pkg, _pat in {
+    './tools/emission-audit/': 'TestR29SCBlockExport',
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
@@ -1592,8 +1694,18 @@ def s3k_kats():
     if not kats:                                       # R22: zero KAT files passed vacuously
         event('kats', 'FAIL', why='no harness/kat/test_*.py found')
         finish(13)
+    _HK = _hangkit()                                   # r29: the same hard limit per KAT as its S7 step (STEP_BUDGETS)
+    _sb = _stepbudget()
+    try:
+        _budgets = _sb.load(ROOT) if _sb else None
+    except (OSError, ValueError):
+        _budgets = None
     for p in kats:
-        rc, out, err = sh([sys.executable, '-I', str(p)], timeout=1800)
+        limit = step_timeout(str(p.relative_to(ROOT)), _budgets, _HK)
+        rc, out, err, hung = run_step([sys.executable, '-I', str(p)], limit, sh, _HK)
+        if hung:
+            event('kats', 'FAIL', kat=p.name, why='HUNG', **hung)
+            finish(13)
         done[p.name] = (out + err).strip().splitlines()[-1:] if (out + err).strip() else []
         if rc != 0:
             event('kats', 'FAIL', kat=p.name, tail=(out + err)[-800:])
@@ -2741,6 +2853,12 @@ def s7_project():
               # r24: the full cross-artifact coherence check (G25's set plus the index page gen_index just wrote); a
               # drift exits 4 and fails S7 like any other step (record: harness/runtime/coherence_last.json)
               [sys.executable, 'harness/intel/coherence.py', '--record']]
+    _HK = _hangkit()
+    _sb = _stepbudget()
+    try:
+        _budgets = _sb.load(ROOT) if _sb else None
+    except (OSError, ValueError):
+        _budgets = None
     for st in steps:
         skip = paused_skip(st[1], MINER_TRACK[0], ROOT)                    # r26 B101
         if skip:
@@ -2750,8 +2868,12 @@ def s7_project():
         pat = JUDGED[key][1] if key else None
         before = [(p.name, p.stat().st_mtime_ns) for p in (HARNESS / 'runtime').glob(pat)] if pat else []
         t_step = time.monotonic()
-        rc, out, err = sh(st, timeout=2400)
+        limit = step_timeout(' '.join(st[1:3]), _budgets, _HK)            # r29: hard limit from STEP_BUDGETS
+        rc, out, err, hung = run_step(st, limit, sh, _HK)
         secs = round(time.monotonic() - t_step, 1)                         # r28 (B133): the step's own wall seconds
+        if hung:
+            event('project', 'FAIL', step=' '.join(st[1:3]), why='HUNG', secs=secs, **hung)
+            finish(10)
         after = [(p.name, p.stat().st_mtime_ns) for p in (HARNESS / 'runtime').glob(pat)] if pat else []
         last = (out + err).strip().splitlines()[-1:] if (out + err).strip() else []
         event('project', 'INFO', step=' '.join(st[1:3]), rc=rc, last=last, secs=secs)
@@ -2877,4 +2999,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except subprocess.TimeoutExpired as _e:                           # r29: a hung command outside S7 (kit/hangkit.Hung)
+        event(LAST_START[0], 'FAIL', why='HUNG',
+              timeout=_e.timeout, diagnosis=getattr(_e, 'diagnosis', ''), tail=getattr(_e, 'tail', ''))
+        finish(10)

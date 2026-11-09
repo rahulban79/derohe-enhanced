@@ -395,7 +395,19 @@ def capture_live(window, salt, own_addr, log_paths, url=RPC_URL, murl=METRICS_UR
         met = read_metrics(murl)
     except Exception as e:                                           # noqa: BLE001
         met = {'_error': str(e)[:160]}
+    # r29 (D20): GetInfo's alt count is read again right before and right after GetConsensusStats. The first GetInfo
+    # read above comes before the header walk and the miniblock sample (~40 s), so one alt block settling in between
+    # made the counts differ while the settled sets agreed (r28d capture 2026-11-08T02:53:50Z: 7 vs 8).
+    alt_pair = [None, None]
+    try:
+        alt_pair[0] = rpc('DERO.GetInfo', url=url).get('alt_blocks_count')
+    except Exception:                                                # noqa: BLE001 — the pair is optional
+        pass
     cstats = read_consensus_stats(url)                               # r25: absent on a pre-r25 derod (method not found)
+    try:
+        alt_pair[1] = rpc('DERO.GetInfo', url=url).get('alt_blocks_count')
+    except Exception:                                                # noqa: BLE001
+        pass
     # side blocks named in the log inside the window: fetch a few by hash for their integrator
     logs = parse_logs(log_paths, ROOT)
     hmin = heads[0]['height'] if heads else 0
@@ -413,7 +425,7 @@ def capture_live(window, salt, own_addr, log_paths, url=RPC_URL, murl=METRICS_UR
         except Exception as e:                                       # noqa: BLE001
             alts.append({'h': ev['h'], 'blid': ev['blid'][:16], 'won': False, 'error': str(e)[:80]})
         time.sleep(0.2)
-    gi_keep = {k: gi.get(k) for k in ('height', 'topoheight', 'stableheight', 'prunedheight', 'top_block_hash', 'difficulty',
+    gi_keep = {'alt_blocks_count_around_stats': alt_pair} | {k: gi.get(k) for k in ('height', 'topoheight', 'stableheight', 'prunedheight', 'top_block_hash', 'difficulty',
                                        'averageblocktime50', 'target', 'alt_blocks_count', 'tx_pool_size', 'version',
                                        'connected_miners', 'miniblocks_in_memory', 'miniblocks_rejected_count', 'status',
                                        'incoming_connections_count', 'outgoing_connections_count', 'target_height')}
@@ -1054,12 +1066,32 @@ def detectors(cap, R, H, k, parts, seq_final, lags, dts, mism_ev, alpha_p, teste
                      f"Nakamoto coefficient {k['nakamoto_' + key]}, HHI {k['hhi_' + key]}"))
     # D16 finals vs regular share (who integrates more blocks than its hashrate share suggests)
     dev = [p for p in parts if p['final_vs_regular_p'] is not None and p['final_vs_regular_p'] < alpha_p]
+    # r29: each deviator carries the pooling pattern that produces it. Header data cannot tell pooling from anything else
+    # per participant: every final and every regular miniblock is attributed, so sum(final shares) = sum(regular shares)
+    # = 1 and any participant's excess is exactly matched by the others' deficits. The grade stays the stated test's;
+    # 'explained' says which pattern each deviation is. 'beyond_miner_only' marks an integrator whose finals exceed even
+    # the hashrate of addresses that never integrate (one-sided p < alpha), so it also draws on multi-role addresses.
+    tf_ = sum(p['final'] for p in parts)
+    mo = sum(p['regular_share'] for p in parts if p['role'] == 'miner-only')
+
+    def explained(p):
+        if p['role'] == 'integrator-only':
+            return 'pool node: the finals of the miners it serves getwork to'
+        if p['role'] == 'miner-only':
+            return 'pooled miner: its finals pay the integrator of the node it mines through'
+        return ('pool node that also mines' if p['final_share'] > p['regular_share']
+                else 'part of its hashrate mines through another node')
+    ev16 = [{'participant': p['id'], 'role': p['role'], 'final': p['final'], 'final_share': p['final_share'], 'regular_share': p['regular_share'],
+             'p': p['final_vs_regular_p'], 'explained': explained(p),
+             'beyond_miner_only': bool(tf_ and p['final_share'] > p['regular_share']
+                                       and binom_upper(p['final'], tf_, min(1.0, p['regular_share'] + mo)) < alpha_p)} for p in dev]
     D.append(det('D16-final-vs-regular', 'Each integrator wins finals in proportion to its regular miniblock share', 'ANOMALY' if dev else ('NORMAL' if tested else 'NO-DATA'),
                  len(dev), A(R, 'header_integrator'), f'final count ~ Binomial(n, regular share); two-sided exact p < {alpha_p:.2e}',
-                 [{'participant': p['id'], 'role': role(p), 'final': p['final'], 'final_share': p['final_share'], 'regular_share': p['regular_share'],
-                   'p': p['final_vs_regular_p']} for p in dev[:8]],
+                 ev16[:8],
                  'the final pays the integrator of the node that built the template (miner_block.go), so a node serving getwork to other '
-                 'miners collects finals beyond its own regular share by design: a signal of pooling, not of a rule broken'))
+                 'miners collects finals beyond its own regular share by design: a signal of pooling, not of a rule broken; '
+                 f"by pattern: {dict(collections.Counter(e['explained'] for e in ev16))}; miner-only regular share {round(mo, 4)}; "
+                 f"beyond the miner-only hashrate: {sum(e['beyond_miner_only'] for e in ev16)}"))
     # D17 this node's share
     tn_r, tn_f = k['this_node_regular'], k['this_node_final']
     paused = (cap.get('getinfo') or {}).get('connected_miners') == 0
@@ -1113,8 +1145,9 @@ def alt_reconcile(cap, R, H, k):
     GetConsensusStats disagree or the two sets differ; NO-DATA on a pre-r25 node (no GetConsensusStats)."""
     cs = cap.get('consensus_stats') if isinstance(cap.get('consensus_stats'), dict) and 'error' not in cap.get('consensus_stats') else None
     rule = A(R, 'alt_settle')
-    test = ('GetInfo alt_blocks_count == GetConsensusStats alt_blocks.count, and the settled non-main blocks of the log since the '
-            'newest start == the listed alt blocks over the same heights')
+    test = ('GetConsensusStats alt_blocks.count lies between GetInfo alt_blocks_count read right before and right after it (the count '
+            'only grows; a capture without that pair: GetInfo, read earlier, <= the stats count), and the settled non-main blocks of the '
+            'log since the newest start == the listed alt blocks over the same heights')
     if not cs or not H:
         return det('D20-alt-blocks', 'GetInfo alt_blocks_count equals the side blocks this node kept', 'NO-DATA', 'pending', rule, test, [],
                    'needs DERO.GetConsensusStats (r25 derod)')
@@ -1134,10 +1167,21 @@ def alt_reconcile(cap, R, H, k):
     node_alt = {b['hash'] for b in blocks if isinstance(b.get('height'), int) and lo_h <= b['height'] <= hi_h}
     gi_n = (cap.get('getinfo') or {}).get('alt_blocks_count')
     only_log, only_node = sorted(log_alt - node_alt), sorted(node_alt - log_alt)
-    bad = gi_n != alt.get('count') or only_log or only_node
+    # r29: the count only grows while derod runs (p2p/consensus_obs_r25.go settle: `a.count++`, never decremented), so a
+    # GetInfo read BEFORE GetConsensusStats bounds it from below and one AFTER from above. Captures with the pair (r29+)
+    # check before <= stats <= after; older captures read GetInfo ~40 s earlier, so they check gi <= stats.
+    pair = (cap.get('getinfo') or {}).get('alt_blocks_count_around_stats') or [None, None]
+    n = alt.get('count')
+    if isinstance(n, int) and isinstance(pair[0], int) and isinstance(pair[1], int):
+        count_ok, how = pair[0] <= n <= pair[1], f'GetInfo {pair[0]}..{pair[1]} around the stats read'
+    elif isinstance(n, int) and isinstance(gi_n, int):
+        count_ok, how = gi_n <= n, 'GetInfo read before the walk: a lower bound'
+    else:
+        count_ok, how = gi_n == n, 'equality'
+    bad = not count_ok or only_log or only_node
     return det('D20-alt-blocks', 'GetInfo alt_blocks_count equals the side blocks this node kept', 'ANOMALY' if bad else 'NORMAL',
                f"alt_blocks_count {gi_n}, node {alt.get('count')}, log {len(log_alt)} / node {len(node_alt)} in heights {lo_h}..{hi_h}", rule, test,
-               [{'getinfo_alt_blocks_count': gi_n, 'stats_count': alt.get('count'), 'unsettled': alt.get('unsettled'), 'tracked': alt.get('tracked'),
+               [{'getinfo_alt_blocks_count': gi_n, 'getinfo_around_stats': pair, 'count_check': how, 'stats_count': alt.get('count'), 'unsettled': alt.get('unsettled'), 'tracked': alt.get('tracked'),
                  'heights': [lo_h, hi_h], 'log_alt': len(log_alt), 'node_alt': len(node_alt), 'only_in_log': only_log[:5], 'only_in_node': only_node[:5]}],
                'a block is settled once it is more than STABLE_LIMIT below the tip; the alt set counts blocks this node ACCEPTED (the log '
                'lines) that are not in the topo index at their height')

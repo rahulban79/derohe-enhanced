@@ -757,24 +757,20 @@ def ledger_choices(root):
 
 
 def round_list_gaps(registry, areas_rounds, choices, order):
-    """r28 (B149, lesson #80): ['r28: not in harness/areas.json rounds', ...] for every registry round that is not
-    'planned' and that one of the other round lists lacks. R27 Part D set round.json r27 but not areas.json rounds, so
-    every r27 capture was booked to an unknown round; R28 Part A added r28 to all four by hand. A list that could not be
-    read is None and is skipped (reported as pending by the caller). LAST_CHOICES holds ledger page numbers: only a
-    numeric id at or above its smallest choice is required there (r23b / r23c render inside page 23). Pure."""
-    out = []
-    for r in (registry or {}).get('rounds') or []:
-        rid, st = str(r.get('id', '')), r.get('status')
-        if not rid or st == 'planned':
-            continue
-        if areas_rounds is not None and rid not in areas_rounds:
-            out.append(f'{rid}: not in harness/areas.json rounds')
-        num = rid[1:]
-        if choices and num.isdigit() and int(num) >= min(choices) and int(num) not in choices:
-            out.append(f'{rid}: not in artifacts/src/gen_ledger.py LAST_CHOICES')
-        if order is not None and 'R' + num not in order:
-            out.append(f'{rid}: not in harness/miners/mine_evolution.py ORDER')
-    return out
+    """r29 (B166): ONE implementation. The lines of harness/kit/roundlists.problems (the one round-list reader, KAT
+    HS1) over the given lists; a list that could not be read is None and its lines are skipped (reported as pending
+    by the caller). Until r29 this was a second copy of the B149 rule (r28 TK17), with its own line format."""
+    rounds = (registry or {}).get('rounds') or []
+    if not rounds:
+        return []
+    RL = _kit(Path(__file__).resolve().parent.parent.parent, 'kit/roundlists.py', 'roundlists')
+    if RL is None:
+        return []
+    L = {'registry': [str(r.get('id', '')) for r in rounds], 'current': registry.get('current'),
+         'planned': [str(r.get('id', '')) for r in rounds if r.get('status') == 'planned'],
+         'areas': list(areas_rounds or []), 'ledger': list(choices or []), 'evolution': list(order or [])}
+    skip = {name for name, x in (('areas', areas_rounds), ('ledger', choices), ('evolution', order)) if x is None}
+    return [p for p in RL.problems(L) if p.split(':', 1)[0] not in skip]
 
 
 def evolution_order(root):
@@ -1092,8 +1088,6 @@ def targets(k):
         v.append(f"tooling defect classes without a KAT {k['defect_classes_without_kat']}")
     if k.get('order_gaps'):
         v.append(f"rounds missing from the evolution ORDER {k['order_gaps']}")
-    if isinstance(k.get('round_list_gaps'), list) and k['round_list_gaps']:
-        v.append(f"a round opened in one registry but not in every round list {k['round_list_gaps']} (B149, lesson #80)")
     if isinstance(k.get('tools_without_kat'), list) and k['tools_without_kat']:
         v.append(f"harness tools without a KAT {k['tools_without_kat'][:6]} (target 0 from R28, N28-04)")
     if k.get('gate_id_duplicates'):
@@ -1133,6 +1127,7 @@ def targets(k):
         v.append(f"skills over {SKILL_MAX_LINES} lines {k['skill_over_budget']}")
     if k.get('scripts_bad'):
         v.append(f"scripts that do not build {k['scripts_bad']}")
+    # r29 B166: round_list_gaps had a second target for the same lines; this is the one
     if isinstance(k.get('round_lists_missing'), list) and k['round_lists_missing']:
         v.append(f"round lists miss a registry round {k['round_lists_missing'][:4]} (B149)")
     if isinstance(k.get('privacy_writer_leaks'), int) and k['privacy_writer_leaks']:

@@ -22,7 +22,7 @@
    "version": "r28"
   },
   {
-   "manifest_sha256": "68ab4016a317b5b17ed2ba0033e014d384825bff743fc201eb2964c894881411",
+   "manifest_sha256": "28f9a2ce17fd3112d949604ec02dbbdd8bd4991c3ad91a2c032524c8ae2cf444",
    "sealed": false,
    "supersedes": [
     "r28"

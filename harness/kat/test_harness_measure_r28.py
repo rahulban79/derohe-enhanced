@@ -104,13 +104,25 @@ def forged_lists(over, drop_area=None, drop_ledger=None, drop_order=None, curren
         ids = [r['id'] for r in ar['rounds']]
         ar['rounds'] = ar['rounds'][:ids.index(areas_upto) + 1]
     (d / 'harness/areas.json').write_text(json.dumps(ar))
-    if drop_ledger:
+    if drop_ledger:      # r29: drop the number wherever it sits in LAST_CHOICES (was: only as the last element)
         f = d / 'artifacts/src/gen_ledger.py'
-        f.write_text(f.read_text().replace(f', {drop_ledger})', ')', 1))
+        f.write_text(re.sub(rf'(LAST_CHOICES = \([^)]*?),\s*{drop_ledger}\b', r'\1', f.read_text(), count=1))
     if drop_order:
         f = d / 'harness/miners/mine_evolution.py'
-        f.write_text(f.read_text().replace(f", '{drop_order}']", ']', 1))
+        f.write_text(f.read_text().replace(f", '{drop_order}'", '', 1))
     return d
+
+
+def open_round(over):
+    """r29: the tree's open round, its ledger number and the registry's next planned label, read from the registry the
+    KAT runs against, so HS1/HS12 hold in every round (r29 found HS1 pinned to 28 / R29 failing once r29 opened)."""
+    RL = load(over, 'rl')
+    L = RL.read_lists(ROOT)
+    cur = L['current']
+    m = re.fullmatch(r'r(\d+)[a-z]?', str(cur))
+    order = L['registry']
+    nxt = [r for r in L['planned'] if order.index(r) > order.index(cur)]
+    return cur, int(m.group(1)), (RL.evolution_label(nxt[0]) if nxt else None)
 
 
 def kat_hs1(over):
@@ -119,9 +131,13 @@ def kat_hs1(over):
     real = RL.check(ROOT if 'areas' not in over else forged_lists(over))
     if real:
         bad.append(f'the tree misses {real}')
-    cases = [(dict(drop_area='r28'), 'areas: r28 missing'), (dict(drop_ledger=28), 'ledger: 28 missing'),
-             (dict(drop_order='R29'), 'evolution: next planned R29 missing'),
+    cur, n, nxt = open_round(over)
+    cases = [(dict(drop_area=cur), f'areas: {cur} missing'), (dict(drop_ledger=n), f'ledger: {n} missing'),
              (dict(current='r27', areas_upto='r26'), 'areas: r27 missing')]
+    if nxt:
+        cases.insert(2, (dict(drop_order=nxt), f'evolution: next planned {nxt} missing'))
+    else:
+        bad.append('the registry has no next planned round after the current one (B90)')
     for kw, want in cases:
         d = forged_lists(over, **kw)
         try:
@@ -226,8 +242,14 @@ def kat_hs5(over):
         bad.append(f'wall_over {SB.wall_over(st, doc)}')
     budgets = json.loads(P(over, 'budgets').read_text())
     r26 = SB.report([json.loads(l) for l in (ROOT / R26_RECORD).read_text().splitlines() if l.strip()], budgets)
-    r27 = SB.report([json.loads(l) for l in (ROOT / R27_RECORD).read_text().splitlines() if l.strip()], budgets)
-    if not (r26['wall_over'] and any('test_forensics_frontend2_r26.py' in x for x in r26['over'])):
+    # r29 (B192): the r27 record is judged by the budgets its own round derived (the rule over the three r27 records,
+    # stepbudget.derive), not by the r29 re-derivation from faster r28/r28d records (mine_coverage.py 75 s > 30 s there)
+    r27_recs = [[json.loads(l) for l in (ROOT / f'harness/loop/runs/pipeline_{t}.jsonl').read_text().splitlines() if l.strip()]
+                for t in ('20261105T163040', '20261105T190905', '20261105T193623')]
+    r27 = SB.report(r27_recs[-1], SB.derive(r27_recs) if hasattr(SB, 'derive') else budgets)
+    # r29 (B192): STEP_BUDGETS.json is re-derived from the r28/r28d records (wall 2,990 s), so the r26 wall (1,904 s) is
+    # no longer over; the regression stays flagged at step level (frontend2 858 s > its row); the wall arithmetic is SB2
+    if not any('test_forensics_frontend2_r26.py' in x for x in r26['over']):
         bad.append(f'the r26 regression record is not flagged {r26}')
     if r27['over'] or r27['wall_over']:
         bad.append(f'the r27 record is flagged {r27["over"]}')
@@ -428,12 +450,13 @@ def kat_hs11(over):
 def kat_hs12(over):
     TI = load(over, 'ti')
     bad = []
-    d = forged_lists(over, drop_area='r28')
+    cur = open_round(over)[0]
+    d = forged_lists(over, drop_area=cur)
     try:
         (d / 'harness/kit').mkdir(parents=True, exist_ok=True)
         shutil.copy2(P(over, 'rl'), d / 'harness/kit/roundlists.py')
         k = TI.r28_kpis(d)
-        if not any('r28' in x for x in (k.get('round_lists_missing') or [])):
+        if not any(cur in x for x in (k.get('round_lists_missing') or [])):
             bad.append(f"forged root: round_lists_missing {k.get('round_lists_missing')}")
     finally:
         shutil.rmtree(d, ignore_errors=True)
@@ -472,7 +495,7 @@ MUTATIONS = [
     ('sb', "            if isinstance(o.get('secs'), (int, float)):", "            if False:", 'B133: the step\'s own secs are ignored'),
     ('sb', "and o.get('status') == 'INFO' and not o.get('skipped'):", "and o.get('status') == 'INFO':", 'B133: a skipped step is timed'),
     ('sb', "        if n > lim:", "        if n > lim * 10:", 'B133: an overrun is not reported'),
-    ('budgets', '"harness/kat/test_forensics_frontend2_r26.py": 350', '"harness/kat/test_forensics_frontend2_r26.py": 900',
+    ('budgets', '"harness/kat/test_forensics_frontend2_r26.py": 320', '"harness/kat/test_forensics_frontend2_r26.py": 900',
      'B133: the frontend2 budget hides the r26 regression'),
     ('fbv', "        event('project', 'INFO', step=' '.join(st[1:3]), rc=rc, last=last, secs=secs)",
      "        event('project', 'INFO', step=' '.join(st[1:3]), rc=rc, last=last)", 'B133: S7 no longer records step secs'),

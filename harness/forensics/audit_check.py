@@ -464,9 +464,61 @@ def iter_texts(ds):
             yield rel, None
 
 
-def scan_dataset(ds, repo, private_terms, skip_prefix=None):
+def scan_fingerprint(pats, private_terms):
+    """r29 (B155): one hash of every pattern (source and flags) and every private term (as its sha256: no term is
+    written anywhere). A memo entry is valid only under the fingerprint it was made with. Pure."""
+    h = hashlib.sha256()
+    for n, rx in list(pats) + list(PRIV_RX):
+        h.update(f'{n}\0{rx.pattern}\0{rx.flags}\n'.encode())
+    for t in sorted(hashlib.sha256(t.encode()).hexdigest() for t in private_terms if t):
+        h.update(t.encode())
+    return h.hexdigest()
+
+
+def scan_text(text, pats, private_terms):
+    """the [kind, match_sha256] hits of one text, in the order scan_dataset reports them. Pure."""
+    out = []
+    for n, rx in pats:
+        m = rx.search(text)
+        if m:
+            out.append(['exploit:' + n, hashlib.sha256(m.group(0).encode()).hexdigest()[:16]])
+    for n, rx in PRIV_RX:
+        m = rx.search(text)
+        if m:
+            out.append(['privacy:' + n, hashlib.sha256(m.group(0).encode()).hexdigest()[:16]])
+    for t in private_terms:
+        if t and t in text:
+            out.append(['privacy:private term', hashlib.sha256(t.encode()).hexdigest()[:16]])
+    return out
+
+
+MEMO_MAX = 20000          # r29 (B155): texts kept across dataset versions (R28: 763 per run); past it, this scan's only
+LAST_MEMO_REUSED = 0
+
+
+def memo_path():
+    import tempfile
+    return Path(tempfile.gettempdir()) / f'g29_scan_memo_{os.getuid()}.json'
+
+
+def scan_dataset(ds, repo, private_terms, skip_prefix=None, memo=None):
+    """r29 (B155): G29's lint re-scanned every text of every dataset version on every run (763 files, 267.8 M chars,
+    64.1 s of run_gates' 88.5 s at R28). The hits of one text depend only on its bytes, the patterns and the terms,
+    so they are memoised by sha256(text) under scan_fingerprint(); a changed file, pattern or term is scanned again.
+    memo: a path (default memo_path()), or False for a full scan (the control). The memo holds only hashes and kinds
+    and keeps at most MEMO_MAX texts (the entries of every version scanned since, else this scan's only)."""
     pats = exploit_patterns(repo)
     hits, undecodable, scanned = [], [], 0
+    mp = memo_path() if memo is None else memo
+    fp = scan_fingerprint(pats, private_terms)
+    old = {}
+    if mp:
+        try:
+            o = json.loads(Path(mp).read_text())
+            old = o['entries'] if o.get('fingerprint') == fp else {}
+        except (OSError, ValueError, KeyError, TypeError):
+            old = {}
+    new, reused = {}, 0
     for rel, text in iter_texts(ds):
         if skip_prefix and rel.startswith(skip_prefix):
             continue
@@ -474,17 +526,21 @@ def scan_dataset(ds, repo, private_terms, skip_prefix=None):
             undecodable.append(rel)
             continue
         scanned += 1
-        for n, rx in pats:
-            m = rx.search(text)
-            if m:
-                hits.append({'file': rel, 'kind': 'exploit:' + n, 'match_sha256': hashlib.sha256(m.group(0).encode()).hexdigest()[:16]})
-        for n, rx in PRIV_RX:
-            m = rx.search(text)
-            if m:
-                hits.append({'file': rel, 'kind': 'privacy:' + n, 'match_sha256': hashlib.sha256(m.group(0).encode()).hexdigest()[:16]})
-        for t in private_terms:
-            if t and t in text:
-                hits.append({'file': rel, 'kind': 'privacy:private term', 'match_sha256': hashlib.sha256(t.encode()).hexdigest()[:16]})
+        k = hashlib.sha256(text.encode()).hexdigest()
+        if k in old:
+            got, reused = old[k], reused + 1
+        else:
+            got = new.get(k) or scan_text(text, pats, private_terms)
+        new[k] = got
+        hits += [{'file': rel, 'kind': kind, 'match_sha256': ms} for kind, ms in got]
+    if mp:
+        try:
+            ent = {**old, **new}
+            Path(mp).write_text(json.dumps({'fingerprint': fp, 'entries': ent if len(ent) <= MEMO_MAX else new}))
+        except OSError:
+            pass
+    global LAST_MEMO_REUSED
+    LAST_MEMO_REUSED = reused          # not in the returned record: the audit record's bytes are unchanged by the memo
     return {'files_scanned': scanned, 'binary_skipped': undecodable, 'hits': hits,
             'patterns': len(pats) + len(PRIV_RX), 'private_terms_loaded': len(private_terms)}
 
@@ -1135,6 +1191,8 @@ REQUIRED_BY_VERSION = {'r25': ('A1', 'A2', 'A3', 'A4'),
                        # with the auditor's own decoder (D2-26) and check the FQ2 correction (D2-27)
                        'r28d': ('D2-01', 'D2-02', 'D2-04', 'D2-05', 'D2-11', 'D2-12', 'D2-13', 'D2-14', 'D2-16', 'D2-20',
                                 'D2-26', 'D2-27')}
+# r29 (B107): r28d's walls/inclusions rows now carry their class; its audit must re-derive them (D2-28)
+REQUIRED_BY_VERSION['r28d'] += ('D2-28',)
 
 
 def g29_check(ds, repo=None, private=None):

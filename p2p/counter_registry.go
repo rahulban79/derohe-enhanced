@@ -16,10 +16,11 @@ package p2p
 // which reads the same as a binary without the feature; so were the bootstrap, penalty and netgroup counters.
 // Registering them at start makes "never happened" (0) distinguishable from "not built in" (absent).
 // TestP2PCountersRegisteredEagerly keeps this list complete against the GetOrCreateCounter literals in p2p/*.go.
-// Labelled counters (call_timeouts, busy_rejections, first_relay, penalty_events, miniblock_deliveries) stay lazy:
-// their label values are open-ended. The few fixed-label and non-p2p_ series that must also show a zero (handshake
-// failures by kind, miniblock_ours_broadcast_failed_total) are registered in metrics_preregister.go (r21 merge:
-// one list per series, the syncp2p and forensics registrations deduplicated).
+// Labelled counters (call_timeouts, first_relay, penalty_events, miniblock_deliveries) stay lazy: their label values
+// are open-ended (r29 B152: busy_rejections has a closed method set and is created in r29_lazy_preregister.go). The
+// few fixed-label and non-p2p_ series that must also show a zero (handshake failures by kind,
+// miniblock_ours_broadcast_failed_total) are registered in metrics_preregister.go (r21 merge: one list per series, the
+// syncp2p and forensics registrations deduplicated).
 
 import "github.com/deroproject/derohe/metrics"
 

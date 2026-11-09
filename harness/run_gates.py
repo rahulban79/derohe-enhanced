@@ -90,6 +90,10 @@
   r26 G32 defect classes are separated and their presence re-read (harness/forensics/bounds.py g32; B109): one class per
        tagged record and figure; DC1-DC3 presence entries at HEAD re-read unchanged (presence.py check); the DC2-present
        headline on the ledger, soundness and src-arch pages from the round's first ledger render (KAT test_forensics_classes_r26.py).
+  r29 G33 no hang shape in the project code (harness/pipeline/liveness_lint.py g33; rft §5 long-job liveness): no function
+       feeds a co-process's stdin in a loop and reads its stdout without a feeder thread (B182 hang 1), no network call
+       without a timeout; hits pass only via pipeline/liveness_allow.json with a reason, stale entries fail (KAT
+       test_liveness_lint_r29.py).
 Appends one row per gate to loop/GATES.md. Exit 0 all pass (or PAUSED) · 3 any fail.  Usage: run_gates.py [cycle-label]
 """
 if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
@@ -866,6 +870,19 @@ def main():
     except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
         res.append(('G31 forensic figures carry their class bound', False, f'bounds could not run: {type(e).__name__}: {e}'))
         res.append(('G32 defect classes are separated and their presence re-read', False, f'bounds could not run: {type(e).__name__}: {e}'))
+
+    # G33 (r29, rft §5 long-job liveness) — no hang shape in the project's own Python: a co-process fed and read by one
+    # thread (pipe deadlock, B182 hang 1) or a network call without a timeout; a hit passes only through
+    # pipeline/liveness_allow.json with a reason, and a stale allow entry fails too
+    try:
+        import importlib.util as _iu33
+        _sp33 = _iu33.spec_from_file_location(f'liveness_for_gates_{id(HERE)}', HERE / 'pipeline/liveness_lint.py')
+        LL = _iu33.module_from_spec(_sp33)
+        _sp33.loader.exec_module(LL)
+        ok33, det33 = LL.g33(HERE.parent)
+        res.append(('G33 no hang shape in the project code (liveness lint)', ok33, det33))
+    except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
+        res.append(('G33 no hang shape in the project code (liveness lint)', False, f'liveness_lint could not run: {type(e).__name__}: {e}'))
 
     # G13 — a fix may change logging and peer handling, never what the node accepts or computes
     import consensus_guard as CG

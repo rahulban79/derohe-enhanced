@@ -17,7 +17,18 @@ def _grade(g, chip):
     return chip(f"{GRADE_ICON.get(g, '')} {g}", GRADE_COL.get(g, 'var(--mut)'))
 
 
-def _hbar(E, items, unit, label, fmt=lambda v: f'{v:g}', mark=None, ref=None, pill=('', 0)):
+def _num(v):
+    """a bar label that fits the 70 px right margin: r29 (inbound live) brought a peer 2,928,280 blocks behind, and
+    f'{v:g}' drew '2.92828e+06' 5 px past the 640 px edge (svg_lint, S7 2026-11-08). Pure."""
+    a = abs(v)
+    if a >= 1e6:
+        return f'{v / 1e6:.2f}M'
+    if a >= 1e4:
+        return f'{v:,.0f}'
+    return f'{v:g}'
+
+
+def _hbar(E, items, unit, label, fmt=_num, mark=None, ref=None, pill=('', 0)):
     """one horizontal bar per (name, value); a single series, so no legend: the caption names it. `mark(name, v)` gives
     a status colour for a bar that crosses a stated threshold; `ref` draws that threshold as a dashed line."""
     items = [(n, v) for n, v in items if isinstance(v, (int, float))]
@@ -32,7 +43,7 @@ def _hbar(E, items, unit, label, fmt=lambda v: f'{v:g}', mark=None, ref=None, pi
         y = top + i * rh
         w = max(2, abs(v) / vmax * pw)
         col = (mark(n, v) if mark else None) or 'var(--l4)'
-        out.append(f'<g><title>{E(n)}: {E(fmt(v))} {E(unit)}</title>'
+        out.append(f'<g><title>{E(n)}: {E(f"{v:,}" if isinstance(v, int) else fmt(v))} {E(unit)}</title>'
                    f'<rect x="0" y="{y}" width="{W}" height="{rh}" fill="transparent"/>'
                    f'<text x="{lw - 6}" y="{y + 12.5}" font-size="10.5" text-anchor="end" fill="var(--ink2, currentColor)">{E(n)}</text>'
                    f'<rect x="{lw}" y="{y + 3}" width="{w:.1f}" height="{rh - 6}" rx="3" fill="{col}"/>'

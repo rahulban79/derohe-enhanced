@@ -29,7 +29,7 @@ BASE_TAG = 'Release152'
 SNAP = 'harness/runtime/evolution_git.tsv'
 # the ledger's round axis, in order; R23c stays listed so a not-yet-committed round renders as pending, never as zero
 ORDER = ['R1-3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9'] + [f'R{n}' for n in range(11, 24)] + ['R23b', 'R23c', 'R24']
-ORDER += ['R25', 'R26', 'R27', 'R28', 'R28d', 'R29']  # r28d listed at the R28d open (Part A, D1: the community-dev merge sub-round, between R28 and R29); r29 listed at the R28 open (Part A, B149: the registry's next planned round r29); r28 listed at the R27 open loop (tools-kats: HT11 FAILED at cee1d80f, the registry's next planned round r28 was missing); r27 listed at the R26 open loop (B90 early warning: before its first 'R27' commit); r26 listed at the R25 artifacts (B90: before its first 'R26' commit); r25 plan (2026-11-03): listed before its first 'R25 plan:' commit lands, so it renders as pending, never as zero (rft §6 step 13)
+ORDER += ['R25', 'R26', 'R27', 'R28', 'R28d', 'R29', 'R30']  # r30 listed at the R29 open (Part A, B149: the registry's next planned round r30); r28d listed at the R28d open (Part A, D1: the community-dev merge sub-round, between R28 and R29); r29 listed at the R28 open (Part A, B149: the registry's next planned round r29); r28 listed at the R27 open loop (tools-kats: HT11 FAILED at cee1d80f, the registry's next planned round r28 was missing); r27 listed at the R26 open loop (B90 early warning: before its first 'R27' commit); r26 listed at the R25 artifacts (B90: before its first 'R26' commit); r25 plan (2026-11-03): listed before its first 'R25 plan:' commit lands, so it renders as pending, never as zero (rft §6 step 13)
 # r24 (pipeline run 1): ORDER ended at R23c, so the first 'R24 ...' commit crashed this miner with KeyError: 'R24' (S7 FAIL).
 # A round that git names but ORDER does not list is now refused by name (unknown_rounds); harness/kat/
 # test_evolution_order_r24.py checks every non-planned harness/round.json round and every commit since the base.
@@ -179,6 +179,34 @@ def doc_anchors(rnd):
     return [e for e in (a, b) if e], (f'§{sec.group(1)}' if sec else ''), what
 
 
+def base_claim(tag, base, head, n, merges):
+    """the evo-base row's claim; r29: it names the merge commits left out of the count. Pure."""
+    return (f'The branch forks from upstream {tag} ({base[:7]}), which is merge-base(HEAD, Release153): '
+            f'{n} local commits up to HEAD {head[:7]}'
+            + (f', plus {merges} merge commit(s) joining dimension branches (not counted: a merge\'s lines are its '
+               f'branch commits).' if merges else ', none of them merges.'))
+
+
+def walk(git, base, head='HEAD'):
+    """(commits, merges) of base..head. r29: the R29 merge joined the dimension branches with --no-ff merge commits;
+    the walk counted those 8 too (294 vs `git log --no-merges` 286, verify_deroarch DK35) and the page still said
+    "none of them merges". A merge's own diff is the lines of its branch's commits, already counted, so merges are
+    left out of the partition and counted separately (KAT test_evolution_merges_r29.py)."""
+    log = git('log', '--reverse', '--no-merges', '--no-renames', '--format=@@%h\t%ad\t%s', '--date=short', '--numstat',
+              f'{base}..{head}')
+    commits, cur = [], None
+    for l in log.splitlines():
+        if l.startswith('@@'):
+            sha, date, subj = l[2:].split('\t', 2)
+            cur = {'sha': sha, 'date': date, 'subject': subj, 'files': []}
+            commits.append(cur)
+        elif '\t' in l and cur is not None:
+            a, d, p = l.split('\t', 2)
+            cur['files'].append((p, 0 if a == '-' else int(a), 0 if d == '-' else int(d)))
+    merges = len(git('rev-list', '--merges', f'{base}..{head}').split())
+    return commits, merges
+
+
 def main():
     global M_SRC_PKGS
     sys.path.insert(0, str(M.HARNESS))
@@ -192,16 +220,7 @@ def main():
                                   f'merge-base(HEAD, Release153) ({mb[:7]}): the base claim does not hold, nothing drawn'}],
                'mine_evolution.py')
         return 0
-    log = git('log', '--reverse', '--no-renames', '--format=@@%h\t%ad\t%s', '--date=short', '--numstat', f'{base}..HEAD')
-    commits, cur = [], None
-    for l in log.splitlines():
-        if l.startswith('@@'):
-            sha, date, subj = l[2:].split('\t', 2)
-            cur = {'sha': sha, 'date': date, 'subject': subj, 'files': []}
-            commits.append(cur)
-        elif '\t' in l and cur is not None:
-            a, d, p = l.split('\t', 2)
-            cur['files'].append((p, 0 if a == '-' else int(a), 0 if d == '-' else int(d)))
+    commits, merges = walk(git, base)
     rnd = assign([(c['sha'], c['subject']) for c in commits])
     unknown = unknown_rounds(rnd)
     if unknown:  # r24: name the missing round instead of a KeyError traceback
@@ -347,10 +366,9 @@ def main():
     # the base itself: the documented tag line and the snapshot header that records the merge-base check
     ba = M.anchor('ARCHITECTURE.md', f'Release152 (tag `{base[:7]}`')
     rows.append({'id': 'evo-base', 'section': 'evolution', 'kind': 'evo-base', 'class': 'HARNESS',
-                 'title': f'{BASE_TAG} {base[:7]}', 'base': base[:7], 'head': head[:7], 'commit_n': len(commits),
+                 'title': f'{BASE_TAG} {base[:7]}', 'base': base[:7], 'head': head[:7], 'commit_n': len(commits), 'merge_n': merges,
                  'base_paths': up_files,
-                 'claim': (f'The branch forks from upstream {BASE_TAG} ({base[:7]}), which is merge-base(HEAD, Release153): '
-                           f'{len(commits)} local commits up to HEAD {head[:7]}, none of them merges.'),
+                 'claim': base_claim(BASE_TAG, base, head, len(commits), merges),
                  'evidence': [{'file': SNAP, 'quote': lines[0], 'line': 1},
                               {'file': SNAP, 'quote': lines[2], 'line': 3}] + ([ba] if ba else [])})
     out = M.ROOT / SNAP

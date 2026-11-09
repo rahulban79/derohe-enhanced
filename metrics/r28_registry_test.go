@@ -91,7 +91,7 @@ func TestR28AnnotateAddsHelpAndType(t *testing.T) {
 		"# HELP h_sec vm histogram\nh_sec_bucket":                                       1, // HELP only: vmrange is not le
 		"# HELP p_sec le histogram\n# TYPE p_sec histogram\np_sec_bucket{le=\"1\"}":     1,
 		"# HELP KCP_X kcp x\n# TYPE KCP_X counter\nKCP_X 7\n":                           1, // HELP added, TYPE not doubled
-		"# HELP own_help written by the code\nown_help 1\n":                             1, // its own metadata is kept
+		"# HELP own_help written by the code\n# TYPE own_help gauge\nown_help 1\n":      1, // its own HELP is kept; r29 B176: the missing TYPE is added
 	}
 	for frag, n := range want {
 		if c := strings.Count(got, frag); c != n {

@@ -287,7 +287,9 @@ func (chain *Blockchain) process_transaction_sc(cache map[crypto.Hash]*graviton.
 				logger.V(1).Info("SC reverted for an anonymous sender; burn value destroyed, fee kept", "txid", txhash)
 				return
 			}
-			logger.V(2).Error(nil, "Recover while executing SC ", "txid", txhash, "error", r, "stack", fmt.Sprintf("%s", string(debug.Stack())))
+			// r29 (B157, user decision 2026-11-08 (a)): logr Error ignores V, so this printed an ERROR with a stack on every
+			// node for any mined SC tx that recovers here (DB28-2); it is a V(2) Info line now, logging only (guard S1)
+			logger.V(2).Info("Recover while executing SC ", "txid", txhash, "error", r, "stack", fmt.Sprintf("%s", string(debug.Stack())))
 
 		}
 	}()

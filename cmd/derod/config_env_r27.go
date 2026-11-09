@@ -50,6 +50,7 @@ func consensus_setting_overrides(s config.SettingsStruct) (out []SettingOverride
 }
 
 var consensus_env_overrides int
+var consensus_env_check_failed bool // r29 (B141)
 
 func init() {
 	metrics.Set.GetOrCreateGauge("config_consensus_env_overrides", func() float64 { return float64(consensus_env_overrides) })
@@ -59,6 +60,7 @@ func init() {
 func report_consensus_env_overrides() {
 	ov, err := consensus_setting_overrides(config.Settings)
 	if err != nil {
+		consensus_env_check_failed = true // r29 (B141): fail closed, refuse_on_consensus_env_overrides stops derod
 		logger.Error(err, "cannot check the consensus settings")
 		return
 	}

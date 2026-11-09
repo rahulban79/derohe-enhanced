@@ -2599,3 +2599,35 @@ ranges read), the unreleased version-4 fork row at 8,000,000 (B184, watched ever
 
 **47.6 Live.** D3: the community-dev build followed the same chain below 8,000,000 (120/120 hashes, formula supply equal).
 r28d window 17:51:03 → 18:52:03: 62/62 synced, 0 ERROR/WARNING, emission 0 alerts.
+
+## 48. ★ Round 29: the residue round — observability gaps closed live, the user's decisions as reviewed guard constructs, a 7.4 M-block registration census, and long-job liveness as a gate (+22102026.r29, 2026-11-08)
+
+> Filled from the R29 records: the dimension rows (`harness/runtime/r29_rows/*.md`), the B182 census
+> (`harness/runtime/r29_b182_deep_census.json`), the live window and probes (`harness/runtime/r29_live_window_20261108.txt`,
+> `r29_live_probes_20261108.txt`), the B111 census (`harness/runtime/r29_b111_qcs1.json`), the pipeline records
+> (`pipeline_20261108T062853`, `pipeline_20261108T123859`) and rft §7, §8 R29, §12/§13 R29. The miner track is PAUSED
+> (artifacts/dero-rft.md §0.3).
+
+**48.1 Observability.** `p2p/r29_lazy_preregister.go` and `cmd/derod/rpc/r29_lazy_preregister.go` create the lazy
+families at start with closed label sets (B152); `cmd/derod/rpc/r29_bridge_errors.go` turns a jhttp bridge 500 into a
+JSON-RPC error body counted in `rpc_error_responses_total{code}` (B175); `metrics/registry_r28.go` tracks HELP and TYPE
+separately (B176). All three read live on r29.
+
+**48.2 Decisions through the guard.** The consensus guard gained optional `files`, `minus` and `moved` keys so a user
+decision lands as a reviewed, file-scoped construct: `mempool-milli-fee-rank` (pool order only, B19) and
+`rpc-money-copy-128bit` (display only, B144). `cmd/derod/config_env_r29.go` refuses to start on a consensus env override
+(B141, fail closed); the SC recover log is verbosity-gated (B157, logging-only).
+
+**48.3 Registration census.** `harness/forensics/b182_deep_r29.py` with the streaming decoder `tools/forensics/b182deep`
+read 0..7,398,264 from public archive endpoints (every block id, re-encode, height and txid re-derived, resumable CRC
+checkpoint): 542,692 of 2,141,434 registrations have exactly 2 leading zero bytes (B182 FINAL, report-only: consensus).
+B111 (A) then counted 2,141,704 balance keys at 7,498,540 on a stopped-node APFS clone (root equal to the recorded root):
+1 key more than the registrations through 7,498,539 (open).
+
+**48.4 Liveness.** `harness/kit/hangkit.py` (bounded runs with process-group stop and a sample diagnosis),
+`harness/kit/coproc.py` (feeder thread and reader queue: no pipe deadlock), `harness/kit/stallwatch.py` (work-based
+liveness, relaunch), gate G33 (`liveness_lint`: pipe feed-then-read, network without timeout) and bounded pipeline steps
+with an S7 HUNG verdict (B198). Each hang of the B182 run became a test that hangs the old code.
+
+**48.5 Live.** r29 window 15:33:40 → 16:33:40 (2026-11-08): 61/61 synced, 0 ERROR/WARN, inbound 4 → 27 after the user's
+UDP 11011 forward (B1 (a)), emission 0 alerts; the observatories with inbound are rft §7 B201.

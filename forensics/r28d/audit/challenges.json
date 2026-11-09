@@ -1,8 +1,8 @@
 {
  "binding": {
-  "data_sha256": "85f367b561d16e8ccd1a2556ca32b1d359daed9966435c628b74f3f14ce608f3",
+  "data_sha256": "2d3a1aa7a99960a34de1d5f32f98343cd4f32529fd3ed36108c0804081c29d3e",
   "files_bound": 29,
-  "manifest_sha256_at_audit": "1632ce573a628f9909fa0c4927daf3f505f2f39d398ccb1c0b6b224149fe0bf0"
+  "manifest_sha256_at_audit": "106631411c20a8e03b7805296d76a7a21db0c3abc043d5ddf3f53c10d04e0373"
  },
  "challenges": [
   {
@@ -11,7 +11,7 @@
    "evidence": [
     {
      "class": "RAW",
-     "what": "ledger 1632ce573a628f99, manifest 1632ce573a628f99, sealed False"
+     "what": "ledger 106631411c20a8e0, manifest 106631411c20a8e0, sealed False"
     }
    ],
    "id": "D2-01",
@@ -25,7 +25,7 @@
    "evidence": [
     {
      "class": "RAW",
-     "what": "listed 29, on disk 29, mismatch 0, missing 0, unlisted 0, class files listed True"
+     "what": "listed 35, on disk 35, mismatch 0, missing 0, unlisted 0, class files listed True"
     }
    ],
    "id": "D2-02",
@@ -151,11 +151,11 @@
    "evidence": [
     {
      "class": "RAW",
-     "what": "multi-block 67 (in table 67, outside 0); 2+ sources 0: equal 0, different 0; single source 67; no copy 0"
+     "what": "multi-block 67 (in table 67, outside 0); 2+ sources 67: equal 67, different 0; single source 0; no copy 0"
     },
     {
      "class": "RAW",
-     "what": "all TXIDs with 2+ independent copies: 1 (equal 1, different 0); tx lists repeating a TXID 0"
+     "what": "all TXIDs with 2+ independent copies: 68 (equal 68, different 0); tx lists repeating a TXID 0"
     },
     {
      "class": "INTERPRETATION",
@@ -163,7 +163,7 @@
     }
    ],
    "id": "D2-11",
-   "note": "67 of 67 multi-block TXIDs have one independent copy only: a second body under them is not observable from the data held (bound: unbounded for those)",
+   "note": "0 of 67 multi-block TXIDs have one independent copy only: a second body under them is not observable from the data held (bound: unbounded for those)",
    "result": "HOLDS",
    "test": "every body copy from every independent holder (v1 raw, archive copy, fetched staging), own TXID check, byte comparison"
   },
@@ -388,6 +388,20 @@
    "note": "",
    "result": "HOLDS",
    "test": "fq.json vs the sealed r28/derived/fq.json less FQ2 S-RT and corrections; S-RT result vs own criterion count; FQ2 coverage dc1_obs"
+  },
+  {
+   "affects": [],
+   "claim": "walls.json (33 rows + replay_stops) and inclusions.json (67 rows + the file) each carry the defect class its rule gives",
+   "evidence": [
+    {
+     "class": "DERIVED",
+     "what": "walls equal 33/33 (unwalked 0, differ none); replay_stops equal True; inclusions equal 67/67 (own multi-block 67, rows == own True, own classes {'DC1': 67}); file class equal True; pending 0"
+    }
+   ],
+   "id": "D2-28",
+   "note": "",
+   "result": "HOLDS",
+   "test": "own walk: each wall block's own tx list against the own HF3 parse; own carrier census for the multi-block TXIDs; the builder's classes read last, as claims"
   }
  ],
  "note": "independent audit challenges of dataset v2 (rft \u00a70.8.5): HOLDS / FAILS / UNRESOLVED; every FAILS or UNRESOLVED keeps its verdicts off a PROVEN grade (audit_report.json verdicts); overturns stay on record in audit/history/"

@@ -699,6 +699,35 @@ def page_inputs(root=ROOT, dyn_root=None):
     return newest_dataset(root), root
 
 
+CACHE_MAX_AGE_S = 7 * 86400     # r29 (B167): an extraction nobody read for a week is removed
+
+
+def prune_dataset_cache(base, now=None, max_age_s=CACHE_MAX_AGE_S):
+    """r29 (B167 residual, V-3): remove the dataset_at extractions under `base` whose tree is gone (the root they
+    were extracted for, recorded in ROOT.txt, no longer exists: a deleted clone) or that nobody read for max_age_s
+    (mtime of ROOT.txt, touched on every read). An entry without ROOT.txt (pre-r29) counts as unread since its own
+    mtime. Returns the removed entry names. Only direct children of `base` are touched."""
+    import shutil, time
+    base = Path(base)
+    now = time.time() if now is None else now
+    gone = []
+    if not base.is_dir():
+        return gone
+    for e in sorted(base.iterdir()):
+        if not e.is_dir() or e.is_symlink():
+            continue
+        mark = e / 'ROOT.txt'
+        try:
+            root = mark.read_text().strip() if mark.exists() else None
+            age = now - (mark.stat().st_mtime if mark.exists() else e.stat().st_mtime)
+        except OSError:
+            continue
+        if (root is not None and not Path(root).is_dir()) or age > max_age_s:
+            shutil.rmtree(e, ignore_errors=True)
+            gone.append(e.name)
+    return gone
+
+
 def dataset_at(root, version, manifest_sha):
     """R28: the dataset directory whose manifest.json hashes to manifest_sha. The tree's copy when it matches; else the
     version as it was committed with that manifest, extracted from the git object store into a per-user cache (a closed
@@ -717,7 +746,9 @@ def dataset_at(root, version, manifest_sha):
         if b.returncode or hashlib.sha256(b.stdout).hexdigest() != manifest_sha:
             continue
         tag = hashlib.sha256(str(root.resolve()).encode()).hexdigest()[:12]   # one cache per tree: the base links point into it
-        cache = Path(tempfile.gettempdir()) / f'fx_dataset_at_{os.getuid()}' / f'{tag}_{manifest_sha[:32]}'
+        base = Path(tempfile.gettempdir()) / f'fx_dataset_at_{os.getuid()}'
+        cache = base / f'{tag}_{manifest_sha[:32]}'
+        prune_dataset_cache(base)                                  # r29 (B167): never this entry while its tree lives
         d = cache / 'forensics' / version
         if not (d / 'manifest.json').exists():
             arc = subprocess.run(['git', '-C', str(root), 'archive', '--format=tar', c, f'forensics/{version}'], capture_output=True)
@@ -726,6 +757,7 @@ def dataset_at(root, version, manifest_sha):
             cache.mkdir(parents=True, exist_ok=True)
             with tarfile.open(fileobj=io.BytesIO(arc.stdout)) as t:
                 t.extractall(cache, filter='data')
+        (cache / 'ROOT.txt').write_text(str(root.resolve()) + '\n')   # r29 (B167): who it is for; mtime = last read
         for sib in sorted((root / 'forensics').iterdir()):   # the sealed base versions it reads by repo-relative path
             if sib.is_dir() and sib.name != version and not (cache / 'forensics' / sib.name).exists():
                 (cache / 'forensics' / sib.name).symlink_to(sib.resolve())

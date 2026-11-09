@@ -13,8 +13,12 @@ What v4 changes against v3, and why (B180, from the DEROFDN community-dev evalua
                                 format), the precondition an EXT explainer relies on for readable amounts, with a
                                 dated correction: FQ2's "0 of 75" was complete for P1 and S-R22 only. DC1-obs is
                                 unchanged: S-RT is a precondition, not an observation of an amount.
+  * derived/walls.json,         R29 (B107): v3's two files with every row's `class` slot filled by the rules of
+    derived/inclusions.json     TAG_RULES (rft §0.8.9 rule 8: every derived row names its class); every other byte of
+                                each row is v3's. G32 (bounds.py check_rows_r29) and audit2 D2-28 re-derive the class
+                                of every row independently.
 Inherited unchanged from v3 (bytes and SHA-256 checked against v3's manifest): every raw/ file and every other
-derived/ file. The replay re-derives v3's derived set with v3.derive (pinned, used, never edited), then the two v4
+derived/ file. The replay re-derives v3's derived set with v3.derive (pinned, used, never edited), then the v4
 files, and checks every SHA-256; v3's fq.json (the input of the FQ2 correction) is pinned in `inputs`.
 
   python3 -I harness/forensics/v4.py build    [--dataset forensics/r28d] [--store DIR]
@@ -30,12 +34,14 @@ ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 import v3  # noqa: E402  (pinned by the sealed v3; used, never edited)
 import pins as P  # noqa: E402
+import classes as CL  # noqa: E402  (hf3_txids: the table parse v2/v3 use; classes.py is a sealed tool, never edited)
 
 v2 = v3.v2
 VERSION = 4
 BASE = 'forensics/r28'
 CORRECTION_DATE = '2026-11-06'
-NEW = ['derived/dc1_structure.json', 'derived/fq.json']
+TAGGED = ['derived/walls.json', 'derived/inclusions.json']   # R29 B107: v3's rows with the class slot filled
+NEW = ['derived/dc1_structure.json', 'derived/fq.json'] + TAGGED
 TOOLS = v3.TOOLS + ['harness/forensics/v4.py']
 # fq.json is re-derived by v4 (the FQ2 correction is a pure function of v3's fq.json and dc1_structure.json), so it is
 # no longer a class file here; the three forensics-classes outputs stay pinned, not re-derived
@@ -156,9 +162,65 @@ def correct_fq(fq_v3, dc1):
     return v2.dump(fq)
 
 
+# ------------------------------------------------------------------------------------------------ R29 B107 row classes
+SLOTS = (None, 'pending', 'pending: defect class')
+TAG_RULES = {
+    'wall_row': 'DC1 when the block carries an HF3 table TXID (hf3_table_txs non-empty), else DC3 (a block-level row '
+                'states public-value identities, classes.tag_block)',
+    'replay_stops': 'DC1 when a stopped tx is an HF3 table TXID, else DC3 (the stop is a block-level fact about this code '
+                    'and that state; a stop that persisted through the HF3 entry would be DC0, rft §0.8.9)',
+    'inclusion_row': 'DC1 when the TXID is in the HF3 table, else DC0 (a duplicate outside the table fits no class)',
+    'inclusions': 'DC0 when any row is DC0, else DC1 (the file names one class)',
+}
+
+
+def wall_class(row, table):
+    return 'DC1' if any(t in table for t in (row.get('hf3_table_txs') or [])) else 'DC3'
+
+
+def stops_class(stops, table):
+    return 'DC1' if any((r or {}).get('txid') in table for r in (stops.get('runs') or {}).values()) else 'DC3'
+
+
+def inclusion_class(row, table):
+    return 'DC1' if row.get('txid') in table else 'DC0'
+
+
+def _fill(o, cls):
+    if o.get('class') in SLOTS:
+        o['class'] = cls
+    return o
+
+
+def tag_walls(b, table):
+    """walls.json bytes -> the same with every wall row and replay_stops classed (only slot values are filled)"""
+    w = json.loads(b)
+    for k, v in w.items():
+        if k.startswith('wall') and isinstance(v, dict):
+            for r in v.get('rows') or []:
+                _fill(r, wall_class(r, table))
+    if isinstance(w.get('replay_stops'), dict):
+        _fill(w['replay_stops'], stops_class(w['replay_stops'], table))
+    w['class_rules'] = {k: TAG_RULES[k] for k in ('wall_row', 'replay_stops')}
+    return v2.dump(w)
+
+
+def tag_inclusions(b, table):
+    """inclusions.json bytes -> the same with every row and the file classed"""
+    i = json.loads(b)
+    for r in i.get('rows') or []:
+        _fill(r, inclusion_class(r, table))
+    _fill(i, 'DC0' if any(r.get('class') == 'DC0' for r in i.get('rows') or []) else 'DC1')
+    i['class_rules'] = {k: TAG_RULES[k] for k in ('inclusion_row', 'inclusions')}
+    return v2.dump(i)
+
+
 def derive(ds, stores, out, work, root=ROOT):
-    """v3.derive (pinned) over v4's raw/, then the two v4 files from its outputs; returns {rel: bytes}"""
+    """v3.derive (pinned) over v4's raw/, then the v4 files from its outputs; returns {rel: bytes}"""
     files = v3.derive(ds, stores, out, work, root)
+    table = CL.hf3_txids(root)
+    files['derived/walls.json'] = tag_walls(files['derived/walls.json'], table)
+    files['derived/inclusions.json'] = tag_inclusions(files['derived/inclusions.json'], table)
     dc1 = dc1_structure(files['derived/txs.jsonl.gz'], files['derived/inclusions.json'], stores, work)
     files['derived/dc1_structure.json'] = v2.dump(dc1)
     files['derived/fq.json'] = correct_fq((Path(root) / BASE / 'derived/fq.json').read_bytes(), dc1)
@@ -211,7 +273,7 @@ def content_pins(root=ROOT, lister=None):
 
 REPLAY_SH = '''#!/bin/sh
 # forensics/r28d replay (rft §0.8.3, gate G28): ONE command checks the content pins (tools + decoder inputs), re-derives
-# every derived/ file of dataset v4 from raw/ (v3.derive, then the two v4 files) into a scratch dir and checks every
+# every derived/ file of dataset v4 from raw/ (v3.derive, then the v4 files) into a scratch dir and checks every
 # SHA-256. Tier B blobs (tx bodies) are read from $FORENSICS_R28_STORE (default: v2's store, shared, never written).
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
@@ -250,7 +312,8 @@ def cmd_manifest(a, root=ROOT):
                        'files': {k: bm['files'][k] for k in inherit_list(root)}},
          'supersedes_reason': ('corrects v3: FQ2 tested P1 and S-R22 only; the structural criterion S-RT (ring 2 and the '
                                'legacy payload format) is added as counts (derived/dc1_structure.json) with a dated FQ2 '
-                               'correction; DC1-obs unchanged (B180)'),
+                               'correction; DC1-obs unchanged (B180); R29: walls.json and inclusions.json rows carry '
+                               'their defect class (B107, TAG_RULES)'),
          'content_pins': content_pins(root),
          'tierB_store': {'location': '$FORENSICS_R28_STORE (tier B store outside git, shared with v2/v3, read-only; a label, not a path)',
                          'tx_bodies': n, 'tx_index_sha256': idx},

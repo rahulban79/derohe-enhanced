@@ -289,8 +289,11 @@ def body_copies(txids, v2rows, v2store, v1ds, archive, stage):
             if t in out:
                 b = p.read_bytes()
                 out[t].append(('archive-copy', sha(b), b))
-    if stage and Path(stage, 'txs').is_dir():
-        for p in sorted(Path(stage, 'txs').glob('*.json')):
+    # r29 (B97): --stage may name several staging dirs, colon-separated (the r26 fetch and the r29 second holders)
+    for sd in (stage.split(':') if stage else []):
+        if not Path(sd, 'txs').is_dir():
+            continue
+        for p in sorted(Path(sd, 'txs').glob('*.json')):
             try:
                 r = json.loads(p.read_text())
             except ValueError:
@@ -414,7 +417,7 @@ def read_replay(d):
 
 def run(ds, repo, v1store, v2store, archive, stage, replay_dir, private, jobs):
     ds, repo = Path(ds), Path(repo)
-    for p in (v1store, v2store, archive, stage, replay_dir):
+    for p in (v1store, v2store, archive, replay_dir, *(stage.split(':') if stage else [])):   # r29: every stage dir
         guard(p)
     R = {'impl': IMPL_VERSION, 'dataset': ds.name}
     st = AC.hash_selftest() + selftest_struct(repo)
@@ -678,8 +681,56 @@ def run(ds, repo, v1store, v2store, archive, stage, replay_dir, private, jobs):
     # ---------------------------------------------------------------- r28d D2-26/D2-27 the DC1 structure (v4, B180)
     if (ds / 'derived/dc1_structure.json').exists():
         R['dc1_structure'] = audit_dc1_structure(ds, repo, table, carriers, dec)
+    # ---------------------------------------------------------------- r29 D2-28 walls/inclusions row classes (B107)
+    if 'class_rules' in json.loads((ds / 'derived/walls.json').read_text()):
+        R['row_classes'] = audit_row_classes(ds, chain, table, carriers)
     R['result'] = 'done'
     return R
+
+
+def audit_row_classes(ds, chain, table, carriers):
+    """R29 B107: the class of every walls.json row, replay_stops and every inclusions.json row, derived from the
+    audit's OWN walk (the block's own tx list against the own HF3 parse) and own carrier census, never from the row's
+    fields; then the builder's classes are read as CLAIMS. Rules = v4.TAG_RULES, re-implemented here."""
+    w = json.loads((ds / 'derived/walls.json').read_text())
+    inc = json.loads((ds / 'derived/inclusions.json').read_text())
+    out = {'wall_rows': 0, 'wall_equal': 0, 'wall_differ': [], 'wall_unwalked': 0, 'stops_equal': False,
+           'inclusion_rows': 0, 'inclusion_equal': 0, 'inclusion_differ': [], 'own_multi': 0, 'rows_txids_eq_own_multi': False,
+           'file_class_equal': False, 'pending': 0}
+    for k in sorted(k for k in w if k.startswith('wall')):
+        for r in w[k].get('rows') or []:
+            out['wall_rows'] += 1
+            out['pending'] += r.get('class') not in ('DC0', 'DC1', 'DC2', 'DC3')
+            o = chain.get(r.get('height'))
+            if not o or o['id'] != r.get('blid'):
+                out['wall_unwalked'] += 1
+                continue
+            own = 'DC1' if any(t in table for t in o['tx_hashes']) else 'DC3'
+            if r.get('class') == own:
+                out['wall_equal'] += 1
+            else:
+                out['wall_differ'].append(r.get('height'))
+    st = w.get('replay_stops') or {}
+    own = 'DC1' if any((x or {}).get('txid') in table for x in (st.get('runs') or {}).values()) else 'DC3'
+    out['stops_equal'] = st.get('class') == own
+    out['pending'] += st.get('class') not in ('DC0', 'DC1', 'DC2', 'DC3')
+    multi = {t for t, hs in carriers.items() if len(hs) > 1}
+    out['own_multi'] = len(multi)
+    rows = inc.get('rows') or []
+    out['rows_txids_eq_own_multi'] = {r.get('txid') for r in rows} == multi
+    owns = []
+    for r in rows:
+        out['inclusion_rows'] += 1
+        out['pending'] += r.get('class') not in ('DC0', 'DC1', 'DC2', 'DC3')
+        own = 'DC1' if r.get('txid') in table else 'DC0'
+        owns.append(own)
+        if r.get('class') == own:
+            out['inclusion_equal'] += 1
+        else:
+            out['inclusion_differ'].append(str(r.get('txid'))[:8])
+    out['file_class_equal'] = inc.get('class') == ('DC0' if 'DC0' in owns else 'DC1')
+    out['own_classes'] = {c: owns.count(c) for c in sorted(set(owns))}
+    return out
 
 
 def audit_dc1_structure(ds, repo, table, carriers, dec):
@@ -1070,6 +1121,15 @@ def build_challenges(R):
                       X['fq_rest_equal_base'] and X['fq2_srt_agrees'] and X['fq2_dc1_obs'] == X['fq2_dc1_obs_base'] == 0 and X['fq2_corrections'] >= 1,
                       [{'class': 'DERIVED', 'what': f"rest equal {X['fq_rest_equal_base']}; S-RT '{X['fq2_srt_result']}', agrees {X['fq2_srt_agrees']}; dc1_obs {X['fq2_dc1_obs']} (base {X['fq2_dc1_obs_base']}); corrections {X['fq2_corrections']}"}],
                       ['V2-DUP-BODY']))
+    Y = R.get('row_classes')
+    if Y:   # r29 (B107)
+        out.append(ch('D2-28', f"walls.json ({Y['wall_rows']} rows + replay_stops) and inclusions.json ({Y['inclusion_rows']} rows + the file) each carry the defect class its rule gives",
+                      'own walk: each wall block\'s own tx list against the own HF3 parse; own carrier census for the multi-block TXIDs; the builder\'s classes read last, as claims',
+                      Y['pending'] == 0 and not Y['wall_differ'] and Y['wall_unwalked'] == 0 and Y['wall_equal'] == Y['wall_rows']
+                      and Y['stops_equal'] and Y['rows_txids_eq_own_multi'] and Y['inclusion_equal'] == Y['inclusion_rows']
+                      and Y['file_class_equal'],
+                      [{'class': 'DERIVED', 'what': f"walls equal {Y['wall_equal']}/{Y['wall_rows']} (unwalked {Y['wall_unwalked']}, differ {Y['wall_differ'][:5] or 'none'}); replay_stops equal {Y['stops_equal']}; inclusions equal {Y['inclusion_equal']}/{Y['inclusion_rows']} (own multi-block {Y['own_multi']}, rows == own {Y['rows_txids_eq_own_multi']}, own classes {Y['own_classes']}); file class equal {Y['file_class_equal']}; pending {Y['pending']}"}],
+                      ALL_V))
     return out
 
 
@@ -1112,6 +1172,7 @@ AFFECTS_ALWAYS = {
     'D2-15': ['V-STATE-ROOTS'], 'D2-16': ['V-STATE-ROOTS'], 'D2-17': ALL_V, 'D2-18': ['V2-DUP-BODY'],
     'D2-19': ['V2-FEES'], 'D2-20': ALL_V, 'D2-21': ['V-DC2'], 'D2-22': ['V-DC2'],
     'D2-26': ['V2-DUP-BODY'], 'D2-27': ['V2-DUP-BODY'],   # r28d (v4, B180): the DC1 structural census and FQ2 S-RT
+    'D2-28': ALL_V,                                       # r29 (B107): walls/inclusions row classes (G32 rows half)
 }
 
 

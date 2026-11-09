@@ -6,7 +6,8 @@ package metrics
 // the first sample of each registered family and "# TYPE" for the families whose samples follow the Prometheus type
 // (counter, gauge, le-histogram, summary). VictoriaMetrics vmrange histograms get HELP only: their buckets are not
 // Prometheus le-buckets, and a TYPE histogram line would make a strict parser refuse them. A family that already wrote
-// its own metadata (KCP_*, dero_node_up, ...) keeps it: only a missing HELP is added, never a second TYPE. Sample
+// its own metadata (KCP_*, dero_node_up, ...) keeps it: only a missing HELP (r29: or a missing TYPE) is added, never a
+// second TYPE. Sample
 // lines are copied byte for byte, so every reader that skips '#' lines reads exactly what it read before.
 // DERO_METRICS_METADATA=0 turns the annotation off (the r27 exposition, byte for byte).
 
@@ -98,7 +99,9 @@ func sample_name(line string) string {
 
 // annotate copies the exposition text to w with the registry's HELP/TYPE lines added. Pure on (reg, text).
 func annotate(w io.Writer, reg map[string]Family, text []byte) (unregistered []string) {
-	done := map[string]bool{} // families whose metadata is written (or that brought their own)
+	done := map[string]bool{}  // families whose HELP is written (or that brought their own)
+	typed := map[string]bool{} // families whose TYPE is written (or that brought their own); r29 B176: a family with its
+	// own HELP and no TYPE (dero_tip_age_seconds) gets the registry TYPE before its first sample
 	seen_unreg := map[string]bool{}
 	var out bytes.Buffer
 	out.Grow(len(text) + len(text)/4)
@@ -113,11 +116,16 @@ func annotate(w io.Writer, reg map[string]Family, text []byte) (unregistered []s
 		switch {
 		case strings.HasPrefix(s, "# HELP ") || strings.HasPrefix(s, "# TYPE "):
 			fields := strings.Fields(s)
-			if len(fields) >= 3 && !done[fields[2]] {
-				if f, ok := reg[fields[2]]; ok && strings.HasPrefix(s, "# TYPE ") {
-					out.WriteString("# HELP " + f.Name + " " + escape_help(f.Help) + "\n")
+			if len(fields) >= 3 {
+				if !done[fields[2]] {
+					if f, ok := reg[fields[2]]; ok && strings.HasPrefix(s, "# TYPE ") {
+						out.WriteString("# HELP " + f.Name + " " + escape_help(f.Help) + "\n")
+					}
+					done[fields[2]] = true
 				}
-				done[fields[2]] = true
+				if strings.HasPrefix(s, "# TYPE ") {
+					typed[fields[2]] = true
+				}
 			}
 		case s == "" || s[0] == '#':
 		default:
@@ -125,10 +133,13 @@ func annotate(w io.Writer, reg map[string]Family, text []byte) (unregistered []s
 			if f, ok := family_of(reg, name); ok {
 				if !done[f.Name] {
 					out.WriteString("# HELP " + f.Name + " " + escape_help(f.Help) + "\n")
+					done[f.Name] = true
+				}
+				if !typed[f.Name] {
 					if t := prom_type(f.Type); t != "" {
 						out.WriteString("# TYPE " + f.Name + " " + t + "\n")
 					}
-					done[f.Name] = true
+					typed[f.Name] = true
 				}
 			} else if !seen_unreg[name] {
 				seen_unreg[name] = true

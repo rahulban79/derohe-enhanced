@@ -8,4 +8,4 @@ package rpc_test
 // r28 (glue-global, B144 residual): the switch harness/loop/held/r28_rpc_money_copy.patch flips. rpc/wallet_rpc.go is
 // a decoder input pinned by forensics/r25 AND a consensus-guarded package (harness/consensus_guard.py CONSENSUS has
 // rpc/): its FormatMoneyPrecision copy changes only with the next dataset version and a guard decision (rft §7 B144).
-const rpc_copy_landed = false
+const rpc_copy_landed = true

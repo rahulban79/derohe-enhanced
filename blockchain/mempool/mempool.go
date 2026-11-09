@@ -21,6 +21,7 @@ import "sync"
 import "sort"
 import "time"
 import "sync/atomic"
+import "math/bits"
 
 import "github.com/go-logr/logr"
 
@@ -34,6 +35,9 @@ type TX_Sorting_struct struct {
 	FeesPerByte uint64      // this is fees per byte
 	Hash        crypto.Hash // transaction hash
 	Size        uint64      // transaction size
+	// r29 (B19, user decision 2026-11-08 (a)): the fee per byte in 1/1000 atomic units, the key the pool sorts by;
+	// FeesPerByte stays the integer value RPC callers read
+	MilliFeesPerByte uint64
 }
 
 // NOTE: do NOT consider this code as useless, as it is used to avooid double spending attacks within the block and within the pool
@@ -62,11 +66,12 @@ type Mempool struct {
 
 // this object is serialized  and deserialized
 type mempool_object struct {
-	Tx         *transaction.Transaction
-	Added      uint64 // time in epoch format
-	Height     uint64 //  at which height the tx unlocks in the mempool
-	Size       uint64 // size in bytes of the TX
-	FEEperBYTE uint64 // fee per byte
+	Tx              *transaction.Transaction
+	Added           uint64 // time in epoch format
+	Height          uint64 //  at which height the tx unlocks in the mempool
+	Size            uint64 // size in bytes of the TX
+	FEEperBYTE      uint64 // fee per byte
+	MilliFEEperBYTE uint64 // r29 (B19): fee per byte in 1/1000 atomic units (saturating), the sort key
 }
 
 var loggerpool logr.Logger
@@ -182,6 +187,11 @@ func (pool *Mempool) Mempool_Add_TX(tx *transaction.Transaction, Height uint64) 
 
 	object.Size = uint64(len(tx.Serialize()))
 	object.FEEperBYTE = tx.Fees() / object.Size
+	if hi, lo := bits.Mul64(tx.Fees(), 1000); hi == 0 {
+		object.MilliFEEperBYTE = lo / object.Size
+	} else {
+		object.MilliFEEperBYTE = ^uint64(0)
+	}
 
 	pool.txs.Store(tx_hash, &object)
 	pool.modified = true // pool has been modified
@@ -368,13 +378,13 @@ func (pool *Mempool) sort_list() ([]crypto.Hash, []TX_Sorting_struct) {
 		txhash := k.(crypto.Hash)
 		v := value.(*mempool_object)
 		if v.Height <= pool.height {
-			data = append(data, TX_Sorting_struct{Hash: txhash, FeesPerByte: v.FEEperBYTE, Size: v.Size})
+			data = append(data, TX_Sorting_struct{Hash: txhash, FeesPerByte: v.FEEperBYTE, MilliFeesPerByte: v.MilliFEEperBYTE, Size: v.Size})
 		}
 		return true
 	})
 
 	// inverted comparision sort to do descending sort
-	sort.SliceStable(data, func(i, j int) bool { return data[i].FeesPerByte > data[j].FeesPerByte })
+	sort.SliceStable(data, func(i, j int) bool { return data[i].MilliFeesPerByte > data[j].MilliFeesPerByte })
 
 	sorted_list := make([]crypto.Hash, 0, len(data))
 	//pool.sorted_by_fee = pool.sorted_by_fee[:0] // empty old slice

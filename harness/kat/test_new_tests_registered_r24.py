@@ -6,6 +6,7 @@ harness/round.json 'current') is registered in fix_build_verify.NEW_TESTS for it
   NT1 the tree: unregistered(round_funcs(tree), NEW_TESTS) is empty (an exact name in the package's alternation), and
       no OPT-IN test is registered (a test whose first lines t.Skip unless an os.Getenv is set: S3 needs every
       registered name to PASS, so registering one FAILs S3 - pipeline run 3, R24_EVICT / R24_TXPOOL_LOAD).
+  NT1 r29 (B168): and no NEW_TESTS name lacks its test function (ghosts: a renamed test runs nothing in S3).
   NT2 forged shapes: an unregistered name, a name registered only in another package, and a prefix-only match
       (TestR24Foo registered, TestR24FooBar not) are all named; a registered one is not; opt_in() reads an env-gated
       skip and not a plain one.
@@ -89,6 +90,38 @@ def unregistered(funcs, new_tests):
                   if n not in set(str(new_tests.get(pkg, '')).split('|')))
 
 
+def all_funcs():
+    """r29 (B168): {pkg: {every func Test*/Fuzz* name}} in the working tree (tracked or not, vendor aside)."""
+    out = subprocess.run(['git', 'grep', '-h', '-n', '--untracked', '-E', r'^func (Test|Fuzz)[A-Za-z0-9_]*\(', '--', '*.go', ':!vendor'],
+                         cwd=ROOT, capture_output=True, text=True).stdout
+    g = subprocess.run(['git', 'grep', '-l', '--untracked', '-E', r'^func (Test|Fuzz)[A-Za-z0-9_]*\(', '--', '*.go', ':!vendor'],
+                       cwd=ROOT, capture_output=True, text=True).stdout.split()
+    d = {}
+    for f in g:
+        for m in re.finditer(r'^func ((?:Test|Fuzz)\w*)\(', (ROOT / f).read_text(errors='replace'), re.M):
+            d.setdefault('./' + f.rsplit('/', 1)[0] + '/', set()).add(m.group(1))
+    return d
+
+
+def ghosts(funcs, new_tests):
+    """r29 (B168): 'pkg/Name' for every NEW_TESTS alternative that selects no test function of its package. S3 runs
+    `go test -run <alternation>` unanchored, so an alternative is a pattern (TestZeroSigner selects
+    TestZeroSignerRevertIsRecognised); one that matches nothing is a renamed or removed test that S3 then silently
+    never runs. Pure."""
+    out = []
+    for pkg, alt in new_tests.items():
+        names = funcs.get(pkg, set())
+        for n in str(alt).split('|'):
+            try:
+                rx = re.compile(n)
+            except re.error:
+                out.append(f'{pkg}{n}')
+                continue
+            if n and not any(rx.search(f) for f in names):
+                out.append(f'{pkg}{n}')
+    return sorted(out)
+
+
 def nt1(base):
     F = load_fbv(base)
     funcs, oi = {}, {}
@@ -101,9 +134,10 @@ def nt1(base):
     n = sum(len(v) for v in funcs.values())
     miss = unregistered(funcs, F.NEW_TESTS)
     reg_oi = registered_opt_in(oi, F.NEW_TESTS)
-    return (n > 0 and not miss and not reg_oi), (f'{n} {"+".join(round_prefixes())} tests in {len(funcs)} packages, unregistered '
+    gh = ghosts(all_funcs(), F.NEW_TESTS)                 # r29 (B168)
+    return (n > 0 and not miss and not reg_oi and not gh), (f'{n} {"+".join(round_prefixes())} tests in {len(funcs)} packages, unregistered '
                                                  f'{len(miss)} {miss[:5]}; opt-in {sum(len(v) for v in oi.values())} '
-                                                 f'{sorted(oi.items())}, registered opt-in {reg_oi}')
+                                                 f'{sorted(oi.items())}, registered opt-in {reg_oi}; registered with no test {gh[:5]}')
 
 
 def nt2(base):
@@ -114,8 +148,10 @@ def nt2(base):
     oi_plain = opt_in(['\tif testing.Short() {', '\t\tt.Skip("short")', '\t}'])
     oi_late = opt_in(['\tx := 1', '\ty := 2', '\tz := 3', '\tw := 4', '\tif os.Getenv("A") == "" { t.Skip() }'])
     roi = registered_opt_in({'./a/': ['TestR24Env']}, {'./a/': 'TestR24One|TestR24Env'})
-    ok = got == ['./a/TestR24OneBar', './b/TestR24Two'] and oi_env and not oi_plain and not oi_late and roi == ['./a/TestR24Env']
-    return ok, f'got {got} opt_in env/plain/late {oi_env}/{oi_plain}/{oi_late} registered_opt_in {roi}'
+    gh = ghosts({'./a/': {'TestR24One', 'TestXY'}, './b/': {'TestR24Three'}}, reg)   # r29 (B168): ./c/ defines nothing; TestX selects TestXY
+    ok = (got == ['./a/TestR24OneBar', './b/TestR24Two'] and oi_env and not oi_plain and not oi_late and roi == ['./a/TestR24Env']
+          and gh == ['./c/TestR24Two'])
+    return ok, f'got {got} opt_in env/plain/late {oi_env}/{oi_plain}/{oi_late} registered_opt_in {roi} ghosts {gh}'
 
 
 KATS = [('NT1', nt1), ('NT2', nt2)]
@@ -126,6 +162,8 @@ MUTATIONS = [
      "        './cmd/simulator/': 'TestR24EvictionSparesTemplateTxs|TestR24TxpoolLoad',\n"
      "        './glue/txcanon/': 'TestR24AdmitRunsTxpolicy',\n", 'the opt-in simulator harnesses registered (S3 FAIL)'),
     ('NT1', FBV, "'TestR25BlockHeaderByHashUnknownIsError|", "'", 'one r25 rpcrobust test dropped from NEW_TESTS'),
+    ('NT1', FBV, "'TestR24AggregateShortfallNotScored|", "'TestR24AggregateShortfallNotScored|TestR24NeverWritten|",
+     'r29 B168: a NEW_TESTS name with no test function is registered'),
 ]
 
 

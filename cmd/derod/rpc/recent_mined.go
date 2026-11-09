@@ -5,7 +5,7 @@
 package rpc
 
 // r24 (txpool): mined transactions stay in the mempool. Nothing removes a tx from it when a block carrying the tx is
-// added: the only deletions are HouseKeeping (blockchain.go:284 -> mempool.go:106, every 60 s, once the stable height
+// added: the only deletions are HouseKeeping (blockchain.go:284 -> mempool.go:111, every 60 s, once the stable height
 // reaches tx.Height) and the console commands (main.go mempool_flush / mempool_delete_tx). Measured on the simulator:
 // two blocks selected 23 of 23 pooled txs and the pool still held 23 afterwards (r24 evidence r24_dbg_next_block.txt).
 // The block template skips them by reading the Tx_hashes of the blocks at the last 20 heights (miner_block.go:186-247,

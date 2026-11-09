@@ -16,8 +16,8 @@ and the reorg monitor's lifetime record). No live node, real log or real runtime
   CR4  D11 from counters: an invalid-PoW block rejection is OBSERVED; stale/final miniblocks and past_missing are not
   CR5  D19: integrator-only participants assembling ~45 % of the blocks are an ANOMALY; the honest capture is NORMAL;
        a coalition at 35 % whose Wilson lower bound stays below 1/3 is NORMAL
-  CR6  D20: node alt list == settled non-main log blocks since the newest start -> NORMAL; GetInfo count != node
-       count -> ANOMALY; a settled alt block only in the log -> ANOMALY; an unsettled one (inside STABLE_LIMIT) and
+  CR6  D20: node alt list == settled non-main log blocks since the newest start -> NORMAL; GetInfo count above the
+       node count (r29: the count only grows, so an earlier GetInfo can only be lower; test_consensus_intel_r29 CP1) -> ANOMALY; a settled alt block only in the log -> ANOMALY; an unsettled one (inside STABLE_LIMIT) and
        one before the newest start are left out (NORMAL); a pre-r25 capture -> NO-DATA
   CR7  arrival lag: first_seen_ms wins over the log line when the node serves it
   CR8  the series row carries the collective share, the peer census and the r25 counters
@@ -168,7 +168,7 @@ def cr6(m):
     a1 = side_event(cap, 100, 'a1')
     a2 = side_event(cap, 400, 'a2', k='add')         # an old main that a reorg replaced (its line said "Chain extended")
     res['equal'] = G(analyse(m, r25(cap, alt_blocks=[a1, a2])))['D20-alt-blocks']['grade']
-    res['gi_mismatch'] = G(analyse(m, r25(cap, alt_blocks=[a1, a2], gi_count=0)))['D20-alt-blocks']['grade']
+    res['gi_mismatch'] = G(analyse(m, r25(cap, alt_blocks=[a1, a2], gi_count=5)))['D20-alt-blocks']['grade']   # r29: above the stats count
     res['only_log'] = G(analyse(m, r25(cap, alt_blocks=[a1])))['D20-alt-blocks']['grade']
     cap2 = copy.deepcopy(cap)
     side_event(cap2, len(base['headers']) - 3, 'fresh')  # 2 heights below the tip: not settled yet
@@ -256,8 +256,8 @@ MUTATIONS = [
      "                     0, A(R, 'block_rejected_series'),", 'D11 value ignores the counters'),
     ('CR5', "    io = [p for p in parts if p['role'] == 'integrator-only']", "    io = []", 'D19 never sees the coalition'),
     ('CR5', "    g = 'ANOMALY' if lo > 1 / 3 else 'NORMAL'", "    g = 'ANOMALY' if n_io / tf > 1 / 3 else 'NORMAL'", 'D19 ignores the confidence bound'),
-    ('CR6', "    bad = gi_n != alt.get('count') or only_log or only_node", "    bad = only_log or only_node", 'D20 ignores GetInfo'),
-    ('CR6', "    bad = gi_n != alt.get('count') or only_log or only_node", "    bad = gi_n != alt.get('count') or only_node", 'D20 ignores log-only alt blocks'),
+    ('CR6', "    bad = not count_ok or only_log or only_node", "    bad = only_log or only_node", 'D20 ignores GetInfo'),
+    ('CR6', "    bad = not count_ok or only_log or only_node", "    bad = not count_ok or only_node", 'D20 ignores log-only alt blocks'),
     ('CR6', "    hi_h = H[-1]['height'] - sl - 1", "    hi_h = H[-1]['height']", 'D20 compares unsettled heights'),
     ('CR6', "if e.get('k') in ('add', 'side') and (e.get('t') or 0) >= t0 and", "if e.get('k') in ('add', 'side') and", 'D20 counts blocks before the newest start'),
     ('CR7', "    rpc_fs = any(h.get('fs') for h in H)", "    rpc_fs = False", 'arrival lag never read from first_seen_ms'),

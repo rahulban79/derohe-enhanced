@@ -582,9 +582,36 @@ def opt_in_tests(root, tidx):
     return out
 
 
+OWNED = ('code_paths', 'gates')   # r29 (B170): the ownership fields a booked round's values are attributed through
+
+
+def areas_as_of(reg, rid):
+    """r29 (B170): the area list with each area's code_paths / gates as pinned for round `rid` (areas.json
+    rounds[].ownership), else the registry's current ones. A later ownership change (R28 merge: globals/ into
+    cryptosupply, two gates into forensics) then no longer re-attributes a booked round's values. Pure."""
+    ent = next((r for r in reg.get('rounds', []) if r.get('id') == rid), {})
+    pin = ent.get('ownership') or {}
+    return [{**a, **{k: list(pin[a['id']][k]) for k in OWNED if k in pin.get(a['id'], {})}} for a in reg['areas']]
+
+
+def pin_ownership(reg, rid, areas_then):
+    """r29 (B170): pin round `rid`'s ownership (in place) to `areas_then` (the area list as it was when the round was
+    booked) where it is not pinned yet; an existing pin is never rewritten. Returns the number of areas pinned."""
+    ent = next((r for r in reg.get('rounds', []) if r.get('id') == rid), None)
+    if ent is None:
+        return 0
+    own = ent.setdefault('ownership', {})
+    n = 0
+    for a in areas_then:
+        if a.get('id') and a['id'] not in own:
+            own[a['id']] = {k: list(a.get(k) or []) for k in OWNED}
+            n += 1
+    return n
+
+
 def auto_round(root, reg, rid, tidx):
     """{area id: {metric id: entry}} computed from one round's pipeline + go_mutate records and its gate cycle."""
-    areas = reg['areas']
+    areas = areas_as_of(reg, rid)
     rr = discover_round_records(root, reg, rid)
     out = {a['id']: {} for a in areas}
     runs = paths(root)['runs']
@@ -1500,6 +1527,8 @@ def record(root, rid):
             added += 1
         if not h:
             a['history'].pop(rid)
+    if added:                                         # r29 (B170): the values just booked keep today's ownership
+        pin_ownership(reg, rid, [a for a in reg['areas'] if (a.get('history') or {}).get(rid)])
     paths(root)['reg'].write_text(json.dumps(reg, indent=1, ensure_ascii=False) + '\n')
     return added, kept
 
@@ -1586,6 +1615,52 @@ def _opt(argv, name):
     return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else None
 
 
+def booked_at(log):
+    """r29 (B170): {(round id, area id): commit} of the NEWEST commit in `log` (newest first: [(commit, areas.json
+    dict)]) that changed that area's booked VALUES for that round (a first booking or a dated correction): the
+    ownership that area's values for the round were computed under. An anchor's line moving (fix-lines) re-books
+    nothing. Pure."""
+    def vals(d):
+        return {(rid, a.get('id')): json.dumps({m: (e or {}).get('value') for m, e in (ms or {}).items()}, sort_keys=True)
+                for a in d.get('areas', []) for rid, ms in (a.get('history') or {}).items()}
+    out = {}
+    for (c, d), (_, older) in zip(log, log[1:] + [(None, {'areas': []})]):
+        new, old = vals(d), vals(older)
+        for k, v in new.items():
+            if k not in out and old.get(k) != v:
+                out[k] = c
+    return out
+
+
+def pin_ownership_all(root, rids=None):
+    """r29 (B170): pin every booked round before the current one (or `rids`), area by area, to that area's
+    code_paths / gates at the commit that last changed its booked values for the round (booked_at over the git
+    history of harness/areas.json). Writes harness/areas.json. Returns (pins made, problems)."""
+    import subprocess
+    root = Path(root)
+    reg = load_registry(root)
+    cur = json.loads(paths(root)['round'].read_text()).get('current')
+    order = round_order(reg)
+    todo = rids or (order[:order.index(cur)] if cur in order else [])
+    commits = subprocess.run(['git', '-C', str(root), 'log', '--format=%H', '--', 'harness/areas.json'],
+                             capture_output=True, text=True).stdout.split()
+    log = []
+    for c in commits:
+        b = subprocess.run(['git', '-C', str(root), 'show', f'{c}:harness/areas.json'], capture_output=True, text=True)
+        if b.returncode == 0:
+            log.append((c, json.loads(b.stdout)))
+    at = booked_at(log)
+    snap = {c: {a.get('id'): a for a in d.get('areas', [])} for c, d in log}
+    n, probs = 0, []
+    for rid in todo:
+        then = [snap[c][aid] for (r, aid), c in sorted(at.items()) if r == rid and aid in snap[c]]
+        if not then:
+            probs.append(f'{rid}: no commit booked its history (left unpinned)')
+            continue
+        n += pin_ownership(reg, rid, then)
+    (root / 'harness/areas.json').write_text(json.dumps(reg, indent=1, ensure_ascii=False) + '\n')
+    return n, probs
+
 def main(argv):
     if argv[:1] == ['correct']:                      # r25 (B52)
         rest = [a for i, a in enumerate(argv[1:], 1) if not a.startswith('--') and argv[i - 1] not in
@@ -1628,6 +1703,10 @@ def main(argv):
         n, kept = record(ROOT, args[1])
         print(f'record {args[1]}: {n} value(s) added', *kept, sep='\n  ')
         return 0
+    if cmd == 'pin-ownership':                       # r29 (B170)
+        n, probs = pin_ownership_all(ROOT, args[1:] or None)
+        print(f'pin-ownership: {n} area pin(s) made', *probs, sep='\n  ')
+        return 2 if probs else 0
     if cmd == 'g23':
         ok, det = g23(ROOT)
         print(('PASS' if ok else 'FAIL') + '  G23 ' + det)

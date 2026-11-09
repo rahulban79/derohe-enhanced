@@ -32,7 +32,7 @@ never on the live tree, and none reaches the network, the live node or a path ou
   TK16 harness/kit/urlcheck.py (cache only, sandbox without network): a GitHub #L citation is found within ±3 lines,
        'line-mismatch' farther away, 'quote-not-found' absent, http-404 recorded; typographic quotes normalise; inline
        markup does not split words; the CLI summary counts.
-  TK17 B149 (lesson #80): tooling_intel.round_list_gaps is empty on the tree and names every round list a forged
+  TK17 B149 (lesson #80; r29 B166: one reader, roundlists.problems): tooling_intel.round_list_gaps is empty on the tree and names every round list a forged
        registry round lacks (areas.json rounds, LAST_CHOICES for a numeric id >= its smallest choice, ORDER); planned
        rounds are exempt; the record's targets name a gap. Fails the day a round is opened in round.json alone.
   TK18 N28-01: the HT11 mutation of test_harness_tooling_r26.py is derived from mine_evolution's last 'ORDER += [...]'
@@ -465,6 +465,8 @@ def tk16(P):
 
 # ───────────────────────────── TK17 B149 round lists ─────────────────────────────
 def tk17(P):
+    """r29 (B166): round_list_gaps is roundlists.problems over the given lists (one reader); its lines, the
+    unreadable-list skip and the one target (round_lists_missing) are checked here."""
     root = P['root']
     T = load(root / 'harness/intel/tooling_intel.py', 'tk17tool')
     reg = json.loads((ROOT / 'harness/round.json').read_text())
@@ -472,17 +474,19 @@ def tk17(P):
     choices = T.ledger_choices(ROOT)
     order = T.evolution_order(ROOT)
     tree = T.round_list_gaps(reg, areas, choices, order)
-    forged = {'rounds': [{'id': 'r20', 'status': 'measured'}, {'id': 'r23c', 'status': 'measured'},
+    forged = {'current': 'r29',
+              'rounds': [{'id': 'r20', 'status': 'measured'}, {'id': 'r23c', 'status': 'measured'},
                          {'id': 'r28', 'status': 'measured'}, {'id': 'r29', 'status': 'in-progress'},
                          {'id': 'r30', 'status': 'implemented'}, {'id': 'r31', 'status': 'planned'}]}
     g = T.round_list_gaps(forged, ['r20', 'r23c', 'r28'], (21, 28), ['R20', 'R23c', 'R28', 'R29', 'R31'])
-    want = ['r29: not in harness/areas.json rounds', 'r29: not in artifacts/src/gen_ledger.py LAST_CHOICES',
-            'r30: not in harness/areas.json rounds', 'r30: not in artifacts/src/gen_ledger.py LAST_CHOICES',
-            'r30: not in harness/miners/mine_evolution.py ORDER']
+    want = ['areas: r29 missing from harness/areas.json rounds', 'areas: r30 missing from harness/areas.json rounds',
+            'evolution: R30 missing from harness/miners/mine_evolution.py ORDER',
+            'ledger: 30 missing from artifacts/src/gen_ledger.py LAST_CHOICES (round r30)',
+            'ledger: 29 missing from artifacts/src/gen_ledger.py LAST_CHOICES (current round r29)']
     none_read = T.round_list_gaps(forged, None, None, None)
-    v = T.targets({'round_list_gaps': want[:1]})
+    v = T.targets({'round_lists_missing': want[:1]})
     ok = (tree == [] and choices and order and g == want and none_read == [] and any('B149' in x for x in v)
-          and T.targets({'round_list_gaps': []}) == [])
+          and T.targets({'round_lists_missing': []}) == [] and T.targets({'round_list_gaps': want[:1]}) == [])
     return ok, f'tree {tree} · forged {g} · unreadable {none_read} · target {v[:1]}'
 
 
@@ -667,14 +671,16 @@ MUTATIONS = [   # (repo-relative file, find, replace, why): applied in the mutan
     ('harness/kit/urlcheck.py', ".replace('“', '\"').replace('”', '\"')", "", 'r28 TK16: typographic quotes are not normalised'),
     ('harness/kit/urlcheck.py', "            return (False, 'line-mismatch', h) if q in norm(body) else (False, 'quote-not-found', h)",
      "            return (False, 'quote-not-found', h)", 'r28 TK16: a quote elsewhere in the file reads not found'),
-    ('harness/intel/tooling_intel.py', "        if not rid or st == 'planned':\n            continue",
-     "        if not rid:\n            continue", 'r28 TK17: a planned round must already be in every list'),
-    ('harness/intel/tooling_intel.py', "        if areas_rounds is not None and rid not in areas_rounds:",
-     "        if False:", 'r28 TK17: areas.json rounds is not checked (B149)'),
-    ('harness/intel/tooling_intel.py', "num.isdigit() and int(num) >= min(choices) and int(num) not in choices:",
-     "num.isdigit() and int(num) not in choices:", 'r28 TK17: a round older than the ledger pages is required there'),
-    ('harness/intel/tooling_intel.py', "    if isinstance(k.get('round_list_gaps'), list) and k['round_list_gaps']:",
-     "    if False:", 'r28 TK17: a round-list gap is not a target'),
+    ('harness/kit/roundlists.py', "    nonplanned = [r for r in L['registry'] if r not in L['planned']]",
+     "    nonplanned = list(L['registry'])", 'r28 TK17: (r29 B166) a planned round must already be in every list'),
+    ('harness/kit/roundlists.py', "rid != cur and k >= lo and k not in L['ledger']:", "rid != cur and k not in L['ledger']:",
+     'r28 TK17: (r29 B166) a round older than the ledger pages is required there'),
+    ('harness/kit/roundlists.py', "        if lo is not None and k is not None and rid != cur", "        if False and k is not None and rid != cur",
+     'r28 TK17: (r29 B166) a non-current round missing from LAST_CHOICES passes'),
+    ('harness/intel/tooling_intel.py', "    skip = {name for name, x in (('areas', areas_rounds), ('ledger', choices), ('evolution', order)) if x is None}",
+     "    skip = set()", 'r28 TK17: (r29 B166) an unreadable list reports every round missing'),
+    ('harness/intel/tooling_intel.py', "    if isinstance(k.get('round_lists_missing'), list) and k['round_lists_missing']:",
+     "    if False:", 'r28 TK17: (r29 B166) a round-list gap is not a target'),
     ('harness/kat/test_harness_tooling_r26.py', "    m = lines[-1]\n", "    m = lines[0]\n", 'r28 TK18: the first ORDER line is mutated'),
     ('harness/kat/test_harness_tooling_r26.py', "'ORDER += [' + ', '.join(items[:-1]) + ']'", "'ORDER += [' + ', '.join(items) + ']'",
      'r28 TK18: the HT11 mutation is a no-op'),

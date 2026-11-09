@@ -37,7 +37,7 @@
 //     fee/size, compared by cross multiplication, not the mempool's integer FeesPerByte) can be evicted to make room;
 //     otherwise it is refused with ErrPoolFull BEFORE any proof is verified. The default cap, POOL_CAP_BLOCKS block
 //     templates of transactions, is the most the pool can ever clear before HouseKeeping purges a tx: a tx built at
-//     tip T has reference height ~T, HouseKeeping (blockchain.go:284, mempool.go:106) drops it once the stable height
+//     tip T has reference height ~T, HouseKeeping (blockchain.go:284, mempool.go:111) drops it once the stable height
 //     (chain height - STABLE_LIMIT) reaches T, i.e. after at most STABLE_LIMIT more blocks, and each block takes at
 //     most BLOCK_TX_CAPACITY bytes. So at the default a tx is refused only when at least that many better-paying
 //     bytes are already waiting. Not scored against a relaying peer (honest peers relay low fees).
@@ -176,9 +176,9 @@ func SetMinedSource(f func() map[crypto.Hash]bool) {
 // SetProtectedSource names the txids carried by the block templates this node handed to miners (r24 verify-txpool).
 // They are never evicted: Accept_new_block completes a submitted final miniblock by looking every template txid up in
 // the mempool, regpool or block store (blockchain/miner_block.go:529-547), so evicting one of them makes the found
-// block fail with "Tx not found in pool or DB". The template ranks by the integer FeesPerByte (every mainnet tx ranks
-// 0, B19) while eviction ranks by exact fee rate, so the lowest exact payers are as likely as any to be in a
-// template. They still count toward the cap. derod passes cmd/derod/rpc.TemplateTxs.
+// block fail with "Tx not found in pool or DB". The template ranks by milli-unit fee per byte (r29, B19; before it the
+// integer FeesPerByte, where every mainnet tx ranked 0) while eviction ranks by exact fee rate, so a template can
+// still hold txs eviction would rank lowest. They still count toward the cap. derod passes cmd/derod/rpc.TemplateTxs.
 func SetProtectedSource(f func() map[crypto.Hash]bool) {
 	p.Lock()
 	defer p.Unlock()

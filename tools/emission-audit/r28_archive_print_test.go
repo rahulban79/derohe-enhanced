@@ -83,7 +83,7 @@ func TestR28ArchiveMainPrintsPayeeLineEndToEnd(t *testing.T) {
 	r, w, _ := os.Pipe()
 	stdout := os.Stdout
 	os.Stdout = w
-	rc := archiveMain(&emission.DirSource{BLTX: filepath.Join(dir, "bltx_store")}, tm, 50, 0, emission.Params{}, jsonOut, "", 0)
+	rc := archiveMain(&emission.DirSource{BLTX: filepath.Join(dir, "bltx_store")}, tm, 50, 0, emission.Params{}, jsonOut, "", "", 0)
 	w.Close()
 	os.Stdout = stdout
 	got, _ := io.ReadAll(r)

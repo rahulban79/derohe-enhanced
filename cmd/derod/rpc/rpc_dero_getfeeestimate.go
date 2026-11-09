@@ -20,11 +20,11 @@ package rpc
 // node's own selection rule. Read-only; nothing here is consensus-visible.
 //
 // How a block template picks transactions (blockchain/miner_block.go:228-247): Mempool_List_TX_SortedInfo orders the
-// ready mempool by FeesPerByte DESCENDING, and the template takes them in that order until the next one would push
-// the block past STARGATE_HE_MAX_BLOCK_SIZE - 102400 bytes (then it stops). FeesPerByte is an INTEGER division
-// (blockchain/mempool/mempool.go:184, fees / size): a tx whose fee is smaller than its size in bytes ranks 0, like every
-// other such tx, in no particular order. Paying more therefore changes a tx's place only in whole steps of one atomic
-// unit per byte (1024 per KB, 51x the FEE_PER_KB floor of 20). The floor itself is Calculate_TX_fee
+// ready mempool by fee per byte DESCENDING, and the template takes them in that order until the next one would push
+// the block past STARGATE_HE_MAX_BLOCK_SIZE - 102400 bytes (then it stops). Since r29 (B19, user decision 2026-11-08)
+// the sort key is MilliFeesPerByte (blockchain/mempool/mempool.go:190-194, fees * 1000 / size, saturating); FeesPerByte,
+// read here, stays the INTEGER fees / size (mempool.go:189). The estimate below is in whole units per byte, so it is
+// sufficient but may exceed the milli-unit cutoff by up to one unit per byte. The floor itself is Calculate_TX_fee
 // (blockchain/tx_fees.go): FEE_PER_KB for every started KB.
 //
 // So the estimate is: while the ready pool fits in one block, the floor is enough (next_block_fee_per_byte 0); when it

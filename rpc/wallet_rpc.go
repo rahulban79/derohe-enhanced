@@ -179,10 +179,13 @@ func FormatMoney12(amount uint64) string {
 }
 
 // format money with specific precision
+// r28 (B144, the copy of globals.FormatMoneyPrecision): the quotient was computed at big.Float's default 64-bit
+// precision: a wrong 5th decimal for ~16 % of amounts >= 2^63 and wrong digits past the 5th decimal at precision 8/12.
+// 128 bits make every wrapper precision exact; rpc/r28_money_copy_test.go keeps the two copies one.
 func FormatMoneyPrecision(amount uint64, precision int) string {
-	hard_coded_decimals := new(big.Float).SetInt64(100000)
-	float_amount, _, _ := big.ParseFloat(fmt.Sprintf("%d", amount), 10, 0, big.ToZero)
-	result := new(big.Float)
+	hard_coded_decimals := new(big.Float).SetPrec(128).SetInt64(100000)
+	float_amount := new(big.Float).SetPrec(128).SetUint64(amount)
+	result := new(big.Float).SetPrec(128)
 	result.Quo(float_amount, hard_coded_decimals)
 	return result.Text('f', precision) // 5 is display precision after floating point
 }

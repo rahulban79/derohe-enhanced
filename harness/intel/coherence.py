@@ -927,7 +927,8 @@ def check_srcarch(c):
         return
     tsv = c.text('harness/runtime/evolution_git.tsv') or ''
     have = set(re.findall(r'^C\t\d+\t([0-9a-f]+)\t', tsv, re.M))
-    log = git(c, 'log', '--format=%h%x09%s', '-n', '400')
+    # r29 (B200): merges are not evolution commits (mine_evolution walks --no-merges and names them on the base row)
+    log = git(c, 'log', '--no-merges', '--format=%h%x09%s', '-n', '400')
     if log is None:
         return
     lab = re.escape(c.label)

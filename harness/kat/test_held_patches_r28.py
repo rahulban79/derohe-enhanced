@@ -61,9 +61,9 @@ def copy_root(dst):
     return dst
 
 
-def patches(root):
-    """{name: text} of the held patches and the set of names some other held patch supersedes"""
-    ps = {p.name: p.read_text(encoding='utf-8') for p in sorted((Path(root) / HELD).glob('*.patch'))}
+def patches(root, sub=''):
+    """{name: text} of the held patches (sub='landed': the landed ones) and the set of names some other one supersedes"""
+    ps = {p.name: p.read_text(encoding='utf-8') for p in sorted((Path(root) / HELD / sub).glob('*.patch'))}
     sup = {s for n, t in ps.items() for s in SUPERSEDES_RX.findall(t) if s != n}
     return ps, sup
 
@@ -100,11 +100,22 @@ def sha(p):
 
 
 def hp1(P):
+    # r29 (decisions, B144 landed): with every held patch landed the live set may be empty; each LANDED patch that no
+    # other landed patch supersedes must still be in the tree, i.e. apply in reverse (switch hunk excluded, HP3's)
     root = P['root']
     ps, sup = patches(root)
-    if not ps:
-        return False, 'no held patch found'
+    lps, lsup = patches(root, 'landed')
+    if not ps and not lps:
+        return False, 'no held or landed patch found'
     bad = []
+    for n, txt in lps.items():
+        if n in lsup:
+            continue
+        sw = switch_of(txt)
+        ex = [f'--exclude={sw[0]}'] if sw else []
+        r = subprocess.run(['git', 'apply', '--check', '--reverse', *ex, '-'], input=txt, text=True, cwd=root, capture_output=True)
+        if r.returncode != 0:
+            bad.append(f'landed/{n} NOT IN THE TREE: {r.stderr.strip()[:200]}')
     for n, txt in ps.items():
         if n in sup:
             continue
@@ -115,14 +126,25 @@ def hp1(P):
         if r.returncode != 0:
             bad.append(f'{n}: {r.stderr.strip()[:200]}')
     live = sorted(set(ps) - sup)
-    return not bad, f'live {live} superseded {sorted(sup)}' + (f' NOT APPLICABLE {bad}' if bad else '')
+    return not bad, f'live {live} superseded {sorted(sup)} landed {sorted(set(lps) - lsup)}' + (f' NOT APPLICABLE {bad}' if bad else '')
+
+
+def landed_targets(root):
+    ps, sup = patches(root, 'landed')
+    return sorted({t for n, txt in ps.items() if n not in sup for t in TARGET_RX.findall(txt) if not t.endswith('_test.go')})
 
 
 def hp2(P):
+    # r29: a live target no dataset pins = an obsolete hold; a LANDED target no dataset pins = a landing the forensics
+    # versions lost track of (the next version must re-pin it, rft §0.8): both fail
     pins = manifest_pins(P['root'])
     tg = live_targets(P['root'])
+    lt = landed_targets(P['root'])
     obsolete = [t for t in tg if t not in pins]
-    return bool(tg) and not obsolete, f'targets {tg}' + (f' NOT PINNED (hold obsolete: land it) {obsolete}' if obsolete else ' all pinned')
+    lost = [t for t in lt if t not in pins]
+    return bool(tg or lt) and not obsolete and not lost, f'targets {tg} landed {lt}' + \
+        (f' NOT PINNED (hold obsolete: land it) {obsolete}' if obsolete else '') + \
+        (f' LANDED BUT UNPINNED {lost}' if lost else '') + ('' if obsolete or lost else ' all pinned')
 
 
 def hp3(P):
@@ -215,18 +237,19 @@ OWNERS = {f'r28 HP{i}': [f'HP{i}'] for i in range(1, 5)}
 MUTATIONS = [   # (repo-relative file in the copy, find, replace, why: 'r28 HP<n>: ...')
     # R28 merge: B147 landed, so the globals mutations are re-anchored on the one live patch (rpc copy) and on the
     # landed switch (rft §10 'an edit moves other KATs' anchors': re-anchored, never deleted)
-    (f'{HELD}/r28_rpc_money_copy.patch', ' func FormatMoneyPrecision(', ' func FormatMoneyPrecision2(',
-     'r28 HP1: a held patch whose context no longer matches the tree'),
+    # r29 (B144 landed): re-anchored on the landed rpc copy, never deleted
+    ('rpc/wallet_rpc.go', 'float_amount := new(big.Float).SetPrec(128).SetUint64(amount)',
+     'float_amount := new(big.Float).SetUint64(amount)',
+     'r28 HP1: a landed patch that is no longer in the tree'),
     ('forensics/*/manifest.json', '"rpc/wallet_rpc.go":', '"rpc/wallet_rpc.go.unpinned":',  # a glob: every manifest
      'r28 HP2: a held target that no dataset pins any more (the hold is obsolete)'),
     (SWITCH, 'const b147_landed = true', 'const b147_landed = false',
      'r28 HP3: a landed patch whose switch is back off'),
-    ('rpc/r28_rpc_copy_state_test.go', 'const rpc_copy_landed = false', 'const rpc_copy_landed = true',
-     'r28 HP3: the rpc copy switch on over the pinned (held) bytes'),
-    (f'{HELD}/r28_rpc_money_copy.patch', '# Switch: rpc/r28_rpc_copy_state_test.go rpc_copy_landed\n', '',
-     'r28 HP3: a live held patch that names no switch'),
-    ('rpc/wallet_rpc.go', 'package rpc\n', 'package rpc\n\n// edited outside the landing\n',
-     'r28 HP3: a pinned target changed while the switch says held'),
+    ('rpc/r28_rpc_copy_state_test.go', 'const rpc_copy_landed = true', 'const rpc_copy_landed = false',
+     'r28 HP3: the rpc copy switch back off over the landed bytes'),
+    (f'{HELD}/landed/r28_rpc_money_copy.patch', '# Switch: rpc/r28_rpc_copy_state_test.go rpc_copy_landed\n',
+     '# Switch: rpc/r28_rpc_copy_state_test.go rpc_copy_landedX\n',
+     'r28 HP3: a landed patch whose switch names a const the tree does not have'),
     ('harness/intel/tooling_intel.py', "        for sec in pins.values():\n            if isinstance(sec, dict):",
      "        for sec in ():\n            if isinstance(sec, dict):",
      'r28 HP4: content_pinned back to the regex-only listing (decoder inputs missed)'),

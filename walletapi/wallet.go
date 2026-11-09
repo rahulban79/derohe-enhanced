@@ -30,6 +30,7 @@ import (
 
 	"github.com/deroproject/derohe/cryptography/bn256"
 	"github.com/deroproject/derohe/cryptography/crypto"
+	"github.com/deroproject/derohe/globals"
 	"github.com/deroproject/derohe/rpc"
 	"github.com/deroproject/derohe/transaction"
 	"github.com/deroproject/derohe/walletapi/mnemonics"
@@ -674,12 +675,10 @@ func FormatMoney(amount uint64) string {
 }
 
 // format money with specific precision
+// r29 (B144): this copy divided at big.Float's default 64-bit precision, so large amounts printed wrong digits past
+// the 5th decimal; it now uses the one exact implementation in globals (128-bit quotient, r27/r28 B147).
 func FormatMoneyPrecision(amount uint64, precision int) string {
-	hard_coded_decimals := new(big.Float).SetInt64(100000)
-	float_amount, _, _ := big.ParseFloat(fmt.Sprintf("%d", amount), 10, 0, big.ToZero)
-	result := new(big.Float)
-	result.Quo(float_amount, hard_coded_decimals)
-	return result.Text('f', precision) // 5 is display precision after floating point
+	return globals.FormatMoneyPrecision(amount, precision)
 }
 
 // this basically does a  Schnorr Signature on random information for registration

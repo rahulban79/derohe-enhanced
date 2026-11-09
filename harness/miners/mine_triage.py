@@ -226,7 +226,9 @@ def main(argv=None):
            (TE, 'func Extract_signer(tx *transaction.Transaction) (signer [33]byte, err error) {'),
            (TE, '} else { //  we could not extract signer, we burn all the funds'),
            (SIM, 'panic(err1) // only disk corruption can reach here'),
-           (TE, 'logger.V(2).Error(nil, "Recover while executing SC "')]
+           # r29 (B157, user decision (a)): the recover logs at V(2) Info now (logr Error ignored V); the anchor follows the
+           # line, and its loss had dropped this row from the page (verify_deroarch DK25 12 vs 15; KAT test_triage_anchors_r29)
+           (TE, 'logger.V(2).Info("Recover while executing SC ", "txid", txhash, "error", r')]
           + [fact(f'tx {t} ') for t in txs],
           fix=('Logging only (consensus guard PASS): the recover recognises the zero-signer case by its keyhash and logs one '
                'V(1) line to the file log instead of an ERROR with a 3 KB stack. Fee kept, burn destroyed, exactly as before.',

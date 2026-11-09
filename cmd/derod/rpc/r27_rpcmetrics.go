@@ -103,7 +103,7 @@ var rpc_counters_preregistered = []string{
 	`rpc_params_refused_total`,
 	`rpc_limited_total`,                      // websocket_server.go, ws_hardening.go
 	`getwork_template_refresh_resends_total`, // job_dispatch.go
-	`miniblock_ours_submitted_total`,         // mining_outcome.go (miniblock_ours_orphaned_total{reason} stays lazy: open label)
+	`miniblock_ours_submitted_total`,         // mining_outcome.go (miniblock_ours_orphaned_total{reason}: r29_lazy_preregister.go)
 	`miniblock_ours_paid_total`,
 }
 

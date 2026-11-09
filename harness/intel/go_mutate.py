@@ -4,7 +4,8 @@
 For each entry of go_mutations.json: apply the source edit (which undoes a fix or weakens a rule), run the one test
 that guards it, and restore the file byte-for-byte whatever happens. A mutation that leaves its test green is
 MISSED: that fix is not really tested. A mutation whose `find` text is gone is STALE: the spec no longer matches the
-code and must be updated, never skipped silently.
+code and must be updated, never skipped silently. r29 (B168): so is a mutation whose test name the package no longer
+defines (`go test -list .` before the run); it used to pass over '[no tests to run]' and read MISSED.
 
 The restore-check after the mutations runs only the mutation tests of each package (r19), so an upstream test that
 is red on the pristine base cannot break it. That made those failures invisible. --baseline REV (R20) adds a separate
@@ -48,6 +49,23 @@ def mutation_result(rc, text):
     if BUILD_FAILED.search(text or ''):
         return 'INVALID'
     return 'CAUGHT'
+
+
+TEST_NAME_RX = re.compile(r'(Test|Fuzz|Example|Benchmark)\w*')
+
+
+def listed_tests(text):
+    """r29 (B168): the names `go test -list .` printed, one per line (the trailing 'ok <pkg>' line is not a name). Pure."""
+    return {l.strip() for l in (text or '').splitlines() if TEST_NAME_RX.fullmatch(l.strip())}
+
+
+def missing_tests(test, listed):
+    """r29 (B168): the names of a mutation's `test` (an exact name or an a|b alternation) that the package does not
+    define, [] when `listed` is None (the list could not be read: never STALE on a guess). A mutation whose test is
+    gone runs `go test -run ^X$` over no test, which passes with '[no tests to run]' and was counted MISSED. Pure."""
+    if listed is None:
+        return []
+    return [n for n in str(test).split('|') if n and n not in listed]
 
 
 def _fsync_write(path, data):
@@ -245,12 +263,22 @@ def main():
     if a.only:
         spec['mutations'] = [m for m in spec['mutations'] if m['id'].startswith(a.only)]
     res = []
+    lists = {}                                            # r29 (B168): (pkg, race) -> the package's test names
     for m in spec['mutations']:
         p = ROOT / m['file']
         orig = p.read_bytes()
         text = orig.decode()
         if text.count(m['find']) != 1:
             res.append({**m, 'result': 'STALE', 'why': f"find text occurs {text.count(m['find'])} time(s)"})
+            continue
+        key = (m['pkg'], bool(m.get('race')))
+        if key not in lists:
+            lr = subprocess.run(['go', 'test', m['pkg'], '-list', '.'] + (['-race'] if m.get('race') else []), cwd=ROOT,
+                                capture_output=True, text=True, timeout=900)
+            lists[key] = listed_tests(lr.stdout) if lr.returncode == 0 else None
+        gone = missing_tests(m['test'], lists[key])
+        if gone:
+            res.append({**m, 'result': 'STALE', 'why': f"test {gone} is not in `go test {m['pkg']} -list .` (renamed or removed)"})
             continue
         try:
             journal_begin(p, orig)

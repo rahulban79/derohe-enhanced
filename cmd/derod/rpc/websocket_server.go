@@ -453,5 +453,7 @@ func (d dummyassigner) Names() []string {
 var bridge = jhttp.NewBridge(d, &jhttp.BridgeOptions{Server: options})
 
 func translate_http_to_jsonrpc_and_vice_versa(w http.ResponseWriter, r *http.Request) {
-	bridge.ServeHTTP(w, r)
+	bw := &bridge_writer{ResponseWriter: w} // r29 B175: the bridge's own error answers become counted JSON-RPC bodies
+	bridge.ServeHTTP(bw, r)
+	bw.finish()
 }

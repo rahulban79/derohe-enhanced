@@ -12271,8 +12271,8 @@
    "file": "rpc/wallet_rpc.go",
    "pkg": "./rpc/",
    "test": "TestR28RPCFormatMoneyCopy",
-   "find": "\tresult := new(big.Float)\n\tresult.Quo(float_amount, hard_coded_decimals)",
-   "replace": "\tresult := new(big.Float).SetPrec(128) // r28 mutated: one copy fixed\n\tresult.Quo(float_amount, hard_coded_decimals)"
+   "find": "\tresult := new(big.Float).SetPrec(128)\n\tresult.Quo(float_amount, hard_coded_decimals)",
+   "replace": "\tresult := new(big.Float).SetPrec(64) // r28 mutated (re-anchored r29 after the B144 landing): the quotient at 64 bits\n\tresult.Quo(float_amount, hard_coded_decimals)"
   },
   {
    "id": "gm-r28-glue-global-nhooyr-wasm-limit",
@@ -12713,6 +12713,254 @@
    "test": "TestR28dRegistrationPoWChecks",
    "find": "\t\t\t\tif chain.simulator == false && tx_hash[0] != 0 && tx_hash[1] != 0 {",
    "replace": "\t\t\t\tif chain.simulator == false && (tx_hash[0] != 0 || tx_hash[1] != 0 || tx_hash[2] != 0) { // r28d mutated: block demands the pool's three zero bytes (the pin must notice, B182)"
+  },
+  {
+   "id": "gm-r29-dc-b19-sort-integer",
+   "file": "blockchain/mempool/mempool.go",
+   "pkg": "./blockchain/mempool/",
+   "test": "TestR29PoolOrdersByMilliFeePerByte",
+   "find": "sort.SliceStable(data, func(i, j int) bool { return data[i].MilliFeesPerByte > data[j].MilliFeesPerByte })",
+   "replace": "sort.SliceStable(data, func(i, j int) bool { return data[i].FeesPerByte > data[j].FeesPerByte }) // r29 mutated: integer rank again (B19)"
+  },
+  {
+   "id": "gm-r29-dc-b19-milli-not-copied",
+   "file": "blockchain/mempool/mempool.go",
+   "pkg": "./blockchain/mempool/",
+   "test": "TestR29PoolOrdersByMilliFeePerByte",
+   "find": "MilliFeesPerByte: v.MilliFEEperBYTE, ",
+   "replace": "/* r29 mutated: sort key not copied (B19) */ "
+  },
+  {
+   "id": "gm-r29-dc-b19-no-saturation",
+   "file": "blockchain/mempool/mempool.go",
+   "pkg": "./blockchain/mempool/",
+   "test": "TestR29PoolOrdersByMilliFeePerByte",
+   "find": "object.MilliFEEperBYTE = ^uint64(0)",
+   "replace": "object.MilliFEEperBYTE = 0 // r29 mutated: an overflowing fee ranks last (B19)"
+  },
+  {
+   "id": "gm-r29-dc-b144-rpc-quotient-64bit",
+   "file": "rpc/wallet_rpc.go",
+   "pkg": "./rpc/",
+   "test": "TestR28RPCFormatMoneyCopy",
+   "find": "\thard_coded_decimals := new(big.Float).SetPrec(128).SetInt64(100000)\n\tfloat_amount := new(big.Float).SetPrec(128).SetUint64(amount)\n\tresult := new(big.Float).SetPrec(128)",
+   "replace": "\thard_coded_decimals := new(big.Float).SetPrec(64).SetInt64(100000)\n\tfloat_amount := new(big.Float).SetPrec(64).SetUint64(amount)\n\tresult := new(big.Float).SetPrec(64) // r29 mutated: the quotient back at 64 bits (B144)"
+  },
+  {
+   "id": "gm-r29-dc-b141-never-refuses",
+   "file": "cmd/derod/config_env_r29.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR29RefuseToStartOnConsensusEnvOverride",
+   "find": "if consensus_env_overrides == 0 {",
+   "replace": "if consensus_env_overrides >= 0 { // r29 mutated: overrides never refuse (B141)"
+  },
+  {
+   "id": "gm-r29-dc-b141-check-failure-ignored",
+   "file": "cmd/derod/config_env_r29.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR29RefuseToStartOnConsensusEnvOverride",
+   "find": "if consensus_env_check_failed {",
+   "replace": "if false && consensus_env_check_failed { // r29 mutated: fail open (B141)"
+  },
+  {
+   "id": "gm-r29-dc-b141-not-wired",
+   "file": "cmd/derod/main.go",
+   "pkg": "./cmd/derod/",
+   "test": "TestR29RefuseToStartOnConsensusEnvOverride",
+   "find": "\trefuse_on_consensus_env_overrides(os.Exit)\n",
+   "replace": "\t// r29 mutated: refusal not wired (B141)\n"
+  },
+  {
+   "id": "gm-r29-dc-b157-error-again",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR29SCRecoverLogIsVerbosityGated",
+   "find": "logger.V(2).Info(\"Recover while executing SC \", \"txid\", txhash, \"error\", r,",
+   "replace": "logger.V(2).Error(nil, \"Recover while executing SC \", \"txid\", txhash, \"error\", r,"
+  },
+  {
+   "id": "gm-r29-cd-a15-u-term",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR29AssumptionAnchorsResolve",
+   "find": "\t\tsigmasupport.A_u.Add(new(bn256.G1).Set(sigmasupport.A_u), new(bn256.G1).ScalarMult(proof.u, proof_c_neg))",
+   "replace": "\t\tsigmasupport.A_u.Add(new(bn256.G1).Set(sigmasupport.A_u), new(bn256.G1).ScalarMult(proof.u, proof.c)) // r29 mutated: the A15 anchor text changes (B190)"
+  },
+  {
+   "id": "gm-r29-cd-a20-mu-line-moved",
+   "file": "cryptography/crypto/proof_verify.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR29AssumptionAnchorsResolve",
+   "find": "\tP = new(bn256.G1).Add(P, new(bn256.G1).ScalarMult(gparams.H, new(big.Int).Mod(new(big.Int).Neg(proof.mu), bn256.Order)))",
+   "replace": "\t// r29 mutated: one line inserted, the A20/A10 anchor at :452 moves (B190)\n\tP = new(bn256.G1).Add(P, new(bn256.G1).ScalarMult(gparams.H, new(big.Int).Mod(new(big.Int).Neg(proof.mu), bn256.Order)))"
+  },
+  {
+   "id": "gm-r29-lo-b176-own-help-not-typed",
+   "file": "metrics/registry_r28.go",
+   "pkg": "./metrics/",
+   "test": "TestR29OwnHelpWithoutTypeGetsRegistryType",
+   "find": "\t\t\t\tif !typed[f.Name] {",
+   "replace": "\t\t\t\tif !typed[f.Name] && !done[f.Name] { // r29 mutated: a family with its own HELP stays untyped (B176)"
+  },
+  {
+   "id": "gm-r29-lo-b176-own-type-doubled",
+   "file": "metrics/registry_r28.go",
+   "pkg": "./metrics/",
+   "test": "TestR29OwnHelpWithoutTypeGetsRegistryType",
+   "find": "\t\t\t\t\ttyped[fields[2]] = true",
+   "replace": "\t\t\t\t\t_ = fields // r29 mutated: an own TYPE is not remembered (second TYPE, B176)"
+  },
+  {
+   "id": "gm-r29-lo-b152-busy-not-preregistered",
+   "file": "p2p/r29_lazy_preregister.go",
+   "pkg": "./p2p/",
+   "test": "TestR29LazyP2PFamiliesVisibleAtZero",
+   "find": "\t\tmetrics.Set.GetOrCreateCounter(`p2p_busy_rejections_total{method=\"` + m + `\"}`)",
+   "replace": "\t\t_ = m // r29 mutated: busy rejections stay lazy (B152)"
+  },
+  {
+   "id": "gm-r29-lo-b152-bootstrap-not-preregistered",
+   "file": "p2p/r29_lazy_preregister.go",
+   "pkg": "./p2p/",
+   "test": "TestR29LazyP2PFamiliesVisibleAtZero",
+   "find": "\tmetrics.Set.GetOrCreateFloatCounter(\"p2p_bootstrap_wait_seconds_total\")",
+   "replace": "\t// r29 mutated: bootstrap wait stays lazy (B152)"
+  },
+  {
+   "id": "gm-r29-lo-b152-busy-method-list-short",
+   "file": "p2p/r29_lazy_preregister.go",
+   "pkg": "./p2p/",
+   "test": "TestR29BusyMethodsAreTheHeavyCallSites",
+   "find": "var busy_methods = []string{\"Peer.Chain\", \"Peer.ChangeSet\", \"Peer.GetObject\", \"Peer.TreeSection\"}",
+   "replace": "var busy_methods = []string{\"Peer.Chain\", \"Peer.ChangeSet\", \"Peer.GetObject\"} // r29 mutated: one call site missing (B152)"
+  },
+  {
+   "id": "gm-r29-lo-b152-fail-reason-missing",
+   "file": "p2p/r29_lazy_preregister.go",
+   "pkg": "./p2p/",
+   "test": "TestR29BroadcastFailReasonsClosedSet",
+   "find": "var broadcast_fail_reasons = []string{\"duplicate\", \"timeout\", \"peer_behind\", \"peer_unregistered\", \"connection\", \"other\"}",
+   "replace": "var broadcast_fail_reasons = []string{\"duplicate\", \"timeout\", \"peer_behind\", \"connection\", \"other\"} // r29 mutated (B152)"
+  },
+  {
+   "id": "gm-r29-lo-b152-orphaned-not-preregistered",
+   "file": "cmd/derod/rpc/r29_lazy_preregister.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR29LazyFamiliesOnAFreshPage",
+   "find": "\t\tmetrics.Set.GetOrCreateCounter(`miniblock_ours_orphaned_total{reason=\"` + r + `\"}`)",
+   "replace": "\t\t_ = r // r29 mutated: orphaned stays lazy (B152)"
+  },
+  {
+   "id": "gm-r29-lo-b152-mempool-not-preregistered",
+   "file": "cmd/derod/rpc/r29_lazy_preregister.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR29LazyFamiliesOnAFreshPage",
+   "find": "\tmetrics.Set.GetOrCreateCounter(\"mempool_discarded_total\")",
+   "replace": "\t// r29 mutated: mempool_discarded stays lazy (B152)"
+  },
+  {
+   "id": "gm-r29-lo-b152-orphaned-reason-list",
+   "file": "cmd/derod/rpc/r29_lazy_preregister.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR29OrphanedReasonsAreResolveFates",
+   "find": "var orphaned_reasons = []string{\"block_race\", \"slots_full\", \"not_included\"}",
+   "replace": "var orphaned_reasons = []string{\"block_race\", \"not_included\"} // r29 mutated (B152)"
+  },
+  {
+   "id": "gm-r29-lo-b175-bridge-not-wrapped",
+   "file": "cmd/derod/rpc/websocket_server.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR29BridgeParseErrorCountedAsJSONRPC",
+   "find": "\tbridge.ServeHTTP(bw, r)",
+   "replace": "\tbridge.ServeHTTP(w, r) // r29 mutated: the bridge's own errors bypass the writer (B175)"
+  },
+  {
+   "id": "gm-r29-lo-b175-not-counted",
+   "file": "cmd/derod/rpc/r29_bridge_errors.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR29BridgeParseErrorCountedAsJSONRPC",
+   "find": "\tcount_error_code(e)\n\tbody, _ := json.Marshal(map[string]interface{}{\"jsonrpc\": \"2.0\", \"id\": nil, \"error\": e})\n\tb.ResponseWriter.Header().Set(\"Content-Type\", \"application/json\")",
+   "replace": "\t_ = count_error_code // r29 mutated: the bridge error is not counted (B175)\n\tbody, _ := json.Marshal(map[string]interface{}{\"jsonrpc\": \"2.0\", \"id\": nil, \"error\": e})\n\tb.ResponseWriter.Header().Set(\"Content-Type\", \"application/json\")"
+  },
+  {
+   "id": "gm-r29-lo-b175-status-changed",
+   "file": "cmd/derod/rpc/r29_bridge_errors.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR29BridgeParseErrorCountedAsJSONRPC",
+   "find": "\tb.ResponseWriter.Header().Set(\"Content-Type\", \"application/json\")\n\tb.ResponseWriter.WriteHeader(http.StatusInternalServerError)",
+   "replace": "\tb.ResponseWriter.Header().Set(\"Content-Type\", \"application/json\")\n\tb.ResponseWriter.WriteHeader(http.StatusOK) // r29 mutated: the bridge's 500 becomes 200 (B175)"
+  },
+  {
+   "id": "gm-r29-wg-b144-walletapi-64bit-quotient",
+   "file": "walletapi/wallet.go",
+   "pkg": "./walletapi/",
+   "test": "TestR29WalletFormatMoneyExactAt12_8_5",
+   "find": "\treturn globals.FormatMoneyPrecision(amount, precision)\n",
+   "replace": "\t_ = globals.FormatMoneyPrecision // keeps the import\n\treturn new(big.Float).Quo(new(big.Float).SetUint64(amount), new(big.Float).SetInt64(100000)).Text('f', precision) // r29 mutated: the old 64-bit quotient (B144)\n"
+  },
+  {
+   "id": "gm-r29-wg-b144-walletapi-precision-ignored",
+   "file": "walletapi/wallet.go",
+   "pkg": "./walletapi/",
+   "test": "TestR29WalletFormatMoneyEqualsGlobals",
+   "find": "\treturn globals.FormatMoneyPrecision(amount, precision)\n",
+   "replace": "\treturn globals.FormatMoneyPrecision(amount, 5) // r29 mutated: precision ignored (B144)\n"
+  },
+  {
+   "id": "gm-r29-wg-b178-scinvoke-fees-dropped-e2e",
+   "file": "walletapi/rpcserver/rpc_scinvoke.go",
+   "pkg": "./walletapi/rpcserver/",
+   "test": "TestR29ScInvokeFeesReachThePoolOnASimulatorChain",
+   "find": "\ttp.Fees = p.Fees // optional;",
+   "replace": "\t_ = p.Fees // r29 mutated: fees not passed on, end to end (B178);"
+  },
+  {
+   "id": "gm-r29-wg-b178-transfer-fees-zeroed",
+   "file": "walletapi/rpcserver/rpc_transfer.go",
+   "pkg": "./walletapi/rpcserver/",
+   "test": "TestR29ScInvokeFeesReachThePoolOnASimulatorChain",
+   "find": "\t\ttx, err = w.wallet.TransferPayload0(p.Transfers, p.Ringsize, false, p.SC_RPC, p.Fees, false)",
+   "replace": "\t\ttx, err = w.wallet.TransferPayload0(p.Transfers, p.Ringsize, false, p.SC_RPC, 0, false) // r29 mutated: Transfer drops Fees (B178)"
+  },
+  {
+   "id": "gm-r29-fx-sc-export-all-blocks",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR29SCBlockExport",
+   "find": "\tif a.sc == nil || a.scErr != nil || r.SCCalls == 0 {\n",
+   "replace": "\tif a.sc == nil || a.scErr != nil { // r29 mutated: every block exported, not only SC blocks\n"
+  },
+  {
+   "id": "gm-r29-fx-sc-export-no-scrub",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR29SCBlockExport",
+   "find": "\t\tout = append(out, hexKey.ReplaceAllString(s, \"<key>\"))\n",
+   "replace": "\t\tout = append(out, s) // r29 mutated: keys reach the export\n"
+  },
+  {
+   "id": "gm-r29-fx-sc-export-payout-dropped",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR29SCBlockExport",
+   "find": "\t\tSCDelta: r.SCDelta, SCPayout: r.SCPayout, Burns: r.Burns, Fees: r.Fees, Verdict: r.Verdict,\n",
+   "replace": "\t\tSCDelta: r.SCDelta, Burns: r.Burns, Fees: r.Fees, Verdict: r.Verdict, // r29 mutated: no payout\n"
+  },
+  {
+   "id": "gm-r29-fx-sc-export-not-called",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR29SCBlockExport",
+   "find": "\ta.exportSC(t, r, err)\n",
+   "replace": "\t// r29 mutated: the archive callback exports nothing\n"
+  },
+  {
+   "id": "gm-r29-fx-sc-export-error-unscrubbed",
+   "file": "tools/emission-audit/modes.go",
+   "pkg": "./tools/emission-audit/",
+   "test": "TestR29SCBlockExport",
+   "find": "\t\tb.Error = hexKey.ReplaceAllString(err.Error(), \"<key>\")\n",
+   "replace": "\t\tb.Error = err.Error() // r29 mutated\n"
   }
  ]
 }

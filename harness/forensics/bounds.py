@@ -408,6 +408,61 @@ def check_records_v2(ds, cl):
     return p, n_tagged
 
 
+def hf3_table_own(root=ROOT):
+    """R29 B107: the HF3 table TXIDs by this checker's own parse of blockchain/hardfork_fixes.go (a quoted 64-hex
+    TXID on a Bl_Tips line), never from a derived file"""
+    out = set()
+    for l in (Path(root) / 'blockchain' / 'hardfork_fixes.go').read_text().splitlines():
+        m = re.match(r'\s*"([0-9a-f]{64})"', l)
+        if m and 'Bl_Tips' in l:
+            out.add(m.group(1))
+    return out
+
+
+def check_rows_r29(ds, table=None, root=ROOT):
+    """R29 B107 (G32 rows half; G32 reads the newest version only, so this holds from r28d's R29 re-derivation on):
+    every walls.json row, replay_stops and every inclusions.json row carry one defect class, and it is the class this checker
+    derives itself (wall row: DC1 iff it carries a table TXID, else DC3; replay_stops: DC1 iff a stopped tx is a table
+    TXID, else DC3; inclusion row: DC1 iff its TXID is in the table, else DC0; the file: DC0 iff any row is DC0, else
+    DC1). A 'pending' slot FAILS. Returns (problems, rows checked); a dataset without walls.json returns ([], 0)."""
+    wp, ip = ds / 'derived' / 'walls.json', ds / 'derived' / 'inclusions.json'
+    if not wp.exists():
+        return [], 0
+    if table is None:
+        if not (Path(root) / 'blockchain' / 'hardfork_fixes.go').exists():
+            return ['walls.json present but the HF3 table source blockchain/hardfork_fixes.go is missing'], 0
+        table = hf3_table_own(root)
+    p, n = [], 0
+    w = json.loads(wp.read_text())
+    for k in sorted(k for k in w if k.startswith('wall')):
+        for r in w[k].get('rows') or []:
+            n += 1
+            want = 'DC1' if set(r.get('hf3_table_txs') or []) & table else 'DC3'
+            if r.get('class') != want:
+                p.append(f'walls.json {k} height {r.get("height")}: class {r.get("class")!r}, rule gives {want}')
+    st = w.get('replay_stops') or {}
+    n += 1
+    want = 'DC1' if any((x or {}).get('txid') in table for x in (st.get('runs') or {}).values()) else 'DC3'
+    if st.get('class') != want:
+        p.append(f'walls.json replay_stops: class {st.get("class")!r}, rule gives {want}')
+    if not ip.exists():
+        p.append('derived/inclusions.json missing')
+        return p, n
+    inc = json.loads(ip.read_text())
+    got = []
+    for r in inc.get('rows') or []:
+        n += 1
+        want = 'DC1' if r.get('txid') in table else 'DC0'
+        got.append(want)
+        if r.get('class') != want:
+            p.append(f'inclusions.json {str(r.get("txid"))[:8]}: class {r.get("class")!r}, rule gives {want}')
+    want = 'DC0' if 'DC0' in got else 'DC1'
+    n += 1
+    if inc.get('class') != want:
+        p.append(f'inclusions.json: class {inc.get("class")!r}, rule gives {want}')
+    return p, n
+
+
 def check_records(ds, cl):
     """every v2 record carries one class; counts equal classes.json"""
     if (ds / 'derived' / 'txs.jsonl.gz').exists():
@@ -464,6 +519,8 @@ def g32(root=ROOT, pres_check=None):
             fails.append(f'classes.json has no {cid} entry')
     rp, ntag = check_records(ds, cl)
     fails += rp
+    wr, nrows = check_rows_r29(ds, root=root)   # R29 B107: walls/inclusions rows (the newest version)
+    fails += wr
     if pr is None:
         fails.append('derived/presence.json missing')
     else:
@@ -491,7 +548,8 @@ def g32(root=ROOT, pres_check=None):
         page_note = f'; pages: pending ({led.name} not rendered yet: the headline is enforced from its first render)'
     if fails:
         return False, f'{ds.name}: {len(fails)} failure(s): ' + '; '.join(fails[:5])
-    return True, (f'{ds.name}: {len(cl["figures"])} figures and {ntag} tagged records carry one class; presence DC1-DC3 at '
+    rows_note = f' and {nrows} walls/inclusions rows' if nrows else ''
+    return True, (f'{ds.name}: {len(cl["figures"])} figures and {ntag} tagged records{rows_note} carry one class; presence DC1-DC3 at '
                   f'{len(pr["revs"])} revs re-read unchanged; DC2 present {present}{page_note}')
 
 

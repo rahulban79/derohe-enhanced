@@ -17,6 +17,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -59,6 +60,51 @@ type archiveRun struct {
 	written, werr int
 	payees        payeeTally
 	now           func() int64
+	sc            io.Writer // r29 (B110): one scBlock JSON line per audited block with SC calls (nil: off)
+	scErr         error
+}
+
+// scBlock is the r29 (B110) SC-payout export of one audited block with SC calls: the auditor's plaintext SC figures
+// and verdict, and its notes and alerts with every hex key replaced (rft §0.8.9 rule 13: no account in an export).
+type scBlock struct {
+	Topo       int64    `json:"topo"`
+	Height     uint64   `json:"height"`
+	BLID       string   `json:"blid"`
+	Txs        int      `json:"txs"`
+	SCCalls    int      `json:"sc_calls"`
+	SCDeposits uint64   `json:"sc_deposits"`
+	SCDelta    string   `json:"sc_delta"`
+	SCPayout   uint64   `json:"sc_payout"`
+	Burns      uint64   `json:"burns"`
+	Fees       uint64   `json:"fees"`
+	Verdict    string   `json:"verdict"`
+	Error      string   `json:"error,omitempty"`
+	Notes      []string `json:"notes,omitempty"`
+	Alerts     []string `json:"alerts,omitempty"`
+}
+
+var hexKey = regexp.MustCompile(`[0-9a-f]{16,}`)
+
+func scrubKeys(in []string) []string {
+	var out []string
+	for _, s := range in {
+		out = append(out, hexKey.ReplaceAllString(s, "<key>"))
+	}
+	return out
+}
+
+func (a *archiveRun) exportSC(t int64, r emission.Report, err error) {
+	if a.sc == nil || a.scErr != nil || r.SCCalls == 0 {
+		return
+	}
+	b := scBlock{Topo: t, Height: r.Height, BLID: r.BLID, Txs: r.Txs, SCCalls: r.SCCalls, SCDeposits: r.SCDeposits,
+		SCDelta: r.SCDelta, SCPayout: r.SCPayout, Burns: r.Burns, Fees: r.Fees, Verdict: r.Verdict,
+		Notes: scrubKeys(r.Notes), Alerts: scrubKeys(r.Alerts)}
+	if err != nil {
+		b.Error = hexKey.ReplaceAllString(err.Error(), "<key>")
+	}
+	line, _ := json.Marshal(b)
+	_, a.scErr = a.sc.Write(append(line, '\n'))
 }
 
 func (a *archiveRun) each(t int64, r emission.Report, err error) {
@@ -67,6 +113,7 @@ func (a *archiveRun) each(t int64, r emission.Report, err error) {
 		return
 	}
 	a.payees.add(r)
+	a.exportSC(t, r, err)
 	prevTo := a.seg.To
 	a.seg.Add(r, err)
 	seg := a.seg
@@ -85,7 +132,7 @@ func (a *archiveRun) each(t int64, r emission.Report, err error) {
 	}
 }
 
-func archiveMain(src *fsSource, tm *emission.TopoMap, fromH, toH int64, p emission.Params, jsonOut, seriesOut string, every uint64) int {
+func archiveMain(src *fsSource, tm *emission.TopoMap, fromH, toH int64, p emission.Params, jsonOut, seriesOut, scOut string, every uint64) int {
 	last := tm.LastWritten() - 3
 	from := tm.FindHeight(fromH)
 	if fw := tm.FirstWritten(); fw >= 0 {
@@ -105,6 +152,15 @@ func archiveMain(src *fsSource, tm *emission.TopoMap, fromH, toH int64, p emissi
 	}
 	unix := func() int64 { return time.Now().Unix() }
 	run := &archiveRun{segStart: unix(), seriesOut: seriesOut, every: every, now: unix}
+	if scOut != "" {
+		f, err := os.OpenFile(scOut, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		defer f.Close()
+		run.sc = f
+	}
 	cpu0, wall0 := cpuTime(), time.Now()
 	sum := emission.ArchiveRange(src, tm, from, to, p, run.each)
 	cpu, wall := cpuTime()-cpu0, time.Since(wall0)
@@ -112,6 +168,10 @@ func archiveMain(src *fsSource, tm *emission.TopoMap, fromH, toH int64, p emissi
 	if jsonOut != "" {
 		b, _ := json.MarshalIndent(sum, "", " ")
 		os.WriteFile(jsonOut, b, 0600)
+	}
+	if run.scErr != nil {
+		fmt.Fprintln(os.Stderr, "sc-blocks-out:", run.scErr)
+		return 1
 	}
 	if sum.Cumulative.Alerts > 0 {
 		return 3

@@ -48,6 +48,40 @@ ALLOWED = {
         'why': 'an early return inside the deferred recover of process_transaction_sc; it assigns nothing, '
                'so the named results (gas, err) keep the values they had at the panic — exactly as before',
     },
+    # r29: constructs a USER DECISION allowed (dero-rft §7 B19, B144; 2026-11-08). Each is scoped to its file(s);
+    # 'minus' lists the base lines it replaces; 'moved' lists the only lines that may cancel as +/- pairs (difflib
+    # re-emits them inside the construct's hunk; any other moved line stays a violation).
+    'mempool-milli-fee-rank': {
+        'files': ['blockchain/mempool/mempool.go'],
+        'lines': ['import "math/bits"', 'MilliFeesPerByte uint64', 'MilliFEEperBYTE uint64',
+                  'if hi, lo := bits.Mul64(tx.Fees(), 1000); hi == 0 {', 'object.MilliFEEperBYTE = lo / object.Size',
+                  '} else {', 'object.MilliFEEperBYTE = ^uint64(0)', '}',
+                  'data = append(data, TX_Sorting_struct{Hash: txhash, FeesPerByte: v.FEEperBYTE, MilliFeesPerByte: v.MilliFEEperBYTE, Size: v.Size})',
+                  'sort.SliceStable(data, func(i, j int) bool { return data[i].MilliFeesPerByte > data[j].MilliFeesPerByte })'],
+        'minus': ['data = append(data, TX_Sorting_struct{Hash: txhash, FeesPerByte: v.FEEperBYTE, Size: v.Size})',
+                  'sort.SliceStable(data, func(i, j int) bool { return data[i].FeesPerByte > data[j].FeesPerByte })'],
+        'moved': ['}', 'return true', '})'],
+        'why': 'user decision 2026-11-08 B19 (a): the pool sorts by fee per byte in 1/1000 units instead of the '
+               'integer fee/size; the integer FeesPerByte (read by RPC) is unchanged. The sorted list feeds only '
+               'Mempool_List_TX_SortedInfo, whose callers build a block TEMPLATE (miner_block.go) or answer RPC/'
+               'policy (cmd/, glue/); no block or tx validity check reads the pool, so what this node accepts '
+               'is unchanged (ASSIGNED: the new fields are set only in blockchain/mempool/)',
+        'assigned': {'MilliFEEperBYTE': 'blockchain/mempool/', 'MilliFeesPerByte': 'blockchain/mempool/'},
+    },
+    'rpc-money-copy-128bit': {
+        'files': ['rpc/wallet_rpc.go'],
+        'lines': ['hard_coded_decimals := new(big.Float).SetPrec(128).SetInt64(100000)',
+                  'float_amount := new(big.Float).SetPrec(128).SetUint64(amount)',
+                  'result := new(big.Float).SetPrec(128)'],
+        'minus': ['hard_coded_decimals := new(big.Float).SetInt64(100000)',
+                  'float_amount, _, _ := big.ParseFloat(fmt.Sprintf("%d", amount), 10, 0, big.ToZero)',
+                  'result := new(big.Float)'],
+        'why': 'user decision 2026-11-08 B144 (a): rpc FormatMoneyPrecision computes amount/1e5 at 128 bits (the '
+               'globals copy, GG27-2) and returns a display string. Its only non-test callers are rpc FormatMoney '
+               '(and the 0/5/8/12 wrappers) and Entry.String (wallet history text); no consensus package references '
+               'rpc.FormatMoney* or rpc.Entry (grep, r29 decisions rec/b144_callers.txt), and a string result '
+               'feeds no hash, serialisation or validity check',
+    },
 }
 
 
@@ -146,6 +180,7 @@ def evaluate(base='bf274e5'):
     changed = [[c[0], c[-1]] for c in changed if len(c) >= 2]
     report = {'base': a.base, 'files': [], 'violations': [], 'allowed_used': []}
     allowed_lines = {name: [re.sub(r'\s+', ' ', x) for x in spec['lines']] for name, spec in ALLOWED.items()}
+    allowed_minus = {name: [re.sub(r'\s+', ' ', x) for x in spec.get('minus', [])] for name, spec in ALLOWED.items()}
     for st, f in changed:
         if f in DEP_FILES or (f.startswith('vendor/') and not f.endswith('_test.go')):
             # a dependency change can alter anything, including graviton's tree hashing; never allowed silently
@@ -195,8 +230,11 @@ def evaluate(base='bf274e5'):
         minus = [l[1:] for l in r if l.startswith('-')]
         used = []
         for name, lines in allowed_lines.items():
-            if plus[:len(lines)] == lines or all(x in plus for x in lines):
-                spec = ALLOWED[name]
+            spec = ALLOWED[name]
+            if spec.get('files') and f not in spec['files']:
+                continue                                 # a scoped construct applies only to its own file(s)
+            need_minus = allowed_minus[name]
+            if (plus[:len(lines)] == lines or all(x in plus for x in lines)) and all(x in minus for x in need_minus):
                 for nm, prefix in (spec.get('assigned') or {}).items():
                     ok, seen, bad = assigned_ok(nm, prefix)
                     entry.setdefault('assigned', {})[nm] = seen
@@ -211,6 +249,12 @@ def evaluate(base='bf274e5'):
                 for x in lines:
                     if x in plus:
                         plus.remove(x)
+                for x in need_minus:
+                    minus.remove(x)
+                for x in spec.get('moved') or []:    # unchanged lines difflib re-emitted inside the hunk
+                    while x in plus and x in minus:
+                        plus.remove(x)
+                        minus.remove(x)
                 used.append(name)
         entry['residue_plus'], entry['residue_minus'], entry['allowed'] = plus, minus, used
         entry['verdict'] = 'logging-only' + (f' + {", ".join(used)}' if used else '') if not plus and not minus else 'STATE-AFFECTING DIFF'

@@ -1,6 +1,6 @@
 {
  "_doc": "r23c round registry: the one place a round's ids live (read by harness/pipeline/fix_build_verify.py and harness/pipeline/benchlock.py, checked by harness/kat/test_round_registry_r23c.py). The literal string 'pending' means not known yet: never replace it with a guess. Protocol: artifacts/dero-rft.md and harness/README.md.",
- "current": "r28d",
+ "current": "r29",
  "upstream_base": "bf274e5",
  "benchlock": "~/derohe-persist/bench.lock",
  "rounds": [
@@ -151,8 +151,8 @@
    "go_mutations": "1588/1588",
    "new_rpc_methods": {},
    "github_sync": {
-    "base": "pending",
-    "target": "pending"
+    "base": "2aada291",
+    "target": "01a97c4a"
    },
    "tracks": {
     "miner": "paused",
@@ -162,6 +162,26 @@
   },
   {
    "id": "r29",
+   "status": "measured",
+   "version_suffix": "22102026.r29",
+   "new_tests_base": "7bbe2340",
+   "merge_commit": "9ce118cb",
+   "head_after": "f39a6242",
+   "pipeline_full": "pipeline_20261108T062853",
+   "go_mutations": "1619/1619",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "pending",
+    "target": "pending"
+   },
+   "tracks": {
+    "miner": "paused",
+    "node": "active"
+   },
+   "evidence": "R29 opened 2026-11-07 from 7bbe2340 (R28 and R28d measured; the community-dev track closed, GitHub copy df968d4 pushed by the user; rft §1 user request 2026-11-07 adds the cd-residue dimension: B190 A15/A18, B182 ranges, B183 CD-04, B192 budget); miner track paused (dero-rft §0.3; the user's own miner runs are reward-only); node active; derod r28d running since 2026-11-07 17:47:55 (user restart); Part A: live start read on r28d (booked to r28d, harness/runtime/r29_start_20261107.txt); r28 ledger closed with frozen inputs (artifacts/src/frozen/r28 from 01a97c4a); work list <scratch>/r29/plan.json; merged 9ce118cb as 22102026.r29; full pipeline pipeline_20261108T062853 (--no-install) S1-S5 PASS (mutations 1,619/1,619, race PASS, shadow 120/120), S7 s7_replay fixed f39a6242 (r28d re-pinned 28f9a2ce); closing project-only pipeline_20261108T123859 PASS (KATs 35/35, harness mutations 34/34, gates 30/33 + 3 PAUSED miner); installed 2026-11-08 ~13:30 PST by atomic rename of the staged build (derod sha256 6595baf8..., backups bin/*.22102026.r28d-backup); MEASURED live 2026-11-08: the user stopped r28d at 15:31:49 PST (B111 (A) APFS clone 15:31:49-52, harness/runtime/r29_b111_qcs1.json) and started r29 at 15:33:00 (pid 15915); window 15:33:40 -> 16:33:40 61/61 synced, 0 ERROR/WARN, inbound 4 -> 27 (B1 (a)) (harness/runtime/r29_live_window_20261108.txt, r29_live_probes_20261108.txt; rft §13 R29)"
+  },
+  {
+   "id": "r30",
    "status": "planned",
    "version_suffix": "pending",
    "new_tests_base": "pending",

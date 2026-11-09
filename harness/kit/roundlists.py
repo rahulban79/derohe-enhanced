@@ -11,8 +11,9 @@ with 18 errors (B149). The lists that must name a round, read from the tree (nev
   evolution  harness/miners/mine_evolution.py ORDER           ('R<N>' / 'R23b' labels; also the next planned round)
 
 check(root) returns one problem line per (list, round) that is missing: the current round must be in all four; every
-non-planned registry round must be in areas and evolution; the registry's next planned round must be in evolution
-(B90: before its first 'R<N>' commit lands). Read-only; the file lists are parsed with ast (no tool is imported).
+non-planned registry round must be in areas and evolution, and in ledger when numbered at or above its smallest page;
+the registry's next planned round must be in evolution (B90: before its first 'R<N>' commit lands). r29 (B166): this
+is the ONE round-list reader; tooling_intel.round_list_gaps delegates here. Read-only; the file lists are parsed with ast (no tool is imported).
 
   python3 -I harness/kit/roundlists.py [--root DIR]     # exit 0 every list complete · 5 a list misses a round · 2 unreadable
 """
@@ -93,6 +94,13 @@ def problems(L):
             out.append(f'areas: {rid} missing from {FILES["areas"]} rounds')
         if evolution_label(rid) not in L['evolution']:
             out.append(f'evolution: {evolution_label(rid)} missing from {FILES["evolution"]} ORDER')
+    # r29 (B166): the one reader also carries tooling_intel's former round_list_gaps rule: every non-planned numbered
+    # round at or above the smallest ledger page is a page (the current round is checked just below, with its parent)
+    lo = min(L['ledger']) if L['ledger'] else None
+    for rid in nonplanned:
+        k = ledger_number(rid)
+        if lo is not None and k is not None and rid != cur and k >= lo and k not in L['ledger']:
+            out.append(f'ledger: {k} missing from {FILES["ledger"]} LAST_CHOICES (round {rid})')
     # r28d: a sub-round (r28d) renders its parent round's page (dero-r1-r28.html), so the parent number must be listed
     m = re.fullmatch(r'r(\d+)[a-z]', str(cur))
     n = ledger_number(cur) if ledger_number(cur) is not None else (int(m.group(1)) if m else None)

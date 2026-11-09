@@ -271,6 +271,7 @@ func main() {
 	logger.Info("", "OS", runtime.GOOS, "ARCH", runtime.GOARCH, "GOMAXPROCS", runtime.GOMAXPROCS(0))
 	logger.Info("", "Version", config.Version.String())
 	report_consensus_env_overrides() // r27 (config): an environment variable must not move a consensus parameter unseen
+	refuse_on_consensus_env_overrides(os.Exit)
 
 	logger.V(1).Info("", "Arguments", globals.Arguments)
 
