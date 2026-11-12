@@ -66,6 +66,7 @@ def sound_fixture(tmp):
     (root / 'pkg/a.go').write_text(src)
     (root / 'pkg/a_test.go').write_text('package pkg\nfunc TestReplay(t *testing.T) {}\n')
     (root / 'pkg/b.go').write_text('package pkg\n// code under test that no watch list names\n')
+    (root / 'live.json').write_text('{"alerts": 0}\n')   # r30 merge (B226): the fig unit's number record
     (root / 'blockchain').mkdir(exist_ok=True)
     (root / 'blockchain/hardfork_fixes.go').write_text(
         '\t// duplicates\n' + ''.join(f'\t"{i:064x}": {{Bl_Tips: "{i:064x}", Height: {7415466 + i}, Tx_Parity: false}},\n' for i in range(3))
@@ -73,7 +74,9 @@ def sound_fixture(tmp):
     reg = {'page': 'page.html', 'claims': [
         {'id': 'eyebrow', 'kind': 'record', 'match': 'node r23', 'source': 'version'},
         {'id': 'intro', 'kind': 'scope', 'match': 'The bug is real in code.', 'source': 'framing'},
-        {'id': 'fig', 'kind': 'live-figure', 'match': '0 alerts', 'exact': True, 'source': 'RPC'},
+        # r30 merge (B226): a live figure is bound to its record by a `number` backing
+        {'id': 'fig', 'kind': 'live-figure', 'match': '0 alerts', 'exact': True, 'source': 'RPC',
+         'backing': [{'type': 'number', 'file': 'live.json', 'key': 'alerts', 'want': 0}]},
         {'id': 'cache', 'kind': 'code', 'match': 'HF3 keys the validity cache on the full transaction bytes.',
          'backing': [{'type': 'anchor', 'file': 'pkg/a.go', 'line': 12, 'quote': 'if tx.Height >= HF3 {'},
                      {'type': 'test', 'pkg': './pkg/', 'name': 'TestReplay', 'race': False},

@@ -1,0 +1,481 @@
+{
+ "boundaries_from": {
+  "S2": "harness/runtime/r29_b182_deep_census.json ranges",
+  "tip": "harness/runtime/r30_genesis_tip.json",
+  "to": "harness/runtime/r30_genesis_census.json to",
+  "walls/window": "harness/forensics/audit2.py WALLS, WINDOW"
+ },
+ "checks": [
+  "chain",
+  "txid",
+  "types",
+  "reg_lz",
+  "dup",
+  "emission",
+  "fees_burns",
+  "sc_payouts",
+  "canonicality",
+  "version",
+  "state_root",
+  "dc2"
+ ],
+ "failures": [],
+ "inputs": {
+  "harness/runtime/r30_genesis_census.json": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+  "harness/runtime/r30_genesis_tip.json": "5bc279cf73ca9b09306460555887188fdf919cf79c83ff2309ef6cf87f75ad4d"
+ },
+ "schema": "r30 coverage map v1 (rft \u00a77 B215)",
+ "states": [
+  "done",
+  "pending",
+  "undecidable"
+ ],
+ "summary": {
+  "done": 54,
+  "pending": 21,
+  "undecidable": 9
+ },
+ "tiles": [
+  {
+   "cells": {
+    "canonicality": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "chain": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "dc2": {
+     "state": "undecidable",
+     "why": "BDU: separating the cases needs an accepted-invalid proof (rft \u00a79, B113)"
+    },
+    "dup": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "emission": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "fees_burns": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "reg_lz": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "sc_payouts": {
+     "state": "pending",
+     "why": "needs execution: the S7 replay below the window; run C partial (B110); live audit S4 above"
+    },
+    "state_root": {
+     "state": "pending",
+     "why": "S7 replay (below wall 1) or S4 clone audit (above the window)"
+    },
+    "txid": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "types": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "version": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    }
+   },
+   "hi": 7398264,
+   "id": "A",
+   "lo": 0
+  },
+  {
+   "cells": {
+    "canonicality": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "chain": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "dc2": {
+     "state": "undecidable",
+     "why": "BDU: separating the cases needs an accepted-invalid proof (rft \u00a79, B113)"
+    },
+    "dup": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "emission": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "fees_burns": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "reg_lz": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "sc_payouts": {
+     "state": "pending",
+     "why": "needs execution: the S7 replay below the window; run C partial (B110); live audit S4 above"
+    },
+    "state_root": {
+     "state": "pending",
+     "why": "S7 replay (below wall 1) or S4 clone audit (above the window)"
+    },
+    "txid": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "types": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "version": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    }
+   },
+   "hi": 7412674,
+   "id": "B1",
+   "lo": 7398265
+  },
+  {
+   "cells": {
+    "canonicality": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "chain": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "dc2": {
+     "state": "undecidable",
+     "why": "BDU: separating the cases needs an accepted-invalid proof (rft \u00a79, B113)"
+    },
+    "dup": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "emission": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "fees_burns": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "reg_lz": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "sc_payouts": {
+     "state": "pending",
+     "why": "needs execution: the S7 replay below the window; run C partial (B110); live audit S4 above"
+    },
+    "state_root": {
+     "state": "undecidable",
+     "why": "no held state for wall 1 .. wall 2 - 1 (B95, B76)"
+    },
+    "txid": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "types": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "version": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    }
+   },
+   "hi": 7415465,
+   "id": "B2",
+   "lo": 7412675
+  },
+  {
+   "cells": {
+    "canonicality": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "chain": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "dc2": {
+     "state": "undecidable",
+     "why": "BDU: separating the cases needs an accepted-invalid proof (rft \u00a79, B113)"
+    },
+    "dup": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "emission": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "fees_burns": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "reg_lz": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "sc_payouts": {
+     "state": "pending",
+     "why": "needs execution: the S7 replay below the window; run C partial (B110); live audit S4 above"
+    },
+    "state_root": {
+     "state": "undecidable",
+     "why": "no held state for wall 1 .. wall 2 - 1 (B95, B76)"
+    },
+    "txid": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "types": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "version": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    }
+   },
+   "hi": 7467515,
+   "id": "C1",
+   "lo": 7415466
+  },
+  {
+   "cells": {
+    "canonicality": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "chain": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "dc2": {
+     "state": "undecidable",
+     "why": "BDU: separating the cases needs an accepted-invalid proof (rft \u00a79, B113)"
+    },
+    "dup": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "emission": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "fees_burns": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "reg_lz": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "sc_payouts": {
+     "state": "pending",
+     "why": "needs execution: the S7 replay below the window; run C partial (B110); live audit S4 above"
+    },
+    "state_root": {
+     "state": "pending",
+     "why": "v4 roots_window class pending (run C, B213)"
+    },
+    "txid": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "types": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "version": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    }
+   },
+   "hi": 7497942,
+   "id": "C2",
+   "lo": 7467516
+  },
+  {
+   "cells": {
+    "canonicality": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "chain": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "dc2": {
+     "state": "undecidable",
+     "why": "BDU: separating the cases needs an accepted-invalid proof (rft \u00a79, B113)"
+    },
+    "dup": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "emission": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "fees_burns": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "reg_lz": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "sc_payouts": {
+     "state": "pending",
+     "why": "needs execution: the S7 replay below the window; run C partial (B110); live audit S4 above"
+    },
+    "state_root": {
+     "state": "pending",
+     "why": "S7 replay (below wall 1) or S4 clone audit (above the window)"
+    },
+    "txid": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "types": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    },
+    "version": {
+     "record": "harness/runtime/r30_genesis_census.json",
+     "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06",
+     "state": "done"
+    }
+   },
+   "hi": 7876000,
+   "id": "D",
+   "lo": 7497943
+  },
+  {
+   "cells": {
+    "canonicality": {
+     "state": "pending",
+     "why": "above the census top"
+    },
+    "chain": {
+     "state": "pending",
+     "why": "above the census top"
+    },
+    "dc2": {
+     "state": "undecidable",
+     "why": "BDU: separating the cases needs an accepted-invalid proof (rft \u00a79, B113)"
+    },
+    "dup": {
+     "state": "pending",
+     "why": "above the census top"
+    },
+    "emission": {
+     "state": "pending",
+     "why": "no census cover"
+    },
+    "fees_burns": {
+     "state": "pending",
+     "why": "no census cover"
+    },
+    "reg_lz": {
+     "state": "pending",
+     "why": "above the census top"
+    },
+    "sc_payouts": {
+     "state": "pending",
+     "why": "needs execution: the S7 replay below the window; run C partial (B110); live audit S4 above"
+    },
+    "state_root": {
+     "state": "pending",
+     "why": "S7 replay (below wall 1) or S4 clone audit (above the window)"
+    },
+    "txid": {
+     "state": "pending",
+     "why": "above the census top"
+    },
+    "types": {
+     "state": "pending",
+     "why": "above the census top"
+    },
+    "version": {
+     "state": "pending",
+     "why": "above the census top"
+    }
+   },
+   "hi": 7876880,
+   "id": "E",
+   "lo": 7876001
+  }
+ ],
+ "tip": 7876880,
+ "verdict": "PASS"
+}

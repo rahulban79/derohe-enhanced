@@ -18,6 +18,7 @@ package blockchain_test
 // cycle). The process globals it needs (globals.Arguments / Config, config.Testnet) are restored afterwards.
 
 import (
+	"fmt"
 	"io"
 	"math/big"
 	"strings"
@@ -224,7 +225,12 @@ func (e *r28_env) build_tx(ring_w []*walletapi.Wallet_Memory, burn uint64, scdat
 		ring = append(ring, w.GetAddress().PublicKey.G1())
 	}
 	transfers := []rpc.Transfer{{Destination: ring_w[1].GetAddress().String(), Amount: 0, Burn: burn}}
-	tx := ring_w[0].BuildTransaction(transfers, [][][]byte{emap}, [][]*bn256.G1{ring}, tip.blid, tip.height, scdata, tip.roothash[:], max_bits+6, r28_fee)
+	// r30 (closed-loop run 5 race FAIL): an SC install txid must start and end with a byte >= 0x80, so the wallet
+	// builder rebuilds (1/4 per try) and raises max_bits by 3 every len(ring) tries; with a deep balance tree it can pass
+	// 240 bits and panic (upstream walletapi/transaction_build.go:60). A fresh build starts the count again.
+	tx := r30_build_retry(5, func() *transaction.Transaction {
+		return ring_w[0].BuildTransaction(transfers, [][][]byte{emap}, [][]*bn256.G1{ring}, tip.blid, tip.height, scdata, tip.roothash[:], max_bits+6, r28_fee)
+	})
 	if tx == nil {
 		e.t.Fatal("BuildTransaction returned nil")
 	}
@@ -653,5 +659,56 @@ func TestR28BurnTxNeverVerifiesKAT(t *testing.T) {
 	e.mine()
 	if !e.balance_is(alice, r28_registration_grant-control.Fees()) {
 		t.Fatal("control: the NORMAL tx did not execute")
+	}
+}
+
+// r30: calls build up to n times while it panics with the wallet builder's 240-bit limit (a retry-count artefact of the
+// SC-install txid rule, not a property of the tx); any other panic, and the last attempt's, propagates.
+func r30_build_retry(n int, build func() *transaction.Transaction) (tx *transaction.Transaction) {
+	for i := 1; ; i++ {
+		done := func() (ok bool) {
+			defer func() {
+				if r := recover(); r != nil {
+					if i >= n || fmt.Sprint(r) != "currently we cannot use more than 240 bits" {
+						panic(r)
+					}
+					ok = false
+				}
+			}()
+			tx = build()
+			return true
+		}()
+		if done {
+			return tx
+		}
+	}
+}
+
+func TestR30BuildRetry240Bits(t *testing.T) {
+	calls := 0
+	want := &transaction.Transaction{}
+	got := r30_build_retry(5, func() *transaction.Transaction {
+		calls++
+		if calls < 3 {
+			panic("currently we cannot use more than 240 bits")
+		}
+		return want
+	})
+	if got != want || calls != 3 {
+		t.Fatalf("retry: got %p calls %d, want the third build", got, calls)
+	}
+	for _, c := range []struct {
+		msg  string
+		n, k int
+	}{{"some other failure", 5, 1}, {"currently we cannot use more than 240 bits", 2, 2}} {
+		calls = 0
+		func() {
+			defer func() {
+				if r := recover(); r == nil || fmt.Sprint(r) != c.msg || calls != c.k {
+					t.Fatalf("%q: recovered %v after %d calls, want a re-panic after %d", c.msg, r, calls, c.k)
+				}
+			}()
+			r30_build_retry(c.n, func() *transaction.Transaction { calls++; panic(c.msg) })
+		}()
 	}
 }

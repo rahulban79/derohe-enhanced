@@ -63,6 +63,9 @@ func metrics_bind_allowed(bind string, getenv func(string) string) error {
 type miner_metrics struct {
 	status                                    miner_status
 	hashes                                    uint64
+	stale_sha_skipped                         uint64        // r30 B26: miner-level, monotonic across engine restarts
+	pe_ok                                     bool          // r30 B27: the kernel reported the P/E split
+	cpu_p, cpu_e                              time.Duration // r30 B27: process CPU time on P-cores / E-cores
 	hashrate15                                float64
 	threads                                   int
 	cpu_found, gpu_found                      uint64
@@ -103,6 +106,10 @@ type miner_metrics struct {
 func collect_miner_metrics() (m miner_metrics) {
 	m.status, _ = status_snapshot.Load().(miner_status)
 	m.hashes = atomic.LoadUint64(&counter)
+	m.stale_sha_skipped = stale_sha_now()
+	if pe := pe_now(); pe.ok && pe.p <= pe.total {
+		m.pe_ok, m.cpu_p, m.cpu_e = true, pe.p, pe.total-pe.p
+	}
 	m.hashrate15 = math.Float64frombits(atomic.LoadUint64(&hashrate_15s_bits))
 	m.threads = threads
 	m.cpu_found, m.gpu_found = atomic.LoadUint64(&cpu_minis), atomic.LoadUint64(&gpu_minis)
@@ -165,7 +172,17 @@ func write_miner_metrics(w io.Writer, m miner_metrics) {
 	p("dero_miner_getwork_reconnects_total %d", m.reconnects)
 	p("# TYPE dero_miner_hashes_total counter")
 	p("dero_miner_hashes_total %d", m.hashes)
+	// r30 B26: texts counted in hashes_total whose final SHA was skipped (job stale mid-sort): never hashed, no share
+	p("# TYPE dero_miner_stale_sha_skipped_total counter")
+	p("dero_miner_stale_sha_skipped_total %d", m.stale_sha_skipped)
+	p("dero_miner_hashes_effective_total %d", effective_hashes(m.hashes, m.stale_sha_skipped))
+	p("# HELP dero_miner_hashrate_15s hashes per second over 15 s, excluding stale_sha_skipped (r30 B26)")
 	p("dero_miner_hashrate_15s %.1f", m.hashrate15)
+	if m.pe_ok { // r30 B27: proc_pid_rusage v6 P-core time; rate() per kind = cores of that kind the miner used
+		p("# TYPE dero_miner_cpu_seconds_total counter")
+		p(`dero_miner_cpu_seconds_total{core="p"} %.3f`, m.cpu_p.Seconds())
+		p(`dero_miner_cpu_seconds_total{core="e"} %.3f`, m.cpu_e.Seconds())
+	}
 	p("dero_miner_height %d", m.status.height)
 	p("dero_miner_difficulty %d", m.status.difficulty)
 	p("dero_miner_network_hashrate_estimate %d", m.status.nw_estimate)

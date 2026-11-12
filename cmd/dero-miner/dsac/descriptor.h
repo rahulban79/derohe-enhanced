@@ -22,6 +22,10 @@ extern unsigned long long dsa_lcp_b[4];
 void dsa_lcp_reset(void);
 #endif
 
+/* derohe r30 (L-C2): 0 = the r29 two-list merge (default), 1 = the branch-free form. Bit-exact either way. */
+void dsa_set_merge_variant(int v);
+int dsa_get_merge_variant(void);
+
 /* Frees this thread's scratch. Optional; mining threads live as long as the
  * process and the OS reclaims it. */
 void dsa_descriptor_release(void);

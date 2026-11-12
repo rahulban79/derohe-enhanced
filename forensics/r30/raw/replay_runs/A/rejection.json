@@ -1,0 +1,12 @@
+{
+ "blid": "6991183dd241d286b7026af0096885096985f97ed3297a84c1b056603bf99f80",
+ "block_error": "Invalid TX (blockchain/blockchain.go:826-838)",
+ "check": "Verify_Transaction_NonCoinbase_CheckNonce_Tips (blockchain/transaction_verify.go:72-200, error at :189)",
+ "class": "pending",
+ "evidence_class": "DERIVED (node replay log line, address removed)",
+ "ring_member_address": "withheld (privacy, rft \u00a70.8.1 rule 7)",
+ "tip_nonce_height": 7467544,
+ "topo": 7467546,
+ "tx_ref_nonce_height": 7467538,
+ "txid": "ca63e2c4d51902906ab1391284f9237f592416d1545521b218fc433734bde649"
+}

@@ -1,0 +1,56 @@
+{
+ "executed_twice": "pending (needs the S7 replay; pre-HF3 blockchain.go:665,716,995)",
+ "r29_view_S2": {
+  "batch_records_with_repeats": 662,
+  "by_class": {
+   "DC0": 9838
+  },
+  "by_hf_era_of_repeat": {
+   "HF1": 3655,
+   "MAJOR_HF2": 6183
+  },
+  "by_leading_zero_bytes": {
+   "2": 690,
+   "3": 9108,
+   "4": 38,
+   "5": 2
+  },
+  "by_times_listed": {
+   "2": 9838
+  },
+  "distinct_txids": 9838,
+  "highest_repeat_batch_lo": 6408000,
+  "lowest_repeat_batch_lo": 75500,
+  "repeat_below_144000": 3603,
+  "repeat_listings": 9838,
+  "txid_list_sha256": "6e81f125353e70b50e6e5bd0134d81bd5b85077b0d7367c7c9918c83678d30d6",
+  "type_evidence": {
+   "decoder": 690,
+   "inferred-registration": 9148
+  }
+ },
+ "schema": "r30 dc0 genesis typed v1 (B209)",
+ "source": {
+  "record": "harness/runtime/r30_genesis_census.json",
+  "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06"
+ },
+ "typed": {
+  "by_class": {
+   "DC0": 9838,
+   "DC1": 67
+  },
+  "by_type": {
+   "NORMAL": 67,
+   "REGISTRATION": 9838
+  },
+  "by_type_era_place": {
+   "NORMAL|MAJOR_HF2|straddles-window": 3,
+   "NORMAL|MAJOR_HF2|window": 64,
+   "REGISTRATION|HF1|below-window": 3655,
+   "REGISTRATION|MAJOR_HF2|below-window": 6183
+  },
+  "distinct_txids": 9905,
+  "repeat_listings": 9905,
+  "txid_list_sha256": "800efb77c4c5b066baa94daf04f479e9e21ec7e93484e19df4053db22ff0a3f8"
+ }
+}

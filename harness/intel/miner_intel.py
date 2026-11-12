@@ -22,6 +22,9 @@ it came from. Shares are also followed on derod's side: every accepted own minib
 line in derod's log, so a run that hashes but submits nothing for hours (share_drought) is caught, and so are long
 gaps no surviving miner log explains (the evidence was lost).
 
+r30 (B254): derod's side is the whole lumberjack chain (derod-<time>.log backups oldest first, then derod.log), and a
+run's share drought is judged only from where that chain begins (earlier hours: derod_head_missing WARN). Reading the
+live file alone made G17 fail on a 16 h 'drought' after derod's 100 MB rotation. KAT harness/kat/test_miner_intel_rot_r30.py.
   python3 -I harness/intel/miner_intel.py [--log bin/dero-miner.log] [--derod-log …/derod.log] [--no-rpc] [--json-only]
 """
 import argparse, datetime, importlib.util, json, re, statistics, sys, time, urllib.request
@@ -69,6 +72,7 @@ RULES = {
     'hashrate_sag': 'WARN: mean of the last 10 TOTAL samples below 75 % of the run mean (Round 18: agent benchmarks cut 40k to 22k)',
     'rejected': 'WARN: the daemon rejected a submitted miniblock',
     'miner_silent': 'ALERT: the current run\'s last log record is more than 5 min older than the capture (TOTAL hashrate is logged every 15 s) — the miner hung or exited',
+    'derod_head_missing': 'WARN: the derod log chain (the live derod.log plus its lumberjack backups derod-<time>.log) begins after the run started, so the run\'s first hours have no derod-side share evidence; the drought window starts where the evidence starts (r30: never an ALERT from a log that is not there)',
     'share_drought': 'ALERT: derod accepted none of our miniblocks for a stretch of the run in which the run\'s own rate expected >= 20 (5/(9 D) shares per hash, the miner\'s own expectedShares; D = median found difficulty); P(0) = e^-20 = 2e-9 — hashing is not reaching the chain',
     'stale_build': 'WARN: the running miner\'s version differs from this tree\'s config/version.go — the installed binary was not restarted (Round 19: G17 judged a stale r18 miner)',
     'head_missing': 'WARN: the oldest miner log does not begin with a start-up line — the record of that run was truncated or rotated away, so its numbers cover only part of it',
@@ -356,6 +360,28 @@ def heights_in(derod_recs, t0, t1):
     return len(seen)
 
 
+def derod_chain(derod_log):
+    """r30: the live derod log and its lumberjack backups (derod-<time>.log in the same directory), OLDEST first.
+    derod rotates at 100 MB (2026-11-09 13:17:18 -> derod-2026-11-09T21-17-18.376.log): reading the live file alone lost
+    every own miniblock before the rotation, and G17 failed on a 16.00 h 'share_drought' that derod's counters refute
+    (3,376 paid in the window). Pure apart from a glob."""
+    live = Path(derod_log)
+    backups = sorted(p for p in live.parent.glob('derod-*.log') if p.is_file() and p != live)
+    return backups + ([live] if live.exists() else [])
+
+
+def derod_first(derod_recs):
+    """the earliest instant the derod records cover (epoch s), or None"""
+    out = None
+    for d in derod_recs or []:
+        try:
+            t = ts(d['T'])
+        except (KeyError, ValueError):
+            continue
+        out = t if out is None or t < out else out
+    return out
+
+
 def own_times(derod_recs):
     """epoch seconds of every own miniblock derod accepted and broadcast, sorted"""
     out = []
@@ -485,9 +511,13 @@ def profile(run, derod_recs=None):
     for k in ('first_t', 'last_t'):
         hs.pop(k, None)
     if derod_recs is not None:
-        d = drought(own_times(derod_recs), ts(run[0]['T']), ts(run[-1]['T']), hs.get('mean'),
-                    p['reward'].get('found_difficulty_median'))
+        t0, t1 = ts(run[0]['T']), ts(run[-1]['T'])
+        cov = derod_first(derod_recs)
+        start = max(t0, cov) if cov is not None else t0       # r30: the drought is judged where the derod evidence starts
+        d = drought(own_times(derod_recs), start, max(start, t1), hs.get('mean'), p['reward'].get('found_difficulty_median'))
         d['gap_from'] = datetime.datetime.fromtimestamp(d['gap_from']).astimezone().isoformat(timespec='seconds')
+        if cov is not None and cov > t0:
+            d['derod_head_missing_h'] = round((cov - t0) / 3600, 2)
         p['shares'] = d
     return p
 
@@ -500,6 +530,9 @@ def rules(p, current=False, now=None, tree_ver=None, contention=None):
     if current and now is not None and now - ts(p['end']) > SILENT_S:
         out.append(('miner_silent', 'ALERT', f"last record {p['end'][:19]} is {(now - ts(p['end'])) / 60:.0f} min old"))
     sh = p.get('shares') or {}
+    if sh.get('derod_head_missing_h'):
+        out.append(('derod_head_missing', 'WARN', f"the derod log chain does not cover the first {sh['derod_head_missing_h']} h "
+                                                  f"of the run (a backup rotated away): no share evidence there"))
     if sh.get('expected_in_gap') is not None and sh['expected_in_gap'] >= DROUGHT_EXPECTED:
         out.append(('share_drought', 'ALERT', f"no accepted own miniblock for {sh['longest_gap_s'] / 3600:.2f} h from "
                                               f"{sh['gap_from'][:19]}; the run's rate expected {sh['expected_in_gap']}"))
@@ -580,11 +613,12 @@ def analyse(log, derod_log=None, use_rpc=True, rpc_url=RPC, now=None, root=ROOT,
     recs, files = chain_records(chain)
     derod_recs = None
     if derod_log and Path(derod_log).exists():
-        derod_recs = [d for d in records(derod_log) if d.get('M') in ('Chain extended', OWN_MB)]
+        derod_recs = [d for f in derod_chain(derod_log) for d in records(f) if d.get('M') in ('Chain extended', OWN_MB)]
     tv = tree_version(root)
     report = {'captured': datetime.datetime.fromtimestamp(now).astimezone().isoformat(timespec='seconds'), 'log': str(log),
               'logs': [str(f) for f in chain], 'files': files, 'tree_version': tv,
-              'derod_log': str(derod_log) if derod_recs is not None else None, 'records': len(recs), 'rules': RULES,
+              'derod_log': str(derod_log) if derod_recs is not None else None,
+              'derod_logs': [str(f) for f in derod_chain(derod_log)] if derod_recs is not None else [], 'records': len(recs), 'rules': RULES,
               'runs': [], 'facts': [], 'contention': contention}
     runs = [r for r in split_runs(recs) if len(r) >= 5]
     for i, r in enumerate(runs):

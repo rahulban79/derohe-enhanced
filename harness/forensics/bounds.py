@@ -296,6 +296,57 @@ def headline_ok(text):
     return 'DC2' in t and re.search(r'\bpresent\b', t, re.I) is not None
 
 
+R30_FROM = (30, '')
+TWO_BODIES_LITERAL = 'pending: one body was fetched per TXID'
+LOWER_BOUND_RX = re.compile(r'lower[ -]bound', re.I)   # R30 D1: a caveat saying so forbids grade exact
+
+
+def _vkey(name):
+    m = re.fullmatch(r'r(\d+)([a-z]?)', str(name))
+    return (int(m.group(1)), m.group(2)) if m else (0, '')
+
+
+def check_r30(cl, ds=None):
+    """r30 (rft §7 B202, B203; G31 from dataset v5 on, every round): the DC2 denominator is an anchored integer and its
+    value stays the word unbounded; dc1-two-bodies is computed (never the old 'one body was fetched' literal) over the
+    multi-block TXIDs of derived/inclusions.json; every non-exact figure says what would move it (`moves_when`).
+    A dataset before r30 is not checked (closed rounds stay as they were sealed)."""
+    if _vkey(cl.get('dataset') or (ds.name if ds is not None else '')) < R30_FROM:
+        return []
+    p = []
+    figs = {f.get('id'): f for f in cl.get('figures') or []}
+    d2 = figs.get('dc2-created-value')
+    if d2 is None:
+        p.append('r30: no dc2-created-value figure')
+    else:
+        c = d2.get('coverage') or {}
+        if not (isinstance(c.get('den'), int) and not isinstance(c.get('den'), bool) and c['den'] > 0):
+            p.append(f"r30 dc2-created-value: coverage den must be a counted integer, found {c.get('den')!r}")
+        if not str(c.get('den_anchor', '')).startswith('harness/runtime/r30_dc2_den.json'):
+            p.append('r30 dc2-created-value: den_anchor must name the dc2_den record')
+        if d2.get('value') != 'unbounded' or d2.get('bound_type') != 'unbounded':
+            p.append('r30 dc2-created-value: the value must stay the word unbounded (FQ5, B113)')
+    tb = figs.get('dc1-two-bodies')
+    if tb is None:
+        p.append('r30: no dc1-two-bodies figure')
+    else:
+        if str(tb.get('value', '')).startswith(TWO_BODIES_LITERAL):
+            p.append('r30 dc1-two-bodies: the old literal is back (B202: computed from the holders census)')
+        if 'derived/tx/' in str((tb.get('coverage') or {}).get('num_anchor', '')):
+            p.append('r30 dc1-two-bodies: num_anchor names the v1 layout derived/tx/')
+        if ds is not None and (Path(ds) / 'derived' / 'inclusions.json').exists():
+            inc = json.loads((Path(ds) / 'derived' / 'inclusions.json').read_text())
+            multi = sum(1 for r in inc.get('rows') or [] if len(r.get('heights') or []) > 1)
+            if (tb.get('coverage') or {}).get('den') != multi:
+                p.append(f"r30 dc1-two-bodies: den {(tb.get('coverage') or {}).get('den')} != {multi} multi-block TXIDs")
+    for f in cl.get('figures') or []:
+        if f.get('bound_type') != 'exact' and not str(f.get('moves_when', '')).strip():
+            p.append(f"r30 {f.get('id')}: a {f.get('bound_type')} figure without a moves_when note (B203)")
+        if f.get('bound_type') == 'exact' and LOWER_BOUND_RX.search(' '.join(str(f.get(k, '')) for k in ('note', 'caveat'))):
+            p.append(f"r30 {f.get('id')}: graded exact while its record caveat says it is a lower bound (rule 9, R30 D1)")
+    return p
+
+
 def pages(root, ds):
     """(ledger page of the dataset's round, soundness page of the current round, src-arch)"""
     root = Path(root)
@@ -326,6 +377,7 @@ def g31(root=ROOT, inv_check=None):
     cl = D['classes']
     base = root / 'forensics' / cl.get('base', 'r25') / 'derived' / 'grades.json'
     fails = check_figures(cl)
+    fails += check_r30(cl, ds)
     fails += check_grades(cl, json.loads(base.read_text()) if base.exists() else None)
     fails += check_phrases_json({k: v for k, v in D.items() if v is not None})
     for k, v in D.items():

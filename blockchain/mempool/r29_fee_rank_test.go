@@ -44,7 +44,10 @@ func TestR29PoolOrdersByMilliFeePerByte(t *testing.T) {
 	pool, _ := add(1000)
 	var h1, h2 crypto.Hash
 	h1[0], h2[0] = 1, 2
-	pool.txs.Store(h1, &mempool_object{Size: lo.Size, FEEperBYTE: 0, MilliFEEperBYTE: lo.MilliFeesPerByte})
+	// r30 (closed-loop run 7: gm-r29-dc-b19-sort-integer MISSED once): with every integer rank 0 the integer sort only
+	// keeps the map's range order, which put the fee-2000 entry first in all 20 rounds by chance. The fee-1000 entry
+	// carries integer rank 1, so an integer-rank sort puts it first every time and the milli-rank sort never does.
+	pool.txs.Store(h1, &mempool_object{Size: lo.Size, FEEperBYTE: 1, MilliFEEperBYTE: lo.MilliFeesPerByte})
 	pool.txs.Store(h2, &mempool_object{Size: hi.Size, FEEperBYTE: 0, MilliFEEperBYTE: hi.MilliFeesPerByte})
 	for round := 0; round < 20; round++ {
 		info := pool.Mempool_List_TX_SortedInfo()

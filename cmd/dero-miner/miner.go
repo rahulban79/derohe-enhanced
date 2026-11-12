@@ -322,7 +322,8 @@ func main() {
 	if globals.Arguments["--sort"] != nil {
 		sort_mode = globals.Arguments["--sort"].(string)
 	}
-	logger.Info("suffix sort", "using", install_fast_sort(sort_mode))
+	merge := apply_merge_variant(os.Getenv)                                           // r30 L-C2 (default off)
+	logger.Info("suffix sort", "using", install_fast_sort(sort_mode), "merge", merge) // S4b reads "using"
 	pair_mode := "auto"
 	if globals.Arguments["--pair"] != nil {
 		pair_mode = globals.Arguments["--pair"].(string)
@@ -414,8 +415,10 @@ func main() {
 		last_counter := uint64(0)
 		last_reward_log := time.Now()
 		last_total := atomic.LoadUint64(&counter)
+		last_stale := stale_sha_now() // r30 B26: TOTAL H/s excludes never-hashed stale-SHA texts (hsreport_r30.go)
 		last_total_time := time.Now()
 		last_total_cpu := process_cpu_time() // r23 forensics: cpu_cores and H/cpu-s on the TOTAL line (contention.go)
+		last_pe := pe_now()                  // r30 B27: P/E CPU split on the TOTAL line
 		last_mining_state := false
 
 		_ = last_mining_state
@@ -439,7 +442,7 @@ func main() {
 
 				if mining {
 					// a 15 s window: over ~1 s the GPU's 4096-hash batches made the figure jump (TOTAL uses 15 s too)
-					now, c := time.Now(), atomic.LoadUint64(&counter)
+					now, c := time.Now(), effective_hashes(atomic.LoadUint64(&counter), stale_sha_now()) // r30 B26
 					speed_ring = append(speed_ring, speed_sample{now, c})
 					for len(speed_ring) > 1 && now.Sub(speed_ring[0].t) > 15*time.Second {
 						speed_ring = speed_ring[1:]
@@ -499,16 +502,21 @@ func main() {
 			}
 			if el := time.Since(last_total_time); el >= 15*time.Second {
 				c := atomic.LoadUint64(&counter)
+				dc, ds, eff, next_stale := total_window_step(c, last_total, stale_sha_now(), last_stale) // r30 B26: eff = hashes actually completed in the window
 				cpuNow := process_cpu_time()
-				logger.Info("TOTAL hashrate", append([]interface{}{"H/s", fmt.Sprintf("%.0f", float64(c-last_total)/el.Seconds())},
-					contention_fields(c-last_total, cpuNow-last_total_cpu, el.Seconds())...)...)
-				last_total_cpu = cpuNow
+				peNow := pe_now()
+				fields := hs_fields(dc, ds, el.Seconds())
+				fields = append(fields, contention_fields(eff, cpuNow-last_total_cpu, el.Seconds())...)
+				fields = append(fields, pe_fields(last_pe, peNow, el.Seconds())...) // r30 B27
+				logger.Info("TOTAL hashrate", fields...)
+				last_total_cpu, last_pe, last_stale = cpuNow, peNow, next_stale
 				_, ph := phases.snapshot(time.Now(), c)             // r23c payouts: per-phase hashes, not the 50/50 model;
 				exp := exp_window.step(c-last_total, ph, hash_rate) // stepped even at D = 0 so no window is priced twice
+				exp *= effective_share(eff, dc)                     // r30 B26: never-hashed texts make no share
 				if d := hash_rate; d > 0 {                          // hash_rate is the normal difficulty D (nw_from_job)
 					exp_shares += exp // outcome.go expectedSharesPhased
 					atomic.StoreUint64(&exp_shares_bits, math.Float64bits(exp_shares))
-					run_hashes += c - last_total
+					run_hashes += eff
 					run_seconds += el.Seconds()
 				}
 				last_total = c

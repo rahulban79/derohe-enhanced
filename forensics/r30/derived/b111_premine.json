@@ -1,0 +1,72 @@
+{
+ "balance_tree_keys": {
+  "7467515": 2141530,
+  "7498540": 2141704
+ },
+ "class": "DC3",
+ "closes_when": "the S4 set diff writes {genesis key} == keys minus registration keys into this record (new version)",
+ "code_anchors": [
+  {
+   "anchor": "blockchain/transaction_execute.go:73",
+   "expect": "if genesis == true",
+   "ok": true
+  },
+  {
+   "anchor": "blockchain/transaction_execute.go:77",
+   "expect": "balance_tree.Put(tx.MinerAddress[:]",
+   "ok": true
+  },
+  {
+   "anchor": "blockchain/transaction_execute.go:79",
+   "expect": "if globals.IsMainnet()",
+   "ok": true
+  },
+  {
+   "anchor": "blockchain/transaction_execute.go:200",
+   "expect": "balance_tree.Put(tx.MinerAddress[:]",
+   "ok": true
+  }
+ ],
+ "genesis_key": {
+  "anchor": "config/config.go:118",
+  "note": "the key itself is not written (rule 13)",
+  "sha256_of_hex": "5be1772344eb081340e60b4f0bca01bee0ce0b311345f07091e331dc36900611"
+ },
+ "identity": "balance-tree keys == registrations + premine_keys (premine_keys = 1: the genesis Put)",
+ "inputs": {
+  "forensics/r28d/derived/txs.jsonl.gz": "1cca01fe27e3cbeb3c284bc07ff5db1758a624dd3e5b21f3830ba7852a25e336",
+  "harness/runtime/r29_b111_qcs1.json": "95c71b3ca6a368c804d7097519a2297b017058c2096199dd68c292847af63d43",
+  "harness/runtime/r29_b182_deep_census.json": "dd7e20069eb958312e4dcc3a637ff643b8d6f1d52b751f93edf15db523502c7f",
+  "harness/runtime/r29_b182_fetch_census.json": "29155ab0fd955e368a8e984c046f8f93f77cdbcba57ad1510bdc518f9d745a70",
+  "harness/runtime/r29_b182_offline_census.json": "d5a5cab7685a5b45de2446b83c310551121a86dfe7593c67aef0fe4027abf5f3"
+ },
+ "not_proven": [
+  "the extra key IS the genesis key: set diff on an APFS clone of the held 7,467,515 archive (keys minus registration keys == {genesis key}); never the live store (S4)",
+  "registrations as DISTINCT KEYS: the counts are distinct TXIDs (200,000-tx dedup window); a pre-HF3 re-registration of one key (blockchain.go:716) would lower keys against TXIDs (S2 exact recount + key digests, B208)"
+ ],
+ "premine_keys": 1,
+ "proven": {
+  "code_anchors_reread": true,
+  "gap_registrations_dataset_vs_census_equal": true,
+  "keys_added_7467516_7498540": 174,
+  "keys_added_equal_registrations": true,
+  "registrations_7467516_7498539": 174,
+  "residual_at_7467515_with_premine": 0,
+  "residual_at_7467515_without_premine": 1,
+  "residual_at_7498540_with_premine": 0,
+  "residual_at_7498540_without_premine": 1
+ },
+ "registrations_by_segment": {
+  "0..7398264": 2141434,
+  "7398265..7412664": 26,
+  "7412665..7415463": 7,
+  "7415464..7415465": 0,
+  "7415466..7497942 (window, by carrier height)": 220,
+  "7497943..7498539": 16
+ },
+ "registrations_through_7467515": 2141529,
+ "registrations_through_7498539": 2141703,
+ "row": "B111",
+ "schema": "r30 b111 premine v1 (rft \u00a77 B111 residual)",
+ "status": "HYPOTHESIS (arithmetic consistent)"
+}

@@ -194,6 +194,17 @@ def kat_hs3(over):
     return not bad, '; '.join(bad) or 'sawtooth not a regression; > 1200 s alerts'
 
 
+
+def r27_kats_chain_ok(h):
+    """harness.kats@r27: 26/26 with its dated 25/25 correction (r28 N28-02), or a later value reached through a dated
+    correction chain from 26/26 (r30 B230: 14 KATs registered to areas, dated `area_intel.py correct`). Pure."""
+    cs = h.get('corrections', [])
+    if not any(c.get('was') == '25/25' and c.get('date') for c in cs):
+        return False
+    if h.get('value') == '26/26':
+        return True
+    return any(c.get('was') == '26/26' and c.get('date') for c in cs)
+
 def kat_hs4(over):
     AI = load(over, 'ai')
     bad = []
@@ -213,8 +224,11 @@ def kat_hs4(over):
     if un:
         bad.append(f'unpinned rounds before r28 with a record: {un}')
     h = next(a for a in areas['areas'] if a['id'] == 'harness')['history'].get('r27', {}).get('kats', {})
-    if h.get('value') != '26/26' or not any(c.get('was') == '25/25' and c.get('date') for c in h.get('corrections', [])):
+    if not r27_kats_chain_ok(h):
         bad.append(f"harness.kats@r27 {h.get('value')!r} without its dated 25/25 correction")
+    # r30 merge self-check: a later value with no dated correction from 26/26 is refused
+    if r27_kats_chain_ok({'value': '28/28', 'corrections': [{'date': '2026-11-06', 'was': '25/25'}]}):
+        bad.append('r27_kats_chain_ok accepts a re-booked value without its dated correction')
     src = P(over, 'ai').read_text()
     body = src[src.index('def record(root, rid):'):src.index('# ───────────────────────────── r25 (B52): dated corrections')]
     if 'pin_round(reg, rid, discover_round_records(root, reg, rid))' not in body:
@@ -357,7 +371,8 @@ def kat_hs8(over):
     bad = []
     L = LW.event_lines(rows_fixture(), [PROM0, PROM0])
     ids = [l.split()[1] for l in L]
-    if ids != [e[0] for e in LW.PENDING_EVENTS] or set(ids) != {'B47', 'B48', 'B57', 'B61', 'B85', 'B99'}:
+    # r30: B61 left PENDING_EVENTS for INVARIANTS (topoheight == height is graded on every sample, rft §7 B61)
+    if ids != [e[0] for e in LW.PENDING_EVENTS] or set(ids) != {'B47', 'B48', 'B57', 'B85', 'B99'}:
         bad.append(f'event ids {ids}')
     if not all('no event in 180 s / 9 blocks (node uptime 680 s, 4 samples)' in l for l in L):
         bad.append(f'zero-delta lines: {L[:2]}')
@@ -365,9 +380,11 @@ def kat_hs8(over):
     L2 = dict((l.split()[1], l) for l in LW.event_lines(rows_fixture(topo_off=1, inc=1), [PROM0, p1]))
     if 'EVENT +2' not in L2.get('B57', ''):
         bad.append(f"B57 rise: {L2.get('B57')}")
-    if 'EVENT +1' not in L2.get('B61', '') or 'topoheight != height 1/4' not in L2.get('B61', ''):
-        bad.append(f"B61: {L2.get('B61')}")
-    if 'EVENT' not in L2.get('B48', ''):
+    inv = [l for l in LW.invariant_lines(rows_fixture(topo_off=1, inc=1), []) if l.startswith('invariant B61')]
+    if not inv or 'INVARIANT BROKEN in 1/4 samples' not in inv[0]:
+        bad.append(f"B61: {inv}")
+    # r30: inbound peers alone are context, not B48's event (the proven-lane counters are); r30 start graded it EVENT +28
+    if 'EVENT' in L2.get('B48', '') or 'peers_incoming max 1 (context' not in L2.get('B48', ''):
         bad.append(f"B48 inbound: {L2.get('B48')}")
     L3 = dict((l.split()[1], l) for l in LW.event_lines(rows_fixture(), ['x 1\n', 'x 1\n']))
     if 'pending (absent)' not in L3.get('B47', ''):
@@ -475,6 +492,7 @@ KATS = [('HS1', kat_hs1), ('HS2', kat_hs2), ('HS3', kat_hs3), ('HS4', kat_hs4), 
 OWNERS = {'B149': ['HS1', 'HS12'], 'r28 N28-03': ['HS2'], 'r28 checkpoint': ['HS3'], 'r28 N28-02': ['HS4'], 'B133': ['HS5', 'HS10'],
           'B135': ['HS6', 'HS9', 'HS12'], 'B53': ['HS7'], 'r28 events': ['HS8'], 'B148': ['HS11']}
 
+_FE2 = json.loads((ROOT / 'harness/loop/STEP_BUDGETS.json').read_text())['steps']['harness/kat/test_forensics_frontend2_r26.py']
 MUTATIONS = [
     ('rl', "        if rid not in L['areas']:", "        if False:", 'B149: a round missing from areas.json rounds passes'),
     ('rl', "    if n is not None and n not in L['ledger']:", "    if False:", 'B149: the ledger LAST_CHOICES check is gone'),
@@ -495,7 +513,8 @@ MUTATIONS = [
     ('sb', "            if isinstance(o.get('secs'), (int, float)):", "            if False:", 'B133: the step\'s own secs are ignored'),
     ('sb', "and o.get('status') == 'INFO' and not o.get('skipped'):", "and o.get('status') == 'INFO':", 'B133: a skipped step is timed'),
     ('sb', "        if n > lim:", "        if n > lim * 10:", 'B133: an overrun is not reported'),
-    ('budgets', '"harness/kat/test_forensics_frontend2_r26.py": 320', '"harness/kat/test_forensics_frontend2_r26.py": 900',
+    # r30 (D-13 re-derive moved the row 320 -> 390): the mutation reads the row's current value, as SB3 reads the wall
+    ('budgets', f'"harness/kat/test_forensics_frontend2_r26.py": {_FE2}', '"harness/kat/test_forensics_frontend2_r26.py": 900',
      'B133: the frontend2 budget hides the r26 regression'),
     ('fbv', "        event('project', 'INFO', step=' '.join(st[1:3]), rc=rc, last=last, secs=secs)",
      "        event('project', 'INFO', step=' '.join(st[1:3]), rc=rc, last=last)", 'B133: S7 no longer records step secs'),
@@ -511,14 +530,15 @@ MUTATIONS = [
     ('lw', "        elif delta > 0:", "        elif delta > 99:", 'r28 events: a counter that rose is reported as no event'),
     ('lw', "        if not seen:\n            verdict = 'pending (absent)'", "        if False:\n            verdict = 'pending (absent)'",
      'r28 events: an absent counter reads as no event'),
-    ('lw', "                ne = sum(1 for h, t in pairs if h != t)", "                ne = 0", 'r28 events: B61 topoheight != height not counted'),
+    ('lw', "    ne = sum(1 for h, t in pairs if h != t)", "    ne = 0", 'r28 events: B61 topoheight != height not counted (r30: an invariant)'),
     ('lw', "    L += event_lines(rows, prom)                             # r28: pending events with their denominators\n", "",
      'r28 events: the summary drops the event lines'),
     ('pa', "            out[rel] = ('writer' if newest[f] == rel and fresh else 'historical', n)",
      "            out[rel] = ('historical', n)", 'B135: a current writer leak is called historical'),
     ('pa', "    return 5 if bad else 0\n\n\nif __name__", "    return 0\n\n\nif __name__", 'B135: --dir passes a planted capture'),
-    ('pa', "        if str(rel).startswith('harness/kat/'):\n            out[rel] = ('fixture', n)\n        elif f:",
-     "        if f:", 'B135: KAT fixtures are not told apart'),
+    # r30 merge: re-anchored after B206 put the pdf branch first (`if .pdf` / `elif harness/kat/`)
+    ('pa', "        elif str(rel).startswith('harness/kat/'):\n            out[rel] = ('fixture', n)\n        elif f:",
+     "        elif f:", 'B135: KAT fixtures are not told apart'),
     ('gates', "        self.t0 = now\n        super().append(item)", "        super().append(item)", 'B133: gate timing accumulates from the start'),
     ('gates', "    if not dest or not hasattr(res, 'timing'):", "    if not hasattr(res, 'timing'):", 'B133: gate timing written without the opt-in'),
     ('ri', "    if mds is not None and mds >= REDUCE_MDS_STORES_MB:                       # r28 (B148)",

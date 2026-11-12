@@ -401,7 +401,7 @@ MUTATIONS = [
     ('PI8', PI, 'if age is None or age > FRESH_H or age < -0.1:', 'if age is None or age > FRESH_H * 100 or age < -0.1:', 'a stale capture passes G27'),
     ('PI8', PI, "            if isinstance(ln, int) and 0 < ln <= len(ls) and str(e.get('quote', ''))[:200] in ls[ln - 1]:", "            if True:", 'an unanchored row passes G27'),
     ('PI9', PI, "        if not a or a['status'] != 'OK':", "        if not a:", 'a detector is graded without its rule line'),
-    ('PI10', PI, "'grade': 'ANOMALY' if share > FIRST_RELAY_CONC else 'NORMAL',", "'grade': 'NORMAL',", 'first-relay concentration is never flagged'),
+    ('PI10', PI, "'grade': 'ANOMALY' if lo > FIRST_RELAY_CONC else 'NORMAL', 'lo95'", "'grade': 'NORMAL', 'lo95'", 'first-relay concentration is never flagged'),
     ('PI11', PI, "'grade': 'OBSERVED' if mt[key] > 0 else 'NORMAL',", "'grade': 'NORMAL',", 'INV budget clips are not flagged'),
     ('PI12', MP, """                if a and f'"peer": "{f["peer"]}"' in a['quote']:     # the extract line must name this very peer""",
      "                if a:", "a finding is cited by another peer's log line"),

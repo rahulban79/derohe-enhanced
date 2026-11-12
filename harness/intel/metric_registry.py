@@ -25,6 +25,8 @@ check  K1 every scrape family is registered · K2 every entry has a valid name/t
        K4 a source-declared family is still declared in the source · K5 (--docs) every backticked metric-like name
        in cmd/derod/rpc/RPC_METHODS.md is registered (dero-rft.md hits are reported, not failed: it quotes history).
        Exit 0 ok · 3 a check failed · 2 bad usage/input. Nothing is fetched: give the scrape as a file.
+       r30 (rft §7 B152): K6 (with --scrape) a source-declared family absent from the scrape is a problem unless it is
+       on the LAZY_BY_DESIGN allow-list; K7 an allow-list entry that is not a registered vmhistogram is stale.
 A scrape carries peer addresses in labels: keep it in a scratch directory, never commit it (rft §5 privacy).
 """
 import argparse, fnmatch, json, re, sys
@@ -44,6 +46,29 @@ TYPES = ('counter', 'gauge', 'histogram', 'vmhistogram', 'summary', 'untyped')
 LABEL_KEY = re.compile(r'(?:^|,)\s*([a-zA-Z_][a-zA-Z0-9_]*)="')
 SAMPLE = re.compile(r'^([a-zA-Z_:][a-zA-Z0-9_:]*)(\{([^}]*)\})?\s+(\S+)')
 UPSTREAM = ('go_', 'process_', 'KCP_', 'flag', 'vm_')       # families named by vendored code: reported, never renamed
+# r30 (rft §7 B152, audit b152-residual-histograms-unlisted): the 12 source-declared VictoriaMetrics histograms whose
+# EVENT can be missing on a healthy node (no miner on getwork, none of our miniblocks acked, no transaction seen): a
+# vmhistogram writes no line before its first sample, so these are absent from /metrics until their event happens.
+# Pre-registering one exports nothing, so their absence is by design; the r29 fix pre-registered the 8 lazy COUNTER
+# families at start. Any other source family absent from a scrape is a finding (K6).
+LAZY_BY_DESIGN = (
+    'getwork_final_flip_delay_seconds', 'getwork_final_flip_l9_seconds', 'getwork_job_template_age_seconds',
+    'getwork_send_job_seconds',                                                      # getwork: a miner and a final flip
+    'miniblock_ours_first_ack_seconds', 'miniblock_ours_last_ack_seconds', 'miniblock_ours_median_ack_seconds',  # our miniblock acked
+    'transaction_payloads_histogram_short', 'transaction_propagation_duration_histogram_seconds',
+    'transaction_ring_histogram_short', 'transaction_size_histogram_bytes',
+    'tx_propagation_duration_histogram_seconds',                                     # a transaction seen
+)
+
+
+def absent_families(reg, scrape_text):
+    """(absent, lazy) source-declared families of the registry missing from the scrape: `absent` not allow-listed
+    (a K6 finding), `lazy` on LAZY_BY_DESIGN. Families named by vendored or dynamic code are not source-declared. Pure."""
+    live = set(parse_scrape(scrape_text or ''))
+    src = [e['name'] for e in reg.get('families', []) if e.get('source') not in ('dynamic', 'vendored', None)
+           and not e['name'].startswith(UPSTREAM)]
+    miss = sorted(n for n in src if n not in live)
+    return [n for n in miss if n not in LAZY_BY_DESIGN], [n for n in miss if n in LAZY_BY_DESIGN]
 UNITS = (('_seconds', 'seconds'), ('_bytes', 'bytes'), ('_ms', 'milliseconds'), ('_us', 'microseconds'),
          ('_ratio', 'ratio'), ('_percent', 'percent'), ('_blocks', 'blocks'), ('_timestamp', 'seconds'))
 NON_BASE = {'milliseconds', 'microseconds', 'percent'}  # Prometheus base units are seconds/bytes/ratio: K3 lists these
@@ -254,6 +279,11 @@ def check(reg, root=ROOT, scrape_text=None, docs=False):
         for fam in sorted(parse_scrape(scrape_text)):
             if fam not in names:
                 probs.append(('K1', f'{fam}: exported on /metrics, not in the registry'))
+        for fam in absent_families(reg, scrape_text)[0]:                       # r30 (B152)
+            probs.append(('K6', f'{fam}: declared in the source, absent from the scrape and not lazy_by_design'))
+    for n in LAZY_BY_DESIGN:                                                   # r30 (B152)
+        if (names.get(n) or {}).get('type') != 'vmhistogram':
+            probs.append(('K7', f'LAZY_BY_DESIGN entry {n} is not a registered vmhistogram (stale allow-list)'))
     src = mine_source(root)
     for n, e in names.items():
         s = e.get('source', '')

@@ -117,7 +117,8 @@ def fixture(tmp, **opt):
             {'stage': 'run', 'status': 'BEGIN', 'round': rid},
             {'stage': 'test', 'status': 'PASS', 'new_tests': {'./p2p/': {'passed': ['TestPen', 'TestSync'], 'failed': []}}},
             {'stage': 'kats', 'status': 'PASS', 'results': {'test_owned.py': ['owned: 1/1 ok']}},
-            {'stage': 'mutate', 'status': 'PASS'}]) + '\n')
+            {'stage': 'mutate', 'status': 'PASS'},
+            {'stage': 'done', 'status': 'END', 'ok': True}]) + '\n')   # r30 B231: a completed record ends with END
         res = [{'id': 'gm-pen', 'file': 'p2p/penalty.go', 'result': caught},
                {'id': 'gm-sync', 'file': 'p2p/sync.go', 'result': 'CAUGHT'}]
         if rid == 'r3':
@@ -368,7 +369,7 @@ MUTATIONS = [
     ('AI6', "BAD_MUT = ('MISSED', 'STALE', 'INVALID', 'BROKEN', 'NEWFAIL')", "BAD_MUT = ('MISSED', 'STALE', 'BROKEN', 'NEWFAIL')",
      'an INVALID mutation is not reported'),
     ('AI6', "        for p in lis[-6:-1]:", "        for p in lis[-6:]:", 'new ERROR kinds are compared against the snapshot itself'),
-    ('AI6', "    if cur in order and order.index(cur) - lastr > stale_n:", "    if cur in order and order.index(cur) - lastr > stale_n + 5:",   # r28: re-anchored (staleness() is a function now, N28-03)
+    ('AI6', "    if cur in order and gap > stale_n:", "    if cur in order and gap > stale_n + 5:",   # r28: re-anchored (staleness() is a function now, N28-03); r30: gap skips paused rounds (B231)
      'stale evidence is never reported'),
     ('AI6', "        (ok if ((root / t).exists() or Path(t).name in files) else bad).append(t)", "        ok.append(t)",
      'a §7 anchor to a file that is gone still resolves'),
@@ -402,6 +403,7 @@ def copy_mod():
     d = Path(tempfile.mkdtemp(prefix='r24ai-'))
     (d / MOD).parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(HARNESS / MOD, d / MOD)
+    shutil.copy2(HARNESS / 'intel/backlog_truth.py', d / 'intel/backlog_truth.py')   # r30 B230: is_open reads it
     return d
 
 

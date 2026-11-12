@@ -10,6 +10,9 @@ Liveness = WORK, not heartbeats: the job is alive while any of its --work files 
             the process group is stopped (TERM, then KILL after 10 s) and the job is relaunched with --cmd
   DEAD      no process and no --done marker: relaunched with --cmd
   DONE      the --done file exists (the job's own completion marker): the watchdog exits 0
+  STOPPED   (r30 B257) a --stop file exists: the job ended on purpose and must NOT be relaunched (quiet_window's
+            exit 5 REFUSED is resumable by a human decision, not by a restart loop); the watchdog logs the marker's
+            first line and exits 6. Checked before DEAD, so a deliberate exit is never relaunched
 At most --max-restarts relaunches per hour; past that it stops with exit 5 and writes STUCK to --log, so a human
 (the coordinator) looks instead of a restart loop. It never signals a process whose command line lacks --match or
 that belongs to another user — derod, the miner and system processes are out of reach by construction.
@@ -68,6 +71,10 @@ class Watch:
         a, now = self.a, self.clock()
         if a.done and Path(a.done).exists():
             return 'DONE'
+        for f in getattr(a, 'stop', None) or []:              # r30 B257: a declared final exit is never relaunched
+            if Path(f).exists():
+                self.stopped_by = f
+                return 'STOPPED'
         sig = work_sig(a.progress, a.counter, a.work)
         if sig != self.sig:
             self.sig, self.moved = sig, now
@@ -152,6 +159,8 @@ def parse(argv):
     p.add_argument('--counter', action='append', default=[])
     p.add_argument('--work', action='append', default=[])
     p.add_argument('--done')
+    p.add_argument('--stop', action='append', default=[], help='r30 B257: a marker file whose presence means the job '
+                   'ended on purpose (final, never relaunched); repeatable')
     p.add_argument('--stall-s', type=float, default=900)
     p.add_argument('--every', type=float, default=60)
     p.add_argument('--max-restarts', type=int, default=4)
@@ -169,7 +178,14 @@ def main(argv):
     w.act.log(f'start: match={a.match!r} stall_s={a.stall_s:g} max_restarts={a.max_restarts}')
     while True:
         st = w.step()
-        if st in ('DONE', 'STUCK'):
+        if st in ('DONE', 'STUCK', 'STOPPED'):
+            if st == 'STOPPED':
+                try:
+                    first = Path(w.stopped_by).read_text(errors='replace').strip().splitlines()[:1]
+                except OSError:
+                    first = []
+                w.act.log(f"STOPPED by {w.stopped_by}: {first[0][:300] if first else '(empty marker)'}")
+                return 6
             w.act.log(st)
             return 0 if st == 'DONE' else 5
         time.sleep(a.every)

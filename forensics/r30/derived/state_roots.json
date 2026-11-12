@@ -1,0 +1,84 @@
+{
+ "a10c": {
+  "answer": "bound: the replay from the archive top state reaches our own treehash at the anchor",
+  "archive_top_root": "d3345594b8bb324b60940c0bea625c57567f09ac889704dba57935de407bd324",
+  "question": "are the archive roots 7,453,290..7,467,515 consistent with what our node accepted later?",
+  "seed_top_root": "d3345594b8bb324b60940c0bea625c57567f09ac889704dba57935de407bd324"
+ },
+ "anchor_topo": 7498540,
+ "class": "pending",
+ "evidence_class": "DERIVED (node replay: tools/forensics/a2 replay; run C through p2p.Add_Complete_Block_HF3, the sync path entry; runs A/B through the bare blockchain.Add_Complete_Block, B123)",
+ "our_treehash_at_anchor": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7",
+ "roothash_witnesses": {
+  "archive_differ": 0,
+  "archive_equal": 200,
+  "differ": 0,
+  "equal": 690,
+  "outside_held_roots": 670,
+  "rows_differ": [],
+  "rule": "payload 0 Statement.Roothash of a RAW tx vs our root at its reference topo (replay roots, else the archive roots of v1 derived/archive_state)"
+ },
+ "runs": {
+  "A": {
+   "base_root_eq_archive_root": true,
+   "blids_equal_raw_headerchain": true,
+   "end_state_check": "pending: the run reached topo 7467545, not 7,498,540",
+   "fail_error": "Invalid TX",
+   "fail_topo": 7467546,
+   "roots_sha256": "eb095462bbdaf205c001a7886fe2aa1447756bca57fffebcf4fb1f179fd51cdf",
+   "stopped": "block rejected by the node's own checks",
+   "topo_range": [
+    7467515,
+    7467545
+   ],
+   "topos": 31
+  },
+  "B": {
+   "base_root_eq_archive_root": true,
+   "blids_equal_raw_headerchain": true,
+   "end_state_check": "pending: the run reached topo 7467545, not 7,498,540",
+   "fail_error": "Invalid TX",
+   "fail_topo": 7467546,
+   "roots_sha256": "eb095462bbdaf205c001a7886fe2aa1447756bca57fffebcf4fb1f179fd51cdf",
+   "stopped": "block rejected by the node's own checks",
+   "topo_range": [
+    7467515,
+    7467545
+   ],
+   "topos": 31
+  },
+  "C": {
+   "base_root_eq_archive_root": true,
+   "blids_equal_raw_headerchain": true,
+   "end_root": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7",
+   "end_state_check": "MATCH",
+   "fail_error": null,
+   "fail_topo": null,
+   "roots_sha256": "93c694d307263b14af8c7d3ea904a65195d4ffdb9e66fd2f1eb5e3e739998e53",
+   "stopped": "completed",
+   "topo_range": [
+    7467515,
+    7498540
+   ],
+   "topos": 31026
+  }
+ },
+ "runs_byte_identical_per_entry": {
+  "blockchain.Add_Complete_Block (pre-fix tool, B123)": true,
+  "p2p.Add_Complete_Block_HF3": true
+ },
+ "runs_entry": {
+  "A": "blockchain.Add_Complete_Block (pre-fix tool, B123)",
+  "B": "blockchain.Add_Complete_Block (pre-fix tool, B123)",
+  "C": "p2p.Add_Complete_Block_HF3"
+ },
+ "window_coverage": {
+  "pending_range": [
+   7415466,
+   7467515
+  ],
+  "pending_reason": "no base state before this range: (a2) TreeSection blocked (derived/a2.json); our archive starts at 7,453,290 and its own roots 7,453,290..7,467,515 are the base of run C, which is end-state-checked",
+  "topos_with_pre_post_root": 30427,
+  "window_topos": 82477
+ }
+}

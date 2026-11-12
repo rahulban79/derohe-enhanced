@@ -47,7 +47,9 @@ installed, so bin/ only ever receives binaries that passed every stage before IN
                verdict whose census says contended. S4c with --gpu-bench on an UNCHANGED server is a self-A/B (the staged
                build of the same source vs the installed binary): bit-exact, rates > 0, and the ratio inside
                [0.93, 1/0.93] — the band the gate needs the bench's own noise to fit — so the GPU path is exercised every
-               round; --gpu-bench-only runs S4c alone.
+               round; --gpu-bench-only runs S4c alone. r30 (miner track ACTIVE, rft §0.3): --miner-bench-only runs S4b alone
+               on the staged build, so the quiet-window runner (harness/pipeline/quiet_window.py, B236) re-runs S4b and
+               S4c as stages of their own with the live miner stopped; a full run benches them as before.
   r24 PAUSED   while harness/round.json rounds[current].tracks.miner == 'paused' (artifacts/dero-rft.md §0.3; the user
                paused the miner track and runs no miner) S4b and S4c record PAUSED, citing §0.3, instead of benching —
                but only when no miner source (cmd/dero-miner, astrobwt, gpu-miner-poc) changed since the round's
@@ -640,7 +642,7 @@ for _pkg, _pat in {
                   '|TestR23bRelayWindowDropsBeforeMempool|TestR23bRelayHF3TableRefused'
                   '|TestR23bRelayWindowPassesInWindow',
         './tools/launchd/': 'TestProgramArgsAlwaysSupervisedOnce|TestCheckRefusesPlaceholderWallet|TestRunTemplateAndStrict'
-                            '|TestRenderEscapes|TestPlutilLint',
+                            '|TestRenderEscapes|TestPlutilLint|TestR30ProcessTypeInteractive',
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
@@ -1148,6 +1150,12 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 NORACE_NEW_TESTS['./walletapi/'] = NORACE_NEW_TESTS.get('./walletapi/', []) + ['Test_R28d_HF3_Exemption_Ring16']  # r28d: !race file, port 26233
+# Round 30 (forensics-genesis-coverage, rft §7 B208: the b182deep2 chain-census decoder; go_mutations gm-r30-gen-*)
+for _pkg, _pat in {
+    './tools/forensics/b182deep2/': 'TestR30CanonScalarOrderCounted|TestR30CanonPointChecks|TestR30BurnSumAllPayloads'
+                                    '|TestR30GenesisBlockCensus|TestR30OnCurveJacobiEqualsEuler',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 # Round 29 decisions (the user's decisions 2026-11-08, dero-rft §7): the pool sorts by milli-unit fee per byte (B19 (a),
 # guard construct mempool-milli-fee-rank), derod refuses to start on a consensus env override (B141 (a)), the SC recover
 # logs at V(2) Info (B157 (a)); the B144 (a) rpc copy is guarded by the existing TestR28RPCFormatMoneyCopy (switch on).
@@ -1286,6 +1294,25 @@ for _pkg, _pat in {
     './tools/emission-audit/': 'TestR29SCBlockExport',
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 30 miner (dero-rft §7 B26, B27, B239, B237, §8 L-C2): stale_sha_skipped excluded from the reported H/s (miner-level
+# counter, monotonic across engine restarts), the P/E CPU split (proc_pid_rusage v6), the 0-allocation split sort path,
+# the shm layout golden file the resource_intel shm preflight reads, the DSA_PROF share arithmetic, and the branch-free
+# two-list merge: bit-exact vs the r29 merge and the Go twin, DEFAULT OFF (DERO_DSA_MERGE=bf) until the quiet-window ABBA.
+# The bench tests (TestR30SortRateBench, TestR30DSAProfile) are env-gated and skip here: harness/pipeline/quiet_window.py.
+for _pkg, _pat in {
+        './cmd/dero-miner/': 'TestR30StaleSHATrackerMonotonic|TestR30HsFieldsExcludeStale|TestR30MetricsExportStaleAndPE'
+                             '|TestR30PEFields|TestR30MachTicks|TestR30PECPUTimeReal|TestR30StatusLoopReportsEffective'
+                             '|TestR30SplitSortPathZeroAlloc|TestR30MergeVariantDefaultOff|TestR30ProfShares'
+                             '|TestR30TotalWindowStep|TestR30StaleSHAFrom',   # r30 merge: the miner verifier's B26 window tests
+        './cmd/dero-miner/dsac/': 'TestR30MergeVariantBitExact',
+        './cmd/dero-miner/gsplit/': 'TestR30ShmLayoutGolden',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# r30 merge (closed-loop run 5 race FAIL, rft §7 B251): the R28 SC-flow KAT rebuilds a tx whose wallet build hit the
+# upstream 240-bit retry panic (an SC-install txid artefact); the retry helper's own test
+NEW_TESTS['./blockchain/'] = f"{NEW_TESTS['./blockchain/']}|TestR30BuildRetry240Bits"
 
 UPSTREAM_BASE = 'bf274e5'           # pristine Release153 content (harness/baseline); rule #28 compares against it
 NEW_TESTS_BASE = 'HEAD'
@@ -2234,6 +2261,7 @@ def s4c_gpubench():
                        {**base, 'GSPLIT_BIN': str(staged)})
     ab['bitexact'] = rc == 0 and '--- PASS: TestRealGPUBitExact' in o + e
     ab['disturbed'] |= rc == 99
+    ab['live_split'] = 'absent' if '[gpu_watch] live_split: absent' in o + e else 'present'   # r30 B258
     for k in range(3):
         if ab['disturbed']:
             break
@@ -2795,7 +2823,8 @@ def judged_step(step, rc, before, after):
 # `--project-only` could not pass on a fresh checkout while the miner track is PAUSED (rft §0.3; G17/G18/G21 report
 # PAUSED anyway). Only while the track is paused AND the input is absent is the step skipped (with the
 # reason, event INFO skipped=...); an active track, or a present log, runs and is judged exactly as before.
-MINER_STEP_INPUTS = {'miner_intel': 'bin/dero-miner.log', 'miner_runs': 'bin/dero-miner.runs.jsonl'}
+MINER_STEP_INPUTS = {'miner_intel': 'bin/dero-miner.log', 'miner_runs': 'bin/dero-miner.runs.jsonl',
+                     'payout_ledger': 'bin/dero-miner.runs.jsonl', 'hashrate_objective': 'bin/dero-miner.runs.jsonl'}  # r30
 
 
 def paused_skip(step, track, root):
@@ -2816,17 +2845,29 @@ def s7_project():
              [sys.executable, 'harness/intel/run_ledger.py'],          # R21: after miner_intel (it backfills from its snapshots)
              # R22: the miner's OWN run ledger, validated (L1-L8) and joined with derod and the chain; exit 6 = a check failed
              [sys.executable, 'harness/intel/miner_runs.py'],
+             # r30 (miner track active; B238 PO10, B235 G34, B236): the daily DERO/day KPI (payout_daily.jsonl, read by
+             # the area_intel miner card), the hashrate-objective record (G34 reads the log itself), and the quiet-window
+             # plan (a broken step table stops here, not in the user's window)
+             [sys.executable, 'harness/intel/payout_ledger.py'],
+             [sys.executable, 'harness/intel/hashrate_objective.py', '--write'],
+             [sys.executable, 'harness/pipeline/quiet_window.py', 'plan', '--json'],
              [sys.executable, 'harness/intel/metrics_intel.py', '--json-only'],
              [sys.executable, 'harness/intel/consensus_intel.py', '--json-only'],   # r24: chain-consensus observatory (G26), before area_intel reads it
              # r24 (consensus-network): the pseudonymised network-peer observatory (G27); before area_intel, whose
              # 'peers' area reads harness/runtime/peer_intel.json
              [sys.executable, 'harness/intel/peer_intel.py', '--live'],
              [sys.executable, 'harness/intel/tooling_intel.py', '--scrub-control'],   # r25: area tooling (§0.9), before area_intel
+             # r30 (B252, §0.10 pause/resume): the round's due-actions ledger (round_state/<round>_DUE.json) is well-formed and
+             # every HANDOFF.md of the round is checked (handoff.py; WARN only); a malformed DUE item exits 4
+             [sys.executable, 'harness/intel/round_pause.py', 'check'],
              # r25 (rft §0.8.8, B84): every forensic dataset version re-verified byte for byte, the newest one replayed
              # (full where the tier B store and the archive copy exist, else PARTIAL and labelled; never the G28 record),
              # then its facts written for area `forensics` (before area_intel) and gate G30
              [sys.executable, 'harness/forensics/verify_dataset.py', 'forensics'],
              [sys.executable, 'harness/forensics/s7_replay.py'],
+             # r30 (rft §8 S0; B209 B210 B203 B111): the four S0 records re-derived from their pinned inputs and compared
+             # with the committed harness/runtime/r30_*.json (the checkpoint records SKIPPED and labelled where it is absent)
+             [sys.executable, 'harness/forensics/s0_checkpoint.py', '--check'],
              [sys.executable, 'harness/forensics/facts.py', '--write', 'harness/runtime/forensics_intel.json'],
              [sys.executable, 'harness/intel/area_intel.py', '--live']]   # r24: per-area scorecards + proposals (G23)
     # the stand-alone KAT files (harness/kat/test_*.py): before R19 test_guard_build_inputs.py existed but no stage ran it
@@ -2848,11 +2889,18 @@ def s7_project():
     _lm = re.fullmatch(r'r(\d+)[a-z]?', str(CUR_ROUND.get('id') or ''))
     if _lm and (ROOT / f'artifacts/dero-r1-r{_lm.group(1)}.html').exists():
         steps += [[sys.executable, 'artifacts/src/gen_ledger.py', '--last', _lm.group(1), f'artifacts/dero-r1-r{_lm.group(1)}.html']]
+    # r30 (B225): the soundness page's generated record blocks must be current before G22 judges the page (exit 3 =
+    # stale: run soundpage.py --write-gen, as regen_round does)
+    steps += [[sys.executable, 'harness/kit/soundpage.py', '--check-gen']]
     steps += [[sys.executable, 'harness/run_gates.py', f'pipeline-{TS}'],
               [sys.executable, 'harness/gen_index.py'],
               # r24: the full cross-artifact coherence check (G25's set plus the index page gen_index just wrote); a
               # drift exits 4 and fails S7 like any other step (record: harness/runtime/coherence_last.json)
-              [sys.executable, 'harness/intel/coherence.py', '--record']]
+              [sys.executable, 'harness/intel/coherence.py', '--record'],
+              # r30 (rft §6 step 22a, §7 B205): every file the round's commits add is reached by a registered KAT, a
+              # gate, a pipeline step or a generator; an orphan tool, an unregistered KAT or a literal figure in a
+              # generator exits 4 (record: harness/runtime/<round>_coherence_audit.txt)
+              [sys.executable, 'harness/intel/coherence_audit.py', '--record']]
     _HK = _hangkit()
     _sb = _stepbudget()
     try:
@@ -2933,6 +2981,8 @@ def main():
     ap.add_argument('--gpu-bench', action='store_true', help='S4c: bench the staged Swift server against the installed one on the real GPU')
     ap.add_argument('--no-gpu-bench', action='store_true', help='S4c: the Swift server changed but its GPU side is not benched, on purpose')
     ap.add_argument('--gpu-bench-only', action='store_true', help='R23: run S4c alone (implies --gpu-bench): the GPU path end to end')
+    ap.add_argument('--miner-bench-only', action='store_true', help='r30 (miner track active, rft §0.3; B236): run S4b '
+                    'alone on the already staged bin/.staging/dero-miner (the quiet-window runner, harness/pipeline/quiet_window.py)')
     ap.add_argument('--contended-ok', action='store_true', help='R23: a contended (REFUSED) A/B is recorded and the run goes on')
     ap.add_argument('--soundness-only', action='store_true', help='R23b: S1 + S3s alone (records harness/loop/SOUNDNESS_LAST.json)')
     ap.add_argument('--root', default=None, help='r25 (B49): run this pipeline in another checkout (its own copy of this '
@@ -2977,6 +3027,13 @@ def main():
     if a.gpu_bench_only:
         SUMMARY['mode'] = 'gpu-bench-only'
         s4c_gpubench()
+        finish(0)
+    if a.miner_bench_only:                    # r30: S4b re-enabled as its own stage for the quiet window (§0.3 active)
+        SUMMARY['mode'] = 'miner-bench-only'
+        if not (STAGE / 'dero-miner').is_file():
+            event('minerbench', 'FAIL', why=['no staged miner (bin/.staging/dero-miner): the closed loop stages the build first'])
+            finish(13)
+        s4b_miner()
         finish(0)
     s1_guard()
     s2_format()

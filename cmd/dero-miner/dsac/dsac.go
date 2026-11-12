@@ -32,5 +32,12 @@ func SuffixArray(text []byte, sa []int32) bool {
 	return rc == 0
 }
 
+// SetMergeVariant selects the two-list merge (r30 L-C2): 0 = the r29 merge (default), 1 = branch-free. Bit-exact
+// either way (TestR30MergeVariantBitExact); set it before the mining threads start.
+func SetMergeVariant(v int) { C.dsa_set_merge_variant(C.int(v)) }
+
+// MergeVariant reports the variant in force.
+func MergeVariant() int { return int(C.dsa_get_merge_variant()) }
+
 // Release frees the calling OS thread's C scratch (optional).
 func Release() { C.dsa_descriptor_release() }

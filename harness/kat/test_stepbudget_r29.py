@@ -76,7 +76,9 @@ def kat_sb3(over):
     SB = load(over)
     doc = json.loads(P(over, 'budgets').read_text())
     names = re.findall(r'pipeline_\d{8}T\d{6}\.jsonl', doc.get('_doc', ''))
-    landed = dict((k, float(v)) for k, v in re.findall(r'(harness/\S+\.py) ([\d.]+) s', doc.get('_doc', '').split('landed:')[-1]))
+    # r30: a landed S7 step may carry its arguments ('harness/intel/hashrate_objective.py --write 1 s'), as derive() keys do
+    landed = dict((k, float(v)) for k, v in re.findall(r'(harness/\S+\.py(?: --?[\w-]+| [a-z]+)*) ([\d.]+) s',
+                                                        doc.get('_doc', '').split('landed:')[-1]))
     if len(names) != 3:
         return False, f'_doc names {len(names)} records'
     got = SB.derive([records(f'harness/loop/runs/{n}') for n in names], landed, doc.get('default_s', 60))
@@ -91,14 +93,25 @@ def kat_sb4(over):
     SB = load(over)
     doc = json.loads(P(over, 'budgets').read_text())
     recs = sorted((ROOT / 'harness/loop/runs').glob('pipeline_*.jsonl'))
-    for p in reversed(recs):
-        ev = [json.loads(l) for l in p.read_text().splitlines() if l.strip()]
-        if any(o.get('stage') == 'project' and o.get('status') == 'PASS' for o in ev):
-            r = SB.report(ev, doc)
-            ok = not r['unbudgeted'] and not r['wall_over']
-            return ok, (f"{p.name}: {r['steps']} steps, no row {r['unbudgeted'][:3]}, wall {r['wall_s']:g}/{r['wall_budget_s']:g}"
-                        f" over {r['wall_over']}")
-    return False, 'no project-only PASS record'
+    evs = [[json.loads(l) for l in p.read_text().splitlines() if l.strip()] for p in recs]
+    i = SB.project_only_pass(evs)                       # r30 B262: the newest PROJECT-ONLY PASS record
+    if i is None:
+        return False, 'no project-only PASS record'
+    p, ev = recs[i], evs[i]
+    r = SB.report(ev, doc)
+    ok = not r['unbudgeted'] and not r['wall_over']
+    return ok, (f"{p.name}: {r['steps']} steps, no row {r['unbudgeted'][:3]}, wall {r['wall_s']:g}/{r['wall_budget_s']:g}"
+                f" over {r['wall_over']}")
+
+
+def kat_sb6(over):
+    """r30 B262: a full run (build stage) with a project PASS is never the project-only record SB4 judges"""
+    SB = load(over)
+    proj = [{'stage': 'project', 'status': 'PASS'}]
+    full = [{'stage': 'build', 'status': 'PASS'}, {'stage': 'project', 'status': 'PASS'}]
+    fail = [{'stage': 'project', 'status': 'FAIL'}]
+    got = (SB.project_only_pass([proj, full]), SB.project_only_pass([proj, fail]), SB.project_only_pass([full]))
+    return got == (0, 0, None), got
 
 
 def kat_sb5(over):
@@ -109,8 +122,8 @@ def kat_sb5(over):
     return ok, f"r26 record over: {r['over'][:2]}"
 
 
-KATS = [('SB1', kat_sb1), ('SB2', kat_sb2), ('SB3', kat_sb3), ('SB4', kat_sb4), ('SB5', kat_sb5)]
-OWNERS = {'B192': ['SB1', 'SB2', 'SB3', 'SB4', 'SB5']}
+KATS = [('SB1', kat_sb1), ('SB2', kat_sb2), ('SB3', kat_sb3), ('SB4', kat_sb4), ('SB5', kat_sb5), ('SB6', kat_sb6)]
+OWNERS = {'B192': ['SB1', 'SB2', 'SB3', 'SB4', 'SB5'], 'B262': ['SB4', 'SB6']}
 # r29 merge: the hand-edit mutation reads the file's current wall (it pinned 2990 and went stale when the merge re-derived)
 _WALL = json.loads((ROOT / 'harness/loop/STEP_BUDGETS.json').read_text())['project_wall_s']
 MUTATIONS = [
@@ -124,6 +137,10 @@ MUTATIONS = [
     ('sb', "            'over': [f'{k} {n:g}s > {b:g}s' for k, n, b in over(st, doc)], 'unbudgeted': unbudgeted(st, doc)}",
      "            'over': [f'{k} {n:g}s > {b:g}s' for k, n, b in over(st, doc)], 'unbudgeted': []}", 'B192: report() drops the steps without a row'),
     ('budgets', f'"project_wall_s": {_WALL}', f'"project_wall_s": {_WALL + 10}', 'B192: the wall budget is edited by hand'),
+    ('sb', "        if any(o.get('stage') == 'build' for o in ev):\n            continue", "        if False:\n            continue",
+     'B262: a full run is judged as the project-only record'),
+    ('sb', "        if any(o.get('stage') == 'project' and o.get('status') == 'PASS' for o in ev):\n            return i",
+     "        if any(o.get('stage') == 'project' for o in ev):\n            return i", 'B262: a FAIL record is judged as a PASS'),
 ]
 
 

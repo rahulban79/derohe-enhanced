@@ -11,6 +11,16 @@
   RC5 a planted <round>_NOTES.md (the coordinator's handoff notes) is appended to the resume brief.
   RC6 a pipeline record is a full run when it ran the shadow (a --no-install run counts) and a PASS when its 'done'
       event says ok true.
+  RC7 (r30 B252) Agent-tool subagent transcripts: a SubagentHandback is done, a recent open one in-flight, an old open
+      one stalled, a handback followed by a new prompt is open again; dim from the prompt, a HANDOFF.md naming the agent
+      wins; the brief lists the states and the HANDOFF path.
+  RC8 (r30 B252) OS jobs: a background Bash job of the session is session-bound (loop kind named); a ppid-1 stallwatch
+      is detached with the file it grows, its size, counter and planned end; tail readers and the caller's own wrapper
+      are not listed; the miner is an observe-only user daemon with its wallet masked; the DUE view orders overdue
+      before upcoming, gates 'after', never lists a done item; the brief renders both.
+
+  RC9 (r30 B254a) the running derod's suffix survives a log rotation: the newest Version line wins, whether it sits in
+      derod.log or (after a 100 MB rotation) only in the newest lumberjack backup derod-<UTC>.log; none anywhere -> ''.
 
 All inputs are forged in a temporary directory (ROUND_CKPT_* overrides); nothing outside it is read or written.
 
@@ -133,7 +143,126 @@ def rc6(T, d):
     return got == ((True, True), (True, False), (False, True), (False, False)), f'{got}'
 
 
-KATS = [('RC1', rc1), ('RC2', rc2), ('RC3', rc3), ('RC4', rc4), ('RC5', rc5), ('RC6', rc6)]
+def _tr(*recs):
+    return ''.join(json.dumps(r) + '\n' for r in recs)
+
+
+def _asst(*blocks, stop=None):
+    return {'type': 'assistant', 'message': {'role': 'assistant', 'stop_reason': stop, 'content': list(blocks)}}
+
+
+def _user(text):
+    return {'type': 'user', 'message': {'role': 'user', 'content': text}}
+
+
+def rc7(T, d):
+    """r30 B252: Agent-tool subagent transcripts — a SubagentHandback is done, a recent tool call is in-flight, an old
+    open one is stalled, a handback followed by a new prompt and a tool call is open again; the dim comes from the
+    prompt, a HANDOFF.md naming the agent wins; the brief lists each state and the HANDOFF path"""
+    import time as _t
+    proj, scr = Path(d) / 'proj', Path(d) / 'scr'
+    sub = proj / 'sess' / 'subagents'
+    sub.mkdir(parents=True)
+    for dim in ('dimx', 'dimy', 'dimz'):
+        (scr / 'sess' / 'scratchpad' / 'r30' / dim).mkdir(parents=True)
+    (scr / 'sess' / 'scratchpad' / 'r30' / 'dimz' / 'HANDOFF.md').write_text('Agent: a0000000000000c03\n## Done\n- x\n')
+    hb = {'type': 'tool_use', 'name': 'SubagentHandback', 'input': {'message': 'r'}}
+    bash = {'type': 'tool_use', 'name': 'Bash', 'input': {}}
+    T_ = {'a0000000000000a01': _tr(_user('work in SCRATCH/r30/dimx/tree'), _asst(bash), _asst(hb)),
+          'a0000000000000b02': _tr(_user('work in <scratch>/r30/dimy/tree please'), _asst(bash)),
+          'a0000000000000c03': _tr(_user('scratchpad/r30/dimx/ first, then dimz'), _asst(bash)),
+          'a0000000000000d04': _tr(_user('scratchpad/r30/dimy/x'), _asst(hb), _user('one more thing'), _asst(bash)),
+          'a0000000000000e05': _tr(_user('scratchpad/r30/dimx/a'), _asst({'type': 'text', 'text': 'r'}, stop='end_turn'),
+                                   _user('continue please')),
+          'a0000000000000f06': _tr(_user('scratchpad/r30/dimx/a'), _asst({'type': 'text', 'text': 'r'}, stop='end_turn'))}
+    now = _t.time()
+    for aid, txt in T_.items():
+        f = sub / f'agent-{aid}.jsonl'
+        f.write_text(txt)
+        (sub / f'agent-{aid}.meta.json').write_text(json.dumps({'description': f'desc {aid[-3:]}'}))
+    old = now - 7200
+    os.utime(sub / 'agent-a0000000000000c03.jsonl', (old, old))
+    A = {a['id']: a for a in T.agents(0, 'r30', proj, scr, now=now)}
+    st = {k: v['state'] for k, v in A.items()}
+    ok = (st == {'a0000000000000a01': 'done', 'a0000000000000b02': 'in-flight', 'a0000000000000c03': 'stalled',
+                 'a0000000000000d04': 'in-flight', 'a0000000000000e05': 'in-flight', 'a0000000000000f06': 'done'}
+          and A['a0000000000000b02']['dim'] == 'dimy' and A['a0000000000000a01']['dim'] == 'dimx'
+          and A['a0000000000000c03']['dim'] == 'dimz' and str(A['a0000000000000c03']['handoff']).endswith('dimz/HANDOFF.md'))
+    s = {'round': 'r30', 'stamp': 'x', 'repo_head': 'h', 'dirty_files': 0, 'registry': {}, 'bin_derod_version': 'v',
+         'derod_pid': '', 'derod_running_suffix': '', 'github_head': 'g', 'steps': [], 'workflows': [], 'scratch_dims': {},
+         'commits_since_base': [], 'pipeline_runs': [], 'rft_addendum': [], 'agents': list(A.values())}
+    md = T.resume_md(s) if ok else ''
+    ok = ok and '`a0000000000000b02` desc b02: **in-flight**' in md and '**stalled**' in md and 'dimz/HANDOFF.md' in md
+    return bool(ok), f'{st} dims {[(k[-3:], v["dim"]) for k, v in A.items()]}'
+
+
+def rc8(T, d):
+    """r30 B252: OS jobs — a background Bash job of the session is session-bound (its loop kind named), a ppid-1
+    stallwatch is detached with the file it grows, its size, its counter and its plan's end; a tail reader is ignored; the
+    caller's own wrapper is not listed; the miner is an observe-only user daemon with its wallet masked. The DUE view
+    lists an overdue item before an upcoming one, a ready item once its 'after' is done, and never a done item."""
+    import time as _t
+    w = Path(d) / 'live' / 'series.jsonl'
+    w.parent.mkdir(parents=True)
+    w.write_text('x' * 123)
+    (w.parent / 'plan.json').write_text(json.dumps({'end_epoch': 1794296611.7}))
+    (w.parent / 'progress.json').write_text(json.dumps({'samples': 7}))
+    snapw = "/bin/bash -c source /h/.claude/shell-snapshots/snapshot-bash-1.sh 2>/dev/null || true && eval "
+    rows = [{'pid': 100, 'ppid': 50, 'start': 's', 'cmd': 'claude --resume abc'},
+            {'pid': 104, 'ppid': 100, 'start': 's', 'cmd': snapw + "'python3 round_pause.py status' < /dev/null"},
+            {'pid': 105, 'ppid': 104, 'start': 's', 'cmd': 'python3 -I round_pause.py status'},
+            {'pid': 110, 'ppid': 100, 'start': 's', 'cmd': snapw + "'nice -n 15 python3 -I x/round_checkpoint.py --loop 300' < /dev/null"},
+            {'pid': 111, 'ppid': 110, 'start': 's', 'cmd': 'python3 -I x/round_checkpoint.py --loop 300'},
+            {'pid': 200, 'ppid': 1, 'start': 's', 'cmd': f'python3 -I {d}/tree/harness/kit/stallwatch.py --match live_window.py '
+             f'--work {w} --progress {w.parent}/progress.json --done {w.parent}/DONE --stall-s 1200'},
+            {'pid': 201, 'ppid': 200, 'start': 's', 'cmd': f'python3 -I {d}/tree/harness/intel/live_window.py watch'},
+            {'pid': 300, 'ppid': 1, 'start': 's', 'cmd': f'tail -n +1 -f {d}/x.log'},
+            {'pid': 400, 'ppid': 1, 'start': 's', 'cmd': '/r/bin/dero-miner --wallet-address=YOUR_DERO_ADDRESS --gpu'}]
+    det, bound = T.jobs(rows, 105, [str(d)])
+    dk = {j['pid']: j for j in det}
+    ok = ([(j['pid'], j['kind']) for j in bound] == [(110, 'checkpoint-loop')] and sorted(dk) == [200, 400]
+          and dk[200]['kind'] == 'stallwatch' and dk[200]['out'] == str(w) and dk[200]['size'] == 123
+          and dk[200]['progress_value'] == {'samples': 7} and dk[200]['end'] and dk[200]['done'] is False
+          and dk[400]['kind'] == 'user-daemon' and 'dero1qy5' not in dk[400]['cmd'] and 'masked' in dk[400]['cmd'])
+    now = _t.time()
+    iso = lambda t: __import__('datetime').datetime.fromtimestamp(t).astimezone().isoformat(timespec='seconds')
+    led = {'items': [{'id': 'U1', 'due': iso(now + 3600), 'what': 'later', 'status': 'pending'},
+                     {'id': 'D1', 'due': iso(now - 60), 'what': 'late', 'status': 'pending'},
+                     {'id': 'D0', 'due': iso(now - 7200), 'what': 'old done', 'status': 'done', 'evidence': 'e'},
+                     {'id': 'R1', 'after': ['D0'], 'what': 'gated', 'status': 'pending'},
+                     {'id': 'W1', 'after': ['D1'], 'what': 'waits', 'status': 'pending'},
+                     {'id': 'E1', 'when': 'the run ends', 'what': 'event', 'status': 'pending'}]}
+    over, ready, up = T.due_view(led, now)
+    ok = ok and [i['id'] for i in over] == ['D1'] and [i['id'] for i in ready] == ['R1'] and [i['id'] for i in up] == ['U1', 'W1', 'E1']
+    s = {'round': 'r30', 'stamp': 'x', 'repo_head': 'h', 'dirty_files': 0, 'registry': {}, 'bin_derod_version': 'v',
+         'derod_pid': '', 'derod_running_suffix': '', 'github_head': 'g', 'steps': [], 'workflows': [], 'scratch_dims': {},
+         'commits_since_base': [], 'pipeline_runs': [], 'rft_addendum': [], 'jobs': {'detached': det, 'session_bound': bound},
+         'due': led}
+    md = T.resume_md(s) if ok else ''
+    ok = ok and md.index('OVERDUE D1') < md.index('upcoming U1') and 'old done' not in md.split('## Due actions')[1] \
+        and 'pid 200 stallwatch' in md and 'pid 110 checkpoint-loop' in md
+    return bool(ok), f'bound {[(j["pid"], j["kind"]) for j in bound]} det {[(j["pid"], j["kind"], j.get("size")) for j in det]} due {[i["id"] for i in over]}/{[i["id"] for i in ready]}/{[i["id"] for i in up]}'
+
+
+def rc9(T, d):
+    d = Path(d)
+    v = lambda s: json.dumps({'L': 'INFO', 'T': '2026-11-08T15:33:00.679-0800', 'M': '', 'Version': f'3.6.0-153.DEROHE.STARGATE+{s}'}) + '\n'
+    x = json.dumps({'L': 'DEBUG', 'M': 'fixed loop'}) + '\n'
+    (d / 'derod-2026-11-01T00-00-00.000.log').write_text(v('22102026.r27') + x)
+    (d / 'derod-2026-11-09T21-17-18.376.log').write_text(v('22102026.r28') + x + v('22102026.r29') + x)
+    (d / 'derod.log').write_text(x * 3)
+    rotated = T.derod_run_suffix(d)
+    (d / 'derod.log').write_text(x + v('22102026.r30') + x)
+    live = T.derod_run_suffix(d)
+    e = d / 'empty'
+    e.mkdir()
+    (e / 'derod.log').write_text(x)
+    none = T.derod_run_suffix(e)
+    return (rotated, live, none) == ('22102026.r29', '22102026.r30', ''), (rotated, live, none)
+
+
+KATS = [('RC1', rc1), ('RC2', rc2), ('RC3', rc3), ('RC4', rc4), ('RC5', rc5), ('RC6', rc6), ('RC7', rc7), ('RC8', rc8),
+        ('RC9', rc9)]
 
 MUTATIONS = [   # (find, replace, why)
     ("labels[x.get('key')] = {'label': x.get('label'), 'state': 'in-flight'}",
@@ -153,6 +282,33 @@ MUTATIONS = [   # (find, replace, why)
     ("    full = bool(re.search(r'\"stage\":\\s*\"(shadow|install)\"', txt))", "    full = '\"stage\": \"install\"' in txt",
      'a full run is recognised only by an install event'),
     ("    if notes.exists():\n        L += ['', notes.read_text()]\n", "", 'the handoff notes are not appended to the brief'),
+    # r30 B252 (RC7, RC8)
+    ("    if any(c.get('type') == 'tool_use' and c.get('name') == 'SubagentHandback' for c in blocks):\n        return 'done'",
+     "    if any(c.get('type') == 'tool_use' and c.get('name') == 'SubagentHandback' for c in blocks):\n        return 'open'",
+     'B252: a handed-back agent is listed open'),
+    ("('in-flight' if now - mt < stale_s else 'stalled')", "'in-flight'", 'B252: an idle, never handed-back agent is in-flight'),
+    ("        hand = by_id.get(aid)\n", "        hand = None\n", 'B252: a HANDOFF.md that names its agent is ignored'),
+    ("        later = [r for r in recs[last_i + 1:] if r.get('type') == 'user'", "        later = [r for r in [] if r.get('type') == 'user'",
+     'B252: a continued agent (new prompt after its end_turn) is listed done'),
+    ("            if SNAP_MARK not in r['cmd'] or pid in covered:", "            if True:", 'B252: session-bound jobs are not listed'),
+    ("    for rx, to in MASK_RX:\n", "    for rx, to in ():\n", 'B252: the miner wallet is not masked'),
+    ("        if re.match(r'^(\\S*/)?(tail|sleep|grep|ps|lsof)\\b', cmd) or SNAP_MARK in cmd:", "        if SNAP_MARK in cmd:",
+     'B252: a tail reader is listed as a detached job'),
+    ("    over = sorted([i for i in open_ if due_epoch(i) is not None and due_epoch(i) <= now], key=due_epoch)",
+     "    over = sorted([i for i in open_ if due_epoch(i) is not None and due_epoch(i) > now], key=due_epoch)",
+     'B252: overdue items are taken from the future'),
+    ("and not i.get('when') and all(", "and all(", "B252: an item waiting on its 'when' event is listed ready"),
+    ("    open_ = [i for i in items if i.get('status') not in ('done', 'skipped')]", "    open_ = list(items)",
+     'B252: a done due item is listed again'),
+    ("            j['progress_value'] = json.loads(Path(a['progress']).read_text()) if a.get('progress') else None",
+     "            j['progress_value'] = None", "B252: a detached job's work counter is not recorded"),
+    # r30 B254a (RC9)
+    ("    for f in ([live] if live.exists() else []) + backups:", "    for f in ([live] if live.exists() else []):",
+     'B254a: the rotated backups are not read (suffix lost after a rotation)'),
+    ("        backups = sorted((f for f in d.glob('derod-*.log') if f.is_file()), reverse=True)",
+     "        backups = sorted((f for f in d.glob('derod-*.log') if f.is_file()))", 'B254a: the oldest backup wins'),
+    ("                    if '\"Version\"' in line:\n                        last = line",
+     "                    if '\"Version\"' in line and last is None:\n                        last = line", 'B254a: the first Version line of a file wins'),
 ]
 
 

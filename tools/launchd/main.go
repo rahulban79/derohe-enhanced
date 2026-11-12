@@ -70,7 +70,9 @@ func xml_string(w *bytes.Buffer, s string) {
 
 // render writes the plist. KeepAlive restarts the miner after any exit (crash, panic, kill); ThrottleInterval keeps a
 // miner that fails at start from respawning more than once per 30 s. Nice 0, as the live miner runs (r23b merge: the
-// draft's Nice 5 was never measured on the contended box).
+// draft's Nice 5 was never measured on the contended box). ProcessType Interactive (r30, rft §7 B234): under Standard
+// launchd let the CPU-bound miner run only on the 4 E-cores (10.6-13.1k H/s on 3.7-4.6 cores, 2026-11-08 21:15) while
+// Interactive gave 96.2-97.4k H/s at 18 cores (21:19-21:21); Standard is the class the R23b generator shipped untested.
 func render(c plist_cfg) []byte {
 	var w bytes.Buffer
 	w.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
@@ -90,7 +92,7 @@ func render(c plist_cfg) []byte {
 	kv("KeepAlive", func() { w.WriteString("<true/>") })
 	kv("ThrottleInterval", func() { w.WriteString("<integer>30</integer>") })
 	kv("Nice", func() { w.WriteString("<integer>0</integer>") })
-	kv("ProcessType", func() { w.WriteString("<string>Standard</string>") })
+	kv("ProcessType", func() { w.WriteString("<string>Interactive</string>") })
 	kv("StandardInPath", func() { xml_string(&w, "/dev/null") })
 	kv("StandardOutPath", func() { xml_string(&w, c.Log) })
 	kv("StandardErrorPath", func() { xml_string(&w, c.Log) })

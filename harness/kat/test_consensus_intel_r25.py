@@ -256,8 +256,8 @@ MUTATIONS = [
      "                     0, A(R, 'block_rejected_series'),", 'D11 value ignores the counters'),
     ('CR5', "    io = [p for p in parts if p['role'] == 'integrator-only']", "    io = []", 'D19 never sees the coalition'),
     ('CR5', "    g = 'ANOMALY' if lo > 1 / 3 else 'NORMAL'", "    g = 'ANOMALY' if n_io / tf > 1 / 3 else 'NORMAL'", 'D19 ignores the confidence bound'),
-    ('CR6', "    bad = not count_ok or only_log or only_node", "    bad = only_log or only_node", 'D20 ignores GetInfo'),
-    ('CR6', "    bad = not count_ok or only_log or only_node", "    bad = not count_ok or only_node", 'D20 ignores log-only alt blocks'),
+    ('CR6', "    bad = not count_ok or (log_read and (only_log or only_node))", "    bad = (log_read and (only_log or only_node))", 'D20 ignores GetInfo'),   # r30: log_read
+    ('CR6', "    bad = not count_ok or (log_read and (only_log or only_node))", "    bad = not count_ok or (log_read and (only_node))", 'D20 ignores log-only alt blocks'),
     ('CR6', "    hi_h = H[-1]['height'] - sl - 1", "    hi_h = H[-1]['height']", 'D20 compares unsettled heights'),
     ('CR6', "if e.get('k') in ('add', 'side') and (e.get('t') or 0) >= t0 and", "if e.get('k') in ('add', 'side') and", 'D20 counts blocks before the newest start'),
     ('CR7', "    rpc_fs = any(h.get('fs') for h in H)", "    rpc_fs = False", 'arrival lag never read from first_seen_ms'),

@@ -74,7 +74,8 @@ def kat_dt11(base):
     m = load(base)
     t = json.loads((HARNESS / 'loop/disclosure_track.json').read_text())
     bad = []
-    if t.get('current_round') != 'R26':
+    rr = t.get('rounds') or []   # r30 (B214): the track moved on (R30); R26 stays booked and every claim keeps its R26 entry
+    if 'R26' not in rr or t.get('current_round') not in rr or rr.index(t['current_round']) < rr.index('R26'):
         bad.append(f'current_round {t.get("current_round")}')
     for c in t['claims']:
         if not any(h['round'] == 'R26' for h in c['history']):

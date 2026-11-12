@@ -26,7 +26,7 @@ New in v2 (B97):
   python3 -I harness/forensics/audit2.py selftest
 Read-only towards every node and store; nothing here talks to a network. Exploit content: none (§0.8.1 rule 6).
 """
-import gzip, hashlib, json, os, re, subprocess, sys
+import collections, gzip, hashlib, json, os, re, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -290,9 +290,7 @@ def body_copies(txids, v2rows, v2store, v1ds, archive, stage):
                 b = p.read_bytes()
                 out[t].append(('archive-copy', sha(b), b))
     # r29 (B97): --stage may name several staging dirs, colon-separated (the r26 fetch and the r29 second holders)
-    for sd in (stage.split(':') if stage else []):
-        if not Path(sd, 'txs').is_dir():
-            continue
+    for sd in stage_dirs(stage):
         for p in sorted(Path(sd, 'txs').glob('*.json')):
             try:
                 r = json.loads(p.read_text())
@@ -415,11 +413,33 @@ def read_replay(d):
             'roots_sha256': fsha(rp) if rp.exists() else None}
 
 
+def stage_dirs(stage):
+    """r30 merge (operator trap, v5 run 1): the colon-separated --stage dirs, each an existing directory with a txs/
+    subdir. FAILS CLOSED (ValueError) on an unexpanded '~' (bash does not expand '~' after a colon: 'A:~/x' reached
+    here as a literal and the stage was skipped silently, a false D2-29 FAIL) and on a missing dir or txs/. Pure but for
+    the stat calls."""
+    out = []
+    for sd in (stage.split(':') if stage else []):
+        if not sd:
+            continue
+        if sd.startswith('~'):
+            raise ValueError(f'--stage {sd!r}: unexpanded ~ (write an absolute path)')
+        if not Path(sd, 'txs').is_dir():
+            raise ValueError(f'--stage {sd!r}: no such stage dir (or no txs/ in it)')
+        out.append(sd)
+    return out
+
+
 def run(ds, repo, v1store, v2store, archive, stage, replay_dir, private, jobs):
     ds, repo = Path(ds), Path(repo)
-    for p in (v1store, v2store, archive, replay_dir, *(stage.split(':') if stage else [])):   # r29: every stage dir
-        guard(p)
     R = {'impl': IMPL_VERSION, 'dataset': ds.name}
+    try:
+        sds = stage_dirs(stage)
+    except ValueError as e:
+        R['result'] = f'FAIL: {e}'
+        return R
+    for p in (v1store, v2store, archive, replay_dir, *sds):   # r29: every stage dir
+        guard(p)
     st = AC.hash_selftest() + selftest_struct(repo)
     R['selftest'] = {'failures': st, 'hash_kats': len(AC.KAT)}
     if st:
@@ -684,8 +704,120 @@ def run(ds, repo, v1store, v2store, archive, stage, replay_dir, private, jobs):
     # ---------------------------------------------------------------- r29 D2-28 walls/inclusions row classes (B107)
     if 'class_rules' in json.loads((ds / 'derived/walls.json').read_text()):
         R['row_classes'] = audit_row_classes(ds, chain, table, carriers)
+    # ---------------------------------------------------------------- r30 D2-29..D2-34 dataset v5 (B202, B203, B209, B210, B111, B107)
+    if (ds / 'derived/dc2_den.json').exists():
+        R['v5'] = audit_v5(ds, repo, R['dup']['counts'], table)
     R['result'] = 'done'
     return R
+
+
+V5_PROOF_TYPES = {'NORMAL', 'SC', 'BURN'}     # own reading of transaction/transaction.go:33-38: types carrying payload proofs
+
+
+def _own_checkpoint(path):
+    """the auditor's own reader of the B182 checkpoint (own CRC check; never the builder's unseal). (records, sha256)"""
+    import zlib
+    recs, h = [], hashlib.sha256()
+    with open(path, 'rb') as fh:
+        for raw in fh:
+            h.update(raw)
+            ln = raw.decode()
+            if not ln.endswith('\n') or ln[8:9] != ' ' or f'{zlib.crc32(ln[9:-1].encode()):08x}' != ln[:8]:
+                break
+            recs.append(json.loads(ln[9:-1]))
+    return recs, h.hexdigest()
+
+
+def audit_v5(ds, repo, dup_counts, table, checkpoint=None):
+    """r30: dataset v5 re-checked by the auditor's own code (refute by default). Every figure is recomputed from the raw
+    records (census JSONs, the checkpoint, the holders census, inclusions) and only then compared with the builder's."""
+    ds, repo = Path(ds), Path(repo)
+    cl = json.loads((ds / 'derived/classes.json').read_text())
+    fq = json.loads((ds / 'derived/fq.json').read_text())
+    figs = {f['id']: f for f in cl.get('figures', [])}
+    out = {}
+    # D2-29 two bodies: own value/den from the audit's own duplicate census (D2-11) and own multi-block count
+    tb = figs.get('dc1-two-bodies') or {}
+    c = tb.get('coverage') or {}
+    out['two_bodies'] = {'own_different': dup_counts.get('different'), 'own_multi': dup_counts.get('multi_block_txids'),
+                         'own_2plus': dup_counts.get('with_2plus_sources'), 'claimed_value': tb.get('value'),
+                         'claimed_num': c.get('num'), 'claimed_den': c.get('den'), 'claimed_bound': tb.get('bound_type')}
+    t = out['two_bodies']
+    t['holds'] = (t['claimed_value'] == t['own_different'] and t['claimed_den'] == t['own_multi'] and
+                  t['claimed_num'] == t['own_2plus'] and t['claimed_bound'] == 'lower-bound')
+    # D2-30 DC2 denominator: own sum of the census records' proof-carrying types + own window count from txs.jsonl
+    d2 = figs.get('dc2-created-value') or {}
+    den_rec = json.loads((ds / 'derived/dc2_den.json').read_text())
+    own = 0
+    rr = lambda rel: json.loads((repo / rel).read_text())
+    try:
+        deep, fetch, off = (rr('harness/runtime/r29_b182_deep_census.json'), rr('harness/runtime/r29_b182_fetch_census.json'),
+                            rr('harness/runtime/r29_b182_offline_census.json'))
+        for ty in (deep['types'], fetch['fetched_below_7412665']['types'], fetch['wall1_7412665_7415463']['types'],
+                   fetch['gap_7415464_7415465']['types'], off['gap_7497943_7498539']['types']):
+            own += sum(v for k, v in ty.items() if k in V5_PROOF_TYPES)
+        rows = [json.loads(l) for l in gzip.decompress((ds / 'derived/txs.jsonl.gz').read_bytes()).decode().splitlines() if l.strip()]
+        win = [r for r in rows if r.get('tx_type') in V5_PROOF_TYPES and WINDOW[0] <= r['carrier_height'] <= WINDOW[1]]
+        own += len(win)
+        census_ok = True
+    except (OSError, KeyError, ValueError):
+        census_ok = False
+    claimed_den = (d2.get('coverage') or {}).get('den')
+    over = den_rec.get('overlap_txids_counted_twice')
+    out['dc2_den'] = {'own_sum': own, 'claimed_sum': den_rec.get('sum_of_segments'), 'claimed_den': claimed_den,
+                      'overlap': over, 'value': d2.get('value'), 'bound': d2.get('bound_type'), 'census_read': census_ok,
+                      'registration_counted': 'REGISTRATION' in (den_rec.get('proof_types') or [])}
+    x = out['dc2_den']
+    x['holds'] = (census_ok and own == x['claimed_sum'] and isinstance(over, int) and claimed_den == own - over
+                  and x['value'] == 'unbounded' and x['bound'] == 'unbounded' and not x['registration_counted'])
+    # D2-31..D2-32 claim grant and DC0 below the window: own pass over the checkpoint (UNRESOLVED when it is not here)
+    ckp = Path(checkpoint) if checkpoint else Path(os.environ.get('FORENSICS_R29_DEEP', str(Path.home() / 'derohe-persist/forensics_raw_r29/deep'))) / 'checkpoint.log'
+    cg = json.loads((ds / 'derived/claim_grant.json').read_text())
+    dg = json.loads((ds / 'derived/dc0_genesis.json').read_text())
+    if ckp.exists():
+        recs, csha = _own_checkpoint(ckp)
+        bs = [r for r in recs if r.get('kind') == 'batch']
+        reg = sum(r['types'].get('REGISTRATION', 0) for r in bs if r['hi'] < 144000)
+        sup = (repo / 'blockchain/supply.go').read_text()
+        m = re.search(r'there were (\d+) such accounts, so total of (\d+)', sup)
+        reps = collections.Counter(t for r in bs for t in (r.get('dup_txids') or []))
+        lt3_hi = max((r['hi'] for r in bs if r.get('reg_lt3')), default=-1)
+        out['claim_grant'] = {'own_reg': reg, 'supply_accounts': int(m.group(1)) if m else None,
+                              'supply_total': int(m.group(2)) if m else None, 'claimed_reg': cg.get('registrations_below_144000'),
+                              'claimed_value': cg.get('value_atomic'), 'checkpoint_sha_equal': csha == cg['input']['sha256']}
+        g = out['claim_grant']
+        g['holds'] = (g['checkpoint_sha_equal'] and reg == g['claimed_reg'] == g['supply_accounts']
+                      and g['claimed_value'] == reg * 200 == g['supply_total'])
+        out['dc0_genesis'] = {'own_distinct': len(reps), 'own_in_table': sum(1 for t in reps if t in table),
+                              'claimed_dc0': (dg['census'].get('by_class') or {}).get('DC0'),
+                              'claimed_figure': (figs.get('dc0-genesis-listed-twice') or {}).get('value'),
+                              'reg_lt3_last_hi': lt3_hi, 'reg_lt3_within_0_156599': 0 <= lt3_hi <= 156599,
+                              'checkpoint_sha_equal': csha == dg['input']['sha256']}
+        z = out['dc0_genesis']
+        z['holds'] = (z['checkpoint_sha_equal'] and z['own_distinct'] - z['own_in_table'] == z['claimed_dc0'] == z['claimed_figure']
+                      and z['reg_lt3_within_0_156599'])
+    else:
+        out['claim_grant'] = {'unresolved': 'checkpoint not on this machine'}
+        out['dc0_genesis'] = {'unresolved': 'checkpoint not on this machine'}
+    # D2-33 content consistency (B107): classes.json is this version's own file and agrees with fq.json
+    srt = 'S-RT' in ((fq.get('FQ2') or {}).get('criteria') or {})
+    note = str((figs.get('dc1-obs-coverage') or {}).get('note', ''))
+    out['consistency'] = {'dataset_label': cl.get('dataset'), 'fq_srt': srt, 'note_names_srt': 'S-RT' in note,
+                          'note_held_bodies_only': 'held bodies only' in note,
+                          'fq1_two_bodies_equal': (fq.get('FQ1') or {}).get('answer', {}).get('two_bodies_under_one_txid', '')[:12]
+                          == f"lower bound {t['claimed_value']}"[:12],
+                          'dc1_obs': ((fq.get('FQ2') or {}).get('coverage') or {}).get('dc1_obs')}
+    k = out['consistency']
+    k['holds'] = (k['dataset_label'] == ds.name and k['fq_srt'] == k['note_names_srt'] and not k['note_held_bodies_only']
+                  and k['fq1_two_bodies_equal'] and k['dc1_obs'] == (figs.get('dc1-obs-coverage') or {}).get('value'))
+    # D2-34 B111 premine: own residual arithmetic; the record must stay a HYPOTHESIS until the set diff exists
+    bp = json.loads((ds / 'derived/b111_premine.json').read_text())
+    keys = (bp.get('balance_tree_keys') or {}).get('7498540')
+    out['b111'] = {'own_residual_no_premine': (keys - bp['registrations_through_7498539']) if isinstance(keys, int) else None,
+                   'status': bp.get('status'), 'premine_keys': bp.get('premine_keys')}
+    b = out['b111']
+    b['holds'] = b['own_residual_no_premine'] == b['premine_keys'] == 1 and str(b['status']).startswith('HYPOTHESIS')
+    return out
 
 
 def audit_row_classes(ds, chain, table, carriers):
@@ -733,6 +865,52 @@ def audit_row_classes(ds, chain, table, carriers):
     return out
 
 
+def fq_rest_v5(fq, base):
+    """r30 (v5, B202/B209): fq.json is RE-DERIVED by classes_r30 (B107), which answers FQ1 two-bodies (B202), adds the
+    DC0-genesis count (B209), one anchor (the holders census) and its schema label. Exactly those fields are taken out
+    of the rest-equality (restored to the base's values) and returned as v5 claims: D2-27 then requires the anchor list
+    to be the base list plus that ONE anchor and the DC0 count to equal the audit's own recount (D2-32); the two-bodies
+    text is D2-33's. A pre-v5 fq.json (no schema_r30) is compared as before. (rest less FQ2, v5 changes or None). Pure."""
+    rest = {k: v for k, v in fq.items() if k not in ('FQ2', 'schema_r30')}
+    if 'schema_r30' not in fq:
+        return {k: v for k, v in fq.items() if k != 'FQ2'}, None
+    fq1, b1 = dict(fq.get('FQ1') or {}), base.get('FQ1') or {}
+    ans = dict(fq1.get('answer') or {})
+    v5c = {'anchors_extra': [a for a in fq1.get('anchors', []) if a not in (b1.get('anchors') or [])],
+           'anchors_prefix': fq1.get('anchors', [])[:len(b1.get('anchors') or [])] == (b1.get('anchors') or []),
+           'dc0_genesis_listed_twice': ans.pop('dc0_genesis_listed_twice', None),
+           'two_bodies': ans.get('two_bodies_under_one_txid')}
+    ans['two_bodies_under_one_txid'] = (b1.get('answer') or {}).get('two_bodies_under_one_txid')
+    rest['FQ1'] = dict(fq1, answer=ans, anchors=b1.get('anchors'), status=b1.get('status'))
+    return rest, v5c
+
+
+def fq_rest_equal(fq, base, q, qb):
+    """D2-27's rest-equality: fq.json less FQ2 equals the base's (less the v5 FQ1 additions, fq_rest_v5), and FQ2 is
+    the base's plus S-RT and its correction (q, qb: FQ2 with those taken out). v5 builds on r28d, whose FQ2 already
+    carries S-RT and the correction, so v5's FQ2 must equal the base's whole. (equal, v5 changes or None). Pure."""
+    rest, v5c = fq_rest_v5(fq, base)
+    fq2_equal = (fq.get('FQ2') == base.get('FQ2')) if v5c is not None else (q == qb)
+    return rest == {k: v for k, v in base.items() if k != 'FQ2'} and fq2_equal, v5c
+
+
+def v5_fq_ok(c, v5):
+    """r30 (v5): the FQ1 fields classes_r30 adds are exactly one appended anchor (the holders census) and a DC0-genesis
+    count equal to the audit's own recount (D2-32 own_distinct - own_in_table). None (a pre-v5 fq.json) is fine. Pure."""
+    if c is None:
+        return True
+    z = (v5 or {}).get('dc0_genesis') or {}
+    own = (z['own_distinct'] - z['own_in_table']) if 'own_distinct' in z else None
+    return (c['anchors_prefix'] and len(c['anchors_extra']) == 1 and 'r29_b97_holders.json' in c['anchors_extra'][0]
+            and own is not None and c['dc0_genesis_listed_twice'] == own)
+
+
+def v5_fq_text(c, v5):
+    z = (v5 or {}).get('dc0_genesis') or {}
+    own = (z['own_distinct'] - z['own_in_table']) if 'own_distinct' in z else 'unresolved'
+    return f"anchor +{len(c['anchors_extra'])} (prefix {c['anchors_prefix']}), DC0 genesis {c['dc0_genesis_listed_twice']} vs own {own}"
+
+
 def audit_dc1_structure(ds, repo, table, carriers, dec):
     """r28d (v4, rft §7 B180): the DC1 structural census recounted from the audit's OWN parts only: the DC1 set is the
     audit's own HF3 table parse, the one/two-carrier split its own walk, ring size and payload format its own wire
@@ -763,7 +941,7 @@ def audit_dc1_structure(ds, repo, table, carriers, dec):
     srt = (q.get('criteria') or {}).get('S-RT') or {}
     q['criteria'] = {k: v for k, v in (q.get('criteria') or {}).items() if k != 'S-RT'}
     q.pop('corrections', None)
-    rest_equal = ({k: v for k, v in fq.items() if k != 'FQ2'} == {k: v for k, v in base.items() if k != 'FQ2'} and q == qb)
+    rest_equal, v5c = fq_rest_equal(fq, base, q, qb)   # r30 (v5): only the classes_r30 FQ1 additions differ (D2-27)
     want = f"{own.get('criterion', 0)} of {len(table)}"
     return {'dc1_table': len(table), 'decoded_own': decoded, 'two_carriers_own': n2, 'own_counts': dict(sorted(own.items())),
             'claimed_counts': claim.get('counts'), 'counts_equal': claim.get('counts') == dict(sorted(own.items())),
@@ -772,7 +950,7 @@ def audit_dc1_structure(ds, repo, table, carriers, dec):
             'fq2_dc1_obs': (fq.get('FQ2', {}).get('coverage') or {}).get('dc1_obs'),
             'fq2_dc1_obs_base': (qb.get('coverage') or {}).get('dc1_obs'),
             'fq2_corrections': len(fq.get('FQ2', {}).get('corrections') or []),
-            'fq_rest_equal_base': rest_equal, 'base': sup}
+            'fq_rest_equal_base': rest_equal, 'base': sup, 'fq_v5_changes': v5c}
 
 
 # =============================================================================================== classes re-audit
@@ -1118,8 +1296,10 @@ def build_challenges(R):
                       ['V2-DUP-BODY']))
         out.append(ch('D2-27', f"fq.json: the FQ2 correction adds only criterion S-RT and a dated note to {X['base']}'s fq.json; S-RT agrees with the own count; DC1-obs unchanged",
                       f"fq.json vs the sealed {X['base']}/derived/fq.json less FQ2 S-RT and corrections; S-RT result vs own criterion count; FQ2 coverage dc1_obs",
-                      X['fq_rest_equal_base'] and X['fq2_srt_agrees'] and X['fq2_dc1_obs'] == X['fq2_dc1_obs_base'] == 0 and X['fq2_corrections'] >= 1,
-                      [{'class': 'DERIVED', 'what': f"rest equal {X['fq_rest_equal_base']}; S-RT '{X['fq2_srt_result']}', agrees {X['fq2_srt_agrees']}; dc1_obs {X['fq2_dc1_obs']} (base {X['fq2_dc1_obs_base']}); corrections {X['fq2_corrections']}"}],
+                      X['fq_rest_equal_base'] and X['fq2_srt_agrees'] and X['fq2_dc1_obs'] == X['fq2_dc1_obs_base'] == 0 and X['fq2_corrections'] >= 1
+                      and v5_fq_ok(X.get('fq_v5_changes'), R.get('v5')),
+                      [{'class': 'DERIVED', 'what': f"rest equal {X['fq_rest_equal_base']}; S-RT '{X['fq2_srt_result']}', agrees {X['fq2_srt_agrees']}; dc1_obs {X['fq2_dc1_obs']} (base {X['fq2_dc1_obs_base']}); corrections {X['fq2_corrections']}"
+                                                         + (f"; v5 changes {v5_fq_text(X['fq_v5_changes'], R.get('v5'))}" if X.get('fq_v5_changes') is not None else '')}],
                       ['V2-DUP-BODY']))
     Y = R.get('row_classes')
     if Y:   # r29 (B107)
@@ -1130,10 +1310,45 @@ def build_challenges(R):
                       and Y['file_class_equal'],
                       [{'class': 'DERIVED', 'what': f"walls equal {Y['wall_equal']}/{Y['wall_rows']} (unwalked {Y['wall_unwalked']}, differ {Y['wall_differ'][:5] or 'none'}); replay_stops equal {Y['stops_equal']}; inclusions equal {Y['inclusion_equal']}/{Y['inclusion_rows']} (own multi-block {Y['own_multi']}, rows == own {Y['rows_txids_eq_own_multi']}, own classes {Y['own_classes']}); file class equal {Y['file_class_equal']}; pending {Y['pending']}"}],
                       ALL_V))
+    out += challenges_v5(R.get('v5'))
     return out
 
 
-ALL_V = ['V2-FEES', 'V2-DUP-BODY', 'V2-END-STATE', 'V-STATE-ROOTS', 'V-DC2']
+def challenges_v5(V):
+    """r30 D2-29..D2-34 (dataset v5; refute by default: HOLDS only on the auditor's own equal recount)"""
+    if not V:
+        return []
+    out = []
+    t = V['two_bodies']
+    out.append(ch('D2-29', f"classes.json dc1-two-bodies is computed: lower bound {t['claimed_value']}, coverage {t['claimed_num']}/{t['claimed_den']} multi-block TXIDs (B202)",
+                  'own duplicate-body census (D2-11) and own multi-block count vs the figure', t['holds'],
+                  [{'class': 'DERIVED', 'what': f"own different {t['own_different']}, 2+ holders {t['own_2plus']}, multi-block {t['own_multi']}; claimed {t['claimed_value']} {t['claimed_num']}/{t['claimed_den']} {t['claimed_bound']}"}],
+                  ['V2-DUP-BODY']))
+    x = V['dc2_den']
+    out.append(ch('D2-30', f"the DC2 denominator counts proof-carrying txs only (NORMAL+SC+BURN): {x['claimed_den']} over 0..7,498,539; the value stays unbounded (B203 a)",
+                  'own sum over the three B182 census records and the window txs, own type set; REGISTRATION excluded', x['holds'],
+                  [{'class': 'DERIVED', 'what': f"own sum {x['own_sum']}, claimed sum {x['claimed_sum']}, overlap {x['overlap']}, den {x['claimed_den']}; value {x['value']}, bound {x['bound']}; registration counted {x['registration_counted']}"}],
+                  ['V-DC2'], unresolved=not x['census_read']))
+    for cid, key, claim, aff in (('D2-31', 'claim_grant', 'registrations below 144,000 x 200 equal blockchain/supply.go:7-9 (B210)', ['V2-FEES']),
+                                 ('D2-32', 'dc0_genesis', 'the DC0 multi-block TXIDs below the window equal an own distinct recount, and reg_lt3 all lie within 0..156,599 (B209)', ['V2-DUP-BODY'])):
+        y = V[key]
+        un = 'unresolved' in y
+        out.append(ch(cid, claim, 'own CRC reader over the pinned checkpoint (SHA-256 compared), own sums', (not un) and y.get('holds'),
+                      [{'class': 'DERIVED', 'what': y['unresolved'] if un else ', '.join(f'{k} {v}' for k, v in sorted(y.items()) if k != 'holds')}],
+                      aff, unresolved=un))
+    k = V['consistency']
+    out.append(ch('D2-33', 'classes.json is this version\'s own file and agrees with fq.json (S-RT named iff FQ2 has it, FQ1 two bodies, DC1-obs) (B107)',
+                  'content checks of classes.json against fq.json; never a dataset-label-only check', k['holds'],
+                  [{'class': 'DERIVED', 'what': ', '.join(f'{a} {b}' for a, b in sorted(k.items()) if a != 'holds')}], ALL_V))
+    b = V['b111']
+    out.append(ch('D2-34', 'the B111 1-key residual is attributed to the premine term only as a HYPOTHESIS (no set diff yet)',
+                  'own residual = keys at 7,498,540 minus registrations through 7,498,539; status text', b['holds'],
+                  [{'class': 'DERIVED', 'what': f"own residual {b['own_residual_no_premine']}, premine_keys {b['premine_keys']}, status {b['status']}"}],
+                  ['V-DC2']))
+    return out
+
+
+ALL_V =['V2-FEES', 'V2-DUP-BODY', 'V2-END-STATE', 'V-STATE-ROOTS', 'V-DC2']
 VERDICT_DEFS = [
     ('V2-FEES', 'did the public fees and burns of the window + gap create value beyond the emission formula?',
      'derived/fees.json, blocks_fees.jsonl.gz'),
@@ -1173,6 +1388,8 @@ AFFECTS_ALWAYS = {
     'D2-19': ['V2-FEES'], 'D2-20': ALL_V, 'D2-21': ['V-DC2'], 'D2-22': ['V-DC2'],
     'D2-26': ['V2-DUP-BODY'], 'D2-27': ['V2-DUP-BODY'],   # r28d (v4, B180): the DC1 structural census and FQ2 S-RT
     'D2-28': ALL_V,                                       # r29 (B107): walls/inclusions row classes (G32 rows half)
+    'D2-29': ['V2-DUP-BODY'], 'D2-30': ['V-DC2'], 'D2-31': ['V2-FEES'], 'D2-32': ['V2-DUP-BODY'],   # r30 (v5)
+    'D2-33': ALL_V, 'D2-34': ['V-DC2'],
 }
 
 
@@ -1198,9 +1415,19 @@ def _g_fees(R, bad, by):
             'inputs': [{'class': 'RAW', 'what': 'the bodies (D2-05)'}, {'class': 'DERIVED', 'what': 'own fee/burn sums (D2-07, D2-08)'}]}
 
 
+def dup_builder_grade(V):
+    """r30 (B202): the builder's grade of V2-DUP-BODY read from the computed classes figure; v4 and earlier datasets
+    (no v5 section) keep the text they were audited with"""
+    if not V:
+        return 'pending (classes.json dc1-two-bodies unbounded; fq.json FQ1)'
+    t = V['two_bodies']
+    return (f"lower bound {t['claimed_value']} (classes.json dc1-two-bodies {t['claimed_bound']}, coverage "
+            f"{t['claimed_num']}/{t['claimed_den']} multi-block TXIDs; fq.json FQ1)")
+
+
 def _g_dup(R, bad, by):
     c = R['dup']['counts']
-    return {'builder_grade': 'pending (classes.json dc1-two-bodies unbounded; fq.json FQ1)',
+    return {'builder_grade': dup_builder_grade(R.get('v5')),
             'audit_grade': 'NOT-DECIDABLE-FROM-PUBLIC-DATA',
             'reason': (f"census: {c['with_2plus_sources']} of {c['multi_block_txids']} multi-block TXIDs are held from 2+ "
                        f"independent holders ({c['equal']} equal, {c['different']} different), {c['single_source']} from one "

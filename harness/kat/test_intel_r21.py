@@ -326,7 +326,38 @@ def ik28(base, tmp):
     return ok, json.dumps({k: v[0] for k, v in r.items()})
 
 
-KATS = [('IK21', ik21), ('IK22', ik22), ('IK23', ik23), ('IK24', ik24), ('IK25', ik25), ('IK26', ik26), ('IK27', ik27), ('IK28', ik28)]
+# ───────────────────────────── IK29 (r30 B258) ─────────────────────────────
+def ik29(base, tmp):
+    """r30 B258: with no live split before the command (no /metrics, no live-miner process: the quiet window) the
+    disturbance check is N/A and the command's own exit code is returned, never 99; an unreadable process table, a
+    miner process with a silent endpoint, a split appearing during the command, or a live split that went away still
+    count as disturbed. End to end: `gpu_watch run -- <cmd exiting 0>` with the endpoint down returns 0 and prints
+    live_split: absent (the fixture's endpoint is an unused port, the process table is the KAT's own)."""
+    W = load(base, 'gpu_watch')
+    a = W.parse('dero_miner_uptime_seconds 1000\ndero_miner_split_hashed_total 100\n')
+    pure = {'absent': (W.split_absent(None, []), W.disturbed(None, None, absent=True)),
+            'ps_unreadable': (W.split_absent(None, None), W.disturbed(None, None, absent=False)),
+            'proc_running': (W.split_absent(None, ['dero-miner']), W.disturbed(None, None, absent=False)),
+            'appeared': W.disturbed(None, a, absent=True), 'went_away': W.disturbed(a, None)}
+    ok_pure = (pure['absent'] == (True, []) and pure['ps_unreadable'][0] is False and pure['ps_unreadable'][1]
+               and pure['proc_running'][0] is False and pure['proc_running'][1] and pure['appeared']
+               and 'appeared' in pure['appeared'][0] and pure['went_away'])
+    W.snap = lambda *a, **k: None          # hermetic (r30 run 5): snap's default URL is bound at def time, so a LIVE
+    W.live_procs = lambda: []              # miner answered and the case read the real split instead of an absent one
+    import contextlib, io
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        rc0 = W.main(['run', '--settle', '0', '--', sys.executable, '-c', 'raise SystemExit(0)'])
+        rc3 = W.main(['run', '--settle', '0', '--', sys.executable, '-c', 'raise SystemExit(3)'])
+    W.live_procs = lambda: ['dero-miner']
+    with contextlib.redirect_stderr(io.StringIO()):
+        rc99 = W.main(['run', '--settle', '0', '--', sys.executable, '-c', 'raise SystemExit(0)'])
+    ok = ok_pure and rc0 == 0 and rc3 == 3 and rc99 == 99 and 'live_split: absent' in err.getvalue()
+    return ok, json.dumps({'pure': {k: str(v)[:60] for k, v in pure.items()}, 'rc': [rc0, rc3, rc99]})
+
+
+KATS = [('IK21', ik21), ('IK22', ik22), ('IK23', ik23), ('IK24', ik24), ('IK25', ik25), ('IK26', ik26), ('IK27', ik27), ('IK28', ik28),
+        ('IK29', ik29)]
 
 # (kat, module, find, replace, why) — each must flip its KAT to FAIL on a temp copy
 MUTATIONS = [
@@ -405,6 +436,16 @@ MUTATIONS = [
     ('IK27', 'gpu_watch', "        return ['the miner /metrics stopped answering']", "        return []", 'a silent endpoint passes'),
     ('IK27', 'gpu_watch', "            and not why:\n        why.append('the GPU split hashed nothing", "            and False:\n        why.append('the GPU split hashed nothing",
      'a stalled split passes'),
+    # r30 B258 (IK29)
+    ('IK29', 'gpu_watch', "        if absent and b is None:                       # r30 B258: no live split before or after: nothing to disturb\n            return []",
+     "        if False:\n            return []", 'B258: an absent live split (quiet window) reads as disturbed: exit 99'),
+    ('IK29', 'gpu_watch', "    return a is None and procs is not None and not procs", "    return a is None",
+     'B258: an unreadable process table or a running miner process counts as an absent split'),
+    ('IK29', 'gpu_watch', "        if b is not None:\n            return ['a live split appeared during the command (no reading before it)']",
+     "        if False:\n            return ['a live split appeared during the command (no reading before it)']",
+     'B258: a split that appears during the command passes'),
+    ('IK29', 'gpu_watch', "    if absent and not why:\n        print(", "    if False:\n        print(",
+     'B258: the absent case falls through without the live_split marker'),
 ]
 
 

@@ -29,6 +29,19 @@ Outputs (all pseudonymised, all in harness/runtime/, tracked as evidence):
   python3 -I harness/intel/peer_intel.py --capture DIR      # analyse an existing (private or synthetic) capture
   python3 -I harness/intel/peer_intel.py --check            # gate G27 on the newest outputs
 Exit 0 · 3 G27 failed · 2 no input.
+
+r30 (rft §7 B201, the R30 consensus-peers dimension; plan harness/runtime/r30_audit/r29_ledger_audit_plan.md:60):
+  * lag_max is the largest lag among peers on top_version >= 3; v2-remnant peers (top_version < 3, already counted by
+    D1/D13/v2_seen_7d) are reported apart as lag_max_v2, so one phenomenon no longer moves five KPIs;
+  * kpis.inbound_regime ('inbound' when GetPeerInfo counts incoming peers, 'outbound-only' at 0) keys the KPI series:
+    area_intel compares a peer KPI only with the newest earlier round of the same regime (keyed_by in areas.json);
+  * D2 explain: each lagging peer's height over the earlier captures of the same salt (harness/runtime
+    peer_capture_*.jsonl) is SYNCING (height rose), STUCK (unchanged over >= 2 captures) or REGRESSED (fell, i.e. a
+    re-sync from a lower point), cross-referenced to the replay walls (forensics/<newest>/derived/walls.json);
+  * D11 graded: one peer_id on several addresses is EXPLAINED (NORMAL, one multi-homed host) when the RTTs agree
+    within RTT_DIVERGE, else UNEXPLAINED (ANOMALY: one identity on hosts at different network distances);
+  * D9 graded on the Wilson 95 % lower bound of the top peer's first-relay share (ANOMALY only when the lower bound
+    is above FIRST_RELAY_CONC), with the share over the earlier captures in its explain.
 """
 import argparse, datetime, hashlib, ipaddress, json, os, re, secrets, shutil, statistics, sys, time, urllib.request
 from pathlib import Path
@@ -58,6 +71,8 @@ MIN_NETGROUPS = 4             # fewer distinct /16s than this among the active p
 REMOTE_UNSERVED_MULT = 5.0    # a peer with > 5x the median per-peer 'could not serve' count (and >= 20 lines)
 CHAIN_REQ_PER_MIN = 6.0       # r25 (D13): served Chain requests per connected minute above this (one per 10 s) is unusual:
                               # a peer asks for our chain only when it is behind (one request covers up to 512 blocks)
+RTT_DIVERGE = 1.5             # r30 (B201 D11): RTTs of one identity's addresses within x1.5 = one host; beyond = UNEXPLAINED
+PRIOR_CAPTURES = 6            # r30 (B201 D2): earlier captures read for each lagging peer's height trajectory
 REASON_RX = re.compile(r'^[a-z0-9_]{1,40}$')        # r25: an offence reason or ban source is rendered only when it is a plain token
 
 # Every detector names the code line its rule lives on; the line is re-found at run time (no line, no verdict).
@@ -358,6 +373,144 @@ def rule_anchors(root):
     return out
 
 
+def wilson_lo(k, n, z=1.959964):
+    """r30 (B201 D9): the Wilson 95 % lower bound of k/n (None when n is 0). Pure."""
+    if not n:
+        return None
+    ph = k / n
+    d = 1 + z * z / n
+    c = ph + z * z / (2 * n)
+    r = z * (ph * (1 - ph) / n + z * z / (4 * n * n)) ** 0.5
+    return (c - r) / d
+
+
+def inbound_regime(incoming):
+    """r30 (B201): the inbound regime that keys the peer KPI series: 'inbound' (> 0 incoming peers), 'outbound-only'
+    (0), None (unknown). Pure."""
+    if not isinstance(incoming, (int, float)):
+        return None
+    return 'inbound' if incoming > 0 else 'outbound-only'
+
+
+def lag_kpis(peers):
+    """r30 (B201): (lag_max, lag_median, lag_max_v2): the lags of peers on top_version >= 3, and apart the largest lag of
+    a v2-remnant peer (top_version < 3), which D1/D13/v2_seen_7d already count. Pure."""
+    v3 = [p['lag'] for p in peers if isinstance(p.get('lag'), int) and (p.get('top_version') or 0) >= 3]
+    v2 = [p['lag'] for p in peers if isinstance(p.get('lag'), int) and (p.get('top_version') or 0) <= 2]
+    return (max(v3) if v3 else None, statistics.median(v3) if v3 else None, max(v2) if v2 else None)
+
+
+def trajectory(points):
+    """r30 (B201 D2): the class of one peer's height over captures [(captured, height, connected_s)], oldest first:
+    REGRESSED (a height fell between two captures: a re-sync from a lower point), SYNCING (the last height is above the
+    first), STUCK (the same height in >= 2 captures), ONE-READING (only one capture). Pure."""
+    hs = [h for _, h, _ in points if isinstance(h, int)]
+    if len(hs) < 2:
+        return 'ONE-READING'
+    if any(b < a for a, b in zip(hs, hs[1:])):
+        return 'REGRESSED'
+    if hs[-1] > hs[0]:
+        return 'SYNCING'
+    return 'STUCK'
+
+
+def nearest_wall(height, walls):
+    """r30 (B201 D2): (wall name, wall height, distance) of the replay wall nearest below `height`, None when none is
+    below; walls = [(name, height, radius)]. Pure."""
+    below = [(n, h, r) for n, h, r in walls or () if isinstance(h, int) and h <= height]
+    if not below:
+        return None
+    n, h, r = max(below, key=lambda w: w[1])
+    return {'wall': n, 'height': h, 'distance': height - h, 'at_wall': height - h <= r}
+
+
+def load_walls(root=ROOT):
+    """[(name, centre height, radius)] of the newest forensics/<v>/derived/walls.json, plus its path; ([], None) when
+    there is none."""
+    cands = sorted(Path(root).glob('forensics/*/derived/walls.json'), key=lambda p: p.stat().st_mtime)
+    if not cands:
+        return [], None
+    try:
+        d = json.loads(cands[-1].read_text())
+    except (OSError, ValueError):
+        return [], None
+    out = []
+    for k, v in d.items():
+        if isinstance(v, dict) and v.get('rows'):
+            hs = sorted(r['height'] for r in v['rows'] if isinstance(r.get('height'), int))
+            if hs:
+                out.append((k, hs[len(hs) // 2], int(v.get('radius') or 0)))
+    return out, str(cands[-1].relative_to(root))
+
+
+def load_prior(out_dir, exclude=None, n=PRIOR_CAPTURES):
+    """r30 (B201 D2/D9): the newest `n` earlier peer captures as [{'file', 'captured', 'peers': {pseudonym: (height,
+    connected_s, line)}, 'fr_top_share'}], oldest first. Captures are immutable once written (peer_intel.json is
+    rewritten every run), so every cited height has a fixed file:line."""
+    files = sorted(Path(out_dir).glob('peer_capture_*.jsonl'))
+    files = [f for f in files if f.name != exclude][-n:]
+    out = []
+    for f in files:
+        rec = {'file': f.name, 'captured': None, 'peers': {}, 'fr_top_share': None}
+        try:
+            for i, l in enumerate(f.read_text().splitlines(), 1):
+                o = json.loads(l)
+                if o.get('src') == 'capture':
+                    rec['captured'] = o.get('captured')
+                elif o.get('src') == 'GetPeerInfo':
+                    rec['peers'][o.get('peer')] = (o.get('height'), o.get('connected_s'), i)
+                elif o.get('src') == 'kpis':
+                    rec['fr_top_share'] = o.get('first_relay_top_share')
+        except (OSError, ValueError):
+            continue
+        out.append(rec)
+    return out
+
+
+def explain_d2(D, peers, prior, walls=(), walls_file=None, cap_file=None):
+    """r30 (B201): each D2 lagging peer classed SYNCING / STUCK / REGRESSED from its height in the earlier captures and
+    this one, with the replay wall nearest below its height. Never changes the grade. Pure."""
+    d2 = next((d for d in D if d['id'] == 'D2'), None)
+    if not d2:
+        return
+    row = {p['peer']: p for p in peers}
+    counts = {}
+    for f in d2.get('findings') or []:
+        p = row.get(f.get('peer'))
+        if not p or not isinstance(p.get('lag'), int) or p['lag'] <= 0:
+            continue
+        pts = [(c['captured'], c['peers'][p['peer']][0], c['peers'][p['peer']][1]) for c in prior or () if p['peer'] in c['peers']]
+        cites = [f"{c['file']}:{c['peers'][p['peer']][2]}" for c in prior or () if p['peer'] in c['peers']]
+        pts.append((None, p.get('height'), p.get('connected_s')))
+        cls = trajectory(pts)
+        counts[cls] = counts.get(cls, 0) + 1
+        hs = [h for _, h, _ in pts]
+        cs = [c for _, _, c in pts]
+        x = {'peer': p['peer'], 'class': cls, 'heights': hs, 'top_version': p.get('top_version'),
+             'reconnected': any(isinstance(a, int) and isinstance(b, int) and b < a for a, b in zip(cs, cs[1:])),
+             'below_hf3': isinstance(p.get('height'), int) and p['height'] < HF3_HEIGHT,
+             'wall': nearest_wall(p['height'], walls) if isinstance(p.get('height'), int) else None,
+             'cites': cites + ([f"{cap_file}:{p['line']}"] if cap_file else [f"line {p['line']}"])}
+        x['what'] = (f"{cls}: height {' -> '.join(str(h) for h in hs)} over {len(hs)} capture(s), top_version {x['top_version']}"
+                     + ('; reconnected between captures' if x['reconnected'] else '')
+                     + (f"; {x['wall']['distance']} blocks above {x['wall']['wall']} ({x['wall']['height']})"
+                        + (' (AT the wall)' if x['wall']['at_wall'] else '') if x['wall'] else '')
+                     + ('; below HF3: a pre-HF3 store' if x['below_hf3'] else ''))
+        d2.setdefault('explain', []).append(x)
+    d2['classes'] = counts
+    if walls_file:
+        d2['walls_file'] = walls_file
+
+
+def explain_d9(D, prior):
+    """r30 (B201 D9): the top first-relay share of each earlier capture next to this one (the share is a position of
+    the peer in the topology; its stability over captures is the reading). Pure."""
+    d9 = next((d for d in D if d['id'] == 'D9'), None)
+    if not d9:
+        return
+    d9['share_series'] = [{'file': c['file'], 'top_share': c['fr_top_share']} for c in prior or () if c.get('fr_top_share') is not None]
+
+
 def explain_detectors(D, peers, ips_active, fr_metric=None):
     """r27 (§7, peer observatory): an 'explain' list on D5, D9 and D11 that puts each flagged peer next to the facts of
     the same capture that bear on it (latency rank, connection age, first-relay share, unserved per first relay,
@@ -412,12 +565,19 @@ def explain_detectors(D, peers, ips_active, fr_metric=None):
         vers = {row[pid].get('version') for pid in pids}
         x = {'peers': pids, 'same_netgroup': len(groups) == 1 and None not in groups, 'same_version': len(vers) == 1,
              'latency_ms': [row[pid].get('latency_ms') for pid in pids], 'connected_s': [row[pid].get('connected_s') for pid in pids],
-             'heights': [row[pid].get('height') for pid in pids], 'cap_lines': [row[pid]['line'] for pid in pids]}
+             'heights': [row[pid].get('height') for pid in pids], 'cap_lines': [row[pid]['line'] for pid in pids],
+             'dirs': [row[pid].get('dir') for pid in pids]}
+        n_out = sum(1 for d_ in x['dirs'] if d_ == 'out')
+        n_in = sum(1 for d_ in x['dirs'] if d_ == 'in')
+        slots = ' and '.join(s for s in (f"{n_out} of our outgoing slot{'s' if n_out > 1 else ''}" if n_out else '',
+                                         f"{n_in} inbound connection{'s' if n_in > 1 else ''}" if n_in else '') if s) \
+            or f'{len(pids)} connections (direction unknown)'
         x['what'] = (f"{len(pids)} addresses, {'one /16' if x['same_netgroup'] else 'different /16s'}, "
                      f"{'one version' if x['same_version'] else 'different versions'}, RTT {x['latency_ms']} ms, connected {x['connected_s']} s, "
-                     f"heights {x['heights']}: one node reachable on several addresses (multi-homed or re-addressed, legitimate); "
+                     f"heights {x['heights']}: one identity reachable on several addresses ({f.get('verdict', 'not graded')}: "
+                     f"{'RTTs agree, one multi-homed host' if f.get('verdict') == 'EXPLAINED' else 'not shown to be one host'}); "
                      f"{'its addresses add ' + str(len(groups) - 1) + ' extra /16 to D8 though they are one node' if not x['same_netgroup'] else 'D8 sees one /16'}"
-                     f", and it holds {len(pids)} of our outgoing slots")
+                     f", and it holds {slots}")      # r30 fix D2: counted by dir (an inbound address is not one of our slots)
         d11.setdefault('explain', []).append(x)
 
 
@@ -447,7 +607,7 @@ class Out:
         return len(self.lines)
 
 
-def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
+def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None, prior=None, walls=None, walls_file=None, cap_file=None):
     """(report, capture_lines, logx_lines). Pure: everything it reads is passed in."""
     ts = ts or datetime.datetime.now().astimezone().isoformat(timespec='seconds')
     ra = rule_anchors(root)
@@ -752,10 +912,12 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
             return
         top = max(fr_metric.items(), key=lambda kv: kv[1][0])
         share = top[1][0] / tot
+        lo = wilson_lo(top[1][0], tot)                        # r30 (B201): graded on the Wilson 95 % lower bound
         d['top_share'] = round(share, 4)
-        d['findings'].append({'peer': top[0], 'grade': 'ANOMALY' if share > FIRST_RELAY_CONC else 'NORMAL',
-                              'what': f"delivered {top[1][0]:g} of {tot:g} first relays this run ({share:.1%}; ANOMALY if > {FIRST_RELAY_CONC:.0%}: one path carries most new blocks to us)", 'cap_line': top[1][1]})
-    det('D9', 'First-relay concentration (topology dependence)', 'first_relay', f_conc, f'test: one peer > {FIRST_RELAY_CONC:.0%} of p2p_first_relay_total')
+        d['top_share_lo95'] = round(lo, 4)
+        d['findings'].append({'peer': top[0], 'grade': 'ANOMALY' if lo > FIRST_RELAY_CONC else 'NORMAL', 'lo95': round(lo, 4),
+                              'what': f"delivered {top[1][0]:g} of {tot:g} first relays this run ({share:.1%}, Wilson 95 % lower bound {lo:.1%}; ANOMALY if the lower bound > {FIRST_RELAY_CONC:.0%}: one path carries most new blocks to us)", 'cap_line': top[1][1]})
+    det('D9', 'First-relay concentration (topology dependence)', 'first_relay', f_conc, f'test: Wilson 95 % lower bound of one peer\'s share of p2p_first_relay_total > {FIRST_RELAY_CONC:.0%} (r30)')
 
     def f_inv(d):
         if ctr:                                                  # r25 (CO24-N5): which connection was clipped
@@ -770,10 +932,19 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
     det('D10', 'INV / transaction flood against the budgets', 'inv_budget', f_inv, 'rule: an INV beyond 64 txids/s (burst 1,024) per connection is clipped and counted')
 
     def f_ids(d):
+        prow = {p['peer']: p for p in peers}
         for node, pids in ids_seen.items():
             if len(pids) > 1:
-                d['findings'].append({'peer': ', '.join(sorted(pids)), 'grade': 'ANOMALY', 'what': f'one peer_id ({node}) on {len(pids)} addresses at once', 'cap_line': next(p['line'] for p in peers if p['peer'] in pids)})
-    det('D11', 'One node identity on several addresses', 'peer_id', f_ids, 'test: the same handshake peer_id on > 1 active address')
+                rtt = sorted(prow[x]['latency_ms'] for x in pids if isinstance(prow.get(x, {}).get('latency_ms'), (int, float)))
+                ratio = (rtt[-1] / rtt[0]) if len(rtt) >= 2 and rtt[0] > 0 else None
+                verdict = 'EXPLAINED' if ratio is not None and ratio <= RTT_DIVERGE else 'UNEXPLAINED'   # r30 (B201)
+                d['findings'].append({'peer': ', '.join(sorted(pids)), 'grade': 'NORMAL' if verdict == 'EXPLAINED' else 'ANOMALY',
+                                      'verdict': verdict, 'rtt_ms': rtt, 'rtt_ratio': round(ratio, 2) if ratio else None,
+                                      'what': f'one peer_id ({node}) on {len(pids)} addresses at once, RTT {rtt} ms: {verdict}'
+                                              + (f' (RTTs within x{RTT_DIVERGE:g}: one multi-homed host)' if verdict == 'EXPLAINED' else
+                                                 f' (RTT ratio {ratio:.2f} > {RTT_DIVERGE:g}: hosts at different network distances share one identity)' if ratio else ' (no RTT pair to compare)'),
+                                      'cap_line': next(p['line'] for p in peers if p['peer'] in pids)})
+    det('D11', 'One node identity on several addresses', 'peer_id', f_ids, f'test: the same handshake peer_id on > 1 active address; EXPLAINED (NORMAL) when their RTTs agree within x{RTT_DIVERGE:g}, else UNEXPLAINED (ANOMALY) (r30)')
 
     def f_chunk(d):
         for peer, e in (per_kind.get('chunk_unknown_tip') or {}).items():
@@ -817,6 +988,8 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
                                       'what': f"{p['sync_failures']} consecutive failed sync(s) that were its own (error or short answer); sync with it held {p['sync_hold_s']} s more", 'cap_line': p['line']})
     det('D15', 'Sync held from peers that answer with nothing (B47)', 'sync_hold', f_hold, 'rule: a sync fetch the peer fails (its own error or fewer blocks than asked) holds sync with it 30 s, doubling to 10 min; a sync that adds blocks forgives (r25)')
     explain_detectors(D, peers, ips_active, fr_metric)          # r27: D5/D9/D11 explained from the same capture
+    explain_d2(D, peers, prior, walls or (), walls_file, cap_file)   # r30 (B201): D2 trajectories over the captures
+    explain_d9(D, prior)
     # ── churn and series
     act = sorted(p['peer'] for p in peers)
     churn = None
@@ -825,13 +998,14 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None):
         churn = {'since': prev.get('captured'), 'joined': len(joined), 'left': len(left), 'joined_peers': joined, 'left_peers': left}
     churn_line = C.add({'src': 'churn', 'churn': churn, 'active': act})
     # ── KPIs
-    lags = [p['lag'] for p in peers if isinstance(p.get('lag'), int)]
+    lag_max3, lag_med3, lag_max2 = lag_kpis(peers)               # r30 (B201): v3 peers only; v2 remnant apart
     lat = [p['latency_ms'] for p in peers if isinstance(p.get('latency_ms'), (int, float))]
     vc = {}
     for p in peers:
         vc[p['version_class']] = vc.get(p['version_class'], 0) + 1
     kpi = {'peers_active': len(peers), 'incoming': pi.get('incoming'), 'outgoing': pi.get('outgoing'),
-           'lag_max': max(lags) if lags else None, 'lag_median': statistics.median(lags) if lags else None,
+           'lag_max': lag_max3, 'lag_median': lag_med3, 'lag_max_v2': lag_max2,
+           'inbound_regime': inbound_regime(pi.get('incoming')),
            'latency_median_ms': round(statistics.median(lat), 1) if lat else None,
            'versions': vc, 'v2_seen_7d': pi.get('v2_chain_peers_seen_7d'), 'bans_listed': len(ban_rows),
            'first_relay_top_share': next((d.get('top_share') for d in D if d['id'] == 'D9'), None),
@@ -1133,8 +1307,11 @@ def run(cap_dir, priv, log_paths, root=ROOT, out_dir=None):
         except (ValueError, IndexError):
             prev = None
     tsn = datetime.datetime.now()
-    rep, cl, xl = analyse(cap, ls, ps, root=root, ts=tsn.astimezone().isoformat(timespec='seconds'), prev=prev)
     stamp = tsn.strftime('%Y%m%dT%H%M%S')
+    walls, wf = load_walls(root)
+    rep, cl, xl = analyse(cap, ls, ps, root=root, ts=tsn.astimezone().isoformat(timespec='seconds'), prev=prev,
+                          prior=load_prior(out_dir, exclude=f'peer_capture_{stamp}.jsonl'), walls=walls, walls_file=wf,
+                          cap_file=f'peer_capture_{stamp}.jsonl')
     capf, logxf = out_dir / f'peer_capture_{stamp}.jsonl', out_dir / f'peer_logx_{stamp}.jsonl'
     write_atomic(capf, '\n'.join(cl) + '\n')
     write_atomic(logxf, '\n'.join(xl) + ('\n' if xl else ''))
@@ -1146,6 +1323,7 @@ def run(cap_dir, priv, log_paths, root=ROOT, out_dir=None):
     with series.open('a') as f:
         f.write(json.dumps({'captured': rep['captured'], 'version': rep['node_version'], 'capture': capf.name,
                             'peers': k['peers_active'], 'out': k['outgoing'], 'in': k['incoming'], 'lag_max': k['lag_max'],
+                            'lag_max_v2': k.get('lag_max_v2'), 'regime': k.get('inbound_regime'),
                             'latency_median_ms': k['latency_median_ms'], 'versions': k['versions'], 'v2_seen_7d': k['v2_seen_7d'],
                             'bans_listed': k['bans_listed'], 'first_relay_top_share': k['first_relay_top_share'],
                             'netgroups': k['netgroups'], 'observed': k['observed'], 'anomaly': k['anomaly'],

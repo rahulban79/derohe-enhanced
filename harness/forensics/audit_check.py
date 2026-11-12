@@ -1193,6 +1193,8 @@ REQUIRED_BY_VERSION = {'r25': ('A1', 'A2', 'A3', 'A4'),
                                 'D2-26', 'D2-27')}
 # r29 (B107): r28d's walls/inclusions rows now carry their class; its audit must re-derive them (D2-28)
 REQUIRED_BY_VERSION['r28d'] += ('D2-28',)
+# r30 (v5, B202/B203/B209/B210/B111/B107): the audit re-counts every v5 figure with its own code (D2-29..D2-34)
+REQUIRED_BY_VERSION['r30'] = REQUIRED_BY_VERSION['r28d'] + ('D2-29', 'D2-30', 'D2-31', 'D2-32', 'D2-33', 'D2-34')
 
 
 def g29_check(ds, repo=None, private=None):

@@ -276,6 +276,16 @@ def kats(mod, base, only=None):
                 ok &= good
                 why.append(f'{want}:{"caught" if good else f"MISSED rc {rc} {sorted(checks)}"}')
             out.append((cid, ok, ', '.join(why)))
+    if not only or 'CO17' in only:                     # r30 B264: the B214 'last re-tested' suffix of the state cell
+        lat = {'state': 'upstream', 'round': 'R30'}
+        import importlib.util as _ilu
+        _sp = _ilu.spec_from_file_location(f'co17_{abs(hash(str(mod))) % 10**6}', str(mod))
+        _cm = _ilu.module_from_spec(_sp)
+        _sp.loader.exec_module(_cm)
+        got = (_cm.state_cell_ok('upstream', lat), _cm.state_cell_ok('upstream (last re-tested R30)', lat),
+               _cm.state_cell_ok('upstream (last re-tested R29)', lat), _cm.state_cell_ok('open (last re-tested R30)', lat),
+               _cm.state_cell_ok('open', lat))
+        out.append(('CO17', got == (True, True, False, False, False), f'state cells {got}'))
     return out
 
 
@@ -291,7 +301,11 @@ def _fix_stamp(t):
 MUTATIONS = [  # (KAT expected to catch it, old, new, what)
     ('CO2', "            return rec['mutate'], g", "            return g, g", 'the mutate figure is not compared'),
     ('CO7', "    ('treehashes', re.compile(r'(\\d+) treehashes')),", '', 'treehash figures are not extracted'),
-    ('CO3', "            if tds[-1] != lat['state']:", "            if False:", 'the ledger disclosure state is not compared'),
+    ('CO3', "            if not state_cell_ok(tds[-1], lat):", "            if False:", 'the ledger disclosure state is not compared'),
+    ('CO17', "    return cell == lat['state'] or cell == f\"{lat['state']} (last re-tested {lat['round']})\"",
+     "    return cell.startswith(lat['state'])", 'B264: any suffix (another round, a wrong state prefix) passes'),
+    ('CO17', "    return cell == lat['state'] or cell == f\"{lat['state']} (last re-tested {lat['round']})\"",
+     "    return cell == lat['state']", 'B264: the B214 suffix drifts (the R30 measured page false DRIFT)'),
     ('CO4', "            if got != state[aid]:", "            if False:", 'the src-arch area state is not compared'),
     ('CO4', "                    return pre[-1] == cap['start'] if pre else cap['file'] in u", "                    return False", 'live figures never bind'),
     ('CO5', "            if n not in links:", "            if False:", 'index links are not required'),

@@ -94,6 +94,12 @@
        feeds a co-process's stdin in a loop and reads its stdout without a feeder thread (B182 hang 1), no network call
        without a timeout; hits pass only via pipeline/liveness_allow.json with a reason, stale entries fail (KAT
        test_liveness_lint_r29.py).
+  r30 G34 progress to the 150 kH/s objective from measured live windows (harness/intel/hashrate_objective.py g34; B235,
+       rft §2.21): the live mean of the miner's TOTAL lines (newest run) / 150,000 with its window anchor, and the ceiling
+       min(S, G/(1-own)) from records (quiet bench records, else the B27 live law; else 'pending', never a literal).
+       Ledger word INFO below the objective, PASS only above it from a measured live window; never PASS on a bench, an
+       ESTIMATE or a proxy (KAT test_hashrate_objective_r30.py). r30 verifier: PASS also needs n >= 240 TOTAL lines and
+       >= 3,600 s; a --bench run is refused; only the launchd log is read while it exists; the effective until is recorded.
 Appends one row per gate to loop/GATES.md. Exit 0 all pass (or PAUSED) · 3 any fail.  Usage: run_gates.py [cycle-label]
 """
 if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
@@ -497,6 +503,14 @@ class TimedResults(list):
         return out
 
 
+G34_INFO = 'INFO'   # r30 G34: a report below the objective; truthy, so RT.all_ok counts it as passing
+
+
+def gate_word(ok):
+    """the ledger word: INFO for G34's report (r30), else kit/roundtracks.word (PAUSED / PASS / FAIL)"""
+    return G34_INFO if ok == G34_INFO else RT.word(ok)
+
+
 def write_timing(res, env=None):
     """r28 (B133): when DERO_GATE_TIMING names a file, write res.timing() to it and return the five slowest lines."""
     dest = (os.environ if env is None else env).get('DERO_GATE_TIMING')
@@ -766,7 +780,7 @@ def main():
         DT = _iu.module_from_spec(_dp)
         _dp.loader.exec_module(DT)
         _tr, _lg = DT.load(HERE.parent)
-        g24 = DT.evaluate(_tr, root=HERE.parent, legacy=_lg, pages=DT.page_sections(HERE.parent))
+        g24 = DT.evaluate(_tr, root=HERE.parent, legacy=_lg, pages=DT.page_sections(HERE.parent), round_checks=True)   # r30 B228
         _mc = DT.model_current(_tr, json.loads((HERE / 'model/raw/disclosure.json').read_text()), HERE.parent)
         res.append(('G24 the disclosure track is re-tested', g24['ok'] and _mc,
                     f"{g24['claims']} claims re-tested in {g24['current_round']}, {g24['facts']} facts, {g24['fixes']} fixes; "
@@ -884,6 +898,22 @@ def main():
     except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
         res.append(('G33 no hang shape in the project code (liveness lint)', False, f'liveness_lint could not run: {type(e).__name__}: {e}'))
 
+    # G34 (r30, B235; rft §2.21 objective > 150 kH/s) — progress to the objective from MEASURED LIVE windows only (the
+    # miner's TOTAL lines of its newest run) with the ceiling model min(S, G/(1-own)) from records: INFO below the
+    # objective, PASS only when a measured live window exceeds 150,000; never PASS on a bench, an ESTIMATE or a proxy.
+    # INFO is a report, not a failure (the ledger word is INFO; the exit rule counts it as passing).
+    try:
+        import importlib.util as _iu34
+        _sp34 = _iu34.spec_from_file_location(f'hashobj_for_gates_{id(HERE)}', HERE / 'intel/hashrate_objective.py')
+        HO = _iu34.module_from_spec(_sp34)
+        _sp34.loader.exec_module(HO)
+        _ok34, det34 = HO.g34(HERE.parent)
+        res.append(('G34 progress to the 150 kH/s objective from measured live windows',
+                    G34_INFO if _ok34 and str(det34).startswith('INFO') else _ok34, det34))
+    except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
+        res.append(('G34 progress to the 150 kH/s objective from measured live windows', False,
+                    f'hashrate_objective could not run: {type(e).__name__}: {e}'))
+
     # G13 — a fix may change logging and peer handling, never what the node accepts or computes
     import consensus_guard as CG
     cg = CG.evaluate()
@@ -899,9 +929,9 @@ def main():
         gl.write_text('# Gate ledger — dero-src-arch\n\n| when | cycle | gate | result | detail |\n|---|---|---|---|---|\n')
     with gl.open('a') as f:
         for g, ok, d in res:
-            f.write(f"| {now} | {label} | {g} | {RT.word(ok)} | {str(d).replace('|', '/')[:600]} |\n")
+            f.write(f"| {now} | {label} | {g} | {gate_word(ok)} | {str(d).replace('|', '/')[:600]} |\n")
     for g, ok, d in res:
-        print(f"{RT.word(ok)}  {g}: {str(d)[:360]}")
+        print(f"{gate_word(ok)}  {g}: {str(d)[:360]}")
     slow = write_timing(res)
     if slow:
         print('gate timing (slowest):', ' · '.join(slow))

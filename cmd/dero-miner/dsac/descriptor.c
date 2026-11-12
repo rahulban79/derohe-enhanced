@@ -228,8 +228,13 @@ static inline unsigned long long dsa_ticks(void)
 #else
 #include <intrin.h>
 #endif
-unsigned long long dsa_prof[6];
-unsigned long long dsa_stat[9];
+/* derohe r30 (B237): a multi-threaded profile build defines DSA_PROF_TLS=__thread so each thread keeps its own
+ * counters (the bench harness sums them); the default stays one shared array, as the r22 single-thread harness reads. */
+#ifndef DSA_PROF_TLS
+#define DSA_PROF_TLS
+#endif
+DSA_PROF_TLS unsigned long long dsa_prof[6];
+DSA_PROF_TLS unsigned long long dsa_stat[9];
 #define PROF_T0()      const unsigned long long _t0 = __rdtsc()
 #define PROF_ADD(i, t) (dsa_prof[i] += __rdtsc() - (t))
 #define PROF_MARK()    unsigned long long _m = __rdtsc()
@@ -545,6 +550,16 @@ typedef struct {
 #define DSA_TLS __thread
 #endif
 static DSA_TLS Scratch* g_scratch = NULL;
+
+/* derohe r30 (rft §8 L-C2, §7 B237): the merge variant. 0 = the r29 two-list merge (a branch on every step: which head
+ * is taken is a coin flip the predictor loses about half the time). 1 = the branch-free form: the taken head is chosen
+ * with conditional selects and only the advanced cursor is reloaded, one ekey per step as before. The suffix array is
+ * unique, so both are bit-exact by construction; dsac_test.go TestR30MergeVariantBitExact proves it on the corpus and
+ * on randomized texts. OFF by default until the quiet-window ABBA (harness/pipeline/quiet_window.py) measures it; the
+ * miner sets it from DERO_DSA_MERGE=bf (fastsort.go). Set before the mining threads start; read once per group. */
+static int dsa_merge_variant = 0;
+void dsa_set_merge_variant(int v) { dsa_merge_variant = (v == 1) ? 1 : 0; }
+int dsa_get_merge_variant(void) { return dsa_merge_variant; }
 
 #ifdef DSA_LCP
 /* LCP prototype: bucket suffix_less_from decisions by bytes walked past the
@@ -2335,6 +2350,29 @@ retry:
                     if (out + total2 > n) return -7; /* derohe r16 hardening */
                     if ((size_t)dsa_off(*d0) + l0 > arena_len || (size_t)dsa_off(*d1) + l1 > arena_len) return -7;
                     int32_t* dst = sa + out;
+                    if (dsa_merge_variant == 1) {
+                        /* r30 L-C2: branch-free head selection. Both cursors stay valid until one list ends; the
+                         * loop ends before any read past a list (the end test precedes the reload). */
+                        for (;;) {
+                            const int take1 = (h1 != h0) ? (h1 < h0)
+                                : suffix_less_from(t, n, q1, q0, DSA_KEY_BYTES + 8);
+                            *dst++ = (int32_t)(take1 ? q1 : q0);
+                            p1 += (uint32_t)take1;
+                            p0 += (uint32_t)(1 - take1);
+                            if (p1 == l1 || p0 == l0) break;
+                            const Arena* an = take1 ? a1 : a0;
+                            const uint32_t pn = take1 ? p1 : p0;
+                            const uint32_t rn = take1 ? r1 : r0;
+                            const uint32_t qn = (uint32_t)DSA_POS(an[pn], rn);
+                            const uint64_t hn = ekey64(t, n, (size_t)qn + DSA_KEY_BYTES);
+                            q1 = take1 ? qn : q1;
+                            h1 = take1 ? hn : h1;
+                            q0 = take1 ? q0 : qn;
+                            h0 = take1 ? h0 : hn;
+                        }
+                        while (p0 < l0) *dst++ = (int32_t)DSA_POS(a0[p0++], r0);
+                        while (p1 < l1) *dst++ = (int32_t)DSA_POS(a1[p1++], r1);
+                    } else
                     for (;;) {
                         const int take1 = (h1 != h0) ? (h1 < h0)
                             : suffix_less_from(t, n, q1, q0, DSA_KEY_BYTES + 8);

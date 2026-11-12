@@ -1,0 +1,42 @@
+{
+ "by_major_minor": {
+  "1.1": 481600,
+  "2.2": 7023040,
+  "3.3": 371361
+ },
+ "majors": {
+  "1": {
+   "expected_from": 0,
+   "expected_to": 481599,
+   "first": 0,
+   "first_equal": true,
+   "last": 481599
+  },
+  "2": {
+   "expected_from": 481600,
+   "expected_to": 7504639,
+   "first": 481600,
+   "first_equal": true,
+   "last": 7504639
+  },
+  "3": {
+   "expected_from": 7504640,
+   "expected_to": null,
+   "first": 7504640,
+   "first_equal": true,
+   "last": 7876000
+  }
+ },
+ "mismatch_topos_first": [],
+ "mismatches": 0,
+ "not_versions": {
+  "HF1_HEIGHT": 21480,
+  "HF2_HEIGHT": 29000
+ },
+ "schema": "r30 version census v1 (B212)",
+ "source": {
+  "record": "harness/runtime/r30_genesis_census.json",
+  "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06"
+ },
+ "verdict": "HOLDS"
+}

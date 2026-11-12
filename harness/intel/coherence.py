@@ -329,6 +329,13 @@ def artifact_files(c):
 
 
 # ───────────────────────────── checks ─────────────────────────────
+def state_cell_ok(cell, lat):
+    """r30 B264: the ledger's 'State now' cell is the latest entry's state, alone (pages before R30) or followed by
+    ' (last re-tested <the latest entry's round>)' (gen_ledger --last >= 30, B214). Any other round or state drifts.
+    Pure."""
+    return cell == lat['state'] or cell == f"{lat['state']} (last re-tested {lat['round']})"
+
+
 def check_round(c):
     r, cur, lab = c.rcur, c.cur, c.label
     if r.get('status') not in STATUSES:
@@ -586,7 +593,7 @@ def check_disclosure(c):
                 v = tds[heads.index(lat['round'])]
                 if norm_verdict(v) != lat['verdict']:
                     c.drift('disclosure', c.ledger, ln, f"{cid} {lat['round']} {lat['verdict']}", f'{cid} {v}', src)
-            if tds[-1] != lat['state']:
+            if not state_cell_ok(tds[-1], lat):
                 c.drift('disclosure', c.ledger, ln, f"{cid} state {lat['state']}", f'{cid} state {tds[-1]}', src)
     # src-arch section 10 table t-dtrack
     st = c.text('artifacts/dero-src-arch.html')
@@ -717,7 +724,35 @@ def check_backlog(c, ids=TRACKED_IDS):
                 c.drift('backlog', f, off + ln, f'{bid} {cls} (§7: {bl[bid][1][:60]})', f'{bid} said {said}', f'artifacts/dero-rft.md:{bl[bid][0]} (§7)')
 
 
+HREF_RX = re.compile(r'href="([^"#?:]+?\.html)(?:#[^"]*)?"')
+
+
+def dead_hrefs(text, exists):
+    """r30 (B227, h2): [(line, href)] of every relative .html href in `text` for which exists(href) is False (an
+    absolute or scheme URL is not checked). Pure but for `exists`."""
+    out = []
+    for i, l in enumerate(str(text or '').splitlines(), 1):
+        for h in HREF_RX.findall(l):
+            if not h.startswith(('/', '.')) and not exists(h):
+                out.append((i, h))
+    return out
+
+
+def check_hrefs(c):
+    """r30 (B227, h2): every relative href on src-arch and on the current round's soundness page names a file that
+    exists in artifacts/ (src-arch linked dero-r1-r28d.html, a page that never existed)."""
+    art = c.root / 'artifacts'
+    for rel in ('artifacts/dero-src-arch.html', soundness_rel(c.root)):
+        t = c.text(rel)
+        if t is None:
+            continue
+        c.fact()
+        for ln, h in dead_hrefs(t, lambda h: (art / h).exists()):
+            c.drift('pages', rel, ln, f'{h} exists in artifacts/', 'missing (dead link)', 'artifacts/ listing')
+
+
 def check_pages(c, index=True):
+    check_hrefs(c)
     art = c.root / 'artifacts'
     if c.done:
         c.fact()

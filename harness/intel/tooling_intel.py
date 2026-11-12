@@ -46,7 +46,8 @@ KPIs (§0.9 rule 2; 'pending' when the input is missing, never a guess):
             peer address, B135; target 0) and privacy_historical_files (report-only)
   resume    checkpoint_age_s: seconds since the round's resume checkpoint (harness/intel/round_checkpoint.py, §0.10;
             ~/derohe-persist/round_state/<round>_state.json 'stamp'; the --loop 600 writes one every 10 min)
-  opt-in    --determinism: generator double runs byte-exact (gen_index, soundness, gen_deroarch build), in an
+  opt-in    --determinism: generator double runs byte-exact (gen_index, soundness, gen_deroarch build, r30 B232: the
+            round-named ledger gen_ledger.py --last N artifacts/dero-r1-r<N>.html), in an
             isolated copy of the tree (r25 merge: it used to run in place). r28 (N28-09): a default run (no
             --determinism) reports determinism_last, the newest earlier record that DID measure it (its file, capture
             time, age and mismatch count), labelled as carried; determinism_mismatches itself stays 'pending';
@@ -89,10 +90,36 @@ def soundness_rel(root):
     return m.rel(root)
 
 
+LEDGER_PAGE = '<ledger page of the current round>'   # r30 (B232): resolved per tree by ledger_cmd()
+
+
+def ledger_cmd(root):
+    """(command, page) of the round-named ledger page: the registry's current round number N gives
+    artifacts/dero-r1-r<N>.html when it exists, else the newest dero-r1-r<M>.html of the tree (a round whose page is
+    not written yet re-checks the last page); None when the tree has no ledger page. A sub-round (r28d) uses its
+    number (r28 -> dero-r1-r28.html). Pure on the files."""
+    root = Path(root)
+    try:
+        cur = json.loads((root / 'harness/round.json').read_text()).get('current') or ''
+    except (OSError, ValueError):
+        cur = ''
+    m = re.fullmatch(r'r(\d+)[a-z]?', str(cur))
+    pages = sorted((int(x.group(1)), x.group(0)) for x in
+                   (re.fullmatch(r'dero-r1-r(\d+)\.html', p.name) for p in (root / 'artifacts').glob('dero-r1-r*.html')) if x)
+    n = int(m.group(1)) if m and (root / f'artifacts/dero-r1-r{m.group(1)}.html').exists() else (pages[-1][0] if pages else None)
+    if n is None:
+        return None
+    page = f'artifacts/dero-r1-r{n}.html'
+    return ['artifacts/src/gen_ledger.py', '--last', str(n), page], page
+
+
 GENERATORS = [            # (command, output page) for --determinism; each is run twice and the page hashed after each
     (['harness/gen_index.py'], 'artifacts/index.html'),
     (['harness/soundness.py'], SOUNDNESS_PAGE),   # r25: the current round's page (harness/kit/soundpage.py)
     (['harness/gen_deroarch.py', 'build'], 'artifacts/dero-src-arch.html'),
+    # r30 (rft §7 B232): the round-named ledger page (gen_ledger.py --last N OUT) was never double-run; the r29 audit
+    # found the check stale and the ledger outside it. Run once per round with --determinism (a scratch copy)
+    (['artifacts/src/gen_ledger.py'], LEDGER_PAGE),
 ]
 # §0.9 rule 1: every tooling defect class of R24/R25 and the KAT (file, id marker) that reproduces it
 DEFECT_CLASSES = [
@@ -621,11 +648,30 @@ def skill_track(text):
     return m.group(1) if m else None
 
 
-def skill_kpis(root, current, paused=()):
+def round_open_grace(registry, current):
+    """r30 (rft §7 B204): the previous round id while the current round is OPEN (status in-progress or planned and no
+    merge_commit yet), else None. At round open no skill can hold the new round's entry (it is written at Part D), so a
+    skill whose last entry is the round just before is DUE, not stale; one last recorded earlier (a resumed track's
+    skill, e.g. the miner skill at r23c when R30 opened after r29) is still stale. Pure."""
+    rounds = [r for r in (registry or {}).get('rounds') or [] if isinstance(r, dict)]
+    ids = [r.get('id') for r in rounds]
+    if current not in ids:
+        return None
+    r = rounds[ids.index(current)]
+    if r.get('status') not in ('in-progress', 'planned') or str(r.get('merge_commit') or 'pending') != 'pending':
+        return None
+    prev = [x.get('id') for x in rounds[:ids.index(current)] if x.get('status') != 'planned']
+    return prev[-1] if prev else None
+
+
+def skill_kpis(root, current, paused=(), grace=None):
+    """skill KPIs; `grace` (round_open_grace) = the previous round, whose entry counts as DUE (not stale) at round
+    open (r30 B204)."""
     sk = sorted((Path(root) / '.skills').glob('*/SKILL.md'))
     if not sk:
         return {'skills': 0, 'skill_last_round': PENDING}
-    out = {'skills': len(sk), 'skill_lines': {}, 'skill_last_round': {}, 'skill_over_budget': [], 'skill_paused': []}
+    out = {'skills': len(sk), 'skill_lines': {}, 'skill_last_round': {}, 'skill_over_budget': [], 'skill_paused': [],
+           'skill_due': [], 'skill_grace': grace or None}
     fresh, required = True, 0
     for p in sk:
         t = p.read_text(encoding='utf-8', errors='replace')
@@ -640,6 +686,9 @@ def skill_kpis(root, current, paused=()):
             out['skill_paused'].append(name)
             continue
         required += 1
+        if last and grace and last.lower() == str(grace).lower() and last.lower() != str(current).lower():
+            out['skill_due'].append(name)              # r30 B204: due at Part D, not stale at round open
+            continue
         fresh &= bool(last) and last.lower() == str(current).lower()
     out['skill_fresh'] = int(fresh and required > 0)
     return out
@@ -864,6 +913,12 @@ def determinism(root, generators=None):
         for cmd, page in (GENERATORS if generators is None else generators):
             if page == SOUNDNESS_PAGE:
                 page = soundness_rel(work)
+            elif page == LEDGER_PAGE:
+                lc = ledger_cmd(work)
+                if lc is None:
+                    out[LEDGER_PAGE] = 'FAILED no ledger page'
+                    continue
+                cmd, page = lc
             hs, raw = [], []
             for _ in range(2):
                 r = subprocess.run(['nice', '-n', '15', sys.executable, '-I', *cmd], cwd=work, capture_output=True,
@@ -1217,7 +1272,7 @@ def run(root, mdir, opt_det=False, opt_scrub=False, opt_scripts=False, opt_pages
         k['mirror_drift'], k['mirror_drift_reasons'] = n, why[:60]
     else:
         k['mirror_drift'] = PENDING
-    k.update(skill_kpis(root, cur, paused_tracks(registry, cur)))
+    k.update(skill_kpis(root, cur, paused_tracks(registry, cur), round_open_grace(registry, cur)))
     order = evolution_order(root)
     if order is None:
         k['order_gaps'] = PENDING

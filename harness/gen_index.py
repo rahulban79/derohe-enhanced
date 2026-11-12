@@ -110,6 +110,34 @@ def memory_rows(mems, mirrored, home=None):
     return ''.join(out)
 
 
+def gate_state(result):
+    """r30 (B227): 'PASS', 'PAUSED' (a paused track's gate: rendered and counted apart, never as FAIL) or 'FAIL'. Pure."""
+    r = str(result or '').strip().upper()
+    return 'PASS' if r == 'PASS' else 'PAUSED' if r.startswith('PAUSED') else 'FAIL'
+
+
+def gate_cell(result):
+    st = gate_state(result)
+    return {'PASS': '<span class=ok-t>PASS</span>', 'PAUSED': '<span class=mut>PAUSED</span>'}.get(st, '<span class=bad-t>FAIL</span>')
+
+
+def gates_label(last):
+    """'P/N' over the judged gates, '+k PAUSED' apart. Pure."""
+    st = [gate_state(r[4]) for r in last]
+    p, k = st.count('PASS'), st.count('PAUSED')
+    return f'{p}/{len(st) - k}' + (f' (+{k} PAUSED)' if k else '')
+
+
+def claim_units(text):
+    """r30 (B227): the soundness page's claim units as G22 cuts them (harness/soundness.py page_units), not a <p
+    count."""
+    import importlib.util as _u
+    spec = _u.spec_from_file_location('soundness_for_index', HERE / 'soundness.py')
+    m = _u.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return len(m.page_units(text))
+
+
 def gates():
     g = HERE / 'loop/GATES.md'
     if not g.exists():
@@ -134,6 +162,7 @@ def main():
     mems = memories()
     mtype = collections.Counter(m['type'] for m in mems)
     passed = sum(1 for r in last if r[4].strip() == 'PASS')
+    glabel = gates_label(last)
     V = json.loads((HERE / 'model/verified.json').read_text())
     cls = collections.Counter(e['kind'] for r in V for e in r['evidence'])
     now = datetime.datetime.now().astimezone()
@@ -147,7 +176,7 @@ def main():
          'rows': st['stats']['rows'], 'anchors': f"{st['stats']['anchors_ok']}/{st['stats']['anchors']}",
          'built': st['built'][:16].replace('T', ' '), 'fp': st['fingerprint'],
          'how': 'projected by <code>harness/gen_deroarch.py</code> from <code>harness/model/</code>',
-         'gates': f'{passed}/{len(last)} in cycle {cycle}' if last else '\u2014',
+         'gates': f'{glabel} in cycle {cycle}' if last else '\u2014',
          'kat': f"{kat.get('ok')}/{kat.get('total')} KATs, {kat.get('mut_proved')}/{kat.get('muts')} mutations proved" if kat else '\u2014'},
         {'file': 'release151-migration-report.html', 'title': 'Release151/152/153 migration report',
          'what': 'Rounds 4\u20136b: crossing hard fork 3, the replay wall and its cure, the chain split, the six p2p '
@@ -196,7 +225,7 @@ def main():
              'what': 'What the node\u2019s code does about the HF3 proof skip, the nonce bypass, the already-mined guard, the '
                      'validity window, the TXID scope, the CalcSupply formula and the emission auditor, re-verified this round: '
                      'every claim unit is registered in harness/loop/SOUNDNESS_CLAIMS.json and re-checked.',
-             'rows': SP.read_text(errors='replace').count('<p'), 'anchors': 'claim units registered (G22)',
+             'rows': claim_units(SP.read_text(errors='replace')), 'anchors': 'claim units registered (G22)',
              'built': datetime.datetime.fromtimestamp(SP.stat().st_mtime).astimezone().strftime('%Y-%m-%d %H:%M'),
              'fp': hashlib.sha256(SP.read_bytes()).hexdigest()[:16],
              'how': 'hand-written; every claim unit backed by a test, an anchor, a derivation or a live read '
@@ -264,7 +293,7 @@ def main():
     mkpis = ''.join(f'<div class="kpi"><div class="kv">{v}</div><div class="kl">{E(k)}</div></div>'
                     for k, v in [('entries', len(mems))] + sorted(mtype.items()))
     grows = ''.join(f"<tr><td><b>{E(r[3].strip())}</b></td>"
-                    f"<td>{'<span class=ok-t>PASS</span>' if r[4].strip() == 'PASS' else '<span class=bad-t>FAIL</span>'}</td>"
+                    f"<td>{gate_cell(r[4])}</td>"
                     f"<td class=mut>{tk.html_clip(r[5].strip(), 150)}</td></tr>" for r in last)
 
     body = f'''<header class="mast"><div class="wrap">
@@ -278,7 +307,7 @@ def main():
       source, which G25 (<code>harness/intel/coherence.py</code>) cross-checks. This page reports their current state
       and how to rebuild them.</p>
       <div class="tickers">
-        <div class="tick live"><b>{passed}/{len(last)}</b><span>gates passing</span></div>
+        <div class="tick live"><b>{glabel}</b><span>gates passing</span></div>
         <div class="tick"><b>{E(kat.get('ok'))}/{E(kat.get('total'))}</b><span>KATs</span></div>
         <div class="tick"><b>{E(kat.get('mut_proved'))}/{E(kat.get('muts'))}</b><span>mutations proved</span></div>
         <div class="tick"><b>{st['stats']['anchors_ok']}</b><span>anchors resolved</span></div>

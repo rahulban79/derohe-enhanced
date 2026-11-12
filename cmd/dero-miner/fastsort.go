@@ -107,6 +107,27 @@ func selftest_inputs() [][]byte {
 	return in
 }
 
+// apply_merge_variant (r30 rft §8 L-C2): DERO_DSA_MERGE=bf selects the native sort's branch-free two-list merge
+// (bit-exact, TestR30MergeVariantBitExact); unset or "r29" keeps the r29 merge. Default OFF: its gain is claimed only
+// after the quiet-window ABBA (harness/pipeline/quiet_window.py step b237-abba). Called before install_fast_sort so
+// the self-test runs on the variant that mines. Returns the label the 'suffix sort' line carries as "merge".
+func apply_merge_variant(getenv func(string) string) string {
+	switch v := getenv("DERO_DSA_MERGE"); v {
+	case "", "r29":
+		dsac.SetMergeVariant(0)
+		return "r29"
+	case "bf":
+		if !dsac.Available {
+			return "r29 (DERO_DSA_MERGE=bf ignored: no native sort in this build)"
+		}
+		dsac.SetMergeVariant(1)
+		return "bf (r30 L-C2, unmeasured: pending the quiet-window ABBA)"
+	default:
+		dsac.SetMergeVariant(0)
+		return fmt.Sprintf("r29 (DERO_DSA_MERGE=%q ignored: want bf or r29)", v)
+	}
+}
+
 // install_fast_sort decides the sorter for this run; it returns a label for the logs.
 func install_fast_sort(mode string) string {
 	if mode == "sais" {

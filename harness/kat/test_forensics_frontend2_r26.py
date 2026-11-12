@@ -27,7 +27,7 @@ No network, no live file written (every tampered page is a temp copy).
 
   python3 -I harness/kat/test_forensics_frontend2_r26.py   # exit 0 ok · 3 a KAT failed · 4 a mutation not caught / INVALID
 """
-import importlib.util, json, shutil, sys, tempfile
+import importlib.util, json, re, shutil, sys, tempfile
 from pathlib import Path
 
 HARNESS = Path(__file__).resolve().parent.parent
@@ -199,7 +199,13 @@ def kats(mods):
             ok(not okk and 'class block' in det, f'FE8 a {nm} page without its class block passes G30: {det[:160]}')
         bp = tmp / led.name
         # the first identifier span of the section (its heading, outside every class block): only G30's own scan sees it
-        bp.write_text(lt.replace('<span class="fxid">v2</span>', '<span class="fxid">v2 7,000</span>', 1))
+        # r30 (B265): on the R30 page the FIRST such span sits inside a class block (the R30 section quotes the classes),
+        # so the plant goes into the first span OUTSIDE every class block, as this case intends
+        _span = '<span class="fxid">v2</span>'
+        _regs = [(m.start(), lt.find(BD.END, m.start())) for m in re.finditer(re.escape(BD.BEGIN), lt)]
+        _at = next((m.start() for m in re.finditer(re.escape(_span), lt)
+                    if not any(a0 <= m.start() <= b0 for a0, b0 in _regs)), -1)
+        bp.write_text(lt[:_at] + '<span class="fxid">v2 7,000</span>' + lt[_at + len(_span):] if _at >= 0 else lt)
         okk, det = FX.g30(ROOT, bp, sa, snd)
         ok(not okk and "untraced number '7,000'" in det and 'class block' not in det,
            f'FE8 a number inside an identifier span passes G30: {det[:160]}')

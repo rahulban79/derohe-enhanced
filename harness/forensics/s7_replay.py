@@ -20,6 +20,22 @@ import replay  # noqa: E402
 import verify_dataset  # noqa: E402
 
 
+def label(rep, rsha, recorded, missing):
+    """r30 (B218): the honest S7 label (pure). A report that did not PASS prints its own fail_reasons (never a guessed
+    'no archive copy'); PARTIAL is printed only for a PASS report, naming the inputs that are really absent (`missing`:
+    the list of absent inputs this replay tool needs, e.g. ['tier B store', 'archive copy', 'S0 checkpoint'])."""
+    mode = rep.get('rederive', {}).get('mode', 'not run')
+    if rep.get('result') != 'PASS':
+        why = '; '.join(rep.get('fail_reasons', [])[:3]) or 'no reason recorded'
+        return f'FAIL: {why}'
+    if mode == 'full':
+        return (f"FULL: {rep['rederive']['equal']}/{rep['rederive']['expected']} derived files re-derived, report "
+                f"{'equal to' if rsha in recorded else 'DIFFERENT from'} the recorded G28 runs")
+    return (f"PARTIAL ({', '.join('no ' + m for m in missing) or 'inputs present, re-derivation skipped'} on this machine): "
+            f"{rep.get('rederive', {}).get('rederived', 0)} files re-derived, {len(rep.get('rederive', {}).get('hash_checked_only', []))} "
+            'hash-checked only; G28 still rests on the two recorded full runs')
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=str(ROOT / 'harness/runtime/forensics_s7_replay.json'))
@@ -31,19 +47,31 @@ def main(argv=None):
     store = store if (store / 'blobs').is_dir() else None
     arch = arch if arch.is_dir() else None
     man = json.loads((ds / 'manifest.json').read_text())
-    if man.get('replay_tool') == 'harness/forensics/v4.py':  # r28d: dataset v4 (v3.derive + the DC1 structure + FQ2 S-RT)
+    missing = [] if store else ['tier B store']
+    if not arch:
+        missing.append('archive copy')
+    if man.get('replay_tool') == 'harness/forensics/v5.py':  # r30: dataset v5 (v4.derive + the class/S0 files)
+        import v5
+        s5 = Path(os.environ.get('FORENSICS_R28_STORE', Path.home() / 'derohe-persist/forensics_raw_r26'))
+        missing = ([] if (s5 / 'blobs').is_dir() else ['tier B store']) + ([] if v5.S0.DEFAULT_CHECKPOINT.exists() else ['S0 checkpoint'])
+        rep = v5.replay(ds, s5 if (s5 / 'blobs').is_dir() else None)
+        txt = v5.v2.dumps(rep)
+    elif man.get('replay_tool') == 'harness/forensics/v4.py':  # r28d: dataset v4 (v3.derive + the DC1 structure + FQ2 S-RT)
         import v4
         s4 = Path(os.environ.get('FORENSICS_R28_STORE', Path.home() / 'derohe-persist/forensics_raw_r26'))
+        missing = [] if (s4 / 'blobs').is_dir() else ['tier B store']
         rep = v4.replay(ds, s4 if (s4 / 'blobs').is_dir() else None)
         txt = v4.v2.dumps(rep)
     elif man.get('replay_tool') == 'harness/forensics/v3.py':  # R28: dataset v3 (content pins + v2.derive + run C corrections)
         import v3
         s3 = Path(os.environ.get('FORENSICS_R28_STORE', Path.home() / 'derohe-persist/forensics_raw_r26'))
+        missing = [] if (s3 / 'blobs').is_dir() else ['tier B store']
         rep = v3.replay(ds, s3 if (s3 / 'blobs').is_dir() else None)
         txt = v3.v2.dumps(rep)
     elif man.get('replay_tool') == 'harness/forensics/v2.py':  # r26: dataset v2 has its own re-derivation (v2.py replay)
         import v2
         s2 = Path(os.environ.get('FORENSICS_R26_STORE', Path.home() / 'derohe-persist/forensics_raw_r26'))
+        missing = [] if (s2 / 'blobs').is_dir() else ['tier B store']
         rep = v2.replay(ds, s2 if (s2 / 'blobs').is_dir() else None)
         txt = v2.dumps(rep)
     else:
@@ -55,15 +83,10 @@ def main(argv=None):
     recorded = {r.get('report_sha256') for r in rec.get('runs', [])} if rec.get('manifest_sha256') == rep['manifest_sha256'] else set()
     mode = rep.get('rederive', {}).get('mode', 'not run')
     ok = rep['result'] == 'PASS' and (mode != 'full' or rsha in recorded)
-    label = (f"FULL: {rep['rederive']['equal']}/{rep['rederive']['expected']} derived files re-derived, report "
-             f"{'equal to' if rsha in recorded else 'DIFFERENT from'} the recorded G28 runs" if mode == 'full' else
-             f"PARTIAL ({'no tier B store' if not store else 'no archive copy'} on this machine): "
-             f"{rep.get('rederive', {}).get('rederived', 0)} files re-derived, {len(rep.get('rederive', {}).get('hash_checked_only', []))} "
-             'hash-checked only; G28 still rests on the two recorded full runs')
     out = {'dataset': ds.name, 'manifest_sha256': rep['manifest_sha256'], 'mode': mode, 'result': 'PASS' if ok else 'FAIL',
-           'report_sha256': rsha, 'label': label, 'fail_reasons': rep.get('fail_reasons', [])}
+           'report_sha256': rsha, 'label': label(rep, rsha, recorded, missing), 'fail_reasons': rep.get('fail_reasons', [])}
     Path(a.out).write_text(json.dumps(out, indent=1, sort_keys=True) + '\n')
-    print(('PASS ' if ok else 'FAIL ') + label)
+    print(('PASS ' if ok else 'FAIL ') + out['label'])
     return 0 if ok else 5
 
 

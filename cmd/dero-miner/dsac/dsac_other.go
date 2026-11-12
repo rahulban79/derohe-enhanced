@@ -8,3 +8,7 @@ const Available = false
 func SuffixArray(text []byte, sa []int32) bool { return false }
 
 func Release() {}
+
+func SetMergeVariant(v int) {}
+
+func MergeVariant() int { return 0 }

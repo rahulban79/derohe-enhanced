@@ -184,9 +184,31 @@ def kat_sw8(over):
         return 'STALLED' in seen and seen[-1] == 'DONE' and not left, (sorted(set(seen)), left)
 
 
+def kat_sw9(over):
+    """r30 B257: a --stop marker is final: no relaunch while it exists (a dead job with the marker is STOPPED, not DEAD),
+    the done marker still wins, and without the marker a dead job is relaunched as before"""
+    m = load(over)
+    with tempfile.TemporaryDirectory() as d:
+        stop = str(Path(d) / 'REFUSED')
+        a, c, act = setup(d, stop=[stop]), Clock(), Act(pids=())
+        Path(stop).write_text('s4b REFUSED: contended\n')
+        w = m.Watch(a, c, act)
+        s1 = w.step()
+        c.t += 60
+        s2 = w.step()
+        launches = acts(act).count('launch')
+        Path(a.done).write_text('')
+        s3 = w.step()
+        Path(a.done).unlink()
+        Path(stop).unlink()
+        s4 = w.step()
+        return (s1, s2, s3, s4) == ('STOPPED', 'STOPPED', 'DONE', 'DEAD') and launches == 0 and acts(act) == ['launch'], \
+            (s1, s2, s3, s4, act.calls)
+
+
 KATS = [('SW1', kat_sw1), ('SW2', kat_sw2), ('SW3', kat_sw3), ('SW4', kat_sw4), ('SW5', kat_sw5), ('SW6', kat_sw6),
-        ('SW7', kat_sw7), ('SW8', kat_sw8)]
-OWNERS = {'r29 stallwatch': [k for k, _ in KATS]}
+        ('SW7', kat_sw7), ('SW8', kat_sw8), ('SW9', kat_sw9)]
+OWNERS = {'r29 stallwatch': [k for k, _ in KATS], 'B257': ['SW9']}
 MUTATIONS = [
     ('tool', "        if sig != self.sig:", "        if True:", 'r29 stallwatch: a heartbeat counts as work'),
     ('tool', "        if uid == me and match in cmd", "        if match in cmd", 'r29 stallwatch: another user\'s process is matched'),
@@ -194,6 +216,9 @@ MUTATIONS = [
     ('tool', "        if a.done and Path(a.done).exists():", "        if False:", 'r29 stallwatch: the done marker is ignored'),
     ('tool', "        if pids:\n            self.act.diagnose(pids)\n            self.act.stop(pids)",
      "        if pids:\n            self.act.diagnose(pids)", 'r29 stallwatch: a stalled job is relaunched without stopping it'),
+    ('tool', "            if Path(f).exists():\n                self.stopped_by = f\n                return 'STOPPED'",
+     "            if False:\n                self.stopped_by = f\n                return 'STOPPED'", 'B257: a stop marker is ignored (a deliberate exit is relaunched)'),
+    ('tool', "        for f in getattr(a, 'stop', None) or []:", "        for f in []:", 'B257: the --stop list is never read'),
 ]
 
 

@@ -14,11 +14,16 @@ non-reserved IPv4 that is not a literal of a tracked .go file):
   fixture     harness/kat/*: a planted address a KAT feeds to a scrubber (report-only)
   static      any other tracked file (a page, a tool's text): report-only, listed by path
   file        --dir mode: every file of the directory is judged as a writer (an ad-hoc scrape or capture)
+  pdf         r30 (rft §7 B206): a .pdf (tracked, in --dir, or named by --pdf) whose RAW bytes carry a local path or a
+              local /URI target (harness/kit/pdfscan.py: raw bytes, inflated FlateDecode streams, decoded strings incl.
+              /Info, XMP and UTF-16, every /URI annotation). Text extraction alone missed the R29 print's 9
+              file:// annotations. Always a finding (exit 5): a PDF is a publishable copy.
 
 Counts and paths only: an address is never printed (each is shown as its first octet + '.x.x.x').
 
   python3 -I harness/intel/privacy_audit.py [--fresh-h 72] [--json OUT]       # the tracked tree
   python3 -I harness/intel/privacy_audit.py --dir DIR [--json OUT]           # a capture directory (e.g. a scratchpad)
+  python3 -I harness/intel/privacy_audit.py --pdf FILE.pdf [...] [--json OUT] # local (git-ignored) PDFs by bytes
 Exit 0 no writer leaks · 5 a writer (or a --dir file) carries an address · 2 bad invocation.
 """
 import datetime, json, re, subprocess, sys
@@ -28,9 +33,10 @@ HERE = Path(__file__).resolve()
 ROOT = HERE.parent.parent.parent
 sys.path.insert(0, str(HERE.parent.parent / 'kit'))
 import privkit                                     # noqa: E402
+import pdfscan                                     # noqa: E402  r30 B206
 
 STAMP_RX = re.compile(r'^(?P<fam>.+?)_(?P<ts>\d{8}(?:T\d{6}Z?)?)(?P<rest>[._].*)?$')
-SKIP_SUFFIX = ('.go', '.png', '.jpg', '.gz', '.zst', '.bin', '.ico', '.woff', '.woff2', '.pdf', '.sum', '.mod')
+SKIP_SUFFIX = ('.go', '.png', '.jpg', '.gz', '.zst', '.bin', '.ico', '.woff', '.woff2', '.sum', '.mod')
 MAX_BYTES = 64 * 1024 * 1024
 
 
@@ -75,7 +81,9 @@ def classify(files, now=None, fresh_h=72.0):
         if not n:
             continue
         f, ts = family(rel)
-        if str(rel).startswith('harness/kat/'):
+        if str(rel).lower().endswith('.pdf'):
+            out[rel] = ('pdf', n)
+        elif str(rel).startswith('harness/kat/'):
             out[rel] = ('fixture', n)
         elif f:
             t = stamp_time(ts)
@@ -91,14 +99,29 @@ def tracked(root):
     return [l for l in r.stdout.splitlines() if l]
 
 
+def pdf_findings(p, allowed):
+    """r30 B206: path-class hits + local /URI targets + addresses in the decoded strings of one PDF, by bytes."""
+    b = Path(p).read_bytes()
+    r = pdfscan.scan_bytes(b)
+    sk = pdfscan.skeleton(b)
+    text = b'\n'.join(pdfscan.strings_of(sk)).decode('utf-8', errors='replace')
+    # the /Producer and /Creator strings name the browser build ('HeadlessChrome/146.0.7680.80'): a version, no address
+    text = re.sub(r'(?i)(?:Chrome|Skia/PDF|Safari|WebKit)/[\d.]+', 'version', text)
+    ips = len(leaks_of(text, allowed))
+    return sum(r['hits'].values()) + r['local_uris'] + ips
+
+
 def scan(root, rels, allowed):
-    """{rel: n_addresses} for every readable text file of `rels` under `root`."""
+    """{rel: n_findings} for every readable text file (addresses) and every PDF (pdf_findings) of `rels`."""
     res = {}
     for rel in rels:
         p = Path(root) / rel
         if p.suffix in SKIP_SUFFIX or not p.is_file():
             continue
         try:
+            if p.suffix.lower() == '.pdf':
+                res[rel] = pdf_findings(p, allowed)
+                continue
             if p.stat().st_size > MAX_BYTES:
                 continue
             res[rel] = len(leaks_of(p.read_text(errors='replace'), allowed))
@@ -126,7 +149,17 @@ def main(argv):
         print('privacy_audit: --fresh-h needs a number')
         return 2
     allowed = privkit.code_literal_ips(ROOT)
-    if '--dir' in argv:
+    if '--pdf' in argv:
+        k = argv.index('--pdf')
+        names = [a for a in argv[k + 1:] if not a.startswith('--')]
+        names = names[:names.index('--json')] if '--json' in names else names
+        if not names or not all(Path(n).is_file() for n in names):
+            print('privacy_audit: --pdf needs existing files')
+            return 2
+        files = {Path(n).name: pdf_findings(n, allowed) for n in names}
+        cls = {r: ('pdf', n) for r, n in files.items() if n}
+        scope = f'{len(names)} pdf file(s)'
+    elif '--dir' in argv:
         d = Path(opt('--dir') or '')
         if not d.is_dir():
             print(f'privacy_audit: --dir {d} is not a directory')
@@ -140,7 +173,7 @@ def main(argv):
         cls = classify(files, datetime.datetime.now(), fresh_h)
         scope = 'tracked tree'
     s = summary(cls)
-    bad = sum(1 for c, _ in cls.values() if c in ('writer', 'file'))
+    bad = sum(1 for c, _ in cls.values() if c in ('writer', 'file', 'pdf'))
     doc = {'scope': scope, 'files_scanned': len(files), 'files_with_addresses': len(cls), 'classes': s,
            'writer_leaks': bad, 'fresh_h': fresh_h}
     if opt('--json'):

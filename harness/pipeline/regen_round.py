@@ -35,6 +35,8 @@ STEPS = ([['harness/prep_corpus.py']]
             ['harness/miners/mine_coverage.py'],           # last miner: it reads every other raw file
             ['harness/gen_deroarch.py', 'build', '--strict'],
             ['harness/kit/retrofit.py', 'apply', 'harness/model/evidence/release151-migration-report.json'],
+            ['harness/kit/soundpage.py', '--write-gen'],   # r30 (B225): the soundness page's record blocks
+            ['harness/kit/soundpage.py', '--write-known'], # r30 merge (v5): the dataset section; G30/G31 fail without it
             ['harness/gen_index.py'],
             ['harness/kit/soundpage.py', '--check-measured'],
             ['harness/intel/coherence.py', '--record']])

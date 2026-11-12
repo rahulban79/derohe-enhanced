@@ -12961,6 +12961,206 @@
    "test": "TestR29SCBlockExport",
    "find": "\t\tb.Error = hexKey.ReplaceAllString(err.Error(), \"<key>\")\n",
    "replace": "\t\tb.Error = err.Error() // r29 mutated\n"
+  },
+  {
+   "id": "gm-r30-b26-hs-includes-stale",
+   "file": "cmd/dero-miner/hsreport_r30.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30HsFieldsExcludeStale",
+   "find": "\treturn counted - stale\n",
+   "replace": "\treturn counted // r30 mutated: H/s counts never-hashed texts\n"
+  },
+  {
+   "id": "gm-r30-b26-tracker-no-engine-id",
+   "file": "cmd/dero-miner/hsreport_r30.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30StaleSHATrackerMonotonic",
+   "find": "\tif id != t.id || v < t.last {",
+   "replace": "\tif v < t.last { // r30 mutated"
+  },
+  {
+   "id": "gm-r30-b26-metric-missing",
+   "file": "cmd/dero-miner/metrics.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30MetricsExportStaleAndPE",
+   "find": "\tp(\"dero_miner_stale_sha_skipped_total %d\", m.stale_sha_skipped)\n",
+   "replace": "\t// r30 mutated: no stale_sha_skipped series\n"
+  },
+  {
+   "id": "gm-r30-b26-expectation-unscaled",
+   "file": "cmd/dero-miner/miner.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30StatusLoopReportsEffective",
+   "find": "\t\t\t\texp *= effective_share(eff, dc)",
+   "replace": "\t\t\t\t// r30 mutated: expectation priced on counted hashes"
+  },
+  {
+   "id": "gm-r30-b27-pe-swapped",
+   "file": "cmd/dero-miner/hsreport_r30.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30PEFields",
+   "find": "\"p_cores\", fmt.Sprintf(\"%.2f\", dp.Seconds()/el), \"e_cores\", fmt.Sprintf(\"%.2f\", de.Seconds()/el)",
+   "replace": "\"p_cores\", fmt.Sprintf(\"%.2f\", de.Seconds()/el), \"e_cores\", fmt.Sprintf(\"%.2f\", dp.Seconds()/el)"
+  },
+  {
+   "id": "gm-r30-b27-pe-raw-ticks",
+   "file": "cmd/dero-miner/pecpu_darwin.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30PECPUTimeReal",
+   "find": "\treturn mach_ticks_ns(uint64(t), uint32(n), uint32(d)), mach_ticks_ns(uint64(pp), uint32(n), uint32(d)), true\n",
+   "replace": "\treturn time.Duration(t), time.Duration(pp), true // r30 mutated: mach ticks taken as ns\n"
+  },
+  {
+   "id": "gm-r30-b239-sortonly-allocates",
+   "file": "cmd/dero-miner/astropair/split.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30SplitSortPathZeroAlloc",
+   "find": "\tf := SuffixSort\n\treturn f != nil && f(text, sa[:len(text)])\n",
+   "replace": "\tf := SuffixSort\n\tsa = append([]int32(nil), sa...) // r30 mutated: one allocation per hash\n\treturn f != nil && f(text, sa[:len(text)])\n"
+  },
+  {
+   "id": "gm-r30-lc2-merge-heads-swapped",
+   "file": "cmd/dero-miner/dsac/descriptor.c",
+   "pkg": "./cmd/dero-miner/dsac/",
+   "test": "TestR30MergeVariantBitExact",
+   "find": "                            *dst++ = (int32_t)(take1 ? q1 : q0);\n",
+   "replace": "                            *dst++ = (int32_t)(take1 ? q0 : q1); /* r30 mutated */\n"
+  },
+  {
+   "id": "gm-r30-lc2-merge-reload-wrong-cursor",
+   "file": "cmd/dero-miner/dsac/descriptor.c",
+   "pkg": "./cmd/dero-miner/dsac/",
+   "test": "TestR30MergeVariantBitExact",
+   "find": "                            const uint32_t pn = take1 ? p1 : p0;\n",
+   "replace": "                            const uint32_t pn = take1 ? p0 : p1; /* r30 mutated */\n"
+  },
+  {
+   "id": "gm-r30-lc2-default-on",
+   "file": "cmd/dero-miner/fastsort.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30MergeVariantDefaultOff",
+   "find": "\tcase \"\", \"r29\":\n\t\tdsac.SetMergeVariant(0)\n",
+   "replace": "\tcase \"\", \"r29\":\n\t\tdsac.SetMergeVariant(1) // r30 mutated: the unmeasured merge on by default\n"
+  },
+  {
+   "id": "gm-r30-b26-window-ds-sign",
+   "file": "cmd/dero-miner/hsreport_r30.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30TotalWindowStep",
+   "find": "\tds = st - last_stale\n",
+   "replace": "\tds = last_stale - st // r30 mutated: ds sign flipped\n"
+  },
+  {
+   "id": "gm-r30-b26-window-last-stale-not-carried",
+   "file": "cmd/dero-miner/hsreport_r30.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30TotalWindowStep",
+   "find": "\tnext_stale = st\n",
+   "replace": "\tnext_stale = last_stale // r30 mutated: last_stale never updated\n"
+  },
+  {
+   "id": "gm-r30-b26-stale-sha-now-half",
+   "file": "cmd/dero-miner/hsreport_r30.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR30StaleSHAFrom",
+   "find": "\tv := st.StaleSHASkipped\n",
+   "replace": "\tv := st.StaleSHASkipped / 2 // r30 mutated: observes v/2\n"
+  },
+  {
+   "id": "gm-r30-launchd-processtype",
+   "file": "tools/launchd/main.go",
+   "pkg": "./tools/launchd/",
+   "test": "TestR30ProcessTypeInteractive",
+   "find": "\tkv(\"ProcessType\", func() { w.WriteString(\"<string>Interactive</string>\") })",
+   "replace": "\tkv(\"ProcessType\", func() { w.WriteString(\"<string>Standard</string>\") })"
+  },
+  {
+   "id": "gm-r30-launchd-processtype-missing",
+   "file": "tools/launchd/main.go",
+   "pkg": "./tools/launchd/",
+   "test": "TestR30ProcessTypeInteractive",
+   "find": "\tkv(\"ProcessType\", func() { w.WriteString(\"<string>Interactive</string>\") })",
+   "replace": ""
+  },
+  {
+   "id": "gm-r30-gen-scalar-ge-to-gt",
+   "file": "tools/forensics/b182deep2/main.go",
+   "pkg": "./tools/forensics/b182deep2/",
+   "test": "TestR30CanonScalarOrderCounted",
+   "find": "if new(big.Int).SetBytes(b).Cmp(bn256.Order) >= 0 {",
+   "replace": "if new(big.Int).SetBytes(b).Cmp(bn256.Order) > 0 { // r30 mutated: scalar = Order passes (B208)"
+  },
+  {
+   "id": "gm-r30-gen-on-curve-dropped",
+   "file": "tools/forensics/b182deep2/main.go",
+   "pkg": "./tools/forensics/b182deep2/",
+   "test": "TestR30CanonPointChecks",
+   "find": "if rhs.Sign() != 0 && big.Jacobi(rhs, bn256.P) != 1 {",
+   "replace": "if false && rhs.Sign() != 0 { // r30 mutated: on-curve check dropped (B208)"
+  },
+  {
+   "id": "gm-r30-gen-burn-last-payload-only",
+   "file": "tools/forensics/b182deep2/main.go",
+   "pkg": "./tools/forensics/b182deep2/",
+   "test": "TestR30BurnSumAllPayloads",
+   "find": "o.Burn += tx.Payloads[i].BurnValue",
+   "replace": "o.Burn = tx.Payloads[i].BurnValue // r30 mutated: last payload only (B208)"
+  },
+  {
+   "id": "gm-r30-gen-miner-value-forged",
+   "file": "tools/forensics/b182deep2/main.go",
+   "pkg": "./tools/forensics/b182deep2/",
+   "test": "TestR30GenesisBlockCensus",
+   "find": "MV: bl.Miner_TX.Value, MB:",
+   "replace": "MV: bl.Miner_TX.Value + 1, MB:"
+  },
+  {
+   "id": "gm-r30-gen-reward-height-off-by-one",
+   "file": "tools/forensics/b182deep2/main.go",
+   "pkg": "./tools/forensics/b182deep2/",
+   "test": "TestR30GenesisBlockCensus",
+   "find": "RW: blockchain.CalcBlockReward(bl.Height)}",
+   "replace": "RW: blockchain.CalcBlockReward(bl.Height + 1)}"
+  },
+  {
+   "id": "gm-r30-gen-major-from-minor",
+   "file": "tools/forensics/b182deep2/main.go",
+   "pkg": "./tools/forensics/b182deep2/",
+   "test": "TestR30GenesisBlockCensus",
+   "find": "MJ: bl.Major_Version,",
+   "replace": "MJ: bl.Minor_Version,"
+  },
+  {
+   "id": "gm-r30-gen-jacobi-wrong-operand",
+   "file": "tools/forensics/b182deep2/main.go",
+   "pkg": "./tools/forensics/b182deep2/",
+   "test": "TestR30OnCurveJacobiEqualsEuler",
+   "find": "if rhs.Sign() != 0 && big.Jacobi(rhs, bn256.P) != 1 {",
+   "replace": "if rhs.Sign() != 0 && big.Jacobi(x, bn256.P) != 1 { // r30 mutated: Jacobi of x, not x^3+3 (verifier item 9)"
+  },
+  {
+   "id": "gm-r30-gen-jacobi-nonresidue-only",
+   "file": "tools/forensics/b182deep2/main.go",
+   "pkg": "./tools/forensics/b182deep2/",
+   "test": "TestR30OnCurveJacobiEqualsEuler",
+   "find": "if rhs.Sign() != 0 && big.Jacobi(rhs, bn256.P) != 1 {",
+   "replace": "if rhs.Sign() != 0 && big.Jacobi(rhs, bn256.P) == 1 { // r30 mutated: verdict inverted (verifier item 9)"
+  },
+  {
+   "id": "gm-r30-b251-no-retry",
+   "file": "blockchain/r28_sc_flow_test.go",
+   "pkg": "./blockchain/",
+   "test": "TestR30BuildRetry240Bits",
+   "find": "\t\t\t\t\tif i >= n || fmt.Sprint(r) != \"currently we cannot use more than 240 bits\" {",
+   "replace": "\t\t\t\t\tif i >= 1 || fmt.Sprint(r) != \"currently we cannot use more than 240 bits\" {"
+  },
+  {
+   "id": "gm-r30-b251-any-panic",
+   "file": "blockchain/r28_sc_flow_test.go",
+   "pkg": "./blockchain/",
+   "test": "TestR30BuildRetry240Bits",
+   "find": "\t\t\t\t\tif i >= n || fmt.Sprint(r) != \"currently we cannot use more than 240 bits\" {",
+   "replace": "\t\t\t\t\tif i >= n {"
   }
  ]
 }

@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 FILES = {'registry': 'harness/round.json', 'areas': 'harness/areas.json', 'ledger': 'artifacts/src/gen_ledger.py',
-         'evolution': 'harness/miners/mine_evolution.py'}
+         'evolution': 'harness/miners/mine_evolution.py', 'disclosure': 'harness/loop/disclosure_track.json'}
 
 
 def _assigned(text, name):
@@ -68,7 +68,20 @@ def read_lists(root=ROOT):
             'planned': [r['id'] for r in reg.get('rounds', []) if r.get('status') == 'planned'],
             'areas': [r['id'] for r in areas.get('rounds', [])],
             'ledger': _assigned((root / FILES['ledger']).read_text(), 'LAST_CHOICES'),
-            'evolution': _assigned((root / FILES['evolution']).read_text(), 'ORDER')}
+            'evolution': _assigned((root / FILES['evolution']).read_text(), 'ORDER'),
+            'disclosure': _track_rounds(root)}
+
+
+TRACK_FIRST = 'r24'   # the disclosure track's first re-tested round (dero-rft §0.5); R8..R23b are seeded history
+
+
+def _track_rounds(root):
+    """r30 (B228): the disclosure track's rounds ('R24', 'R28d', …); None when the track file is absent (a forged
+    root without it keeps the r29 checks). Raises ValueError on a malformed track."""
+    p = Path(root) / FILES['disclosure']
+    if not p.exists():
+        return None
+    return list(json.loads(p.read_text()).get('rounds') or [])
 
 
 def ledger_number(rid):
@@ -106,6 +119,13 @@ def problems(L):
     n = ledger_number(cur) if ledger_number(cur) is not None else (int(m.group(1)) if m else None)
     if n is not None and n not in L['ledger']:
         out.append(f'ledger: {n} missing from {FILES["ledger"]} LAST_CHOICES (current round {cur})')
+    # r30 (B228): the disclosure track lists every round from its first (R24) through the current one: a round the
+    # track skips is never re-tested (it stopped at R26 while R27..R29 were measured)
+    if L.get('disclosure') is not None:
+        first = L['registry'].index(TRACK_FIRST) if TRACK_FIRST in L['registry'] else None   # earlier labels: seeded history
+        for rid in (L['registry'][first:L['registry'].index(cur) + 1] if first is not None else []):
+            if evolution_label(rid) not in L['disclosure']:
+                out.append(f'disclosure: {evolution_label(rid)} missing from {FILES["disclosure"]} rounds')
     order = L['registry']
     nxt = [r for r in L['planned'] if order.index(r) > order.index(cur)]
     if nxt and evolution_label(nxt[0]) not in L['evolution']:

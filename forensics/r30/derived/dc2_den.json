@@ -1,0 +1,120 @@
+{
+ "bound_type": "unbounded",
+ "class": "DC2",
+ "dedup": "TXIDs counted in the window and listed by a block of another TXID-listed segment are counted once; the deep and fetch segments are counts only and cannot be compared TXID by TXID",
+ "den": 2158937,
+ "den_pending": {
+  "range": [
+   7498540,
+   "tip"
+  ],
+  "why": "no tx-type census record for 7,498,540..tip yet (S3)"
+ },
+ "den_scope": [
+  0,
+  7498539
+ ],
+ "figure": "dc2-created-value",
+ "inputs": {
+  "forensics/r25/derived/link.jsonl.gz": "47f97841edc3ab159cff010cd31aebe0eaef37b2c58e86818f3f998d5b8516f6",
+  "forensics/r25/derived/window.jsonl.gz": "f5f79b13856ec50c8e1f5c26cdb1162b5fb50754133096401312a23770bc94f3",
+  "forensics/r28d/derived/txs.jsonl.gz": "1cca01fe27e3cbeb3c284bc07ff5db1758a624dd3e5b21f3830ba7852a25e336",
+  "harness/runtime/r29_b182_deep_census.json": "dd7e20069eb958312e4dcc3a637ff643b8d6f1d52b751f93edf15db523502c7f",
+  "harness/runtime/r29_b182_fetch_census.json": "29155ab0fd955e368a8e984c046f8f93f77cdbcba57ad1510bdc518f9d745a70",
+  "harness/runtime/r29_b182_offline_census.json": "d5a5cab7685a5b45de2446b83c310551121a86dfe7593c67aef0fe4027abf5f3"
+ },
+ "moves_when": "the den grows when the S3 census types 7,498,540..tip and may shrink by cross-segment repeats when the S2 exact-dedup TXID sets exist; the VALUE moves only with an upstream fix or a published detector (FQ5, B113), never from this count",
+ "overlap_txid_prefixes": [
+  "ab1da121"
+ ],
+ "overlap_txids_counted_twice": 1,
+ "proof_types": [
+  "NORMAL",
+  "SC",
+  "BURN"
+ ],
+ "proof_types_anchor": "transaction/transaction.go:33-38 (NORMAL, BURN_TX, SC_TX carry payload proofs)",
+ "row": "B203",
+ "schema": "r30 dc2 denominator v1 (rft \u00a77 B203 a)",
+ "segment_gaps": [],
+ "segments": [
+  {
+   "anchor": "harness/runtime/r29_b182_deep_census.json types",
+   "count": 2156875,
+   "range": [
+    0,
+    7398264
+   ],
+   "txid_lists": "counts only (TXIDs deduplicated within the run: 200,000-tx window)",
+   "types": {
+    "NORMAL": 1890907,
+    "REGISTRATION": 2141434,
+    "SC": 265968
+   }
+  },
+  {
+   "anchor": "harness/runtime/r29_b182_fetch_census.json fetched_below_7412665.types",
+   "count": 182,
+   "range": [
+    7398265,
+    7412664
+   ],
+   "txid_lists": "counts only",
+   "types": {
+    "NORMAL": 170,
+    "REGISTRATION": 26,
+    "SC": 12
+   }
+  },
+  {
+   "anchor": "harness/runtime/r29_b182_fetch_census.json wall1_7412665_7415463.types",
+   "count": 320,
+   "range": [
+    7412665,
+    7415463
+   ],
+   "txid_lists": "counts only",
+   "types": {
+    "NORMAL": 320,
+    "REGISTRATION": 7
+   }
+  },
+  {
+   "anchor": "harness/runtime/r29_b182_fetch_census.json gap_7415464_7415465.types",
+   "count": 2,
+   "range": [
+    7415464,
+    7415465
+   ],
+   "txid_lists": "forensics/r25/derived/link.jsonl.gz",
+   "types": {
+    "NORMAL": 2
+   }
+  },
+  {
+   "anchor": "forensics/r28d/derived/txs.jsonl.gz tx_type by carrier_height",
+   "count": 1549,
+   "range": [
+    7415466,
+    7497942
+   ],
+   "txid_lists": "forensics/r25/derived/window.jsonl.gz"
+  },
+  {
+   "anchor": "harness/runtime/r29_b182_offline_census.json gap_7497943_7498539.types",
+   "count": 10,
+   "range": [
+    7497943,
+    7498539
+   ],
+   "txid_lists": "forensics/r25/derived/link.jsonl.gz",
+   "types": {
+    "NORMAL": 10,
+    "REGISTRATION": 16
+   }
+  }
+ ],
+ "segments_tile": true,
+ "sum_of_segments": 2158938,
+ "value": "unbounded"
+}

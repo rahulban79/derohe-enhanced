@@ -10,9 +10,10 @@ DRY-RUN by default (nothing is written, not even inside a tree's .git); --apply 
                 checkout (lexical AND resolved path); its .git is a directory (a worktree's .git file is kept: removing
                 it would leave the source repo's worktree record behind).
   C2 quiet      nothing in the tree (file or dir, lstat mtime) changed in the last --min-age minutes (default 60).
-  C3 base       HEAD of the tree is a commit the reference repo has (--reference, default env DERO_LIVE_REPO, else this
-                checkout), and every ref of the tree (branches, tags, refs/stash) points at an object the reference has
-                (a local commit or a stash would be lost).
+  C3 base       git runs pinned to the tree's own .git (r30: never an enclosing repo found by discovery); HEAD of the
+                tree is a commit the reference repo has (--reference, default env DERO_LIVE_REPO, else this checkout), and
+                every ref of the tree (branches, tags, refs/stash) points at an object the reference has (a local
+                commit or a stash would be lost).
   C4 patch      a <name>.patch with a <name>.patch.md5 in the tree's dir or an ancestor up to the --root; the md5 file's
                 32-hex value equals the patch's md5.
   C5 diff       `git diff [--binary] <HEAD>` in the tree, untracked files included via `git update-index --add
@@ -23,11 +24,25 @@ DRY-RUN by default (nothing is written, not even inside a tree's .git); --apply 
   C6 evidence   untracked/ignored files of the tree that any note (*.md / *.txt outside the clone trees under the roots,
                 plus --notes files) names by its tree path are copied to <patch dir>/evidence_from_tree/<tree>/<path>
                 (sizes re-checked) BEFORE the delete; a failed copy keeps the tree.
+  H  hollow     r30 (B148) a tree whose .git has NO HEAD file is not a repository (C3 keeps it) but it can still be
+                proved worthless, verdict DELETE-HOLLOW, when ALL hold: H1 no .git/HEAD; H2 every non-directory entry
+                of the tree is a regular file under .git/objects, .git/refs or .git/logs (a work-tree file, a symlink or
+                any other .git file — index, packed-refs, config — is KEEP); under objects only loose objects
+                (xx/38hex), pack-<hex>.{pack,idx,rev,bitmap,keep,mtimes,promisor} with each .pack beside its .idx, and
+                objects/info/{alternates,packs,commit-graph,commit-graphs/*} (an unknown object-store file such as
+                tmp_obj_* or tmp_pack_* is KEEP); H3 every loose object and every object listed in every .idx is present
+                in the reference (`git cat-file --batch-check` there; one missing object is KEEP); C1 and C2 as above.
+                A .git with no file at all (no objects either) is hollow too; an unborn `git init` (it has HEAD) is not.
+                --apply leaves <tree parent>/<tree>.gc.json and removes the tree.
+  R  references r30 (B148-stash) --reference is repeatable: an object or base commit is present when ANY reference holds
+                it (e.g. the permanent archive ~/derohe-persist/gc_archive/objects.git that keeps the stash / foreign
+                objects of the hollow trees); every reference is a forbidden location. No flag: this checkout (or env
+                DERO_LIVE_REPO), as before.
   On --apply each deleted tree leaves <patch dir>/<tree>.gc.json (base, patch, md5, files, bytes, evidence) — the
   recipe: git clone --shared <reference> T && git -C T checkout <base> && git -C T apply --binary <patch>.
 
-  python3 -I harness/pipeline/scratch_gc.py --root DIR [--root DIR]... [--protect DIR]... [--reference REPO]
-                                           [--min-age 60] [--notes FILE]... [--apply] [--json]
+  python3 -I harness/pipeline/scratch_gc.py --root DIR [--root DIR]... [--protect DIR]...
+                                           [--reference REPO]... [--min-age 60] [--notes FILE]... [--apply] [--json]
 Exit 0 done · 2 bad arguments / a forbidden root.
 """
 import argparse, hashlib, json, os, re, shutil, subprocess, sys, tempfile, time
@@ -40,8 +55,14 @@ GIT_ENV = {'GIT_OPTIONAL_LOCKS': '0', 'GIT_TERMINAL_PROMPT': '0', 'LC_ALL': 'C'}
 GIT_CFG = ['-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false', '-c', 'diff.external=', '-c', 'color.ui=never']
 
 
+def refs_of(reference):
+    """the reference list: --reference is repeatable (r30 B148-stash); a bare str is one reference. Pure."""
+    return [reference] if isinstance(reference, (str, Path)) else list(reference)
+
+
 def forbidden_dirs(reference):
-    return [Path.home() / 'dero-data', Path(reference), ROOT]
+    """dero-data, every reference repo, this checkout (the last entry)"""
+    return [Path.home() / 'dero-data', *(Path(r) for r in refs_of(reference)), ROOT]
 
 
 def under(p, d):
@@ -53,12 +74,127 @@ def under(p, d):
     return False
 
 
-def git(tree, *args, env=None, binary=False):
+def git(tree, *args, env=None, binary=False, own=False):
+    """own=True pins git to <tree>/.git and <tree> (--git-dir/--work-tree). Without it a tree whose .git lacks HEAD
+    (r30: 266 of 267 'no HEAD commit' scratch trees were hollowed: .git kept objects/ refs/ logs/ but no HEAD; 224
+    work trees held no regular file, 42 a few) is not a repository to git, which then DISCOVERS the nearest enclosing
+    one: a hollow tree inside another clone took that clone's HEAD, diff and patch, and a file of its own ignored there
+    was deleted unproved (KAT harness/kat/test_scratch_gc_r30.py GC1)."""
     e = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
     e.update(GIT_ENV)
     e.update(env or {})
-    r = subprocess.run(['git', *GIT_CFG, '-C', str(tree), *args], capture_output=True, env=e, timeout=600)
+    pin = ['--git-dir', str(Path(tree) / '.git'), '--work-tree', str(tree)] if own else []
+    r = subprocess.run(['git', *GIT_CFG, '-C', str(tree), *pin, *args], capture_output=True, env=e, timeout=600)
     return r.returncode, (r.stdout if binary else r.stdout.decode('utf-8', 'replace'))
+
+
+LOOSE_RE = re.compile(r'^[0-9a-f]{2}/[0-9a-f]{38}$')
+PACK_RE = re.compile(r'^pack/pack-([0-9a-f]{40}|[0-9a-f]{64})\.(pack|idx|rev|bitmap|keep|mtimes|promisor)$')
+INFO_RE = re.compile(r'^info/(alternates|packs|commit-graph|commit-graphs/[^/]+)$')
+_IDX_OK = {}          # (sha1 of an .idx file, the reference tuple) already proved fully present -> True (270 trees share one)
+
+
+def hollow_files(tree):
+    """H2: (why-not or None, loose oids, idx paths). Reads names only. Pure apart from the walk."""
+    loose, idx, packs = [], set(), set()
+    t = str(tree)
+    for dp, dns, fns in os.walk(t):
+        for n in dns:
+            if os.path.islink(os.path.join(dp, n)):
+                return f'H2 a symlink: {os.path.relpath(os.path.join(dp, n), t)}', [], []
+        for n in fns:
+            full = os.path.join(dp, n)
+            rel = os.path.relpath(full, t)
+            parts = rel.split(os.sep)
+            if os.path.islink(full) or not os.path.isfile(full):
+                return f'H2 a symlink or special file: {rel}', [], []
+            if parts[0] != '.git':
+                return f'H2 a work-tree file: {rel}', [], []
+            if len(parts) < 3 or parts[1] not in ('objects', 'refs', 'logs'):
+                return f'H2 a .git file outside objects/refs/logs: {rel}', [], []
+            if parts[1] != 'objects':
+                continue
+            o = '/'.join(parts[2:])
+            if LOOSE_RE.match(o):
+                loose.append(o.replace('/', ''))
+            elif PACK_RE.match(o):
+                stem, ext = o.rsplit('.', 1)
+                (idx if ext == 'idx' else packs if ext == 'pack' else set()).add(stem)
+            elif not INFO_RE.match(o):
+                return f'H2 an unknown object-store file: {rel}', [], []
+    if packs - idx:
+        return f'H2 a .pack without its .idx: {sorted(packs - idx)[0]}', [], []
+    return None, loose, [tree / '.git' / 'objects' / (s + '.idx') for s in sorted(idx)]
+
+
+def ref_missing(reference, oids):
+    """the oids NO reference holds (r30 B148-stash: an object is present when any --reference repo has it, e.g. the
+    permanent archive ~/derohe-persist/gc_archive/objects.git; None when a check itself failed)"""
+    if not oids:
+        return []
+    for r in refs_of(reference):
+        oids = one_ref_missing(r, oids)
+        if not oids:
+            return oids
+    return oids
+
+
+def one_ref_missing(reference, oids):
+    """the oids one reference's object store lacks (cat-file --batch-check; None when the check itself failed)"""
+    if oids is None or not oids:
+        return oids
+    e = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
+    e.update(GIT_ENV)
+    r = subprocess.run(['git', *GIT_CFG, '-C', str(reference), 'cat-file', '--batch-check=%(objectname)'],
+                       input=('\n'.join(oids) + '\n').encode(), capture_output=True, env=e, timeout=1800)
+    if r.returncode:
+        return None
+    lines = r.stdout.decode('utf-8', 'replace').splitlines()
+    if len(lines) != len(oids):
+        return None
+    return [l.split()[0] for l in lines if l.endswith(' missing') or l.split()[0] != l.strip()]
+
+
+def idx_oids(reference, idx):
+    """the object ids an .idx lists (git show-index, run in the reference: it needs no repo of the tree)"""
+    e = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
+    e.update(GIT_ENV)
+    with open(idx, 'rb') as f:
+        r = subprocess.run(['git', *GIT_CFG, '-C', str(reference), 'show-index'], stdin=f, capture_output=True,
+                           env=e, timeout=600)
+    if r.returncode:
+        return None
+    return [l.split()[1] for l in r.stdout.decode('utf-8', 'replace').splitlines() if len(l.split()) >= 2]
+
+
+def hollow_proof(tree, reference):
+    """(None, objects) when H1-H3 hold for the tree, else (why, 0)"""
+    if (tree / '.git' / 'HEAD').exists():
+        return 'H1 .git/HEAD exists', 0
+    why, loose, idxs = hollow_files(tree)
+    if why:
+        return why, 0
+    n = len(loose)
+    miss = ref_missing(reference, loose)
+    if miss is None:
+        return 'H3 the reference check failed (loose objects)', 0
+    if miss:
+        return f'H3 {len(miss)} loose object(s) the reference lacks, e.g. {miss[0]}', 0
+    for i in idxs:
+        key = (hashlib.sha1(i.read_bytes()).hexdigest(), tuple(map(str, refs_of(reference))))   # a proof is per reference set
+        oids = idx_oids(refs_of(reference)[0], i)
+        if oids is None:
+            return f'H3 unreadable pack index: {i.name}', 0
+        n += len(oids)
+        if _IDX_OK.get(key):
+            continue
+        miss = ref_missing(reference, oids)
+        if miss is None:
+            return f'H3 the reference check failed ({i.name})', 0
+        if miss:
+            return f'H3 {len(miss)} object(s) the reference lacks (pack {i.name}), e.g. {miss[0]}', 0
+        _IDX_OK[key] = True
+    return None, n
 
 
 def find_trees(root):
@@ -152,17 +288,17 @@ def tree_diffs(tree, base):
         (Path(td) / 'objects').mkdir()
         env = {'GIT_INDEX_FILE': str(idx), 'GIT_OBJECT_DIRECTORY': str(Path(td) / 'objects'),
                'GIT_ALTERNATE_OBJECT_DIRECTORIES': str((tree / '.git' / 'objects').resolve())}
-        _, unt = git(tree, 'ls-files', '-z', '--others', '--exclude-standard', env=env)
+        _, unt = git(tree, 'ls-files', '-z', '--others', '--exclude-standard', env=env, own=True)
         unt = [u for u in unt.split('\0') if u]
         for i in range(0, len(unt), 200):
-            rc, _ = git(tree, 'update-index', '--add', '--info-only', '--', *unt[i:i + 200], env=env)
+            rc, _ = git(tree, 'update-index', '--add', '--info-only', '--', *unt[i:i + 200], env=env, own=True)
             if rc:
                 return None, unt, []
-        _, ign = git(tree, 'ls-files', '-z', '--others', '--ignored', '--exclude-standard', env=env)
+        _, ign = git(tree, 'ls-files', '-z', '--others', '--ignored', '--exclude-standard', env=env, own=True)
         ign = [u for u in ign.split('\0') if u]
         out = {}
         for k, flags in (('binary', ['--binary']), ('text', [])):
-            rc, d = git(tree, 'diff', '--no-ext-diff', '--no-color', *flags, base, env=env, binary=True)
+            rc, d = git(tree, 'diff', '--no-ext-diff', '--no-color', *flags, base, env=env, binary=True, own=True)
             if rc:
                 return None, unt, ign
             out[k] = d
@@ -223,18 +359,26 @@ def judge(tree, root, reference, protect, min_age_s, corpus, now=None):
     if now - newest < min_age_s:
         row['why'] = f'C2 modified {int((now - newest) // 60)} min ago'
         return row
-    rc, base = git(tree, 'rev-parse', '--verify', '-q', 'HEAD^{commit}')
+    rc, base = git(tree, 'rev-parse', '--verify', '-q', 'HEAD^{commit}', own=True)
     base = base.strip()
     if rc or not base:
-        row['why'] = 'C3 no HEAD commit'
+        hollow = not (tree / '.git' / 'HEAD').exists()
+        row['why'] = 'C3 no HEAD commit' + (' (hollow: .git has no HEAD file)' if hollow else ' (unborn or unreadable HEAD)')
+        if hollow:
+            why, nobj = hollow_proof(tree, reference)
+            if why:
+                row['why'] += ' ' + why
+            else:
+                row.pop('why')
+                row.update(verdict='DELETE-HOLLOW', objects=nobj, reference=[str(r) for r in refs_of(reference)])
         return row
     row['base'] = base
-    if git(reference, 'cat-file', '-e', f'{base}^{{commit}}')[0]:
+    if not any(git(r, 'cat-file', '-e', f'{base}^{{commit}}')[0] == 0 for r in refs_of(reference)):
         row['why'] = 'C3 HEAD not in the reference repo'
         return row
-    _, refs = git(tree, 'for-each-ref', '--format=%(objectname)')
+    _, refs = git(tree, 'for-each-ref', '--format=%(objectname)', own=True)
     for o in sorted(set(refs.split())):
-        if git(reference, 'cat-file', '-e', o)[0]:
+        if not any(git(r, 'cat-file', '-e', o)[0] == 0 for r in refs_of(reference)):
             row['why'] = 'C3 a ref (branch/tag/stash) points at an object the reference lacks'
             return row
     cands = candidate_patches(tree, root)
@@ -284,15 +428,38 @@ def apply_row(tree, row, min_age_s):
     return row
 
 
+def apply_hollow(tree, row, reference, min_age_s):
+    """re-prove H1-H3 and C2 at delete time, write <tree parent>/<tree>.gc.json, remove the tree"""
+    why, nobj = hollow_proof(tree, reference)
+    if why:
+        row.update(verdict='KEEP', why='C3 no HEAD commit (hollow: .git has no HEAD file) ' + why + ' (at apply)')
+        return row
+    if time.time() - tree_stats(tree)[2] < min_age_s:
+        row.update(verdict='KEEP', why='C2 modified during the run')
+        return row
+    rec = {k: row.get(k) for k in ('root', 'tree', 'files', 'bytes', 'objects', 'reference')}
+    rec.update(verdict='DELETE-HOLLOW', deleted=time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+               why='no .git/HEAD; only object-store/refs/logs files; every object present in the reference')
+    (tree.parent / (tree.name + '.gc.json')).write_text(json.dumps(rec, indent=1) + '\n')
+    shutil.rmtree(tree)
+    row['verdict'] = 'DELETED-HOLLOW'
+    return row
+
+
+DELETE_VERDICTS = ('DELETE', 'DELETED', 'DELETE-HOLLOW', 'DELETED-HOLLOW')
+
+
 def summarise(rows, inode_sets=()):
-    s = {'trees': len(rows), 'delete': 0, 'files': 0, 'bytes': 0, 'bytes_freed': freed_bytes(inode_sets), 'keep': {}}
+    s = {'trees': len(rows), 'delete': 0, 'delete_hollow': 0, 'files': 0, 'bytes': 0,
+         'bytes_freed': freed_bytes(inode_sets), 'keep': {}}
     for r in rows:
-        if r['verdict'] in ('DELETE', 'DELETED'):
+        if r['verdict'] in DELETE_VERDICTS:
             s['delete'] += 1
+            s['delete_hollow'] += 'HOLLOW' in r['verdict']
             s['files'] += r.get('files', 0)
             s['bytes'] += r.get('bytes', 0)
         else:
-            k = re.sub(r'\d+', 'N', r['why'])
+            k = re.sub(r'\d+', 'N', re.sub(r'(H\d .*?)( \(pack |: |, e\.g\. ).*$', r'\1', r['why']))
             s['keep'][k] = s['keep'].get(k, 0) + 1
     return s
 
@@ -301,8 +468,9 @@ def parse(argv):
     ap = argparse.ArgumentParser(prog='scratch_gc.py', description=__doc__.split('\n\n')[0])
     ap.add_argument('--root', action='append', required=True, help='scratch dir to collect (repeatable)')
     ap.add_argument('--protect', action='append', default=[], help='never touch a tree under this dir (an active round)')
-    ap.add_argument('--reference', default=os.environ.get('DERO_LIVE_REPO') or str(ROOT),
-                    help='repo that must hold every base commit (env DERO_LIVE_REPO; default this checkout)')
+    ap.add_argument('--reference', action='append', default=[],
+                    help='repo that holds every base commit / object (repeatable: present = ANY reference has it; '
+                         'env DERO_LIVE_REPO; default this checkout)')
     ap.add_argument('--min-age', type=float, default=60, help='minutes a tree must be untouched (default 60)')
     ap.add_argument('--notes', action='append', default=[], help='extra note files whose path mentions keep evidence')
     ap.add_argument('--apply', action='store_true', help='delete (default: dry run, writes nothing)')
@@ -315,9 +483,10 @@ def main(argv):
         a = parse(argv)
     except SystemExit as e:
         return 0 if e.code in (0, None) else 2
+    a.reference = a.reference or [os.environ.get('DERO_LIVE_REPO') or str(ROOT)]
     roots = [Path(os.path.abspath(os.path.expanduser(r))) for r in a.root]
     for r in roots:
-        hard = forbidden_dirs(a.reference)[:2]                   # dero-data and the reference repo: never inside a root
+        hard = forbidden_dirs(a.reference)[:-1]                  # dero-data and every reference repo: never inside a root
         if not r.is_dir() or any(under(r, d) for d in forbidden_dirs(a.reference)) or any(under(d, r) for d in hard):
             print(f'scratch_gc: --root {r.name}: not a dir, or it is / holds a forbidden dir (dero-data, the reference '
                   'repo, this checkout): refusing', file=sys.stderr)
@@ -329,9 +498,11 @@ def main(argv):
         row = judge(t, r, a.reference, a.protect, a.min_age * 60, corpus)
         if a.apply and row['verdict'] == 'DELETE':
             row = apply_row(t, row, a.min_age * 60)
+        elif a.apply and row['verdict'] == 'DELETE-HOLLOW':
+            row = apply_hollow(t, row, a.reference, a.min_age * 60)
         row.pop('_patch_dir', None)
         ino = row.pop('_inodes', {})
-        if row['verdict'] in ('DELETE', 'DELETED'):
+        if row['verdict'] in DELETE_VERDICTS:
             inode_sets.append(ino)
         rows.append(row)
     s = summarise(rows, inode_sets)
@@ -341,8 +512,9 @@ def main(argv):
     else:
         for row in rows:
             print(f"{row['verdict']:8s} {row['root']}/{row['tree']}  " + (row.get('why') or f"{row.get('files')} files {row.get('bytes')} B "
-                                                             f"patch {row.get('patch')} evidence {len(row.get('evidence', []))}"))
-        print(f"{s['mode']}: {s['delete']}/{s['trees']} trees, {s['files']} files, {s['bytes']} bytes "
+                                                             + (f"objects {row.get('objects')} all in the reference" if 'HOLLOW' in row['verdict'] else
+                                                                f"patch {row.get('patch')} evidence {len(row.get('evidence', []))}")))
+        print(f"{s['mode']}: {s['delete']}/{s['trees']} trees ({s['delete_hollow']} hollow), {s['files']} files, {s['bytes']} bytes "
               f"({s['bytes_freed']} freed: hardlinks shared with other trees or the repo stay) · kept {s['keep']}")
     return 0
 

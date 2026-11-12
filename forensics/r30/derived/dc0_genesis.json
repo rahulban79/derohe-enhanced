@@ -1,0 +1,79 @@
+{
+ "census": {
+  "batch_records_with_repeats": 662,
+  "by_class": {
+   "DC0": 9838
+  },
+  "by_hf_era_of_repeat": {
+   "HF1": 3655,
+   "MAJOR_HF2": 6183
+  },
+  "by_leading_zero_bytes": {
+   "2": 690,
+   "3": 9108,
+   "4": 38,
+   "5": 2
+  },
+  "by_times_listed": {
+   "\u22652": 9838
+  },
+  "distinct_txids": 9838,
+  "highest_repeat_batch_lo": 6408000,
+  "lowest_repeat_batch_lo": 75500,
+  "repeat_below_144000": 3603,
+  "repeat_listings": 9838,
+  "txid_list_sha256": "6e81f125353e70b50e6e5bd0134d81bd5b85077b0d7367c7c9918c83678d30d6",
+  "type_evidence": {
+   "decoder": 690,
+   "inferred-registration": 9148
+  }
+ },
+ "class": "DC0",
+ "evidence_class": "DERIVED (B182 deep checkpoint dup_txids per batch, block ids and tips chain verified)",
+ "figure_executed_twice": {
+  "bound_type": "unbounded",
+  "value": "pending",
+  "why": "pre-HF3 blockchain.go:665 (no stored-TXID check), :716 (no existing-registration check), :995 (every listed tx executes): deciding the state effect needs a replay (S7)"
+ },
+ "figure_listed_twice": {
+  "bound_type": "lower-bound",
+  "caveat": "a lower bound: distinct TXIDs whose repeat listing fell inside the B182 dedup window (200,000 txs, b182_deep_r29.py:428-429); a repeat further apart is not seen, and a batch dup set (b182_deep_r29.py:475) records one repeat per batch, until the exact-dedup recount (S2)",
+  "coverage": {
+   "den": 7398265,
+   "den_anchor": "heights 0..7398264",
+   "num": 7398265,
+   "num_anchor": "checkpoint batch records (blocks verified)"
+  },
+  "moves_when": "the exact-dedup recount (S2, B182 report --exact) can only add TXIDs and listings (a lower bound)",
+  "value": 9838
+ },
+ "hf_eras": {
+  "HF1": {
+   "anchor": "config/config.go:107",
+   "height": 21480
+  },
+  "MAJOR_HF2": {
+   "anchor": "config/config.go:109",
+   "height": 481600
+  }
+ },
+ "input": {
+  "batch_records": 73983,
+  "equal": true,
+  "file": "$FORENSICS_R29_DEEP/checkpoint.log (the R29 B182 deep stage, outside git, read-only; a label, not a path)",
+  "ignored_tail_lines": 0,
+  "recorded_sha256": "548f31c351e7a4525ded86c2b19f6ef348b50bcaf4a5c2fde497ec55d52aec6a",
+  "sha256": "548f31c351e7a4525ded86c2b19f6ef348b50bcaf4a5c2fde497ec55d52aec6a"
+ },
+ "moves_when": "listed twice: the exact-dedup recount (S2, B182 report --exact) can only add TXIDs; executed twice: an S7 replay of the repeat heights; type: a re-fetch of the bodies from 2+ sources typed by the decoder",
+ "row": "B209",
+ "rule": "a multi-block TXID in the HF3 table is DC1, else DC0 (rft \u00a70.8.9; inclusions.json class_rules.inclusion_row)",
+ "schema": "r30 dc0 genesis v1 (rft \u00a77 B209)",
+ "scope": {
+  "heights": [
+   0,
+   7398264
+  ],
+  "text": "heights 0..7,398,264 (B182 deep census, below the HF3 window)"
+ }
+}

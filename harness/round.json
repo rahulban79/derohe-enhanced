@@ -1,6 +1,6 @@
 {
  "_doc": "r23c round registry: the one place a round's ids live (read by harness/pipeline/fix_build_verify.py and harness/pipeline/benchlock.py, checked by harness/kat/test_round_registry_r23c.py). The literal string 'pending' means not known yet: never replace it with a guess. Protocol: artifacts/dero-rft.md and harness/README.md.",
- "current": "r29",
+ "current": "r30",
  "upstream_base": "bf274e5",
  "benchlock": "~/derohe-persist/bench.lock",
  "rounds": [
@@ -171,8 +171,8 @@
    "go_mutations": "1619/1619",
    "new_rpc_methods": {},
    "github_sync": {
-    "base": "pending",
-    "target": "pending"
+    "base": "01a97c4a",
+    "target": "27314416"
    },
    "tracks": {
     "miner": "paused",
@@ -182,6 +182,26 @@
   },
   {
    "id": "r30",
+   "status": "measured",
+   "version_suffix": "22102026.r30",
+   "new_tests_base": "60195187",
+   "merge_commit": "1fa570dc",
+   "head_after": "ca2727ac",
+   "pipeline_full": "pipeline_20261111T053936",
+   "go_mutations": "1644/1644",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "27314416",
+    "target": "pending"
+   },
+   "tracks": {
+    "miner": "active",
+    "node": "active"
+   },
+   "evidence": "R30 opened 2026-11-08 from 60195187 (R29 measured; the user resumed the miner track from R30, rft §0.3/§2.18; the user started the miner 19:49:53 PST in a console on the r29 build; the 11 R28 miner decision requests answered by the user 2026-11-08 \"11 miner decisions for you -> (a) for everything\", rft §1.0/§2); tracks miner active / node active; derod r29 running since 2026-11-08 15:33:00 (user restart, pid 15915); Part A: live start read on r29 (booked to r29, harness/runtime/r30_start_20261108.txt); r29 ledger closed with frozen inputs (artifacts/src/frozen/r29 from 27314416) · MEASURED 2026-11-11: r30 installed 12:59:47 PST (derod 9197a4ab…, dero-miner 3852653b…), derod restarted 19:29:57, miner 19:30:31; live window harness/runtime/r30_live_window_20261111.txt (60 samples, 0 restarts, pending events no event, B61/B141/B152 hold); G17 PASS minerintel_20261111T203511; closed loop run 10 pipeline_20261111T053936 PASS"
+  },
+  {
+   "id": "r31",
    "status": "planned",
    "version_suffix": "pending",
    "new_tests_base": "pending",
@@ -195,7 +215,7 @@
     "target": "pending"
    },
    "tracks": {
-    "miner": "paused",
+    "miner": "active",
     "node": "active"
    },
    "evidence": "plan only: artifacts/dero-rft.md"

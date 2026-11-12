@@ -21,7 +21,17 @@ system process (fseventsd, mds_stores, derod) is the user's decision (rft §5 re
 
   python3 -I harness/intel/resource_intel.py [--json] [--full] [--scratch DIR]... [--persist DIR] [--record]
   python3 -I harness/intel/resource_intel.py preflight --planned N [--kind jobs|clones] [--stage NAME] [--notes FILE] [--json]
-Exit 0 OK · 5 REDUCE · 6 HOLD · 2 a reading failed (or bad arguments).
+  python3 -I harness/intel/resource_intel.py shm --geom 8192,3,2 [--margin-mb M] [--json]
+Exit 0 OK · 5 REDUCE · 6 HOLD · 2 a reading failed (or bad arguments) · shm: 0 fits · 7 REFUSED (does not fit).
+
+r30 (rft §7 B239, memory control): `shm` is the shm-budget preflight of one DERO_GSPLIT geometry. The split engine maps
+one POSIX shm object of NewLayout(batch*depth, gpuSHA).Size bytes (cmd/dero-miner/gsplit/engine.go); its size comes
+from the Go golden file cmd/dero-miner/gsplit/testdata/shm_layout_r30.json (written by TestR30ShmLayoutGolden), or,
+for a geometry the file does not list, from the same formula with the file's constants: never a literal here.
+Available = (free + inactive + speculative + purgeable pages) x page size (vm_stat); the geometry fits when
+shm <= available - margin (default max(4 GiB, 10 % of RAM)). 8192,3,2 is 8.8 GB against 5.9 GB at 4096,4,2 while the
+box read swap 2,960 / 4,096 MB at the R30 start (resource_intel REDUCE, r30_NOTES): a geometry A/B on a box that would
+page is not evidence, so the quiet-window runner (harness/pipeline/quiet_window.py) runs this before every geometry arm.
 """
 import argparse, json, os, re, subprocess, sys, time
 from pathlib import Path
@@ -51,6 +61,10 @@ PER_JOB_MB = {'jobs': 2048, 'clones': 512}   # per-job RAM estimates (ASSUMED un
                                               # the measured `go test -race` peak RSS that replaces the jobs value)
 
 WATCH = {'fseventsd': 'fseventsd', 'mds_stores': 'mds_stores', 'mds': 'mds', 'derod': 'derod'}
+# r30 (coordinator 2026-11-09): processes that compete with agent jobs for the CPU; REPORTED by preflight (the live
+# miner in the user's 24 h window lost ~96k -> ~50k H/s under nice-15 agent load), never used to change the level or
+# the recommended concurrency (the user chose not to throttle agents; harness/kit/minerprotect.py is opt-in)
+CONSUMERS = ('dero-miner',)
 PROJECT_NAMES = re.compile(r'^(python[0-9.]*|Python|go|compile|link|asm|vet|cgo|git|rsync|[\w.-]+\.test)$')
 PROJECT_MARK = 'derohe'              # a project process names the repo or a project scratchpad in its arguments
 
@@ -94,9 +108,14 @@ def classify(rows, self_pid=None):
     """rows [(pid, rss_kb, comm, args)] -> {'watch': {name: rss_mb}, 'project': {count, rss_mb, top}}. Pure.
     Only basenames and sums leave this function (no pid, args or path)."""
     watch = {k: None for k in WATCH}
-    proj, top = [], {}
+    proj, top, cons = [], {}, {}
     for pid, rss, comm, args in rows:
         name = safe_name(comm)
+        if name in CONSUMERS:
+            c = cons.setdefault(name, {'count': 0, 'rss_mb': 0.0})
+            c['count'] += 1
+            c['rss_mb'] = round(c['rss_mb'] + rss / 1024, 1)
+            continue
         if name in WATCH:
             watch[name] = round((watch[name] or 0) + rss / 1024, 1)
             continue
@@ -105,7 +124,8 @@ def classify(rows, self_pid=None):
         proj.append(rss)
         top[name] = round(top.get(name, 0) + rss / 1024, 1)
     return {'watch': watch, 'project': {'count': len(proj), 'rss_mb': round(sum(proj) / 1024, 1),
-                                        'by_name_mb': dict(sorted(top.items(), key=lambda kv: -kv[1])[:8])}}
+                                        'by_name_mb': dict(sorted(top.items(), key=lambda kv: -kv[1])[:8])},
+            'consumers': cons}
 
 
 def read_procs():
@@ -126,8 +146,18 @@ def read_procs():
     return classify(rows, os.getpid())
 
 
+def is_clone(d):
+    """r30 (B148): a dir is a clone tree only when its .git is a file (a worktree/submodule link) or holds HEAD. A hollow
+    .git (objects/ refs/ logs/ left, no HEAD: 266 r30 scratch trees) is not a repository; it counted toward the REDUCE
+    clone_trees threshold although scratch_gc can only remove it as DELETE-HOLLOW. A hollow tree is walked as plain
+    dirs (its files count as non-tree files)."""
+    g = os.path.join(str(d), '.git')
+    return os.path.isfile(g) or os.path.exists(os.path.join(g, 'HEAD'))
+
+
 def walk(top, full=True, max_depth=5):
-    """(files, bytes, trees, tree_files, tree_bytes) under top; a clone tree is a dir holding '.git'. Symlinks are not
+    """(files, bytes, trees, tree_files, tree_bytes) under top; a clone tree is a dir holding '.git' with a HEAD
+    (is_clone). Symlinks are not
     followed. full=False counts trees only (no descent into a tree, none below max_depth: every r17-r27 tree sits at
     depth <= 4 of the scratchpad). Bytes are on-disk (st_blocks * 512); a hardlinked file counts at every link. A full
     walk of a 7.6M-file scratchpad + 11.9M-file mirror took 16.7 min (r27b): it is opt-in (--full)."""
@@ -139,7 +169,7 @@ def walk(top, full=True, max_depth=5):
             ents = list(os.scandir(d))
         except OSError:
             continue
-        is_tree = not in_tree and any(e.name == '.git' for e in ents)
+        is_tree = not in_tree and any(e.name == '.git' for e in ents) and is_clone(d)
         if is_tree:
             trees += 1
             if not full:
@@ -252,23 +282,96 @@ def preflight(r, planned, kind='jobs', per_job_mb=None):
         rec = 0 if kind == 'clones' else 1
     if kind == 'jobs':
         rec = max(1, rec)
+    cons = ((r.get('procs') or {}).get('consumers') or {})
+    contention = [f"{n} x{c['count']} ({c['rss_mb']} MB): live CPU consumer; heavy jobs compete with it (report-only; "
+                  f"opt-in clamp: harness/kit/minerprotect.py)" for n, c in sorted(cons.items()) if c.get('count')]
     return {'level': lv, 'kind': kind, 'planned': planned, 'recommended': rec, 'per_job_mb': pj,
-            'by_memory': by_mem, 'reasons': why}
+            'by_memory': by_mem, 'reasons': why, 'contention': contention}
 
 
 def note_line(stage, d, when=None):
     """one round-notes line for a preflight decision. Pure."""
     when = when or time.strftime('%H:%M')
     return (f"[{when}] preflight {stage or '-'}: {d['level']} kind={d['kind']} planned={d['planned']} "
-            f"recommended={d['recommended']}" + (f" ({'; '.join(d['reasons'])})" if d['reasons'] else ''))
+            f"recommended={d['recommended']}" + (f" ({'; '.join(d['reasons'])})" if d['reasons'] else '')
+            + (f" · contention: {'; '.join(d['contention'])}" if d.get('contention') else ''))
 
 
 EXIT = {'OK': 0, 'REDUCE': 5, 'HOLD': 6}
 
+SHM_GOLDEN = 'cmd/dero-miner/gsplit/testdata/shm_layout_r30.json'
+SHM_MIN_MARGIN_MB = 4096          # r30 B239: never plan a geometry into the last 4 GiB
+SHM_MARGIN_PCT = 10               # ... or the last 10 % of RAM, whichever is larger
+
+
+def parse_geom(s):
+    """'8192,3,2' -> (8192, 3, 2); ValueError on anything the miner's parse_split_geom refuses. Pure."""
+    parts = [int(x) for x in str(s).split(',')]
+    if len(parts) != 3 or min(parts) < 1 or parts[0] % 2 or parts[1] < 2 or parts[2] > 16:
+        raise ValueError(f'bad geometry {s!r}: want batch,depth,inflight (batch even, depth >= 2, inflight <= 16)')
+    return tuple(parts)
+
+
+def shm_bytes(geom, golden):
+    """(bytes, source) of one geometry's shm: the golden file's figure, else its formula. Pure."""
+    for g in golden.get('geometries', []):
+        if tuple(g['geom']) == tuple(geom):
+            return g['bytes'], 'golden'
+    al = lambda x: (x + golden['align'] - 1) // golden['align'] * golden['align']   # noqa: E731
+    slots = geom[0] * geom[1]
+    size = al(slots * golden['msg_len']) + al(slots * 4) + al(slots * 32) + al(slots * golden['dstride'])
+    if golden.get('gpu_sha', True):
+        size += al(slots * golden['sstride_words'] * 4)
+    return size, 'formula'
+
+
+def parse_vm_stat(text):
+    """available bytes from vm_stat (free + inactive + speculative + purgeable pages) or None. Pure."""
+    m = re.search(r'page size of (\d+) bytes', text or '')
+    if not m:
+        return None
+    page, tot = int(m.group(1)), 0
+    for key in ('Pages free', 'Pages inactive', 'Pages speculative', 'Pages purgeable'):
+        k = re.search(re.escape(key) + r':\s+(\d+)', text)
+        if not k:
+            return None
+        tot += int(k.group(1))
+    return tot * page
+
+
+def shm_verdict(shm, avail, ram_bytes, margin_mb=None):
+    """{'fits', 'shm_mb', 'avail_mb', 'margin_mb', 'why'} for one geometry. Pure."""
+    if margin_mb is None:
+        margin_mb = max(SHM_MIN_MARGIN_MB, (ram_bytes or 0) // MB * SHM_MARGIN_PCT // 100)
+    if avail is None:
+        return {'fits': False, 'shm_mb': shm // MB, 'avail_mb': None, 'margin_mb': margin_mb,
+                'why': 'available memory unreadable: refused (a preflight that cannot read is not a pass)'}
+    fits = shm <= avail - margin_mb * MB
+    return {'fits': fits, 'shm_mb': shm // MB, 'avail_mb': avail // MB, 'margin_mb': margin_mb,
+            'why': f"shm {shm // MB:,} MB {'<=' if fits else '>'} available {avail // MB:,} MB - margin {margin_mb:,} MB"}
+
+
+def shm_main(a):
+    try:
+        geom = parse_geom(a.geom)
+        golden = json.loads((ROOT / SHM_GOLDEN).read_text())
+    except (ValueError, OSError, TypeError) as e:
+        print(f'resource_intel shm: {e}', file=sys.stderr)
+        return 2
+    size, src = shm_bytes(geom, golden)
+    rc, out = run(['vm_stat'])
+    rc2, mem = run(['sysctl', '-n', 'hw.memsize'])
+    v = shm_verdict(size, parse_vm_stat(out) if rc == 0 else None,
+                    int(mem.strip()) if rc2 == 0 and mem.strip().isdigit() else None, a.margin_mb)
+    v.update(geom=','.join(map(str, geom)), shm_bytes=size, source=src, golden=SHM_GOLDEN,
+             verdict='OK' if v['fits'] else 'REFUSED', t=time.strftime('%Y-%m-%dT%H:%M:%S%z'))
+    print(json.dumps(v, indent=1) if a.json else f"shm {v['verdict']}: geometry {v['geom']} ({src}): {v['why']}")
+    return 0 if v['fits'] else 7
+
 
 def parse(argv):
     ap = argparse.ArgumentParser(prog='resource_intel.py', description=__doc__.split('\n\n')[0])
-    ap.add_argument('cmd', nargs='?', choices=['probe', 'preflight'], default='probe')
+    ap.add_argument('cmd', nargs='?', choices=['probe', 'preflight', 'shm'], default='probe')
     ap.add_argument('--json', action='store_true', help='print the JSON record')
     ap.add_argument('--full', action='store_true', help='walk every file (counts and bytes of the scratchpads, GOCACHE '
                     'and the mirror; minutes on a large scratchpad). Default: the tree count only, sizes pending')
@@ -278,6 +381,8 @@ def parse(argv):
     ap.add_argument('--planned', type=int, default=1, help='preflight: planned clones / parallel heavy jobs')
     ap.add_argument('--kind', choices=['jobs', 'clones'], default='jobs')
     ap.add_argument('--per-job-mb', type=int, default=None)
+    ap.add_argument('--geom', default='4096,4,2', help='shm: the DERO_GSPLIT geometry batch,depth,inflight')
+    ap.add_argument('--margin-mb', type=int, default=None, help='shm: memory kept free (default max(4096, 10 %% of RAM))')
     ap.add_argument('--stage', default=None, help='preflight: the stage or workflow name for the notes line')
     ap.add_argument('--notes', default=os.environ.get('DERO_ROUND_NOTES'), help='append the decision to this notes file '
                     '(env DERO_ROUND_NOTES)')
@@ -289,6 +394,8 @@ def main(argv):
         a = parse(argv)
     except SystemExit as e:
         return 0 if e.code in (0, None) else 2
+    if a.cmd == 'shm':                                   # r30 B239: no swap/process walk needed
+        return shm_main(a)
     r = readings(a.scratch, a.persist, quick=not a.full or a.cmd == 'preflight')
     if r['swap'] is None and r['memory_free_pct'] is None:
         print('resource_intel: neither vm.swapusage nor memory_pressure -Q could be read', file=sys.stderr)

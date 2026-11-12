@@ -1027,7 +1027,8 @@ answered on artifacts/dero-soundness-r23.html and asked to be addressed in code 
 
 **Shipped (workflow wf_b294469d-fc4, 23 agents, 11 dimensions, merged as 3224c07, 83 files; consensus guard PASS):**
 - Payouts: `--supervised` (typed exit ignored; stop by signal), `tools/launchd` plist generator (KeepAlive, Nice 0,
-  absolute paths), derod `getwork_miner_absent_seconds` + rate-limited WARNING, opt-in `--phase-duty` (off).
+  absolute paths; r30 correction B234: it shipped `ProcessType Standard`, which clamps the miner to the E-cores — now
+  `Interactive`), derod `getwork_miner_absent_seconds` + rate-limited WARNING, opt-in `--phase-duty` (off).
 - Hashrate: `--cpu-max` charged on the CPU the threads actually got (proxy ×1.008–1.107 contended; live gain an
   ESTIMATE). Clang PGO of the C sort REFUTED (×0.99–1.01). Ceiling ~100k H/s; 150k unreachable in software.
 - Double-spend / crypto: HF3 table Parity applied on every block-add path (sync, chunk, compact, rewind, console
@@ -1790,3 +1791,35 @@ emission 0 alerts; B152, B175, B176 and B194 CONFIRMED live; event scenarios 22/
 **Open after Round 29** (rft §7, §8): the B111 residual (1 key vs 2,141,703 registrations); B201 (the observatories with
 inbound live: peers D2 D6 D9 D11, consensus D15 D16 D19); B48's proven lane (no event yet); B42/B19 with a non-empty pool;
 B110's residual (89 SC txs below 7,467,516); the B184 watch; the miner rows PAUSED.
+
+## Round 30 (2026-11-08/11) — the miner-resumed objective round: 150 kH/s measured against the ceiling, payouts by uptime, pause/resume, decisions without waiting; installed as +22102026.r30 and measured live
+
+**Why.** The user resumed the miner track from Round 30 (rft §2.18), set the objective "above 150 kH/s and a massive payout
+improvement" (§2.21), asked that everything run through the project's instruments (§2.20), that a round can pause and
+resume without loss (§2.22) and that decisions be taken from the instruments without waiting, for the best project
+quality (§2.23). Base 60195187; registry `r30`, tracks miner `active`, node `active`.
+
+**Shipped** (dimension branches merged 1fa570dc … 61e0d5cc; consensus guard S1 PASS):
+- **Miner**: B26 stale-SHA counter (0.231 % live), B27 P/E split metric and live law (FIT), B234 launchd ProcessType
+  Interactive (the E-core clamp), B239 shm preflight, L-C2 merge variant (bit-exact, within noise: off), G34 objective gate.
+- **Payouts**: the 24 h reads (payout_24h_reads.py, B2/B7/B39), the payout ledger (B238), the uptime lever DONE (B5:
+  0.9999 over 55.3 h).
+- **Pause / resume** (B252): round_pause.py, HANDOFF checker, gap-aware windows; first real pause 2026-11-09, resume
+  2026-11-11 after 33.2 h.
+- **Harness**: B254 miner_intel reads derod's rotated log chain (the run-8 false G17 drought), B254a, B255–B258 the quiet
+  window (runnable stallwatch line, per-step census budgets, stop marker, absent live split), B260–B264 (B152 over the
+  window, ledger live-miner row, soundness pending anchor, project-only budget KAT, lower-bound benches, the disclosure
+  state cell), the §0.12 decision log with its coherence_audit check.
+- **Forensics**: v5 registered open with the genesis pins (audit2 33/33 HOLD), the genesis..tip census.
+
+**Closed loop.** Runs 1–9 each stopped or failed and fixed (rft §13); run 10 `pipeline_20261111T053936` PASS (KATs 35/35,
+harness mutations 34/34, gates 34/34; mutations 1,644/1,644; race 27 packages, 0 races; shadow 120/120 per node). Installed
+2026-11-11 12:59:47 by atomic rename of the staged build (backups `bin/*.22102026.r29-backup`).
+
+**Measured** (rft §13 R30): live window 19:30:00 → 20:29:01, 60 samples, 0 restarts, B61/B141/B152 hold, pending events no
+event; the r30 miner 96.0 kH/s = 64.0 % of 150k at 17.97 cores; measured ceiling 95,574 H/s binding cpu. The 150 kH/s
+objective is not reachable on this box on evidence; the measured levers (--cpu-max 100, GSPLIT 8192,3,2, gpu-max 100) go to
+Round 31 as decisions.
+
+**Open after Round 30**: B259, B252c, B252d, B36 EQUAL re-read, B111 set-diff, B245, the HF4 watch (rft §7).
+

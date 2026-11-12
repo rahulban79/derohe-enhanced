@@ -116,6 +116,19 @@ def derive(records, landed=None, default_s=60):
             'steps': {k: max(30, _up10(1.5 * n)) for k, n in sorted(slow.items())}}
 
 
+def project_only_pass(event_lists):
+    """r30 B262: the index of the newest PROJECT-ONLY PASS record among `event_lists` (oldest first): a record with a
+    project PASS event and NO build stage (a full run's S7 is not a project-only record: its wall includes the full
+    run's S1-S5 load; the rule budgets project-only records); None when there is none. Pure."""
+    for i in range(len(event_lists) - 1, -1, -1):
+        ev = event_lists[i]
+        if any(o.get('stage') == 'build' for o in ev):
+            continue
+        if any(o.get('stage') == 'project' and o.get('status') == 'PASS' for o in ev):
+            return i
+    return None
+
+
 def report(events, doc):
     """the `over_budget` field the pipeline writes into its project PASS/FAIL event. Pure."""
     st = step_secs(events)

@@ -1999,7 +1999,9 @@ Closed loop:
   path; lazy sync height gate; tx_precheck_checked_total (Admit and AdmitAt).
 - dero-miner: --cpu-max charged on CPU share; --phase-duty (off; GPU stays at --gpu-max in balanced; the throttle
   wakes only on a final->regular change); --supervised; per-phase metrics. tools/launchd plist generator (Nice 0,
-  absolute paths, always --supervised).
+  absolute paths, always --supervised). Corrected r30 (rft §7 B234): the R23b generator wrote `ProcessType Standard`,
+  which held the CPU-bound miner to the 4 E-cores (10.6–13.1k H/s); it now writes `Interactive` (96.2–97.4k H/s at
+  18 cores, 2026-11-08), KAT `TestR30ProcessTypeInteractive`, mutations `gm-r30-launchd-*`.
 - None of it is in a consensus package (guard: only the config/version.go string).
 
 ## 41. ★ Round 23c: faster descriptor sort, the split regime law, sync overlap, aggregate DoS scoring, per-account emission audit (+22102026.r23c, 2026-11-01)
@@ -2631,3 +2633,29 @@ with an S7 HUNG verdict (B198). Each hang of the B182 run became a test that han
 
 **48.5 Live.** r29 window 15:33:40 → 16:33:40 (2026-11-08): 61/61 synced, 0 ERROR/WARN, inbound 4 → 27 after the user's
 UDP 11011 forward (B1 (a)), emission 0 alerts; the observatories with inbound are rft §7 B201.
+
+## 49. ★ Round 30: the objective round — the 150 kH/s target measured against a measured ceiling, uptime as the payout lever, a round that pauses and resumes, and decisions logged with their evidence (+22102026.r30, 2026-11-11)
+
+> Filled from the R30 records: the dimension rows (`harness/runtime/r30_rows/*.md`), the pipeline records
+> (`pipeline_20261111T053936`), the quiet window (`harness/runtime/r30_qw/state.json`), the live window
+> (`harness/runtime/r30_live_window_20261111.txt`), the G34 record (`harness/runtime/r30_hashrate_objective_20261111T2034.json`)
+> and rft §0.12, §7, §12/§13 R30.
+
+**49.1 The objective and the ceiling.** `harness/intel/hashrate_objective.py` (G34) reads the live launchd window, fits the
+B27 law per core class from the miner's P/E split (r_P 5,491.5, r_E 4,582.2 H/cpu-s) and states the measured ceiling
+min(S, G/(1 − own)) = 95,574 H/s, binding cpu, against a live 96.0 kH/s: the objective is not reached on evidence.
+
+**49.2 Uptime is the payout lever.** The launchd job with ProcessType Interactive (B234) ran 99.99 % of 55.3 h; the 24 h
+reads (`harness/intel/payout_24h_reads.py`) show orphans 2.0 %, 90 % of them slots_full and uncorrelated with delivery
+latency (§0.12 D-3).
+
+**49.3 Pause and resume.** `harness/intel/round_pause.py` checkpoints agents, clones, detached jobs, evidence and the due
+ledger; detached jobs keep collecting; windows that span a pause are classified (HO11, DR5), never merged (B252).
+
+**49.4 Liveness and windows.** miner_intel reads derod's lumberjack chain (B254); the quiet window budgets each step's census
+(B256), runs full-box steps only under steady foreign load and records them as lower bounds (D-15, B263); stallwatch treats
+a declared stop marker as final (B257); gpu_watch skips the disturbance check when no live split exists (B258).
+
+**49.5 Decisions.** §0.11/§0.12 of the rft: every decision is a row with options, choice, quality reason, evidence anchors
+and a re-check; `harness/intel/coherence_audit.py` fails a row without a resolving anchor.
+

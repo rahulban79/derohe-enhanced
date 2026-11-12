@@ -144,6 +144,9 @@ def rate(a, b, name, dt, **labels):
     return round((y - x) / dt, 2)
 
 
+HS_KEY = 'dero_miner_hashes_effective_total'    # r30 B26 (cmd/dero-miner/hsreport_r30.go)
+
+
 def derive(d0, d1, m0, m1, dt, cpu_max=None):
     """the aggregate, from two samples of each endpoint (any may be None when that endpoint is down). Pure.
     cpu_max: the miner's --cpu-max (%) when known (R23: /metrics dero_miner_cpu_duty_percent, else the run checkpoint)."""
@@ -179,7 +182,12 @@ def derive(d0, d1, m0, m1, dt, cpu_max=None):
             'height': val(m1, 'dero_miner_height'), 'difficulty': val(m1, 'dero_miner_difficulty'),
             'hashrate_15s': val(m1, 'dero_miner_hashrate_15s'),
             'hashrate_run_mean': round(hashes / up, 1) if hashes is not None and up else None,
-            'hashrate_sampled': None if m0 is None else rate(m0, m1, 'dero_miner_hashes_total', dt),
+            # r30 B26: hashes the miner completed (hashes_total minus stale_sha_skipped, never-hashed texts) when the
+            # miner exports it; a pre-r30 miner's rate includes them and is labelled so
+            'hashrate_sampled': None if m0 is None else rate(m0, m1, HS_KEY if val(m0, HS_KEY) is not None and val(m1, HS_KEY) is not None
+                                                             else 'dero_miner_hashes_total', dt),
+            'hashrate_excludes': ('stale_sha_skipped' if val(m1, HS_KEY) is not None and (m0 is None or val(m0, HS_KEY) is not None)
+                                  else 'none (pre-r30 miner: includes stale_sha_skipped)'),
             'split_share': round(hashed / hashes, 4) if hashes else None,
             'split_drop_fraction': round(dropped / (dropped + hashed), 4) if (dropped + hashed) > 0 else None,
             'split_disabled': val(m1, 'dero_miner_split_disabled'), 'gpu_mismatch': val(m1, 'dero_miner_gpu_mismatch_total'),

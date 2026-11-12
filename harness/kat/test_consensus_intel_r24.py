@@ -344,7 +344,7 @@ MUTATIONS = [
     ('CI13', "        on_v3 = fk['hash'] == R['hf3_v3_hash']['value'] and fk.get('major') == 3", "        on_v3 = True", 'any fork block passes'),
     ('CI13b', "        on_v3 = fk['hash'] == R['hf3_v3_hash']['value'] and fk.get('major') == 3", "        on_v3 = fk['hash'][:8] == 'e454090e' and fk.get('major') == 3", 'a typed 8-hex prefix passes a look-alike fork block'),
     ('CI14', "        g = 'OBSERVED' if ((v2_now or 0) + v2_win) else 'NORMAL'", "        g = 'NORMAL'", 'v2 peers never graded'),   # r25: window form
-    ('CI15', "        g = 'ANOMALY' if sh > 1 / 3 else 'NORMAL'", "        g = 'ANOMALY' if sh > 2 / 3 else 'NORMAL'", 'the concentration threshold raised to 2/3'),
+    ('CI15', "        g = 'ANOMALY' if lo_ci > 1 / 3 else 'NORMAL'", "        g = 'ANOMALY' if lo_ci > 2 / 3 else 'NORMAL'", 'the concentration threshold raised to 2/3'),
     ('CI16', "    return min(1.0, 2 * min(binom_upper(k, n, p), binom_lower(k, n, p)))", "    return 1.0", 'the finals-vs-regular test never rejects'),
     ('CI1', "        if acc * 2 > t:", "        if acc > t:", 'Nakamoto coefficient counts to the whole, not half'),
     ('CI1', "    return sum((c / t) ** 2 for c in counts) if t else None", "    return sum((c / t) for c in counts) if t else None", 'HHI without the square'),

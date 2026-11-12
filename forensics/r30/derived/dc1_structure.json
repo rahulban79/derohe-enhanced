@@ -1,0 +1,49 @@
+{
+ "bodies": {
+  "dc1_rows": 75,
+  "decoded": 75,
+  "held": 75,
+  "missing": 0,
+  "undecodable": 0
+ },
+ "class": "DC1",
+ "counts": {
+  "criterion": 60,
+  "criterion:single_inclusion": 7,
+  "criterion:two_inclusions": 53,
+  "ring16+rpctype1": 15,
+  "ring2+rpctype0": 60,
+  "single_inclusion:ring16+rpctype1": 1,
+  "single_inclusion:ring2+rpctype0": 7,
+  "two_inclusions:ring16+rpctype1": 14,
+  "two_inclusions:ring2+rpctype0": 53
+ },
+ "coverage": {
+  "den": 75,
+  "den_anchor": "derived/txs.jsonl.gz class DC1",
+  "num": 75,
+  "num_anchor": "held bodies decoded by the node decoder"
+ },
+ "criterion": {
+  "id": "S-RT",
+  "result": "60 of 75",
+  "single_inclusion": "7 of 8",
+  "two_inclusions": "53 of 67",
+  "what": "every payload ring 2 and the legacy payload format (RPCType 0)"
+ },
+ "evidence_class": "DERIVED (the node decoder tools/forensics `tx` over the held DC1 bodies: ring size = Statement.RingSize, payload format = the unencrypted RPCType byte, transaction/transaction.go)",
+ "groups": {
+  "rule": "two_inclusions = the TXID is carried by more than one RAW block (derived/inclusions.json rows)",
+  "single_inclusion": 8,
+  "two_inclusions": 67
+ },
+ "note": "counts only: no amount, address or TXID is written; amount recovery is out of scope (rft \u00a79; decision D4); the structural precondition is not an observation of an amount",
+ "question": "FQ2 structural criterion S-RT: how many DC1 txs carry every payload at ring 2 with the legacy payload format (RPCType 0), the precondition an EXT explainer relies on for readable amounts",
+ "scope": {
+  "heights": [
+   7415466,
+   7497942
+  ],
+  "txs": "the DC1 rows of derived/txs.jsonl.gz"
+ }
+}

@@ -145,6 +145,48 @@ class Facts:
         return self.add(fid, rel, v, '/'.join(map(str, path)), cls)
 
 
+RECORD_PATHS = {'replay_wall1_ok': ('store', 'wall1_blocks', 'check_i_ok'), 'replay_bodies': ('store', 'tx_bodies_present'),
+                'replay_equal': ('rederive', 'equal'), 'replay_expected': ('rederive', 'expected')}
+LEGACY_UNRECORDED = {'replay_wall1_ok': 'r25..r28d pages render it (v1 replay wrote it; v2..v4 replays never did)'}
+
+
+def vkey_name(name):
+    m = re.fullmatch(r'r(\d+)([a-z]?)', str(name))
+    return (int(m.group(1)), m.group(2)) if m else (0, '')
+
+
+def record_paths_for(name):
+    """r30 v5 registration (B218): the RECORD figures a dataset's facts carry. From r30 the page renders the audit's own
+    wall-1 check (ch:D2-04) instead of replay_wall1_ok, which no replay since v1 writes; the legacy figure is then not a
+    fact at all (a page that still names it fails G30 as an unknown fact) instead of a problem that blocks every v5
+    render. Pre-r30 datasets keep it (their closed pages render it, LEGACY_UNRECORDED). Pure."""
+    if vkey_name(name) < (30, ''):
+        return dict(RECORD_PATHS)
+    return {k: v for k, v in RECORD_PATHS.items() if k not in LEGACY_UNRECORDED}
+
+
+def unrecorded_paths(rep, paths, legacy):
+    """r30 (B218): [(fact id, dotted path)] for record facts whose path is missing in a PASS report (pure)"""
+    if not rep or rep.get('result') != 'PASS':
+        return []
+    out = []
+    for fid, path in sorted(paths.items()):
+        o = rep
+        for k in path:
+            o = o.get(k) if isinstance(o, dict) else None
+        if o is None and fid not in legacy:
+            out.append((fid, '.'.join(path)))
+    return out
+
+
+def presence_head_label(pr, build_commit):
+    """r30 (B216): 'round head <c>' when presence re-read the dataset's build commit, else 'as of <c>' (pure)"""
+    c = next((r.get('commit') for r in (pr or {}).get('revs', []) if r.get('rev') == 'HEAD'), None)
+    if not c:
+        return 'pending: presence has no HEAD rev'
+    return f'round head {c[:12]}' if build_commit and c == build_commit else f'as of {c[:12]}'
+
+
 def window_rows(ds):
     return [json.loads(l) for l in gzip.open(Path(ds) / 'derived' / 'window.jsonl.gz', 'rt') if l.strip()]
 
@@ -501,6 +543,10 @@ def build_v2(F):
         F.add(k + ':unit', CL, f.get('unit', ''), f'figures[{f["id"]}].unit')
         if f.get('note'):
             F.add(k + ':note', CL, f['note'], f'figures[{f["id"]}].note (verbatim)')
+        if f.get('moves_when'):   # r30 (B203): what would move a non-exact figure
+            F.add(k + ':moves_when', CL, f['moves_when'], f'figures[{f["id"]}].moves_when (verbatim)')
+        if f.get('grade'):
+            F.add(k + ':grade', CL, f['grade'], f'figures[{f["id"]}].grade')
     # presence.json: per class, per rev
     PR = 'derived/presence.json'
     pr, _ = F.json(PR)
@@ -510,6 +556,8 @@ def build_v2(F):
         F.add(f'pr_rev:{r.get("rev")}:commit', PR, _short(r.get('commit'), 12), f'revs[{r.get("rev")}].commit[:12]')
         F.add(f'pr_rev:{r.get("rev")}:role', PR, r.get('role', ''), f'revs[{r.get("rev")}].role')
     F.j('pr_headline', PR, ['headline', 'text'])
+    F.add('pr_head_label', PR, presence_head_label(pr, F.m.get('git_base_commit')),
+          "revs[HEAD].commit vs manifest git_base_commit: 'round head <c>' or 'as of <c>' (r30 B216)")
     F.j('pr_dc2_present', PR, ['headline', 'dc2_present_now'])
     for cid, cv in sorted((pr.get('classes') or {}).items()):
         for rev, row in sorted(cv.items()):
@@ -566,6 +614,10 @@ def build_v2(F):
                       ('fq3_bodies', ['FQ3', 'census', 'bodies_decoded']), ('fq3_shared', ['FQ3', 'census', 'txs_with_a_shared_commitment']),
                       ('fq5_answer', ['FQ5', 'answer'])):
         F.j(fid, FQ, path)
+    q2 = (fq.get('FQ2') or {})
+    if 'S-RT' in (q2.get('criteria') or {}):   # r30 (B203 2/3): the S-RT precondition and the dated corrections, from fq.json
+        F.j('fq2_srt', FQ, ['FQ2', 'criteria', 'S-RT', 'result'])
+        F.add('fq2_corrections', FQ, len(q2.get('corrections') or []), 'len(FQ2.corrections)')
     # the independent audit (audit2) of v2
     AR = 'audit/audit_report.json'
     for k in ('challenges', 'holds', 'overturned', 'unresolved', 'verdicts', 'downgraded', 'overturned_all_runs',
@@ -628,8 +680,13 @@ def build_v2(F):
     F.add('replay_equal', RECORD, rep.get('rederive', {}).get('equal', 'pending'), 'report.rederive.equal', 'record')
     F.add('replay_expected', RECORD, rep.get('rederive', {}).get('expected', 'pending'), 'report.rederive.expected', 'record')
     F.add('replay_bodies', RECORD, rep.get('store', {}).get('tx_bodies_present', 'pending'), 'report.store.tx_bodies_present', 'record')
-    F.add('replay_wall1_ok', RECORD, rep.get('store', {}).get('wall1_blocks', {}).get('check_i_ok', 'pending'),
-          'report.store.wall1_blocks.check_i_ok', 'record')
+    if 'replay_wall1_ok' in record_paths_for(F.ds.name):
+        F.add('replay_wall1_ok', RECORD, rep.get('store', {}).get('wall1_blocks', {}).get('check_i_ok', 'pending'),
+              'report.store.wall1_blocks.check_i_ok', 'record')
+    # r30 (B218): a RECORD figure whose path a PASS report never writes is a label of nothing; flagged unless it is a
+    # legacy figure a closed page still renders (rendered from r30 on as the audit's own wall-1 check, D2-04)
+    F.unrecorded = unrecorded_paths(rep, record_paths_for(F.ds.name), LEGACY_UNRECORDED if vkey_name(F.ds.name) < (30, '') else {})
+    F.problems += [f'record figure {k}: report path {p} is absent in a PASS report (B218)' for k, p in F.unrecorded]
     # the dataset ledger (all versions) and the disclosure track
     LG = 'forensics/ledger.json'
     lg, _ = F.json(LG, 'record')

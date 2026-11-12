@@ -1,0 +1,564 @@
+{
+ "classes": {
+  "DC1": {
+   "DeroHE": {
+    "admits": false,
+    "anchors": [
+     {
+      "anchor": "absent: quote not found in blockchain/hardfork_fixes.go",
+      "closure": false,
+      "present": false,
+      "quote": "var HF3_Affected_Txs = map[string]*HF3_Tx_Data{",
+      "role": "the HF3 exemption table (75 TXIDs)"
+     },
+     {
+      "anchor": "absent: quote not found in blockchain/transaction_verify.go",
+      "closure": false,
+      "present": false,
+      "quote": "if t, ok := HF3_Affected_Txs[tx_hash.String()]; ok {",
+      "role": "a table TXID enters the verification cache before any check"
+     },
+     {
+      "anchor": "absent: quote not found in blockchain/transaction_verify.go",
+      "closure": true,
+      "present": false,
+      "quote": "tx_cache = crypto.Keccak256(tx.Serialize())",
+      "role": "closure: from HF3 the cache key is the hash of the whole tx (height-bound skip)"
+     },
+     {
+      "anchor": "absent: quote not found in glue/txprecheck/window.go",
+      "closure": true,
+      "present": false,
+      "quote": "if _, ok := blockchain.HF3_Affected_Txs[string(key[:])]; ok {",
+      "role": "closure (node-local): relay/RPC admission refuses the 75 TXIDs by ID"
+     }
+    ],
+    "closures_present": 0,
+    "closures_total": 2
+   },
+   "HEAD": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "blockchain/hardfork_fixes.go:27",
+      "closure": false,
+      "file": "blockchain/hardfork_fixes.go",
+      "line": 27,
+      "present": true,
+      "quote": "var HF3_Affected_Txs = map[string]*HF3_Tx_Data{",
+      "role": "the HF3 exemption table (75 TXIDs)"
+     },
+     {
+      "anchor": "blockchain/transaction_verify.go:232",
+      "closure": false,
+      "file": "blockchain/transaction_verify.go",
+      "line": 232,
+      "present": true,
+      "quote": "if t, ok := HF3_Affected_Txs[tx_hash.String()]; ok {",
+      "role": "a table TXID enters the verification cache before any check"
+     },
+     {
+      "anchor": "blockchain/transaction_verify.go:435",
+      "closure": true,
+      "file": "blockchain/transaction_verify.go",
+      "line": 435,
+      "present": true,
+      "quote": "tx_cache = crypto.Keccak256(tx.Serialize())",
+      "role": "closure: from HF3 the cache key is the hash of the whole tx (height-bound skip)"
+     },
+     {
+      "anchor": "glue/txprecheck/window.go:140",
+      "closure": true,
+      "file": "glue/txprecheck/window.go",
+      "line": 140,
+      "present": true,
+      "quote": "if _, ok := blockchain.HF3_Affected_Txs[string(key[:])]; ok {",
+      "role": "closure (node-local): relay/RPC admission refuses the 75 TXIDs by ID"
+     }
+    ],
+    "closures_present": 2,
+    "closures_total": 2
+   },
+   "Release152": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "blockchain/hardfork_fixes.go:27",
+      "closure": false,
+      "file": "blockchain/hardfork_fixes.go",
+      "line": 27,
+      "present": true,
+      "quote": "var HF3_Affected_Txs = map[string]*HF3_Tx_Data{",
+      "role": "the HF3 exemption table (75 TXIDs)"
+     },
+     {
+      "anchor": "blockchain/transaction_verify.go:232",
+      "closure": false,
+      "file": "blockchain/transaction_verify.go",
+      "line": 232,
+      "present": true,
+      "quote": "if t, ok := HF3_Affected_Txs[tx_hash.String()]; ok {",
+      "role": "a table TXID enters the verification cache before any check"
+     },
+     {
+      "anchor": "blockchain/transaction_verify.go:435",
+      "closure": true,
+      "file": "blockchain/transaction_verify.go",
+      "line": 435,
+      "present": true,
+      "quote": "tx_cache = crypto.Keccak256(tx.Serialize())",
+      "role": "closure: from HF3 the cache key is the hash of the whole tx (height-bound skip)"
+     },
+     {
+      "anchor": "absent: quote not found in glue/txprecheck/window.go",
+      "closure": true,
+      "present": false,
+      "quote": "if _, ok := blockchain.HF3_Affected_Txs[string(key[:])]; ok {",
+      "role": "closure (node-local): relay/RPC admission refuses the 75 TXIDs by ID"
+     }
+    ],
+    "closures_present": 1,
+    "closures_total": 2
+   },
+   "Release153": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "blockchain/hardfork_fixes.go:27",
+      "closure": false,
+      "file": "blockchain/hardfork_fixes.go",
+      "line": 27,
+      "present": true,
+      "quote": "var HF3_Affected_Txs = map[string]*HF3_Tx_Data{",
+      "role": "the HF3 exemption table (75 TXIDs)"
+     },
+     {
+      "anchor": "blockchain/transaction_verify.go:232",
+      "closure": false,
+      "file": "blockchain/transaction_verify.go",
+      "line": 232,
+      "present": true,
+      "quote": "if t, ok := HF3_Affected_Txs[tx_hash.String()]; ok {",
+      "role": "a table TXID enters the verification cache before any check"
+     },
+     {
+      "anchor": "blockchain/transaction_verify.go:435",
+      "closure": true,
+      "file": "blockchain/transaction_verify.go",
+      "line": 435,
+      "present": true,
+      "quote": "tx_cache = crypto.Keccak256(tx.Serialize())",
+      "role": "closure: from HF3 the cache key is the hash of the whole tx (height-bound skip)"
+     },
+     {
+      "anchor": "absent: quote not found in glue/txprecheck/window.go",
+      "closure": true,
+      "present": false,
+      "quote": "if _, ok := blockchain.HF3_Affected_Txs[string(key[:])]; ok {",
+      "role": "closure (node-local): relay/RPC admission refuses the 75 TXIDs by ID"
+     }
+    ],
+    "closures_present": 1,
+    "closures_total": 2
+   }
+  },
+  "DC2": {
+   "DeroHE": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "crypto/proof_verify.go:410",
+      "closure": false,
+      "file": "crypto/proof_verify.go",
+      "line": 410,
+      "present": true,
+      "quote": "u_x := new(bn256.G1).ScalarMult(gparams.H, o)",
+      "role": "inner-product generator derived from the checked challenge (C1 anchor 1)"
+     },
+     {
+      "anchor": "crypto/proof_verify.go:432",
+      "closure": false,
+      "file": "crypto/proof_verify.go",
+      "line": 432,
+      "present": true,
+      "quote": "P = new(bn256.G1).Add(P, new(bn256.G1).ScalarMult(gparams.H, new(big.Int).Mod(new(big.Int).Neg(proof.mu), bn256.Order)))",
+      "role": "the blinding term on the same base (C1 anchor 2)"
+     },
+     {
+      "anchor": "crypto/proof_innerproduct.go:307",
+      "closure": false,
+      "file": "crypto/proof_innerproduct.go",
+      "line": 307,
+      "present": true,
+      "quote": "if P_calculated.String() != P.String() { // need something better here",
+      "role": "the final inner-product equality (C1 anchor 3)"
+     }
+    ],
+    "closures_present": 0,
+    "closures_total": 0
+   },
+   "HEAD": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "cryptography/crypto/proof_verify.go:430",
+      "closure": false,
+      "file": "cryptography/crypto/proof_verify.go",
+      "line": 430,
+      "present": true,
+      "quote": "u_x := new(bn256.G1).ScalarMult(gparams.H, o)",
+      "role": "inner-product generator derived from the checked challenge (C1 anchor 1)"
+     },
+     {
+      "anchor": "cryptography/crypto/proof_verify.go:452",
+      "closure": false,
+      "file": "cryptography/crypto/proof_verify.go",
+      "line": 452,
+      "present": true,
+      "quote": "P = new(bn256.G1).Add(P, new(bn256.G1).ScalarMult(gparams.H, new(big.Int).Mod(new(big.Int).Neg(proof.mu), bn256.Order)))",
+      "role": "the blinding term on the same base (C1 anchor 2)"
+     },
+     {
+      "anchor": "cryptography/crypto/proof_innerproduct.go:307",
+      "closure": false,
+      "file": "cryptography/crypto/proof_innerproduct.go",
+      "line": 307,
+      "present": true,
+      "quote": "if P_calculated.String() != P.String() { // need something better here",
+      "role": "the final inner-product equality (C1 anchor 3)"
+     }
+    ],
+    "closures_present": 0,
+    "closures_total": 0
+   },
+   "Release152": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "cryptography/crypto/proof_verify.go:430",
+      "closure": false,
+      "file": "cryptography/crypto/proof_verify.go",
+      "line": 430,
+      "present": true,
+      "quote": "u_x := new(bn256.G1).ScalarMult(gparams.H, o)",
+      "role": "inner-product generator derived from the checked challenge (C1 anchor 1)"
+     },
+     {
+      "anchor": "cryptography/crypto/proof_verify.go:452",
+      "closure": false,
+      "file": "cryptography/crypto/proof_verify.go",
+      "line": 452,
+      "present": true,
+      "quote": "P = new(bn256.G1).Add(P, new(bn256.G1).ScalarMult(gparams.H, new(big.Int).Mod(new(big.Int).Neg(proof.mu), bn256.Order)))",
+      "role": "the blinding term on the same base (C1 anchor 2)"
+     },
+     {
+      "anchor": "cryptography/crypto/proof_innerproduct.go:307",
+      "closure": false,
+      "file": "cryptography/crypto/proof_innerproduct.go",
+      "line": 307,
+      "present": true,
+      "quote": "if P_calculated.String() != P.String() { // need something better here",
+      "role": "the final inner-product equality (C1 anchor 3)"
+     }
+    ],
+    "closures_present": 0,
+    "closures_total": 0
+   },
+   "Release153": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "cryptography/crypto/proof_verify.go:430",
+      "closure": false,
+      "file": "cryptography/crypto/proof_verify.go",
+      "line": 430,
+      "present": true,
+      "quote": "u_x := new(bn256.G1).ScalarMult(gparams.H, o)",
+      "role": "inner-product generator derived from the checked challenge (C1 anchor 1)"
+     },
+     {
+      "anchor": "cryptography/crypto/proof_verify.go:452",
+      "closure": false,
+      "file": "cryptography/crypto/proof_verify.go",
+      "line": 452,
+      "present": true,
+      "quote": "P = new(bn256.G1).Add(P, new(bn256.G1).ScalarMult(gparams.H, new(big.Int).Mod(new(big.Int).Neg(proof.mu), bn256.Order)))",
+      "role": "the blinding term on the same base (C1 anchor 2)"
+     },
+     {
+      "anchor": "cryptography/crypto/proof_innerproduct.go:307",
+      "closure": false,
+      "file": "cryptography/crypto/proof_innerproduct.go",
+      "line": 307,
+      "present": true,
+      "quote": "if P_calculated.String() != P.String() { // need something better here",
+      "role": "the final inner-product equality (C1 anchor 3)"
+     }
+    ],
+    "closures_present": 0,
+    "closures_total": 0
+   }
+  },
+  "DC3": {
+   "DeroHE": {
+    "admits": false,
+    "anchors": [
+     {
+      "anchor": "absent: quote not found in blockchain/supply.go",
+      "closure": false,
+      "present": false,
+      "quote": "func CalcSupply(height uint64) uint64 {",
+      "role": "the emission formula"
+     },
+     {
+      "anchor": "absent: quote not found in blockchain/transaction_execute.go",
+      "closure": false,
+      "present": false,
+      "quote": "nb.Balance = nb.Balance.Add(echanges) // homomorphic addition of changes",
+      "role": "the homomorphic balance update (public deltas are what DC3 can check)"
+     }
+    ],
+    "closures_present": 0,
+    "closures_total": 0
+   },
+   "HEAD": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "blockchain/supply.go:5",
+      "closure": false,
+      "file": "blockchain/supply.go",
+      "line": 5,
+      "present": true,
+      "quote": "func CalcSupply(height uint64) uint64 {",
+      "role": "the emission formula"
+     },
+     {
+      "anchor": "blockchain/transaction_execute.go:241",
+      "closure": false,
+      "file": "blockchain/transaction_execute.go",
+      "line": 241,
+      "present": true,
+      "quote": "nb.Balance = nb.Balance.Add(echanges) // homomorphic addition of changes",
+      "role": "the homomorphic balance update (public deltas are what DC3 can check)"
+     }
+    ],
+    "closures_present": 0,
+    "closures_total": 0
+   },
+   "Release152": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "blockchain/supply.go:5",
+      "closure": false,
+      "file": "blockchain/supply.go",
+      "line": 5,
+      "present": true,
+      "quote": "func CalcSupply(height uint64) uint64 {",
+      "role": "the emission formula"
+     },
+     {
+      "anchor": "blockchain/transaction_execute.go:241",
+      "closure": false,
+      "file": "blockchain/transaction_execute.go",
+      "line": 241,
+      "present": true,
+      "quote": "nb.Balance = nb.Balance.Add(echanges) // homomorphic addition of changes",
+      "role": "the homomorphic balance update (public deltas are what DC3 can check)"
+     }
+    ],
+    "closures_present": 0,
+    "closures_total": 0
+   },
+   "Release153": {
+    "admits": true,
+    "anchors": [
+     {
+      "anchor": "blockchain/supply.go:5",
+      "closure": false,
+      "file": "blockchain/supply.go",
+      "line": 5,
+      "present": true,
+      "quote": "func CalcSupply(height uint64) uint64 {",
+      "role": "the emission formula"
+     },
+     {
+      "anchor": "blockchain/transaction_execute.go:241",
+      "closure": false,
+      "file": "blockchain/transaction_execute.go",
+      "line": 241,
+      "present": true,
+      "quote": "nb.Balance = nb.Balance.Add(echanges) // homomorphic addition of changes",
+      "role": "the homomorphic balance update (public deltas are what DC3 can check)"
+     }
+    ],
+    "closures_present": 0,
+    "closures_total": 0
+   }
+  }
+ },
+ "fq3_wallet": {
+  "earliest_tag": "DeroHE",
+  "file": "walletapi/transaction_build.go",
+  "head_deterministic_r_line": 127,
+  "head_pick_ring_order_line": 355,
+  "newest_tag": "Release153",
+  "quote": "r := crypto.ReducedHash(rencrypted.EncodeCompressed())",
+  "reading": "every tag derives r from (roothash, ring public keys in order, sender key); no upstream tag carries a ring-order fix, so no wallet-version boundary exists upstream; the head fix is local (R22)",
+  "rows_sha256": "18f03f3d55e7da81e7ed6139322d07a85f47ad5c81a75a03dabe462f9924543a",
+  "tags_total": 69,
+  "tags_with_deterministic_r": 69,
+  "tags_with_pick_ring_order": 0
+ },
+ "fq4_transcript": {
+  "DeroHE": {
+   "challenges": 10,
+   "challenges_by_func": {
+    "innerproduct": 1,
+    "proof": 9
+   },
+   "fields_named_in_preimages": [
+    "A",
+    "B",
+    "BA",
+    "BS",
+    "CLnG",
+    "CRnG",
+    "C_0G",
+    "C_XG",
+    "DG",
+    "T_1",
+    "T_2",
+    "c",
+    "gG",
+    "ls",
+    "rs",
+    "y_0G",
+    "y_XG"
+   ],
+   "file": "crypto/proof_verify.go",
+   "found": true,
+   "mu_in_a_preimage": false,
+   "preimage_sha256": "8ee6c7c5fc4e632c0aa863aafd5a7f61e828fb546ab35d4c3765073ad36c1878"
+  },
+  "HEAD": {
+   "challenges": 10,
+   "challenges_by_func": {
+    "innerproduct": 1,
+    "proof": 9
+   },
+   "fields_named_in_preimages": [
+    "A",
+    "B",
+    "BA",
+    "BS",
+    "CLnG",
+    "CRnG",
+    "C_0G",
+    "C_XG",
+    "DG",
+    "T_1",
+    "T_2",
+    "c",
+    "gG",
+    "ls",
+    "rs",
+    "y_0G",
+    "y_XG"
+   ],
+   "file": "cryptography/crypto/proof_verify.go",
+   "found": true,
+   "mu_in_a_preimage": false,
+   "preimage_sha256": "af17aac24a335435c992f49bdf694d2b7b10001044713e18999ff947b63792c6"
+  },
+  "Release152": {
+   "challenges": 10,
+   "challenges_by_func": {
+    "innerproduct": 1,
+    "proof": 9
+   },
+   "fields_named_in_preimages": [
+    "A",
+    "B",
+    "BA",
+    "BS",
+    "CLnG",
+    "CRnG",
+    "C_0G",
+    "C_XG",
+    "DG",
+    "T_1",
+    "T_2",
+    "c",
+    "gG",
+    "ls",
+    "rs",
+    "y_0G",
+    "y_XG"
+   ],
+   "file": "cryptography/crypto/proof_verify.go",
+   "found": true,
+   "mu_in_a_preimage": false,
+   "preimage_sha256": "af17aac24a335435c992f49bdf694d2b7b10001044713e18999ff947b63792c6"
+  },
+  "Release153": {
+   "challenges": 10,
+   "challenges_by_func": {
+    "innerproduct": 1,
+    "proof": 9
+   },
+   "fields_named_in_preimages": [
+    "A",
+    "B",
+    "BA",
+    "BS",
+    "CLnG",
+    "CRnG",
+    "C_0G",
+    "C_XG",
+    "DG",
+    "T_1",
+    "T_2",
+    "c",
+    "gG",
+    "ls",
+    "rs",
+    "y_0G",
+    "y_XG"
+   ],
+   "file": "cryptography/crypto/proof_verify.go",
+   "found": true,
+   "mu_in_a_preimage": false,
+   "preimage_sha256": "af17aac24a335435c992f49bdf694d2b7b10001044713e18999ff947b63792c6"
+  }
+ },
+ "headline": {
+  "dc2_present_now": true,
+  "text": "DC2 (proof soundness) is present in the current consensus code at the round head: its three C1 anchors re-read OK; any aggregate over genesis .. now is unbounded"
+ },
+ "revs": [
+  {
+   "commit": "66207f9d7b64966a8a632bd041c1655c4b548e1f",
+   "rev": "HEAD",
+   "role": "the round head"
+  },
+  {
+   "commit": "1d3c4b7bc8b6d9e536949d39975695923a59716f",
+   "rev": "Release152",
+   "role": "the Release152 tag (HF3 release)"
+  },
+  {
+   "commit": "c4e6f6b40db95dae71ec733e15c3120b62eccf12",
+   "rev": "Release153",
+   "role": "the newest upstream tag in this repository"
+  },
+  {
+   "commit": "e25b1a7f5f1dcb6479121fa0b16d106549e88c31",
+   "rev": "DeroHE",
+   "role": "the earliest tag in this repository (genesis era, 2020-12-19)"
+  }
+ ],
+ "schema": "r26 presence v1 (rft \u00a70.8.9 rule 12, FQ4)"
+}

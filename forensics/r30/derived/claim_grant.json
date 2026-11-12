@@ -1,0 +1,54 @@
+{
+ "bound_type": "exact-under-window-dedup",
+ "census": {
+  "batches": 1440,
+  "last_hi": 143999,
+  "straddling_batches": 0,
+  "types": {
+   "NORMAL": 4962,
+   "REGISTRATION": 1358698,
+   "SC": 3711
+  }
+ },
+ "class": "DC3",
+ "evidence_class": "DERIVED (B182 deep checkpoint batch records, decoder-typed, block ids verified)",
+ "grade_rule": "'exact-under-window-dedup': the count is the B182 run's distinct TXIDs under its 200,000-tx dedup window; it becomes exact after the exact-dedup recount (B182 report --exact, S2)",
+ "grant_atomic_each": 200,
+ "identity_holds": true,
+ "input": {
+  "batch_records": 73983,
+  "equal": true,
+  "file": "$FORENSICS_R29_DEEP/checkpoint.log (the R29 B182 deep stage, outside git, read-only; a label, not a path)",
+  "ignored_tail_lines": 0,
+  "recorded_sha256": "548f31c351e7a4525ded86c2b19f6ef348b50bcaf4a5c2fde497ec55d52aec6a",
+  "sha256": "548f31c351e7a4525ded86c2b19f6ef348b50bcaf4a5c2fde497ec55d52aec6a"
+ },
+ "moves_when": "the exact-dedup recount (S2) replaces the window dedup; an S7 replay of 0..143,999 decides the re-applied grants",
+ "pending": "whether the second listings below 144,000 re-applied the 200-atomic grant (pre-HF3 blockchain.go:995 executes every listed tx) needs a replay (S7); the figure is the distinct-registration count only",
+ "registrations_below_144000": 1358698,
+ "relistings_below_144000": 3603,
+ "row": "B210",
+ "schema": "r30 claim grant v1 (rft \u00a77 B210)",
+ "scope": {
+  "heights": [
+   0,
+   143999
+  ],
+  "text": "mainnet heights 0..143,999 (the claim-grant window)"
+ },
+ "supply_go": {
+  "accounts": 1358698,
+  "anchors": [
+   "blockchain/supply.go:8",
+   "blockchain/supply.go:9",
+   "blockchain/transaction_execute.go:194-196"
+  ],
+  "lines": {
+   "add": 9,
+   "comment": 8,
+   "comment_total": 271739600
+  },
+  "total_atomic": 271739600
+ },
+ "value_atomic": 271739600
+}

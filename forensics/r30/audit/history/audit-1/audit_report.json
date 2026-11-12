@@ -1,0 +1,1751 @@
+{
+ "binding": {
+  "data_sha256": "1524ae180350a12485cdfab6d0f30791f08332c27747b73945bc090ca6301b39",
+  "files_bound": 33,
+  "manifest_sha256_at_audit": "8b3046c85fbf514876982e67adaa77371ef418ec8eadefab3b8d3d4ee3d0a0d5"
+ },
+ "counts": {
+  "challenges": 33,
+  "claims_corrected": 0,
+  "downgraded": 0,
+  "holds": 33,
+  "overturned": 0,
+  "overturned_all_runs": 0,
+  "overturned_distinct_all_runs": 0,
+  "unresolved": 0,
+  "verdicts": 5
+ },
+ "dataset": "r30",
+ "history": [],
+ "implementation": {
+  "file": "harness/forensics/audit2.py",
+  "name": "audit2-1",
+  "own": [
+   "audit_check.py primitives (Keccak-f[1600] from FIPS 202, block/tx decoders, HF3 parser, scan)",
+   "tips walk incl. the wall-1 link",
+   "duplicate-body census",
+   "structural proof verifier (B97)",
+   "fee/burn/SC sums",
+   "classes re-checks (G31/G32/FQ1/presence/invariant)",
+   "replay plan"
+  ],
+  "reused": [
+   "the node's own blockchain package through tools/forensics/a2 replay for D2-14/D2-16, by design (rft \u00a70.8.5)"
+  ],
+  "shares_code_with_builder": false
+ },
+ "nogo": [
+  {
+   "id": "NOGO-B97-SOUNDNESS",
+   "instead": "the structural / public-value verifier D2-12 (pass/fail per named check only)",
+   "what": "a second, independent SOUNDNESS verifier of the range proof / inner-product argument",
+   "why": "telling two verifiers apart, or showing the defect class at work, needs a proof that one verifier accepts and an honest one rejects: exploit content (rft \u00a70.8.1 rule 6, \u00a75, \u00a79). Re-running honest verification a second time adds nothing that D2-12 and the node verifier (v1 A11) do not already show, and needs the ring state, which exists only inside the held archive (v1 A11: 2 txs). Recorded as NO-GO; not attempted."
+  }
+ ],
+ "rerun": {
+  "a2": {
+   "class": "pending",
+   "verdict_head": "BLOCKED from this host: every source tha"
+  },
+  "binding": {
+   "data_sha256": "1524ae180350a12485cdfab6d0f30791f08332c27747b73945bc090ca6301b39",
+   "files_bound": 33,
+   "manifest_sha256_at_audit": "8b3046c85fbf514876982e67adaa77371ef418ec8eadefab3b8d3d4ee3d0a0d5"
+  },
+  "bodies": {
+   "blob_missing": 0,
+   "decode_error": 0,
+   "extra": 0,
+   "missing_json": 0,
+   "missing_own": 0,
+   "needed_own": 1796,
+   "needed_wall1": 2,
+   "needed_window_gap": 1794,
+   "not_carried": 0,
+   "rows": 1796,
+   "sha_mismatch": 0,
+   "txid_mismatch": 0,
+   "verified": 1796
+  },
+  "classes": {
+   "dc0": {
+    "figure_value": 0,
+    "own": 0
+   },
+   "dc1_two_bodies": {
+    "bound_type": "lower-bound",
+    "value": "0"
+   },
+   "dc3": {
+    "base": "r28d",
+    "burns_figure": {
+     "bound_type": "exact",
+     "value": 230470000
+    },
+    "fees_coverage": 82477,
+    "fees_figure": {
+     "bound_type": "exact",
+     "value": 855173
+    },
+    "reflects_v2": true,
+    "v2_own_window_burn_sum": 230470000,
+    "v2_own_window_coverage": "82477/82477",
+    "v2_own_window_fee_sum": 855173
+   },
+   "fq1": {
+    "claimed": {
+     "carriers_total": 142,
+     "dc0_window_duplicates": 0,
+     "duplicates_two_carriers": "67 of 67",
+     "false_parity_one_carrier": "8 of 8",
+     "of_which_in_table": 66,
+     "tx_parity_true": 17,
+     "window_distinct_txids": 1769,
+     "window_tx_carrying_blocks": 1726,
+     "window_txids_in_two_or_more_blocks": 66
+    },
+    "equal": true,
+    "own": {
+     "carriers_total": 142,
+     "dc0_window_duplicates": 0,
+     "duplicates_two_carriers": 67,
+     "false_parity_one_carrier": 8,
+     "of_which_in_table": 66,
+     "table_txids_outside_window_carrier": 1,
+     "tx_parity_true": 17,
+     "window_distinct_txids": 1769,
+     "window_tx_carrying_blocks": 1726,
+     "window_txids_in_two_or_more_blocks": 66
+    }
+   },
+   "fq_status": {
+    "FQ1": "answered: two bodies under one TXID lower bound 0: of 67 multi-block TXIDs, 67 held from 2+ holders (67 equal, 0 different), 0 from one holder, 0 with no copy; executed-twice below the window pending (S7)",
+    "FQ2": "answered for the recorded criteria, window-wide (every window TXID held)",
+    "FQ3": "answered for the window: code side and on-chain census (no boundary inside the window)",
+    "FQ4": "answered",
+    "FQ5": "answered (INTERPRETATION, re-tested every round)",
+    "FQ6": "pending: FX-F5 / FX-F6 rows belong to the disclosure track (B114)",
+    "Q-CS": "answered",
+    "schema_r30": "r30 classes v1 (rft \u00a70.8.9; B202, B203, B209, B210, B110 over the base class files)"
+   },
+   "g31": {
+    "figures": 17,
+    "forbidden_phrases": [],
+    "problems": []
+   },
+   "g32_records": {
+    "classes_records": {
+     "derived/blocks_fees.jsonl.gz": {
+      "DC3": 1747
+     },
+     "derived/roots_window.jsonl.gz": {
+      "DC3": 31025
+     },
+     "derived/txs.jsonl.gz": {
+      "DC1": 75,
+      "DC3": 1721
+     },
+     "raw/tx_bodies.jsonl.gz": {
+      "DC1": 75,
+      "DC3": 1721
+     },
+     "raw/wall1_blocks.jsonl.gz": {
+      "DC3": 2799
+     }
+    },
+    "pending": 0,
+    "tagged": 39163,
+    "v2_records": 39163
+   },
+   "invariant": {
+    "anchors": 9,
+    "bad": [],
+    "ok": 9,
+    "qcs1_root_eq_v1_archive": true,
+    "qcs1_scope_topo": 7467515,
+    "status": "answered"
+   },
+   "presence": {
+    "anchors": 36,
+    "dc2_present_head": true,
+    "differ": [],
+    "head_now_equal": 9,
+    "headline_present": true,
+    "reread_equal": 36,
+    "revs": {}
+   }
+  },
+  "dataset": "r30",
+  "dc1_structure": {
+   "base": "r28d",
+   "claimed_counts": {
+    "criterion": 60,
+    "criterion:single_inclusion": 7,
+    "criterion:two_inclusions": 53,
+    "ring16+rpctype1": 15,
+    "ring2+rpctype0": 60,
+    "single_inclusion:ring16+rpctype1": 1,
+    "single_inclusion:ring2+rpctype0": 7,
+    "two_inclusions:ring16+rpctype1": 14,
+    "two_inclusions:ring2+rpctype0": 53
+   },
+   "claimed_coverage": {
+    "den": 75,
+    "den_anchor": "derived/txs.jsonl.gz class DC1",
+    "num": 75,
+    "num_anchor": "held bodies decoded by the node decoder"
+   },
+   "class": "DC1",
+   "counts_equal": true,
+   "dc1_table": 75,
+   "decoded_own": 75,
+   "fq2_corrections": 1,
+   "fq2_dc1_obs": 0,
+   "fq2_dc1_obs_base": 0,
+   "fq2_srt_agrees": true,
+   "fq2_srt_result": "60 of 75 carry it (53 of 67 two-inclusion, 7 of 8 single)",
+   "fq_rest_equal_base": true,
+   "fq_v5_changes": {
+    "anchors_extra": [
+     "harness/runtime/r29_b97_holders.json census.counts (audit D2-11)"
+    ],
+    "anchors_prefix": true,
+    "dc0_genesis_listed_twice": 9838,
+    "two_bodies": "lower bound 0: of 67 multi-block TXIDs, 67 held from 2+ holders (67 equal, 0 different), 0 from one holder, 0 with no copy"
+   },
+   "own_counts": {
+    "criterion": 60,
+    "criterion:single_inclusion": 7,
+    "criterion:two_inclusions": 53,
+    "ring16+rpctype1": 15,
+    "ring2+rpctype0": 60,
+    "single_inclusion:ring16+rpctype1": 1,
+    "single_inclusion:ring2+rpctype0": 7,
+    "two_inclusions:ring16+rpctype1": 14,
+    "two_inclusions:ring2+rpctype0": 53
+   },
+   "two_carriers_own": 67
+  },
+  "dup": {
+   "all_txids": {
+    "different": 0,
+    "equal": 68,
+    "txids_2plus_sources": 68
+   },
+   "core_excludes_proof_bodies": 1560,
+   "counts": {
+    "copy_txid_mismatch": 0,
+    "different": 0,
+    "equal": 67,
+    "in_hf3_table": 67,
+    "multi_block_txids": 67,
+    "no_copy": 0,
+    "outside_table_dc0": 0,
+    "single_source": 0,
+    "with_2plus_sources": 67
+   },
+   "observability": "a block commits to the TXID only; the TXID is Keccak-256 of the core statement, which excludes the proofs (audit decoder: core_len < body length for every proof-carrying body), so the RAW blocks cannot show which body a carrier held; bodies are compared across independent holders instead",
+   "rows": [
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "00c6c9a7"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "0a0671cf"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "0e75ae66"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "17cd5710"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "1877ddc3"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "1e8c9c77"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "1eb43df8"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "21108295"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "2aabb168"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "2e2b49f2"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "2f39de57"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "337677e2"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "3478d883"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "364538c7"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "3659ae2b"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "3ccf648d"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "404180f8"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "411012a7"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "42f2876c"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "4ad3ef9a"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "4d56a1a1"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "556d78cf"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "5a14d851"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "6034f404"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "60e4547d"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "62fa2cc6"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "6843437e"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "6aa20567"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "6e59f6b5"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "71588148"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "74b79178"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "85d52fe6"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "8692d178"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "86a15dad"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "879f99d2"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "912dbaf8"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "92dce2c5"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "94f8ced9"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "9b75eb3b"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "9becfdff"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "9eba39af"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "9fba85d0"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "a16a9d93"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "a70950ff"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "a86a316b"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "a9b0c1d1"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "ab1da121"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "ab6cca96"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "b43be652"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "b6cf0ef1"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "b9c2b724"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "ba3834ef"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "bba77f85"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "d81f2d39"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "d856184d"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "d9d7e7de"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "e0a6f890"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "e0d83b72"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "e2fdb507"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "e42eb301"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "e53ea2a8"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "e5676c4e"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "ea445f18"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "ed09fcce"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "f00cc25c"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "f389f4b6"
+    },
+    {
+     "carriers": 2,
+     "distinct_bodies": 1,
+     "in_table": true,
+     "sources": [
+      "src-1",
+      "src-2",
+      "src-4",
+      "src-7",
+      "src-8"
+     ],
+     "status": "equal",
+     "txid": "fd79549a"
+    }
+   ],
+   "scope": [
+    7412665,
+    7498540
+   ],
+   "tx_lists_with_a_repeated_txid": 0
+  },
+  "fees": {
+   "blocks_claimed": 1747,
+   "claimed": {
+    "gap_burn_sum": 0,
+    "gap_fee_sum": 1567,
+    "gap_txblocks": 21,
+    "sc_tx_blocks": 192,
+    "sc_txs": 199,
+    "settled": 1575,
+    "settled_burn_sum": 230470000,
+    "settled_fee_sum": 838373,
+    "v1_known_rows_disagreeing": 0,
+    "window_burn_sum": 230470000,
+    "window_fee_sum": 855173,
+    "window_txblocks": 1726
+   },
+   "differ": [],
+   "differ_count": 0,
+   "equal": 1747,
+   "own": {
+    "gap_burn_sum": 0,
+    "gap_fee_sum": 1567,
+    "gap_txblocks": 21,
+    "sc_tx_blocks": 192,
+    "sc_txs": 199,
+    "settled": 1575,
+    "settled_burn_sum": 230470000,
+    "settled_fee_sum": 838373,
+    "v1_known_rows_disagreeing": 0,
+    "window_burn_sum": 230470000,
+    "window_fee_sum": 855173,
+    "window_txblocks": 1726
+   },
+   "sc_payouts_claim": "pending: SC payouts are produced by SC execution (blockchain",
+   "totals_equal": true,
+   "v1_pending": 1575
+  },
+  "files": {
+   "class_files_listed": true,
+   "listed": 33,
+   "mismatch": [],
+   "missing": [],
+   "on_disk": 33,
+   "unlisted": []
+  },
+  "impl": "audit2-1",
+  "inputs": {
+   "changed": [],
+   "pinned": 16
+  },
+  "ledger": {
+   "entry_sha256": "8b3046c85fbf514876982e67adaa77371ef418ec8eadefab3b8d3d4ee3d0a0d5",
+   "equal": true,
+   "manifest_sha256": "8b3046c85fbf514876982e67adaa77371ef418ec8eadefab3b8d3d4ee3d0a0d5",
+   "sealed": false
+  },
+  "own_replay": {
+   "a2_binary_sha256": null,
+   "added": 31025,
+   "blids_eq_walk": true,
+   "end_eq_recorded_treehash": true,
+   "last_root": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7",
+   "last_topo": 7498540,
+   "roots_lines": 31026,
+   "roots_sha256": "7a4a620913da4ea151188470b363939c02fc10013a0ab90ed2c733d324041f82",
+   "roots_top": 7498540,
+   "seed_eq_dataset_seed": true,
+   "seed_top_root": "d3345594b8bb324b60940c0bea625c57567f09ac889704dba57935de407bd324",
+   "stopped": "completed",
+   "txs": 918,
+   "walls_accepted": {
+    "wall2": true,
+    "wall3": true,
+    "wall4": true
+   },
+   "witnesses": {
+    "differ": 0,
+    "equal": 690,
+    "outside": 870
+   }
+  },
+  "result": "done",
+  "row_classes": {
+   "file_class_equal": true,
+   "inclusion_differ": [],
+   "inclusion_equal": 67,
+   "inclusion_rows": 67,
+   "own_classes": {
+    "DC1": 67
+   },
+   "own_multi": 67,
+   "pending": 0,
+   "rows_txids_eq_own_multi": true,
+   "stops_equal": true,
+   "wall_differ": [],
+   "wall_equal": 33,
+   "wall_rows": 33,
+   "wall_unwalked": 0
+  },
+  "runs": {
+   "entries": [
+    "blockchain.Add_Complete_Block",
+    "p2p.Add_Complete_Block_HF3"
+   ],
+   "hf3_entry_runs": [
+    "C"
+   ],
+   "identical": true,
+   "rejection_topo": 7467546,
+   "rejection_txid_carried_at": [
+    7467546
+   ],
+   "rejection_txid_in_table": false,
+   "runs": {
+    "A": {
+     "base_eq_archive": true,
+     "blids_eq_walk": true,
+     "entry": "blockchain.Add_Complete_Block",
+     "fail_topo": 7467546,
+     "last_topo": 7467545,
+     "lines": 31,
+     "roots_jsonl_sha256": "4405f9b0c2222a53ad3369d841c45770477302a3149aa3114998edf3c6f636a4",
+     "roots_sha256": "eb095462bbdaf205c001a7886fe2aa1447756bca57fffebcf4fb1f179fd51cdf",
+     "stopped": "block rejected by the node's own checks"
+    },
+    "B": {
+     "base_eq_archive": true,
+     "blids_eq_walk": true,
+     "entry": "blockchain.Add_Complete_Block",
+     "fail_topo": 7467546,
+     "last_topo": 7467545,
+     "lines": 31,
+     "roots_jsonl_sha256": "4405f9b0c2222a53ad3369d841c45770477302a3149aa3114998edf3c6f636a4",
+     "roots_sha256": "eb095462bbdaf205c001a7886fe2aa1447756bca57fffebcf4fb1f179fd51cdf",
+     "stopped": "block rejected by the node's own checks"
+    },
+    "C": {
+     "base_eq_archive": true,
+     "blids_eq_walk": true,
+     "entry": "p2p.Add_Complete_Block_HF3",
+     "fail_topo": null,
+     "last_topo": 7498540,
+     "lines": 31026,
+     "roots_jsonl_sha256": "7a4a620913da4ea151188470b363939c02fc10013a0ab90ed2c733d324041f82",
+     "roots_sha256": "93c694d307263b14af8c7d3ea904a65195d4ffdb9e66fd2f1eb5e3e739998e53",
+     "stopped": "completed"
+    }
+   },
+   "seed_top_blid_eq_walk": true,
+   "seed_top_root_eq_v1_archive_root": true
+  },
+  "scan": {
+   "files_scanned": 34,
+   "hits": [],
+   "patterns": 15,
+   "private_terms_loaded": 34
+  },
+  "selftest": {
+   "failures": [],
+   "hash_kats": 6
+  },
+  "state_roots_claim": {
+   "a10c_answer": "bound: the replay from the archive top state reaches our own treehash at the anchor",
+   "end_state_check_A": "pending: the run reached topo 7467545, not 7,498,540",
+   "witness_claim": {
+    "archive_differ": 0,
+    "archive_equal": 200,
+    "differ": 0,
+    "equal": 690
+   }
+  },
+  "state_roots_own": {
+   "archive_differ": 0,
+   "archive_equal": 200
+  },
+  "struct": {
+   "bodies": 1796,
+   "by_type": {
+    "NORMAL": 1361,
+    "REGISTRATION": 236,
+    "SC": 199
+   },
+   "constants_from": "cryptography/bn256/constants.go (P, Order)",
+   "decode_errors": 0,
+   "failed_checks": {},
+   "points_checked": 132504,
+   "proof_carrying": 1560,
+   "scalars_checked": 41410,
+   "txids_with_any_failure": []
+  },
+  "summary_claim": {
+   "records_with_class_slot": 34568,
+   "tx_bodies_missing": 0,
+   "tx_bodies_raw": 1796,
+   "txblocks": 1747,
+   "txs_decoded": 1796,
+   "v1_pending_settled": 1575
+  },
+  "treehash_recorded": {
+   "root": "ca11cc2106c86d9db9a92dcd8627eae52ab09bdc27f10abd5a0eebab4d9019f7",
+   "source": "harness/runtime/r25_forensics_discovery_20261103.txt:112",
+   "topo": 7498540
+  },
+  "txrows": {
+   "differ": [],
+   "differ_count": 0,
+   "equal": 1796,
+   "fields": [
+    "tx_type",
+    "fee",
+    "burn_total",
+    "ring sizes",
+    "roothash",
+    "ref_height",
+    "ref_blid",
+    "has_scdata",
+    "body_sha256"
+   ],
+   "rows": 1796
+  },
+  "v1": {
+   "manifest_equal": true,
+   "sealed": true
+  },
+  "v5": {
+   "b111": {
+    "holds": true,
+    "own_residual_no_premine": 1,
+    "premine_keys": 1,
+    "status": "HYPOTHESIS (arithmetic consistent)"
+   },
+   "claim_grant": {
+    "checkpoint_sha_equal": true,
+    "claimed_reg": 1358698,
+    "claimed_value": 271739600,
+    "holds": true,
+    "own_reg": 1358698,
+    "supply_accounts": 1358698,
+    "supply_total": 271739600
+   },
+   "consistency": {
+    "dataset_label": "r30",
+    "dc1_obs": 0,
+    "fq1_two_bodies_equal": true,
+    "fq_srt": true,
+    "holds": true,
+    "note_held_bodies_only": false,
+    "note_names_srt": true
+   },
+   "dc0_genesis": {
+    "checkpoint_sha_equal": true,
+    "claimed_dc0": 9838,
+    "claimed_figure": 9838,
+    "holds": true,
+    "own_distinct": 9838,
+    "own_in_table": 0,
+    "reg_lt3_last_hi": 122299,
+    "reg_lt3_within_0_156599": true
+   },
+   "dc2_den": {
+    "bound": "unbounded",
+    "census_read": true,
+    "claimed_den": 2158937,
+    "claimed_sum": 2158938,
+    "holds": true,
+    "overlap": 1,
+    "own_sum": 2158938,
+    "registration_counted": false,
+    "value": "unbounded"
+   },
+   "two_bodies": {
+    "claimed_bound": "lower-bound",
+    "claimed_den": 67,
+    "claimed_num": 67,
+    "claimed_value": 0,
+    "holds": true,
+    "own_2plus": 67,
+    "own_different": 0,
+    "own_multi": 67
+   }
+  },
+  "walk": {
+   "anchor_height": 7498540,
+   "blocks": 85876,
+   "contiguous": true,
+   "from": 7498540,
+   "multi_tip": 0,
+   "to": 7412665,
+   "v1_store_blocks": 83077,
+   "v2_store_blocks": 2799
+  },
+  "wall1_blocks": {
+   "differ": [],
+   "equal": 2799,
+   "rows": 2799
+  },
+  "wall4": {
+   "differs": 1,
+   "hf3_carriers_before_stop": [
+    {
+     "differs": false,
+     "height": 7467516,
+     "parity_with_step": false,
+     "parity_without_step": false,
+     "table_height": 7467516,
+     "tx_parity": true,
+     "txid": "0045a6d4"
+    },
+    {
+     "differs": false,
+     "height": 7467538,
+     "parity_with_step": false,
+     "parity_without_step": false,
+     "table_height": 7467538,
+     "tx_parity": true,
+     "txid": "3659ae2b"
+    },
+    {
+     "differs": true,
+     "height": 7467544,
+     "parity_with_step": true,
+     "parity_without_step": false,
+     "table_height": 7467538,
+     "tx_parity": true,
+     "txid": "3659ae2b"
+    }
+   ],
+   "source": {
+    "expression_present": true,
+    "replay_calls_bare_add": false,
+    "replay_calls_hf3_entry": true
+   }
+  }
+ },
+ "rerun_sha256": "9478ab21c9a394c8725736713114b4bec9d60d9cb1294fec6f6584ebb91d36be",
+ "verdicts": [
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "not graded (class pending; classes.json DC3 figures read v1)",
+   "challenges": [
+    "D2-01",
+    "D2-02",
+    "D2-03",
+    "D2-04",
+    "D2-05",
+    "D2-06",
+    "D2-07",
+    "D2-08",
+    "D2-09",
+    "D2-10",
+    "D2-17",
+    "D2-19",
+    "D2-20",
+    "D2-23",
+    "D2-28",
+    "D2-31",
+    "D2-33"
+   ],
+   "downgraded": false,
+   "figures": [
+    {
+     "bound_type": "exact",
+     "class": "DC3",
+     "coverage": {
+      "den": 82477,
+      "den_anchor": "window heights",
+      "num": 82477,
+      "num_anchor": "audit D2-07/D2-08"
+     },
+     "id": "v2-window-fees",
+     "scope": {
+      "heights": [
+       7415466,
+       7497942
+      ]
+     },
+     "unit": "atomic",
+     "value": 855173
+    },
+    {
+     "bound_type": "exact",
+     "class": "DC3",
+     "coverage": {
+      "den": 82477,
+      "den_anchor": "window heights",
+      "num": 82477,
+      "num_anchor": "audit D2-07/D2-08"
+     },
+     "id": "v2-window-public-burns",
+     "scope": {
+      "heights": [
+       7415466,
+       7497942
+      ]
+     },
+     "unit": "atomic",
+     "value": 230470000
+    },
+    {
+     "bound_type": "exact",
+     "class": "DC3",
+     "coverage": {
+      "den": 21,
+      "den_anchor": "tx-carrying gap blocks (own walk)",
+      "num": 21,
+      "num_anchor": "audit D2-07"
+     },
+     "id": "v2-gap-fees",
+     "scope": {
+      "heights": [
+       7497943,
+       7498540
+      ]
+     },
+     "unit": "atomic",
+     "value": 1567
+    }
+   ],
+   "id": "V2-FEES",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "the bodies (D2-05)"
+    },
+    {
+     "class": "DERIVED",
+     "what": "own fee/burn sums (D2-07, D2-08)"
+    }
+   ],
+   "question": "did the public fees and burns of the window + gap create value beyond the emission formula?",
+   "reason": "the fee and burn fields are public and exact here (figures), but a fee is paid out of a hidden balance whose soundness is DC2, so whether fees were funded by real value is not decidable from public data; burns remove value; SC payouts of the SC txs stay pending",
+   "source": "derived/fees.json, blocks_fees.jsonl.gz"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "lower bound 0 (classes.json dc1-two-bodies lower-bound, coverage 67/67 multi-block TXIDs; fq.json FQ1)",
+   "challenges": [
+    "D2-01",
+    "D2-02",
+    "D2-03",
+    "D2-04",
+    "D2-05",
+    "D2-11",
+    "D2-17",
+    "D2-18",
+    "D2-20",
+    "D2-23",
+    "D2-26",
+    "D2-27",
+    "D2-28",
+    "D2-29",
+    "D2-32",
+    "D2-33"
+   ],
+   "downgraded": false,
+   "id": "V2-DUP-BODY",
+   "inputs": [
+    {
+     "class": "RAW",
+     "what": "body copies compared byte for byte (D2-11)"
+    }
+   ],
+   "question": "is a TXID held with two different bodies (DC1 two-bodies; DC0 outside the table)?",
+   "reason": "census: 67 of 67 multi-block TXIDs are held from 2+ independent holders (67 equal, 0 different), 0 from one holder only, where a second body is not observable from the data held; two-body count: lower bound 0, coverage 67/67",
+   "source": "audit duplicate-body census (B97); classes.json dc1-two-bodies"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "MATCH (derived/state_roots.json run C end_state_check)",
+   "challenges": [
+    "D2-01",
+    "D2-02",
+    "D2-03",
+    "D2-13",
+    "D2-14",
+    "D2-17",
+    "D2-20",
+    "D2-23",
+    "D2-24",
+    "D2-28",
+    "D2-33"
+   ],
+   "downgraded": false,
+   "id": "V2-END-STATE",
+   "inputs": [
+    {
+     "class": "DERIVED",
+     "what": "dataset run C (D2-14) and the audit's own run"
+    }
+   ],
+   "question": "does a replay of 7,467,516..7,498,540 from the archive seed end at our own treehash?",
+   "reason": "end-state check HOLDS in the dataset (D2-14): run(s) ['C'] through the HF3 entry end at our own treehash at 7498540, byte-identical to the audit's own replay; this shows our state is consistent with the blocks our node accepted and nothing about hidden amounts, so the inflation question it feeds stays NOT-DECIDABLE (rft \u00a70.8.9 rule 11)",
+   "source": "derived/state_roots.json"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "bound (derived/state_roots.json a10c)",
+   "challenges": [
+    "D2-01",
+    "D2-02",
+    "D2-03",
+    "D2-14",
+    "D2-15",
+    "D2-16",
+    "D2-17",
+    "D2-20",
+    "D2-23",
+    "D2-28",
+    "D2-33"
+   ],
+   "downgraded": false,
+   "id": "V-STATE-ROOTS",
+   "inputs": [
+    {
+     "class": "DERIVED",
+     "what": "replay roots (run C) and archive roots"
+    }
+   ],
+   "question": "what were the pre/post balance-tree roots of the window's blocks (A10c)?",
+   "reason": "A10c HOLDS in the dataset (D2-16): the archive base is bound by run C's end-state check and every witness agrees (D2-15); state roots are node-computed, not consensus-committed, and say nothing about hidden amounts (rule 11); window topos 7,415,466..7,453,289 have no held state (B95 decided)",
+   "source": "derived/state_roots.json, roots_window.jsonl.gz"
+  },
+  {
+   "audit_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA",
+   "builder_grade": "NOT-DECIDABLE-FROM-PUBLIC-DATA (classes.json DC2, once, genesis .. now)",
+   "challenges": [
+    "D2-01",
+    "D2-02",
+    "D2-03",
+    "D2-12",
+    "D2-17",
+    "D2-20",
+    "D2-21",
+    "D2-22",
+    "D2-23",
+    "D2-28",
+    "D2-30",
+    "D2-33",
+    "D2-34"
+   ],
+   "downgraded": false,
+   "id": "V-DC2",
+   "inputs": [
+    {
+     "class": "INTERPRETATION",
+     "what": "FQ5 (no public-data test separates the two)"
+    },
+    {
+     "class": "SRC",
+     "what": "presence.json anchors re-read (D2-21)"
+    }
+   ],
+   "question": "did the proof soundness defect (DC2) create value over genesis .. now?",
+   "reason": "unbounded (lower bound 0, no upper bound): an accepted proof under the defect and an honest one pass the same verifier (FQ5); the structural verifier (D2-12) shows encodings, not soundness; a second soundness verifier is NO-GO (rft \u00a79)",
+   "source": "derived/classes.json DC2, presence.json"
+  }
+ ]
+}

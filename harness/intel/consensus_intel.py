@@ -1044,10 +1044,13 @@ def detectors(cap, R, H, k, parts, seq_final, lags, dts, mism_ev, alpha_p, teste
     else:
         g = 'OBSERVED' if ((v2_now or 0) + v2_win) else 'NORMAL'
     D.append(det('D13-v2-remnant', 'Peers still on the pre-HF3 v2 remnant chain', g,
-                 f'{v2_now} connected below v3, {v2_win} drop lines in the window ({v2_log} in the whole log, {v2_7d} seen in 7 d)', A(R, 'v2_filter'),
+                 (f'{v2_now} connected below v3, {v2_win} drop lines in the window ({v2_log} in the whole log, {v2_7d} seen in 7 d)'
+                  if log_was_read(cap) else      # r30 fix D4: no log read -> no '0 in the whole log' (a 0 that is not a reading)
+                  f'{v2_now} connected below v3, log not read (drop lines unknown; {v2_7d} seen in 7 d)'), A(R, 'v2_filter'),
                  'GetPeerInfo top_version < 3 among active peers + log "dropping peer on pre-HF3 (v2) chain" lines since the window\'s first block '
                  '(whole-log and 7-day counts are context)',
-                 [{'peers_below_v3': v2_now, 'v2_drop_lines_window': v2_win, 'v2_drop_lines_log': v2_log, 'v2_chain_peers_seen_7d': v2_7d}],
+                 [{'peers_below_v3': v2_now, 'v2_drop_lines_window': v2_win if log_was_read(cap) else None,
+                   'v2_drop_lines_log': v2_log if log_was_read(cap) else None, 'log_read': log_was_read(cap), 'v2_chain_peers_seen_7d': v2_7d}],
                  'their blocks fail Check_Block_Version (blockchain.go); the v2 filter drops them, so they cannot affect this chain; counted, never named'))
     # D14/D15 share concentration
     for did, key, label in (('D14-concentration-regular', 'regular', 'regular miniblocks'), ('D15-concentration-final', 'final', 'finals (block integration)')):
@@ -1058,9 +1061,11 @@ def detectors(cap, R, H, k, parts, seq_final, lags, dts, mism_ev, alpha_p, teste
             continue
         sh = best[key] / tot
         lo_ci, hi_ci = wilson(best[key], tot)
-        g = 'ANOMALY' if sh > 1 / 3 else 'NORMAL'
+        # r30 (rft §7 B201, audit b201-d15-d19-test-inconsistent): graded on the Wilson 95 % lower bound, as D19 is, so
+        # a share a hair over 1/3 that the window cannot tell from 1/3 is NORMAL (it was ANOMALY on the point estimate)
+        g = 'ANOMALY' if lo_ci > 1 / 3 else 'NORMAL'
         D.append(det(did, f'No participant holds more than 1/3 of the {label}', g, round(sh, 4), None,
-                     'top-1 share > 1/3 (selfish-mining threshold, Eyal-Sirer 2014) = ANOMALY; > 1/2 = majority (ANOMALY, stated); Wilson 95 % interval shown',
+                     'Wilson 95 % lower bound of the top-1 share > 1/3 (selfish-mining threshold, Eyal-Sirer 2014) = ANOMALY (r30; before r30 the point share); > 1/2 = majority (stated); Wilson 95 % interval shown',
                      [{'participant': best['id'], 'count': best[key], 'of': tot, 'share': round(sh, 4), 'ci95': [round(lo_ci, 4), round(hi_ci, 4)],
                        'over_half': sh > 0.5}],
                      f"Nakamoto coefficient {k['nakamoto_' + key]}, HHI {k['hhi_' + key]}"))
@@ -1137,6 +1142,16 @@ def collective_final(parts, k):
                '(the final pays the template builder\'s integrator), not a rule broken')
 
 
+def log_was_read(cap):
+    """r30 fix D4: True when the capture scanned a derod log (its line count > 0). A capture without the 'lines' field
+    (pre-r24) falls back to whether it holds any start line or event. Pure."""
+    lg = cap.get('log') or {}
+    n = lg.get('lines')
+    if isinstance(n, int):
+        return n > 0
+    return bool(lg.get('startups_ms') or lg.get('events'))
+
+
 def alt_reconcile(cap, R, H, k):
     """D20 (r25, CO24-C4): GetInfo alt_blocks_count is the node's settled alt count, and the alt blocks it lists are the
     ones the log shows. Log side: every block with a "Chain extended" or "... but height is same" line since the newest
@@ -1154,6 +1169,10 @@ def alt_reconcile(cap, R, H, k):
     alt = cs.get('alt') or {}
     starts = (cap.get('log') or {}).get('startups_ms') or []
     t0 = max(starts) if starts else 0
+    # r30 (found taking the B201 third reading without the datadir log): when no log was read the log side is unknown,
+    # not empty; only the counts are graded (it was ANOMALY 'log 0 / node 52'). r30 fix D4: 'read' is the scanned line
+    # count (> 0), not the presence of a derod start line (a log that was read but holds no start line is still a log)
+    log_read = log_was_read(cap)
     sl = int(R['stable_limit']['value'])
     hi_h = H[-1]['height'] - sl - 1
     lo_h = max(H[0]['height'], int(alt.get('tracked_from_height') or 0))
@@ -1178,10 +1197,12 @@ def alt_reconcile(cap, R, H, k):
         count_ok, how = gi_n <= n, 'GetInfo read before the walk: a lower bound'
     else:
         count_ok, how = gi_n == n, 'equality'
-    bad = not count_ok or only_log or only_node
+    bad = not count_ok or (log_read and (only_log or only_node))
     return det('D20-alt-blocks', 'GetInfo alt_blocks_count equals the side blocks this node kept', 'ANOMALY' if bad else 'NORMAL',
-               f"alt_blocks_count {gi_n}, node {alt.get('count')}, log {len(log_alt)} / node {len(node_alt)} in heights {lo_h}..{hi_h}", rule, test,
-               [{'getinfo_alt_blocks_count': gi_n, 'getinfo_around_stats': pair, 'count_check': how, 'stats_count': alt.get('count'), 'unsettled': alt.get('unsettled'), 'tracked': alt.get('tracked'),
+               f"alt_blocks_count {gi_n}, node {alt.get('count')}, "
+               + (f"log {len(log_alt)} / node {len(node_alt)}" if log_read else f"log not read (counts only) / node {len(node_alt)}")
+               + f" in heights {lo_h}..{hi_h}", rule, test,
+               [{'log_read': log_read, 'getinfo_alt_blocks_count': gi_n, 'getinfo_around_stats': pair, 'count_check': how, 'stats_count': alt.get('count'), 'unsettled': alt.get('unsettled'), 'tracked': alt.get('tracked'),
                  'heights': [lo_h, hi_h], 'log_alt': len(log_alt), 'node_alt': len(node_alt), 'only_in_log': only_log[:5], 'only_in_node': only_node[:5]}],
                'a block is settled once it is more than STABLE_LIMIT below the tip; the alt set counts blocks this node ACCEPTED (the log '
                'lines) that are not in the topo index at their height')

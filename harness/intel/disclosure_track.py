@@ -28,6 +28,13 @@ plus the round's new facts and the potential fixes (FORK-REQUIRED designs vs NOD
                   lists). A match FAILS. The legacy R8 rows are linted too and reported as `legacy_lint` (they are
                   regenerated from a git-excluded audit transcript, so they are flagged for the round lead, not
                   rewritten here).
+               L7 r30 (B228, G24 lag): current_round is at or after the newest MEASURED round of harness/round.json (the
+                  track said R26 while R27, R28, R28d and R29 were measured, and G24 still passed: it trusted its own
+                  current_round).
+               L8 r30 (B228, FX<->BD): a NODE-LOCAL fix that an rft §7 BD row restates ('FX-N4: …' is BD5) agrees with
+                  that row's lead class: a BD lead IMPLEMENTED or closed with the fix not implemented FAILS (FX-N4 read
+                  feasible-not-implemented while BD5 said IMPLEMENTED since R25), and so does an implemented fix whose
+                  BD row is still OPEN.
   emit_model() harness/model/raw/disclosure.json: one row per claim (history), per R24 fact and per fix, each with its
                anchors, for gen_deroarch's press section (no anchor, no row: its resolver drops an unanchored row).
   --live       read-only RPC on 127.0.0.1:10102 (Content-Type: application/json, B38): GetInfo, GetEmissionAudit,
@@ -210,12 +217,82 @@ def round_index(track):
     return {r: i for i, r in enumerate(track.get('rounds') or [])}
 
 
-def evaluate(track, root=ROOT, rev=None, legacy=None, pages=None):
+def newest_measured(reg):
+    """r30 (B228): the track label ('R29', 'R28d') of the newest round whose registry status is measured or shipped;
+    None when the registry has none. Pure."""
+    ms = [r.get('id') for r in (reg or {}).get('rounds') or [] if r.get('status') in ('measured', 'shipped')]
+    return ('R' + ms[-1][1:]) if ms and str(ms[-1])[:1] == 'r' else None
+
+
+def read_registry(root=ROOT):
+    try:
+        return json.loads((Path(root) / 'harness/round.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None
+
+
+def lag_problems(track, reg):
+    """r30 (B228, L7): ['…'] when the track's current_round is before the registry's newest measured round (or that
+    round is not in the track at all). Pure."""
+    nm, cur, ri = newest_measured(reg), track.get('current_round'), round_index(track)
+    if not nm:
+        return []
+    if nm not in ri:
+        return [f'G24 lag: the newest measured round {nm} (harness/round.json) is not in the track rounds {track.get("rounds")}: book it (live record or pending live)']
+    if cur in ri and nm in ri and ri[cur] < ri[nm]:
+        return [f'G24 lag: current_round {cur} is before the newest measured round {nm} (harness/round.json): re-test and book the rounds since']
+    return []
+
+
+FX_BD_RX = re.compile(r'^\s*(FX-N\d+)\b')
+
+
+def bd_leads(root=ROOT):
+    """r30 (B228): {fix id: (BD id, lead class)} from the rft §7 BD rows whose item cell starts with a NODE-LOCAL fix
+    id ('FX-N4: relay/mempool policy …' is BD5); {} when the rft or backlog_truth is unreadable."""
+    try:
+        import importlib.util as _u
+        spec = _u.spec_from_file_location('bt_for_dt', str(Path(root) / 'harness/intel/backlog_truth.py'))
+        bt = _u.module_from_spec(spec)
+        spec.loader.exec_module(bt)
+        rows = bt.backlog_rows((Path(root) / 'artifacts/dero-rft.md').read_text(encoding='utf-8'))
+    except (OSError, ValueError, AttributeError, ImportError, SyntaxError):
+        return {}
+    out = {}
+    for i, r in rows.items():
+        m = FX_BD_RX.match(re.sub(r'[`*]', '', (r.get('cells') or ['', ''])[1]))
+        if i.startswith('BD') and m:
+            out[m.group(1)] = (i, bt.lead_class(r.get('status')))
+    return out
+
+
+def fx_bd_problems(track, bd):
+    """r30 (B228, L8): ['…'] for every NODE-LOCAL fix whose status disagrees with its BD row's lead class. Pure."""
+    out = []
+    for x in track.get('fixes') or []:
+        if x.get('kind') != 'NODE-LOCAL' or x.get('id') not in (bd or {}):
+            continue
+        rid, cls = bd[x['id']]
+        impl = x.get('status') in ('implemented', 'implemented-earlier')
+        if cls in ('implemented', 'closed') and not impl:
+            out.append(f'fix {x["id"]}: status {x.get("status")} while rft §7 {rid} leads {cls.upper()} (FX<->BD cross-check)')
+        if impl and cls not in ('implemented', 'closed'):
+            out.append(f'fix {x["id"]}: implemented while rft §7 {rid} still leads {cls.upper()} (FX<->BD cross-check)')
+    return out
+
+
+def evaluate(track, root=ROOT, rev=None, legacy=None, pages=None, registry=None, bd=None, round_checks=False):
     why, drift, bad, resolved = [], [], [], []
     ri = round_index(track)
     cur = track.get('current_round')
     if cur not in ri:
         why.append(f'current_round {cur!r} is not in rounds {track.get("rounds")}')
+    # r30 (B228): L7/L8 judge the committed track against the tree's registry and rft (G24 and the CLI pass
+    # round_checks=True); a forged track in a KAT is judged against the registry / BD map it passes, if any
+    if round_checks or registry is not None:
+        why += lag_problems(track, read_registry(root) if registry is None else registry)
+    if round_checks or bd is not None:
+        why += fx_bd_problems(track, bd_leads(root) if bd is None else bd)
     heads = round_heads(track, root)
 
     def anchors_of(where, anchors, rnd=None):
@@ -784,7 +861,7 @@ def main(argv=None):
         n = rebase_lines(track, None)
         TRACK.write_text(json.dumps(track, indent=1, ensure_ascii=False) + '\n')
         print(f'rebase-lines: {n} anchor line(s) moved in {TRACK.relative_to(ROOT)}')
-    rep = evaluate(track, rev=a.rev, legacy=legacy, pages=page_sections() if a.pages else None)
+    rep = evaluate(track, rev=a.rev, legacy=legacy, pages=page_sections() if a.pages else None, round_checks=True)
     if a.emit_model:
         MODEL.write_text(json.dumps(emit_model(track), indent=1, ensure_ascii=False) + '\n')
     try:

@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/xml"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -120,5 +122,64 @@ func TestDefaultsFollowWorkingDirectory(t *testing.T) {
 	c := default_cfg()
 	if c.Dir != wd || c.Binary != filepath.Join(wd, "bin", "dero-miner") || c.Log != filepath.Join(wd, "bin", "dero-miner.launchd.log") {
 		t.Fatalf("defaults %q %q %q do not follow the working directory %q", c.Dir, c.Binary, c.Log, wd)
+	}
+}
+
+// plist_top_keys parses the generated plist and returns the top-level <dict> key -> the text of its value element.
+func plist_top_keys(t *testing.T, b []byte) map[string]string {
+	d := xml.NewDecoder(bytes.NewReader(b))
+	d.Strict = false
+	out, depth, key, inkey, want := map[string]string{}, 0, "", false, false
+	var text strings.Builder
+	for {
+		tok, err := d.Token()
+		if err == io.EOF {
+			return out
+		}
+		if err != nil {
+			t.Fatalf("plist does not parse: %v", err)
+		}
+		switch e := tok.(type) {
+		case xml.StartElement:
+			depth++
+			if depth == 3 && e.Name.Local == "key" {
+				inkey, key = true, ""
+			} else if depth == 3 {
+				want = true
+				text.Reset()
+			}
+		case xml.CharData:
+			if inkey {
+				key += string(e)
+			} else if want {
+				text.Write(e)
+			}
+		case xml.EndElement:
+			if depth == 3 && inkey {
+				inkey = false
+			} else if depth == 3 && want {
+				out[key], want = strings.TrimSpace(text.String()), false
+			}
+			depth--
+		}
+	}
+}
+
+// r30 B234: the generated plist must carry ProcessType Interactive. Under Standard launchd clamped the CPU-bound miner
+// to the 4 E-cores (10.6-13.1k H/s vs 96.2-97.4k at 18 cores with Interactive, rft §13 2026-11-08). A missing
+// ProcessType (launchd's default, Standard-like throttling) fails too.
+func TestR30ProcessTypeInteractive(t *testing.T) {
+	c := default_cfg()
+	c.Wallet = "dero1qyexample"
+	keys := plist_top_keys(t, render(c))
+	pt, ok := keys["ProcessType"]
+	if !ok {
+		t.Fatalf("plist has no ProcessType (keys %v)", keys)
+	}
+	if pt != "Interactive" {
+		t.Fatalf("ProcessType %q, want Interactive (Standard clamps the miner to the E-cores, rft B234)", pt)
+	}
+	if keys["Nice"] != "0" || keys["Label"] == "" {
+		t.Fatalf("parser sanity: Nice %q Label %q", keys["Nice"], keys["Label"])
 	}
 }

@@ -83,7 +83,8 @@ def pi28(base):
     ok9 = e9.get('peer') == pz.peer(HOT) and e9.get('latency_rank') == 2 and e9.get('fastest_first_relays') == 3 and e9.get('also_d5') is True
     ok5 = e5.get('is_d9_top') is True and e5.get('first_relays_run') == 80 and e5.get('unserved_per_first_relay') == round(30 / 80, 4)
     ok11 = e11.get('same_netgroup') is True and e11.get('same_version') is True
-    grades = (d5['grade'], d9['grade'], d11['grade']) == ('ANOMALY', 'ANOMALY', 'ANOMALY')
+    # r30 (B201): D11 is graded; this pair's RTTs (200 / 201 ms) agree, so it is EXPLAINED (NORMAL), not ANOMALY
+    grades = (d5['grade'], d9['grade'], d11['grade']) == ('ANOMALY', 'ANOMALY', 'NORMAL')
     # a pair on two /16s reads so
     ps2 = [x for x in ps if not x['address'].startswith(b)] + [K25.peer(c, peer_id='00000000000000aa', latency_ms=201.0)]
     m2 = m.replace(b, c)

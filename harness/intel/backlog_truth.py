@@ -10,7 +10,9 @@ live), the §7 row itself (its lead status and the bold statuses inside it), and
 (the round's closure records: item, new status, record paths, premises, decision requests).
 
 Checks (each drift names file:line, expected, found and the source):
-  rows      R1 lead-stale  a row whose cell states a stronger status in bold (**CONFIRMED…**, **CLOSED…**, **FIXED…**)
+  rows      R1 lead-stale  a row whose cell states a stronger status in bold (**CONFIRMED…**, **CLOSED…**, **FIXED…**;
+                           r30 B233: also round-prefixed, **r29: FIXED:**; r30 verify D6: **DONE…**, an upper-case or
+                           multi-word prefix **R29: …** / **r29 merge: FIXED**; a ``double-backtick`` span quotes)
                            or "PAGES IMPLEMENTED" than its lead (IMPLEMENTED / BACKEND READY / OPEN …)
             R2 s13         an id a §13 "CONFIRMED live:" list (or a §13 row whose cell starts **CONFIRMED live**) names
                            while its §7 lead is IMPLEMENTED or BACKEND READY (an OPEN / PARTIAL lead may be a partial
@@ -33,7 +35,7 @@ Checks (each drift names file:line, expected, found and the source):
             row closed-class in §7
 
 Classes: closed = CLOSED / REFUTED / FIXED / DONE / MITIGATED / SHIPPED / CONFIRMED / DECIDED / ANSWERED / SUPERSEDED /
-ACCEPTED / STANDING / REPORT-ONLY; implemented = IMPLEMENTED; backend = BACKEND READY; open = everything else (OPEN,
+ACCEPTED / STANDING / REPORT-ONLY / REJECTED; implemented = IMPLEMENTED; backend = BACKEND READY; open = everything else (OPEN,
 PAUSED, PENDING, PARTIAL, BLOCKED, HELD, …). Read-only: it never edits an artifact.
 
   python3 -I harness/intel/backlog_truth.py [--root DIR] [--rft FILE] [--closures FILE] [--inventory FILE]
@@ -48,11 +50,19 @@ ROOT = HARNESS.parent
 CHECKS = ('rows', 'header', 'closures', 'inventory')
 RANK = {'open': 0, 'backend': 1, 'implemented': 2, 'closed': 3}
 CLOSED_WORDS = ('CLOSED', 'REFUTED', 'FIXED', 'DONE', 'MITIGATED', 'SHIPPED', 'CONFIRMED', 'DECIDED', 'ANSWERED',
-                'SUPERSEDED', 'ACCEPTED', 'STANDING', 'REPORT-ONLY')
+                'SUPERSEDED', 'ACCEPTED', 'STANDING', 'REPORT-ONLY', 'REJECTED')   # r30 verify D6: REJECTED (B183)
 LEAD_RX = re.compile(r'^[\s*`_~]*(?:PAGES\s+)?(' + '|'.join(re.escape(w) for w in CLOSED_WORDS)
                      + r'|IMPLEMENTED|BACKEND READY)\b')
-BOLD_RX = re.compile(r'\*\*\s*(CONFIRMED|CLOSED|FIXED|REFUTED)\b')
+# r30 (rft §7 B233): a bold status may carry a round prefix ('**r29: FIXED:**', '**r30 CONFIRMED**'): the r29 audit
+# found 11 rows whose newest bold status was round-prefixed and so invisible to R1
+# r30 verify D6: the prefix may be upper-case ('**R29: FIXED**') and several words long ('**r29 merge: FIXED**',
+# '**r29: cost bench DONE**', at most four words after the round id, none a negation: '**r29: not FIXED**' states
+# nothing); DONE is a closed bold status too
+BOLD_RX = re.compile(r'\*\*\s*(?:[rR]\d+\w*\s*:?(?:\s+(?!(?:not|no|never|un\w*)\b)[A-Za-z][\w-]*){0,4}?\s*:?\s*)?'
+                     r'(CONFIRMED|CLOSED|FIXED|REFUTED|DONE)\b')
 PAGES_RX = re.compile(r'\bPAGES IMPLEMENTED\b')
+# a CommonMark code span: a run of N backticks up to the next run of exactly N (r30 verify D6: ``a `b` c`` is one span)
+CODE_SPAN_RX = re.compile(r'(?<!`)(`+)(?!`)(?:.*?[^`])??\1(?!`)')
 ID_RX = re.compile(r'\b(BD?\d+)\b')
 ROW_ID = re.compile(r'BD?\d+')
 SCRATCH_RX = re.compile(r'<scratch>|/private/tmp/|^/|^~')
@@ -93,11 +103,13 @@ def body_rank(cell):
     """the strongest status the cell states AFTER its lead: bold **CONFIRMED/CLOSED/FIXED/REFUTED** = closed, PAGES
     IMPLEMENTED = implemented; (rank, word) or (None, None). Pure."""
     best = (None, None)
-    for m in BOLD_RX.finditer(str(cell or '')):
-        if str(cell)[:m.start()].strip(' *`_'):           # not the lead itself
+    # r30 (B233): a `code span` quotes a status (a row naming the KAT input `**r29: FIXED:**`), it does not state one
+    cell = CODE_SPAN_RX.sub(lambda m: ' ' * len(m.group(0)), str(cell or ''))
+    for m in BOLD_RX.finditer(cell):
+        if cell[:m.start()].strip(' *`_'):           # not the lead itself
             return RANK['closed'], m.group(1)
-    for m in PAGES_RX.finditer(str(cell or '')):
-        if str(cell)[:m.start()].strip(' *`_'):
+    for m in PAGES_RX.finditer(cell):
+        if cell[:m.start()].strip(' *`_'):
             best = (RANK['implemented'], 'PAGES IMPLEMENTED')
     return best
 

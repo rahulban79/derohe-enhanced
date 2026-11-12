@@ -233,8 +233,8 @@ def validate(reg, root):
         if a.get('status') == 'paused' and not resolved(resolve_anchor(root, a.get('paused_why'))):
             err.append(f'{aid}: paused without a resolving paused_why anchor')
         for b in a.get('backlog', []):
-            if not re.fullmatch(r'B\d+', str(b)):
-                err.append(f'{aid}: backlog id {b!r} is not B<n>')
+            if not re.fullmatch(r'BD?\d+', str(b)):          # r30 B230: BD<n> (disclosure rows) too
+                err.append(f'{aid}: backlog id {b!r} is not B<n> / BD<n>')
         for g in a.get('gates', []):
             if not re.fullmatch(r'G\d+', str(g)):
                 err.append(f'{aid}: gate id {g!r} is not G<n>')
@@ -328,7 +328,7 @@ def stale_exempt(m, tracks):
     return None
 
 
-def staleness(mcards, metric_defs, tracks, order, cur, stale_n):
+def staleness(mcards, metric_defs, tracks, order, cur, stale_n, paused_rounds=()):
     """(not_stale {metric: why}, finding or None) of one area: stale-evidence when no own metric (AUTO and exempt
     ones excluded, r28 N28-03) was measured in the last stale_n rounds before `cur`; no-metrics when the area has
     none at all; nothing when every own metric is exempt (paused track or single-round). Pure."""
@@ -339,10 +339,29 @@ def staleness(mcards, metric_defs, tracks, order, cur, stale_n):
     if not defined:
         return not_stale, ('no-metrics', 'low', 'the area registers no metric of its own', [], 'metrics')
     lastr = max((order.index(mc['last']['round']) for mc in defined if mc['last']), default=-1)
-    if cur in order and order.index(cur) - lastr > stale_n:
+    # r30 (rft §7 B231): a round in which the area's track was paused cannot re-measure it and does not count (the
+    # miner area: last reading r23c, R24-R29 paused, R30 resumed = 1 round, not 7)
+    gap = sum(1 for r in order[lastr + 1:order.index(cur) + 1] if r not in set(paused_rounds)) if cur in order else 0
+    if cur in order and gap > stale_n:
         return not_stale, ('stale-evidence', 'medium', f'no registered metric measured since '
                            f'{order[lastr] if lastr >= 0 else "never"} (more than {stale_n} rounds before {cur})', [], 'stale')
     return not_stale, None
+
+
+def round_tracks(root):
+    """{round id: tracks dict} from harness/round.json ({} when unreadable). r30 B231."""
+    try:
+        rj = json.loads(paths(root)['round'].read_text())
+    except (OSError, ValueError):
+        return {}
+    return {r.get('id'): (r.get('tracks') if isinstance(r.get('tracks'), dict) else {}) for r in rj.get('rounds', [])}
+
+
+def paused_rounds_of(root, track):
+    """the rounds in which `track` was paused (harness/round.json); () for an area without a track. r30 B231."""
+    if not track:
+        return ()
+    return tuple(r for r, t in round_tracks(root).items() if t.get(track) == 'paused')
 
 
 def area_paused(a, tracks):
@@ -427,6 +446,10 @@ def discover_round_records(root, reg, rid):
     for p in reversed(runs):
         ev = read_jsonl(p)
         if not ev or ev[0][1].get('round') != rid:
+            continue
+        # r30 (rft §7 B231): a record without its END line is the run still in progress (S7 reads its own record):
+        # the metrics then came from it one cycle behind; take the newest COMPLETED record
+        if not any(o.get('status') == 'END' for _, o in ev):
             continue
         stages = {o.get('stage') for _, o in ev}
         if 'test' in stages and not full:
@@ -807,6 +830,58 @@ def newest(root, pattern):
     return ps[-1] if ps else None
 
 
+def dotted(o, path):
+    for k in str(path).split('.'):
+        if not isinstance(o, dict) or k not in o:
+            return None
+        o = o[k]
+    return o
+
+
+def minerintel_value(root, s, reg):
+    """r30 (B231): field `s['field']` (dotted, e.g. 'hashrate.mean') of the LAST run of the newest
+    harness/runtime/minerintel_*.json, booked to the round its run.version names (never registry.current). A run of a
+    round whose miner track was paused (the user's reward-only runs, rft §0.3) is shown, not graded."""
+    mp = newest(root, 'minerintel_*.json')
+    if not mp:
+        return {'value': PENDING, 'why': 'no harness/runtime/minerintel_*.json (run harness/intel/miner_intel.py)'}
+    try:
+        run = (json.loads(mp.read_text()).get('runs') or [{}])[-1]
+    except (OSError, ValueError):
+        return {'value': PENDING, 'why': f'{mp.name} unreadable'}
+    v = dotted(run, s.get('field'))
+    if v is None or isinstance(v, (dict, list)):
+        return {'value': PENDING, 'why': f"{mp.name}: last run has no {s.get('field')}"}
+    rid = capture_round(f"# version {run.get('version')}\n", round_order(reg)) or UNKNOWN_ROUND
+    leaf = str(s.get('field')).split('.')[-1]
+    anc = line_anchor(root, f'harness/runtime/{mp.name}', f'"{leaf}": {json.dumps(v)}')
+    if round_tracks(root).get(rid, {}).get('miner') == 'paused':
+        return {'value': PENDING, 'why': f'reward-only run on {rid} (miner track paused, rft §0.3): {v:g} shown, not graded'
+                if isinstance(v, (int, float)) else f'reward-only run on {rid}: not graded'}
+    return {'value': v, 'anchor': anc, 'live_round': rid, 'display': f"{v:g}{(' ' + s['unit']) if s.get('unit') else ''}"
+            if isinstance(v, (int, float)) else str(v)}
+
+
+DL_CHECK_RX = re.compile(r'^check (PASS|FAIL) (S\d+)\b.*$', re.M)
+
+
+def disclosure_live_value(root, s, reg):
+    """r30 (B231): 1 when the newest harness/runtime/disclosure_live_*.txt says `check PASS <line>` (default S3,
+    GetMonetaryIntegrity agrees with GetEmissionAudit), 0 on FAIL; booked to the round of its getinfo.version."""
+    dp = newest(root, 'disclosure_live_*.txt')
+    if not dp:
+        return {'value': PENDING, 'why': 'no harness/runtime/disclosure_live_*.txt capture'}
+    t = dp.read_text(errors='replace')
+    want = s.get('check', 'S3')
+    hit = next((m for m in DL_CHECK_RX.finditer(t) if m.group(2) == want), None)
+    if not hit:
+        return {'value': PENDING, 'why': f'{dp.name} has no check {want} line'}
+    vm = re.search(r'^getinfo\.version\s+(\S+)', t, re.M)
+    rid = capture_round(f"# version {vm.group(1)}\n", round_order(reg)) if vm else None
+    return {'value': 1 if hit.group(1) == 'PASS' else 0, 'anchor': line_anchor(root, f'harness/runtime/{dp.name}', hit.group(0)),
+            'live_round': rid or UNKNOWN_ROUND, 'display': f'{hit.group(1)} ({want})'}
+
+
 def current_values(root, reg):
     """{area: {metric: entry}} for metrics read from runtime files (prom capture, log_intel, datadir, raw counts)."""
     out = {a['id']: {} for a in reg['areas']}
@@ -835,7 +910,10 @@ def current_values(root, reg):
             elif k == 'prom_ratio':
                 if s['num'] in prom and s['den'] in prom and prom[s['den']][0]:
                     v = prom[s['num']][0] / prom[s['den']][0] * s.get('scale', 1)
-                    e = {'value': round(v, 4), 'display': f"{round(v, 4)} ({prom[s['num']][0]:g} / {prom[s['den']][0]:g})",
+                    # r30 (B231): the display carries the metric's unit (a bare 41.8 read as seconds or jobs alike)
+                    unit = f" {m['unit']}" if m.get('unit') else ''
+                    e = {'value': round(v, 4), 'display': f"{round(v, 4)}{unit} ({prom[s['num']][0]:g} / {prom[s['den']][0]:g}"
+                                                          f"{' x ' + format(s['scale'], 'g') if s.get('scale', 1) != 1 else ''})",
                          'anchor': line_anchor(root, prel, prom[s['num']][1]),
                          'anchor2': line_anchor(root, prel, prom[s['den']][1]), 'live_round': prom_round or UNKNOWN_ROUND}
                 else:
@@ -848,6 +926,10 @@ def current_values(root, reg):
                     # so 4 ERRORs of the r24 run are not booked to r25 (the r25 scorecard showed 0 (r24) -> 4 (r25))
                     e = {'value': cur[s['field']], 'anchor': line_anchor(root, f'harness/runtime/{li.name}', f'"{s["field"]}": {json.dumps(cur[s["field"]])}'),
                          'live_round': capture_round(f"# version {cur.get('version')}\n", round_order(reg)) or UNKNOWN_ROUND}
+            elif k == 'minerintel':       # r30 (rft §7 B231): the miner's own run, booked by the binary it ran
+                e = minerintel_value(root, s, reg)
+            elif k == 'disclosure_live':  # r30 (rft §7 B231): the S3 line of the newest disclosure_live capture
+                e = disclosure_live_value(root, s, reg)
             elif k == 'datadir_fail' and dd:
                 d = json.loads(dd.read_text())
                 n = sum(1 for c in d.get('checks', []) if c.get('result') == 'FAIL')
@@ -917,6 +999,8 @@ def current_values(root, reg):
                          if fdoc is None else f"forensics_intel.json has no scalar kpis.{s['field']}"}
                 else:
                     e = {'value': kv, 'anchor': line_anchor(root, 'harness/runtime/forensics_intel.json', f'"{s["field"]}": {json.dumps(kv)}')}
+            elif k == 'record_field':       # r30 (miner card; B235 G34, B238 KPI): a scalar of the newest record a tool wrote
+                e = record_field(root, s)
             elif k == 'raw_count':
                 try:
                     n = sum(1 for l in (Path(root) / s['file']).read_text().splitlines() if s['quote'] in l)
@@ -930,6 +1014,36 @@ def current_values(root, reg):
     return out, {'prom': prel, 'prom_round': prom_round, 'logintel': li.name if li else None, 'datadir': dd.name if dd else None}
 
 
+def record_field(root, s):
+    """r30: {value, anchor} of field s['path'] (dot path) in the newest file matching s['glob'] (by name, the tools'
+    timestamped names sort by time). A .jsonl takes its last row whose fields match s['where'] (e.g. {"kind": "window"}).
+    No file, no field, a non-scalar or no anchor line -> pending with the reason (no anchor, no row). Pure apart from fs."""
+    files = sorted(Path(root).glob(s['glob']))
+    if not files:
+        return {'value': PENDING, 'why': f"no record matching {s['glob']} (run {s.get('tool', 'its tool')})"}
+    f = files[-1]
+    try:
+        text = f.read_text()
+        if f.suffix == '.jsonl':
+            rows = [json.loads(l) for l in text.splitlines() if l.strip()]
+            rows = [r for r in rows if all(r.get(k) == v for k, v in (s.get('where') or {}).items())]
+            doc = rows[-1] if rows else None
+        else:
+            doc = json.loads(text)
+    except (OSError, ValueError):
+        return {'value': PENDING, 'why': f'{f.name} unreadable'}
+    v = doc
+    for key in s['path'].split('.'):
+        v = v.get(key) if isinstance(v, dict) else None
+    if v is None or isinstance(v, (dict, list)) or is_pending(v):
+        return {'value': PENDING, 'why': f"{f.name} has no scalar {s['path']}"}
+    rel = str(f.relative_to(root)) if str(f).startswith(str(root)) else str(f)
+    e = {'value': v, 'anchor': line_anchor(root, rel, f'"{s["path"].split(".")[-1]}": {json.dumps(v)}')}
+    if s.get('scale'):
+        e['display'] = f"{v} ({100 * v / s['scale']:.1f} % of {s['scale']:,})"
+    return e
+
+
 # ───────────────────────────── backlog (dero-rft §7) ─────────────────────────────
 def backlog_rows(root):
     """{B id: {item, dim, anchor, status, line}} from the §7 table of artifacts/dero-rft.md."""
@@ -939,7 +1053,7 @@ def backlog_rows(root):
     except OSError:
         return out
     for i, l in enumerate(lines):
-        m = re.match(r'^\|\s*(B\d+)\s*\|(.*)\|\s*$', l)
+        m = re.match(r'^\|\s*(BD?\d+)\s*\|(.*)\|\s*$', l)        # r30 B230: BD rows were invisible
         if not m:
             continue
         c = [x.strip() for x in m.group(2).split('|')]
@@ -948,8 +1062,34 @@ def backlog_rows(root):
     return out
 
 
+def _backlog_truth():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('backlog_truth_for_area_intel', Path(__file__).resolve().parent / 'backlog_truth.py')
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+_BT = []
+
+
 def is_open(status):
-    return not re.match(r'^(CLOSED|REFUTED|DONE)\b', status.strip(), re.I)
+    """r30 (rft §7 B230): the backlog_truth classifier, not a 3-word regex. A row is closed when its LEAD is a closed
+    word (CLOSED / REFUTED / FIXED / DONE / MITIGATED / SHIPPED / CONFIRMED / DECIDED / ANSWERED / SUPERSEDED / ACCEPTED /
+    STANDING / REPORT-ONLY) or its cell states a closed status in bold after the lead ('**r29: FIXED:**'); the old
+    regex read 73 §7 rows as open and unassigned where about 5 were."""
+    if not _BT:
+        _BT.append(_backlog_truth())
+    bt = _BT[0]
+    if bt.lead_class(status) == 'closed':
+        return False
+    return bt.body_rank(status)[0] != bt.RANK['closed']
+
+
+def backlog_key(b):
+    """natural sort key of a §7 id: B2 < B10 < BD1. Pure."""
+    m = re.fullmatch(r'([A-Z]+)(\d+)', str(b))
+    return (m.group(1), int(m.group(2))) if m else (str(b), 0)
 
 
 def anchor_tokens(root, text, files=None):
@@ -959,7 +1099,11 @@ def anchor_tokens(root, text, files=None):
     ok, bad, gk = [], [], []
     if files is None:
         files = {p.name for p in root.rglob('*') if p.is_file() and '.git' not in p.parts and 'vendor' not in p.parts}
-    for t in re.findall(r'`?([\w./-]+\.(?:go|py|json|jsonl|txt|md|swift|html|sh))(?::\d+)?`?', text):
+    for mt in re.finditer(r'`?([\w./-]+\.(?:go|py|json|jsonl|txt|md|swift|html|sh))(?::\d+)?`?', text):
+        t = mt.group(1)
+        if text[max(0, mt.start(1) - 1):mt.start(1)] == '~' or text[max(0, mt.start(1) - 6):mt.start(1)].endswith('$HOME'):
+            gk.append(t)                               # r30 B230: a home path is outside the tree: testimony
+            continue
         (ok if ((root / t).exists() or Path(t).name in files) else bad).append(t)
     arch = (root / 'ARCHITECTURE.md').read_text(errors='replace') if (root / 'ARCHITECTURE.md').exists() else ''
     for n in re.findall(r'ARCHITECTURE §(\d+(?:\.\d+)?)', text):    # a heading '## 41.' or a bold sub-head '**41.3 '
@@ -994,6 +1138,89 @@ def trend(prev, cur, better, noise_rel=0.05):
     else:
         return 'flat', False
     return d, (better == 'higher' and d == 'down') or (better == 'lower' and d == 'up')
+
+
+# r30 (rft §7 B201): a peer KPI series is keyed by the node's inbound regime. r28 had 0 incoming peers, r29 had 27 (B1
+# (a)); lag_max, anomaly and v2_seen_7d rose because inbound peers became visible, not because the network changed, and
+# area_intel raised them as regressions. A metric whose source says keyed_by 'inbound_regime' is compared only with the
+# newest earlier round of the SAME regime; with none, its trend is 'regime-change' and never a regression.
+REGIME_KEY = 'inbound_regime'
+TRIAGE = 'harness/loop/proposal_triage.json'
+_regime_cache = {}
+
+
+def point_regime(root, anchor):
+    """the inbound regime of a peer KPI point: read from the kpis line of the capture its anchor names ('inbound' when
+    incoming > 0, 'outbound-only' at 0; the r30 field inbound_regime when present); None when unknown."""
+    f = (anchor or {}).get('file') or ''
+    if not re.match(r'^harness/runtime/peer_capture_\d{8}T\d{6}\.jsonl$', f):
+        return None
+    if f not in _regime_cache:
+        reg_ = None
+        try:
+            for l in (Path(root) / f).read_text().splitlines():
+                o = json.loads(l)
+                if o.get('src') == 'kpis':
+                    reg_ = o.get('inbound_regime') or (None if not isinstance(o.get('incoming'), (int, float))
+                                                       else 'inbound' if o['incoming'] > 0 else 'outbound-only')
+                    break
+        except (OSError, ValueError):
+            reg_ = None
+        _regime_cache[f] = reg_
+    return _regime_cache[f]
+
+
+def keyed_prev(measured, regimes):
+    """(prev, regime_change) for the last point of a regime-keyed series: the newest earlier point of the same regime,
+    or (None, True) when earlier points exist but none shares the last point's regime. Pure."""
+    if len(measured) < 2:
+        return None, False
+    r_last = regimes[-1]
+    for p, r in zip(reversed(measured[:-1]), reversed(regimes[:-1])):
+        if r_last is not None and r == r_last:
+            return p, False
+    return None, True
+
+
+def metric_trend(m, measured, root):
+    """(prev, direction, regression) of a metric's measured points (r30 B201; split out of the area loop so its
+    regime rule is testable, r30 fix D5a): a series keyed by REGIME_KEY compares its last point only with the newest
+    earlier point of the same regime; with none, the direction is 'regime-change' and never a regression. Annotates
+    each point's 'regime'. Pure apart from reading the anchors' capture files."""
+    last = measured[-1] if measured else None
+    prev = measured[-2] if len(measured) > 1 else None
+    regime_change = False
+    if (m.get('source') or {}).get('keyed_by') == REGIME_KEY and measured:      # r30 (B201)
+        regs = [point_regime(root, p.get('anchor')) for p in measured]
+        for p, r in zip(measured, regs):
+            p['regime'] = r
+        prev, regime_change = keyed_prev(measured, regs)
+    d, reg_ = trend(num(prev['value']) if prev else None, num(last['value']) if last else None,
+                    m.get('better', 'none'), float(m.get('noise_rel', 0.05)))
+    if regime_change:
+        d, reg_ = 'regime-change', False
+    return prev, d, reg_
+
+
+def load_triage(root):
+    """r30 (B201): {proposal id: booking ('§7 B201', '§9 ...')} from harness/loop/proposal_triage.json; a booked
+    proposal is listed with state 'booked' and does not raise its area's state. {} when the file is absent."""
+    try:
+        d = json.loads((Path(root) / TRIAGE).read_text())
+    except (OSError, ValueError):
+        return {}
+    return {k: v for k, v in (d.get('booked') or {}).items() if isinstance(v, str) and v.strip()}
+
+
+def area_state(aprops, paused, total_vals):
+    """an area card's state from its proposals: PAUSED, NO-DATA (no value), ATTENTION (a high one), WATCH (a medium
+    one), else OK. r30 (B201): a proposal booked in proposal_triage.json (state 'booked') does not count. Pure."""
+    if paused:
+        return 'PAUSED'
+    if total_vals == 0:
+        return 'NO-DATA'
+    sev = {p['severity'] for p in aprops if p.get('state') != 'booked'}
+    return 'ATTENTION' if 'high' in sev else ('WATCH' if 'medium' in sev else 'OK')
 
 
 def alert(rule, v):
@@ -1099,6 +1326,7 @@ def evaluate(root, live=False, cur_override=None):
             seen |= kinds(p)[0]
         new_kinds = sorted(now_k - seen) if len(lis) > 1 else []
     props, cards = [], []
+    triage = load_triage(root)
     stale_n = int(reg.get('stale_rounds', 2))
     for a in reg['areas']:
         aid = a['id']
@@ -1143,17 +1371,19 @@ def evaluate(root, live=False, cur_override=None):
                 pts.append(pt)
             measured = [p for p in pts if not is_pending(p['value'])]
             last = measured[-1] if measured else None
-            prev = measured[-2] if len(measured) > 1 else None
-            d, reg_ = trend(num(prev['value']) if prev else None, num(last['value']) if last else None,
-                            m.get('better', 'none'), float(m.get('noise_rel', 0.05)))
+            prev, d, reg_ = metric_trend(m, measured, root)
             if reg_ and m.get('better', 'none') != 'none':
                 found.append((*classed(m, 'metric-regression', 'high', f"{m['id']}: {prev['display']} ({prev['round']}) -> {last['display']} ({last['round']}), "
                               f"worse than {m.get('noise_rel', 0.05):.0%} noise ({m.get('better')} is better)"), [prev['anchor'], last['anchor']], m['id']))
             if last and last['round'] == live_r and alert(m.get('alert_if'), num(last['value'])):
                 found.append((*classed(m, 'live-alert', 'high', f"{m['id']} = {last['display']} trips {m['alert_if']['op']} {m['alert_if']['value']}"),
                               [last['anchor']], m['id'] + ('|alert' if m.get('class') in ('network', 'record') else '')))   # one kind for both: keep the ids apart
+            # r30 (rft §7 B231): the newest point's 'why' when it is pending (the event gate: 'no event ... a 0 here is
+            # not a reading'), so the card says why the last reading is old instead of only showing it
+            pend = newest_pending_why(pts)
             mcards.append({'id': m['id'], 'what': m.get('what'), 'unit': m.get('unit', ''), 'better': m.get('better', 'none'),
-                           'series': pts, 'last': last, 'prev': prev, 'trend': d, 'regression': reg_})
+                           'series': pts, 'last': last, 'prev': prev, 'trend': d, 'regression': reg_,
+                           'pending_why': pend})
         for b in broken:
             found.append(('anchor-broken', 'high', f"{b['metric']}@{b['round']}: anchor {b['status']} ({(b['anchor'] or {}).get('file')})",
                           [b['anchor']], f"{b['metric']}@{b['round']}"))
@@ -1249,6 +1479,10 @@ def evaluate(root, live=False, cur_override=None):
             (bl['open'] if is_open(row['status']) else bl['closed']).append(b)
             if is_open(row['status']):
                 ok_t, bad_t, gk = anchor_tokens(root, row['anchor'], files)
+                # r30 (rft §7 B230): the status cell's files anchor the row too (a free-text anchor cell whose status
+                # names `harness/...` files is anchored); a status-cell name that does not resolve is not 'broken': it
+                # may be the file the row plans (a KAT to write)
+                ok_t = ok_t + anchor_tokens(root, row['status'], files)[0]
                 ev = [{'file': 'artifacts/dero-rft.md', 'quote': f'| {b} |', 'line': row['line']}]
                 if bad_t:
                     found.append(('backlog-anchor-broken', 'medium', f'{b}: anchor token(s) {bad_t} no longer resolve', ev, b))
@@ -1258,7 +1492,8 @@ def evaluate(root, live=False, cur_override=None):
         cov = len(kat_present) + mut_now['total'] + len(a.get('gates', []))
         if cov == 0:
             found.append(('zero-coverage', 'high', 'no KAT file, no go_mutate mutation and no gate covers this area', [], 'cov'))
-        not_stale, sf = staleness(mcards, a.get('metrics', []), tracks, order, cur, stale_n)
+        not_stale, sf = staleness(mcards, a.get('metrics', []), tracks, order, cur, stale_n,
+                                  paused_rounds_of(root, a.get('track')))
         if sf:
             found.append(sf)
         # track mismatch (registry vs round.json)
@@ -1274,14 +1509,13 @@ def evaluate(root, live=False, cur_override=None):
         for k, s, t, e, key in found:
             p = {'id': pid(aid, k, key), 'area': aid, 'owner_dim': a['owner_dim'], 'kind': k, 'severity': s, 'title': t,
                  'evidence': [x for x in e if x], 'round_found': cur}
+            if p['id'] in triage:                                  # r30 (B201): booked at its §7/§9 row, leaves WATCH
+                p['state'], p['booked'] = 'booked', triage[p['id']]
             evs = '; '.join(f"{x.get('file')}:{x.get('line')}" for x in p['evidence']) or f'area_intel {k}'
             p['suggested_row'] = suggested_row(k, t, a['owner_dim'], evs, cur)
             aprops.append(p)
         props += aprops
-        sev = {p['severity'] for p in aprops}
-        state = 'PAUSED' if paused else ('ATTENTION' if 'high' in sev else ('WATCH' if 'medium' in sev else 'OK'))
-        if not paused and total_vals == 0:
-            state = 'NO-DATA'
+        state = area_state(aprops, paused, total_vals)
         cards.append({'id': aid, 'title': a['title'], 'owner_dim': a['owner_dim'], 'status': 'paused' if paused else 'active',
                       'state': state, 'paused_why': pwhy, 'paused_anchor': a.get('paused_why') if paused else None,
                       'not_stale': not_stale,
@@ -1297,7 +1531,7 @@ def evaluate(root, live=False, cur_override=None):
                           'severity': 'low', 'title': f'{k} is not registered to any area in harness/areas.json', 'evidence': [],
                           'round_found': cur, 'suggested_row': f'| B? | register {k} in harness/areas.json | harness | {k} | OPEN (self-detected {cur}) |'})
     reg_bl = {b for a in reg['areas'] for b in a.get('backlog', [])}
-    for b, row in sorted(blog.items(), key=lambda kv: int(kv[0][1:])):
+    for b, row in sorted(blog.items(), key=lambda kv: backlog_key(kv[0])):
         if b not in reg_bl and is_open(row['status']):
             props.append({'id': pid('harness', 'backlog-unassigned', b), 'area': 'harness', 'owner_dim': 'harness', 'kind': 'backlog-unassigned',
                           'severity': 'low', 'title': f'open §7 row {b} ({row["dim"]}) belongs to no area', 'round_found': cur,
@@ -1305,13 +1539,10 @@ def evaluate(root, live=False, cur_override=None):
                           'suggested_row': f'| {b} | add {b} to an area in harness/areas.json | harness | artifacts/dero-rft.md:{row["line"]} | OPEN |'})
     # carry first_seen across runs so a proposal that survives rounds shows its age
     try:
-        old = {p['id']: p for p in json.loads(paths(root)['props'].read_text()).get('proposals', [])}
+        _odoc = json.loads(paths(root)['props'].read_text())
     except (OSError, ValueError):
-        old = {}
-    for p in props:
-        o = old.get(p['id'])
-        p['first_seen'] = (o or {}).get('first_seen', cur)
-        p['runs_seen'] = (o or {}).get('runs_seen', 0) + 1
+        _odoc = {}
+    triage = carry_proposals(props, _odoc, cur)
     run_id = now().strftime('%Y%m%dT%H%M%S')
     doc = {'_doc': 'r24 area_intel scorecards (harness/intel/area_intel.py); dero-rft §0.4. Every shown value has an anchor that resolved at capture time.',
            'captured': now().isoformat(timespec='seconds'), 'run_id': run_id, 'round': cur, 'tracks': tracks,
@@ -1327,8 +1558,45 @@ def evaluate(root, live=False, cur_override=None):
                     'Each round: triage every proposal: add it as a §7 row, or mark it explained in §7/§9 with its anchor.',
             'captured': doc['captured'], 'run_id': run_id, 'round': cur,
             'counts': {s: sum(1 for p in props if p['severity'] == s) for s in ('high', 'medium', 'low')},
+            # r30 (rft §8 tooling: 'the 99 low area proposals'): {proposal id: {verdict, round, how, kind, title}}, verdict
+            # one of TRIAGE_VERDICTS; carried from run to run (a verdict is never lost when the proposal leaves the feed)
+            'triage': triage,
             'proposals': sorted(props, key=lambda p: ({'high': 0, 'medium': 1, 'low': 2}[p['severity']], p['area'], p['kind'], p['id']))}
     return doc, pdoc, errors
+
+
+TRIAGE_VERDICTS = ('fix', 'bookkeeping', 'not-a-defect')
+
+
+def newest_pending_why(pts):
+    """r30 (B231): the 'why' of a metric series' newest point when that point is pending (else None). Pure."""
+    return pts[-1].get('why') if pts and is_pending(pts[-1].get('value')) else None
+
+
+def carry_proposals(props, old_doc, cur):
+    """first_seen / runs_seen / triage carried from the previous feed `old_doc` into `props` (in place); returns the
+    triage map to write (every earlier verdict kept, r30). Pure but for the in-place update."""
+    old = {p['id']: p for p in (old_doc or {}).get('proposals', []) if isinstance(p, dict) and 'id' in p}
+    triage = (old_doc or {}).get('triage') if isinstance((old_doc or {}).get('triage'), dict) else {}
+    for p in props:
+        o = old.get(p['id'])
+        p['first_seen'] = (o or {}).get('first_seen', cur)
+        p['runs_seen'] = (o or {}).get('runs_seen', 0) + 1
+        if p['id'] in triage:                       # a triaged proposal shows its verdict
+            p['triage'] = triage[p['id']]
+    return dict(triage)
+
+
+def triage_problems(pdoc):
+    """[problem] of a proposals feed's triage map: each entry needs a verdict in TRIAGE_VERDICTS, a round and a how.
+    Pure. r30."""
+    out = []
+    for pid_, t in sorted(((pdoc or {}).get('triage') or {}).items()):
+        if not isinstance(t, dict) or t.get('verdict') not in TRIAGE_VERDICTS:
+            out.append(f'{pid_}: verdict {(t or {}).get("verdict") if isinstance(t, dict) else t!r} not in {TRIAGE_VERDICTS}')
+        elif not t.get('round') or not t.get('how'):
+            out.append(f'{pid_}: triage needs round and how')
+    return out
 
 
 def write(root, doc, pdoc):

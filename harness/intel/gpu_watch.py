@@ -14,6 +14,12 @@ stopped hashing, or the endpoint went away.
   python3 -I harness/intel/gpu_watch.py run [--settle 65] -- <cmd ...>   # before, cmd, wait one split period, after
   python3 -I harness/intel/gpu_watch.py snap                              # one reading as JSON
 Exit: the command's exit code, or 99 when the live GPU split was disturbed (STOP all GPU work).
+
+r30 B258 (rft §0.12 D-16): when NO live split exists before the command — the miner /metrics does not answer AND no
+dero-miner / gpu_split_server / gpu_hash_sais process runs (the user stopped the miner for the quiet window) — there
+is nothing to disturb: the check is N/A, `[gpu_watch] live_split: absent` is printed and the command's own exit code is
+returned (never 99). A live split before the command that is gone or changed after it, an endpoint that does not
+answer while a miner process runs, and a split that APPEARS during the command all still count as disturbed (99).
 """
 if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
     print(__doc__ or 'usage: see the header of this file')
@@ -21,6 +27,7 @@ if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:])
 import json, subprocess, sys, time, urllib.request
 
 MINER = 'http://127.0.0.1:10110/metrics'
+LIVE_NAMES = ('dero-miner', 'gpu_split_server', 'gpu_hash_sais')
 KEYS = ('dero_miner_uptime_seconds', 'dero_miner_gpu_restarts_total', 'dero_miner_split_restarts_total',
         'dero_miner_split_disabled', 'dero_miner_gpu_mismatch_total', 'dero_miner_split_hashed_total')
 
@@ -51,12 +58,33 @@ def snap(url=MINER, get=None):
 RESTART_SLACK_S = 30.0   # uptime is whole seconds and a reading takes up to the 8 s timeout
 
 
-def disturbed(a, b, elapsed=None):
+def live_procs():
+    """the names of running live-miner processes (names only; read-only ps), or None when ps fails"""
+    try:
+        out = subprocess.run(['ps', '-A', '-o', 'comm='], capture_output=True, text=True, timeout=20).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    import os
+    return sorted({os.path.basename(l.strip()) for l in out.splitlines() if os.path.basename(l.strip()) in LIVE_NAMES})
+
+
+def split_absent(a, procs):
+    """r30 B258: True when no live split exists: no /metrics reading AND a readable process table without a live-miner
+    process. An unreadable table (None) is never 'absent'. Pure."""
+    return a is None and procs is not None and not procs
+
+
+def disturbed(a, b, elapsed=None, absent=False):
     """the reasons the live split was disturbed between readings a and b ([] = undisturbed). Pure. elapsed: wall
     seconds between the readings (r21 merge, HR21-4): a miner restarted during a command that outlasted its previous
     uptime has a LARGER uptime afterwards, so 'uptime went backwards' alone misses it."""
     if a is None:
-        return ['no reading before the command (the miner /metrics did not answer): nothing can be judged']
+        if absent and b is None:                       # r30 B258: no live split before or after: nothing to disturb
+            return []
+        if b is not None:
+            return ['a live split appeared during the command (no reading before it)']
+        return ['no reading before the command (the miner /metrics did not answer) while a miner process runs or the '
+                'process table is unreadable: nothing can be judged']
     if b is None:
         return ['the miner /metrics stopped answering']
     why = []
@@ -88,11 +116,17 @@ def main(argv):
     if '--settle' in argv[:i]:
         settle = float(argv[argv.index('--settle') + 1])
     a = snap()
+    absent = split_absent(a, live_procs() if a is None else [])
     t0 = time.monotonic()
     rc = subprocess.call(argv[i + 1:])
-    time.sleep(settle)                     # one 60 s split stats period, as benchlock --gpu waits
+    if not absent:
+        time.sleep(settle)                 # one 60 s split stats period, as benchlock --gpu waits
     b = snap()
-    why = disturbed(a, b, time.monotonic() - t0)
+    why = disturbed(a, b, time.monotonic() - t0, absent=absent)
+    if absent and not why:
+        print('[gpu_watch] live_split: absent (no miner /metrics, no live-miner process): disturbance check N/A',
+              file=sys.stderr, flush=True)
+        return rc
     print(f'[gpu_watch] before={a} after={b}', file=sys.stderr, flush=True)
     if why:
         print('[gpu_watch] LIVE GPU SPLIT DISTURBED - STOP ALL GPU EXPERIMENTS: ' + '; '.join(why), file=sys.stderr, flush=True)

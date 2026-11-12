@@ -1,0 +1,249 @@
+{
+ "bad_batches": [],
+ "class": "DC3",
+ "constants": {
+  "HF1_HEIGHT": 21480,
+  "HF2_HEIGHT": 29000,
+  "MAJOR_HF2_HEIGHT": 481600,
+  "MAJOR_HF3_HEIGHT": 7504640,
+  "PREMINE": 1228125400000,
+  "credit": 271739600
+ },
+ "rule": "never a supply claim (G31): the identity checks the formula against the chain's own block rewards",
+ "schema": "r30 emission genesis v1 (B211)",
+ "segments": [
+  {
+   "anchor": "harness/runtime/r29_b182_deep_census.json ranges",
+   "blocks": 7398300,
+   "calc_supply_diff": 442747725000,
+   "checks": {
+    "batch_identities": true,
+    "coinbase_every_other_block": true,
+    "coinbase_value_zero": true,
+    "cover_contiguous": true,
+    "premine_at_topo0": true,
+    "segment_identity": true
+   },
+   "cover": [
+    0,
+    7398299
+   ],
+   "cover_batches": 73983,
+   "grant_term": "cancels (in both CalcSupply terms)",
+   "hi": 7398264,
+   "id": "S2",
+   "lo": 0,
+   "miner_types": {
+    "COINBASE": 7398299,
+    "PREMINE": 1
+   },
+   "premine_value": 1228125400000,
+   "reward_sum": 442747725000,
+   "verdict": "HOLDS"
+  },
+  {
+   "anchor": "genesis census session record `to`",
+   "blocks": 477801,
+   "calc_supply_diff": 14692380750,
+   "checks": {
+    "batch_identities": true,
+    "coinbase_every_other_block": true,
+    "coinbase_value_zero": true,
+    "cover_contiguous": true,
+    "premine_at_topo0": true,
+    "segment_identity": true
+   },
+   "cover": [
+    7398200,
+    7876000
+   ],
+   "cover_batches": 4779,
+   "grant_term": "cancels (in both CalcSupply terms)",
+   "hi": 7876000,
+   "id": "S3",
+   "lo": 7398265,
+   "miner_types": {
+    "COINBASE": 477801
+   },
+   "premine_value": null,
+   "reward_sum": 14692380750,
+   "verdict": "HOLDS"
+  }
+ ],
+ "source": {
+  "record": "harness/runtime/r30_genesis_census.json",
+  "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06"
+ },
+ "tiles": [
+  {
+   "blocks": 7398300,
+   "calc_supply_diff": 442747725000,
+   "checks": {
+    "batch_identities": true,
+    "coinbase_every_other_block": true,
+    "coinbase_value_zero": true,
+    "cover_contiguous": true,
+    "premine_at_topo0": true,
+    "segment_identity": true
+   },
+   "cover": [
+    0,
+    7398299
+   ],
+   "cover_batches": 73983,
+   "grant_term": "cancels (in both CalcSupply terms)",
+   "hi": 7398264,
+   "id": "A",
+   "lo": 0,
+   "miner_types": {
+    "COINBASE": 7398299,
+    "PREMINE": 1
+   },
+   "premine_value": 1228125400000,
+   "reward_sum": 442747725000,
+   "verdict": "HOLDS"
+  },
+  {
+   "blocks": 14500,
+   "calc_supply_diff": 445875000,
+   "checks": {
+    "batch_identities": true,
+    "coinbase_every_other_block": true,
+    "coinbase_value_zero": true,
+    "cover_contiguous": true,
+    "premine_at_topo0": true,
+    "segment_identity": true
+   },
+   "cover": [
+    7398200,
+    7412699
+   ],
+   "cover_batches": 145,
+   "grant_term": "cancels (in both CalcSupply terms)",
+   "hi": 7412674,
+   "id": "B1",
+   "lo": 7398265,
+   "miner_types": {
+    "COINBASE": 14500
+   },
+   "premine_value": null,
+   "reward_sum": 445875000,
+   "verdict": "HOLDS"
+  },
+  {
+   "blocks": 2900,
+   "calc_supply_diff": 89175000,
+   "checks": {
+    "batch_identities": true,
+    "coinbase_every_other_block": true,
+    "coinbase_value_zero": true,
+    "cover_contiguous": true,
+    "premine_at_topo0": true,
+    "segment_identity": true
+   },
+   "cover": [
+    7412600,
+    7415499
+   ],
+   "cover_batches": 29,
+   "grant_term": "cancels (in both CalcSupply terms)",
+   "hi": 7415465,
+   "id": "B2",
+   "lo": 7412675,
+   "miner_types": {
+    "COINBASE": 2900
+   },
+   "premine_value": null,
+   "reward_sum": 89175000,
+   "verdict": "HOLDS"
+  },
+  {
+   "blocks": 52200,
+   "calc_supply_diff": 1605150000,
+   "checks": {
+    "batch_identities": true,
+    "coinbase_every_other_block": true,
+    "coinbase_value_zero": true,
+    "cover_contiguous": true,
+    "premine_at_topo0": true,
+    "segment_identity": true
+   },
+   "cover": [
+    7415400,
+    7467599
+   ],
+   "cover_batches": 522,
+   "grant_term": "cancels (in both CalcSupply terms)",
+   "hi": 7467515,
+   "id": "C1",
+   "lo": 7415466,
+   "miner_types": {
+    "COINBASE": 52200
+   },
+   "premine_value": null,
+   "reward_sum": 1605150000,
+   "verdict": "HOLDS"
+  },
+  {
+   "blocks": 30500,
+   "calc_supply_diff": 937875000,
+   "checks": {
+    "batch_identities": true,
+    "coinbase_every_other_block": true,
+    "coinbase_value_zero": true,
+    "cover_contiguous": true,
+    "premine_at_topo0": true,
+    "segment_identity": true
+   },
+   "cover": [
+    7467500,
+    7497999
+   ],
+   "cover_batches": 305,
+   "grant_term": "cancels (in both CalcSupply terms)",
+   "hi": 7497942,
+   "id": "C2",
+   "lo": 7467516,
+   "miner_types": {
+    "COINBASE": 30500
+   },
+   "premine_value": null,
+   "reward_sum": 937875000,
+   "verdict": "HOLDS"
+  },
+  {
+   "blocks": 378101,
+   "calc_supply_diff": 11626605750,
+   "checks": {
+    "batch_identities": true,
+    "coinbase_every_other_block": true,
+    "coinbase_value_zero": true,
+    "cover_contiguous": true,
+    "premine_at_topo0": true,
+    "segment_identity": true
+   },
+   "cover": [
+    7497900,
+    7876000
+   ],
+   "cover_batches": 3782,
+   "grant_term": "cancels (in both CalcSupply terms)",
+   "hi": 7876000,
+   "id": "D",
+   "lo": 7497943,
+   "miner_types": {
+    "COINBASE": 378101
+   },
+   "premine_value": null,
+   "reward_sum": 11626605750,
+   "verdict": "HOLDS"
+  },
+  {
+   "hi": 7876880,
+   "id": "E",
+   "lo": 7876001,
+   "verdict": "pending",
+   "why": "no verified batch"
+  }
+ ]
+}

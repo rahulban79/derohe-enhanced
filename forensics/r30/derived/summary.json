@@ -1,0 +1,21 @@
+{
+ "end_state": {
+  "A": "pending: the run reached topo 7467545, not 7,498,540",
+  "B": "pending: the run reached topo 7467545, not 7,498,540",
+  "C": "MATCH"
+ },
+ "records_with_class_slot": 34568,
+ "replay_runs": 3,
+ "tx_bodies_missing": 0,
+ "tx_bodies_needed": 1796,
+ "tx_bodies_raw": 1796,
+ "txblocks": 1747,
+ "txs_decoded": 1796,
+ "v1_pending_fee_blocks": 1575,
+ "v1_pending_settled": 1575,
+ "v1_pending_still": 0,
+ "window": [
+  7415466,
+  7497942
+ ]
+}

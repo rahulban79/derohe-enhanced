@@ -22,7 +22,7 @@ no node, no decoder build: forged rows, forged trees and fake endpoints in temp 
       prune height is refused; clone refuses while derod runs, a destination under dero-data*, an existing one; it
       clones only balances/ and topo.map and writes the marker; census binds 7,498,540 to the recorded treehash and
       says NOT answered when the root differs; remove refuses a dir without the marker.
-  Committed: r28d is the newest version; G32 passes with the walls/inclusions rows counted (33 wall rows + replay_stops
+  Committed: r28d is the newest version (or sealed under a later one: r30 merge, v5); G32 passes with the walls/inclusions rows counted (33 wall rows + replay_stops
   + 67 inclusion rows + the file = 102); walls DC1 3 / DC3 30, inclusions DC1 67.
 
   python3 -I harness/kat/test_forensics_r29.py   # exit 0 ok · 3 a KAT failed · 4 a mutation not caught / INVALID
@@ -176,7 +176,8 @@ def fr4(base):
         if len(A.body_copies({T1}, [], t / 'v2', v1, None, str(s1))[T1]) != 1:
             f.append('FR4 one stage dir')
     src = (base / 'forensics' / 'audit2.py').read_text()
-    if "*(stage.split(':') if stage else [])" not in src:
+    # r30 merge (B246): run() guards the stage dirs stage_dirs() returned (it fails closed on ~ / a missing dir first)
+    if not ("sds = stage_dirs(stage)" in src and "for p in (v1store, v2store, archive, replay_dir, *sds):" in src):
         f.append('FR4 run() does not guard every stage dir')
     return f
 
@@ -336,11 +337,21 @@ def kats(base):
     return f
 
 
+def r28d_newest_or_sealed(led):
+    """r30 merge (v5 registered): r28d is the newest version, or sealed once a later version (r30, v5) is registered
+    on top of it (the test_forensics_r28d rule). Pure."""
+    by = {v['version']: v for v in led}
+    return 'r28d' in by and (led[-1]['version'] == 'r28d' or bool(by['r28d'].get('sealed')))
+
+
 def committed():
     f = []
     led = json.loads((ROOT / 'forensics' / 'ledger.json').read_text())['versions']
-    if led[-1]['version'] != 'r28d':
-        f.append(f"committed: newest version {led[-1]['version']}")
+    if not r28d_newest_or_sealed(led):
+        f.append(f"committed: r28d is neither newest nor sealed (newest {led[-1]['version']})")
+    # the rule refuses a later version on an UNSEALED r28d and a ledger without r28d (r30 merge self-check)
+    if r28d_newest_or_sealed([{'version': 'r28d'}, {'version': 'r30'}]) or r28d_newest_or_sealed([{'version': 'r30'}]):
+        f.append('committed: r28d_newest_or_sealed accepts an unsealed r28d under a newer version')
     B = load(HARNESS, 'forensics/bounds.py', 'bc')
     ok, det = B.g32(ROOT)
     if not ok or '102 walls/inclusions rows' not in det:

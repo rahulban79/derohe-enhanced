@@ -1,0 +1,138 @@
+{
+ "complete": true,
+ "integrity": {
+  "dedup": "exact (txids.bin sidecar + set; replaces DEDUP=200,000)",
+  "genesis_compare": "topo 0 == Generate_Genesis_Block bytes and id (check_blocks2 rejects otherwise)",
+  "reward_go_eq_python": "every block (check_blocks2 rejects otherwise)",
+  "session_end_errors": 0,
+  "session_end_wall_s": 13158.9,
+  "sessions": 5,
+  "sessions_with_end_record": 1,
+  "sessions_without_end_record": {
+   "from_topos": [
+    0,
+    154000,
+    154400,
+    157500
+   ],
+   "n": 4,
+   "why": "stopped without a session_end record: their wall and error count are not in the checkpoint"
+  },
+  "unreferenced_ids": 0
+ },
+ "range": [
+  0,
+  7876000
+ ],
+ "registration_keys": {
+  "all": {
+   "digest_set_sha256": "bdc1edfb577d787053c2dd249c15854fd4f81725f0a7c4509252c52546d22f4e",
+   "distinct_key_digests": 2141954,
+   "registrations": 2141954,
+   "repeated_keys": 0
+  }
+ },
+ "schema": "r30 genesis census summary v1 (B208, B182)",
+ "segments": [
+  {
+   "anchor": "harness/runtime/r29_b182_deep_census.json ranges",
+   "blocks": 7398300,
+   "canon_failed": {
+    "proof-scalar-not-reduced": 49
+   },
+   "canon_points": 137921292,
+   "canon_scalars": 46710768,
+   "cover": [
+    0,
+    7398299
+   ],
+   "dup_txids": 30,
+   "hi": 7398264,
+   "id": "S2",
+   "lo": 0,
+   "miniblocks": 73982990,
+   "reg_genesis_key": 0,
+   "reg_lz": {
+    "2": 542692,
+    "3": 1592426,
+    "4": 6290,
+    "5": 26
+   },
+   "txs": 4298309,
+   "types": {
+    "NORMAL": 1890907,
+    "REGISTRATION": 2141434,
+    "SC": 265968
+   },
+   "unref": 0
+  },
+  {
+   "anchor": "genesis census session record `to`",
+   "blocks": 477801,
+   "canon_failed": {},
+   "canon_points": 445942,
+   "canon_scalars": 146188,
+   "cover": [
+    7398200,
+    7876000
+   ],
+   "dup_txids": 1,
+   "hi": 7876000,
+   "id": "S3",
+   "lo": 7398265,
+   "miniblocks": 4778010,
+   "reg_genesis_key": 0,
+   "reg_lz": {
+    "3": 518,
+    "4": 2
+   },
+   "txs": 5311,
+   "types": {
+    "NORMAL": 4110,
+    "REGISTRATION": 520,
+    "SC": 681
+   },
+   "unref": 0
+  }
+ ],
+ "source": {
+  "record": "harness/runtime/r30_genesis_census.json",
+  "sha256": "15dd8df2a4b37bf22e8342094364130df57b545d06e2af870177ec9986bb8f06"
+ },
+ "totals": {
+  "blocks": 7876001,
+  "canon_failed": {
+   "proof-scalar-not-reduced": 49
+  },
+  "canon_points": 138367234,
+  "canon_scalars": 46856956,
+  "dup_txids": 31,
+  "listings": 4313525,
+  "miner_types": {
+   "COINBASE": 7876000,
+   "PREMINE": 1
+  },
+  "miner_value_nonzero": 0,
+  "miniblocks": 78760000,
+  "reg_genesis_key": 0,
+  "reg_lz": {
+   "2": 542692,
+   "3": 1592944,
+   "4": 6292,
+   "5": 26
+  },
+  "registrations": 2141954,
+  "txs": 4303620,
+  "types": {
+   "NORMAL": 1895017,
+   "REGISTRATION": 2141954,
+   "SC": 266649
+  },
+  "unref": 0,
+  "ver": {
+   "1.1": 481600,
+   "2.2": 7023040,
+   "3.3": 371361
+  }
+ }
+}

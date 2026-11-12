@@ -167,6 +167,9 @@ def stage_paused(state, changed):
     return True, f'PAUSED (miner): {PAUSE_REF}; no miner source changed since the round base'
 
 
+INFO_GATES = ('G34',)   # r30 (B235): gates whose ledger word INFO is a report (kit gate_tally counts it as passed)
+
+
 def gate_tally(lines, state):
     """S7: (passed, paused, bad) over one run's GATES.md rows. A PAUSED row counts only for a pausable gate while the
     miner track is paused; any other PAUSED row is bad (a gate that paused when it may not). Pure."""
@@ -175,6 +178,8 @@ def gate_tally(lines, state):
         cells = [c.strip() for c in l.split('|')]
         g, res = (cells[3], cells[4]) if len(cells) > 4 else ('', '')
         if res == 'PASS':
+            passed += 1
+        elif res == 'INFO' and gate_id(g) in INFO_GATES:      # r30 G34: a report below the objective, not a failure
             passed += 1
         elif res == PAUSED and state == 'paused' and gate_id(g) in PAUSABLE_GATES:
             paused += 1

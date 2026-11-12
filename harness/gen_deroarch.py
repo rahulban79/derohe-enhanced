@@ -480,6 +480,35 @@ def emit_chart(by):
               'block subsidy per halving epoch')
 
 
+def track_verdicts(root=None):
+    """r30 (B227): {claim id: (verdict, round)} of the disclosure track's newest entry per claim
+    (harness/loop/disclosure_track.json); {} when unreadable. The press KPIs and the matrix caption read it, so they
+    follow the track instead of the R8 audit rows."""
+    import json as _j
+    try:
+        t = _j.loads((Path(root or ROOT) / 'harness/loop/disclosure_track.json').read_text())
+    except (OSError, ValueError):
+        return {}
+    return {c['id']: (c['history'][-1].get('verdict'), c['history'][-1].get('round')) for c in t.get('claims') or [] if c.get('history')}
+
+
+def press_kpis(tv):
+    """r30 (B227): [(value, label)] counted over the track's C1-C8 verdicts. Pure."""
+    cs = [tv[f'C{i}'][0] for i in range(1, 9) if f'C{i}' in tv]
+    rd = next((tv[f'C{i}'][1] for i in range(1, 9) if f'C{i}' in tv), 'pending')
+    return [(str(len(cs)), f'press claims C1-C8 re-tested (track, {rd})'), (str(cs.count('CONFIRMED')), 'confirmed here'),
+            (str(cs.count('PARTLY-CONFIRMED')), 'partly confirmed'), (str(cs.count('REFUTED')), 'refuted here'),
+            (str(cs.count('CANNOT-DETERMINE-LOCALLY')), 'not decidable from a pruned node')]
+
+
+def matrix_caption(tv):
+    """r30 (B227): the C1 / C2 sentence of the matrix caption from the track (C2 is PARTLY-CONFIRMED there, not
+    refuted). Pure."""
+    w = lambda c: {'CONFIRMED': 'confirmed', 'PARTLY-CONFIRMED': 'partly confirmed', 'REFUTED': 'refuted',
+                   'CANNOT-DETERMINE-LOCALLY': 'not decidable locally'}.get((tv.get(c) or ('pending',))[0], 'pending')
+    return f'The headline (C1) is {w("C1")}; the stated *mechanism* (C2) is {w("C2")} (disclosure track, {(tv.get("C1") or (None, "pending"))[1]}).'
+
+
 def verdict_matrix(by):
     """Claim C1..C8 → verdict, as a coloured grid. One g.as per claim, class/citation from the forensics row."""
     fore = by.get('forensics', [])
@@ -495,6 +524,7 @@ def verdict_matrix(by):
         return ''
     VC = {'CONFIRMED': 'var(--gap)', 'PARTLY-CONFIRMED': 'var(--warn)',
           'REFUTED': 'var(--ok)', 'CANNOT-DETERMINE-LOCALLY': 'var(--mut)'}
+    TV = track_verdicts()
     LABEL = {'C1': 'A soundness defect exists', 'C2': 'Mechanism: prover-adjustable unbound generator',
              'C3': 'The broken check is the sole magnitude gate', 'C4': 'Inherited from ConsenSys Zether',
              'C5': 'Present from genesis of the proof path', 'C6': 'HF3 double-spend; 23.9M created (floor)',
@@ -504,7 +534,7 @@ def verdict_matrix(by):
     o = [f'<svg class="dk" viewBox="0 0 {W} {Hh}" xmlns="http://www.w3.org/2000/svg">']
     for k, (c, r) in enumerate(claims):
         y = top + k * rh
-        v = r.get('audit_verdict', '?')
+        v = (TV.get(c) or (r.get('audit_verdict', '?'),))[0]
         col = VC.get(v, 'var(--mut)')
         short = {'CONFIRMED': 'CONFIRMED', 'PARTLY-CONFIRMED': 'PARTLY', 'REFUTED': 'REFUTED',
                  'CANNOT-DETERMINE-LOCALLY': 'CANNOT TELL LOCALLY'}.get(v, v)
@@ -521,7 +551,7 @@ def verdict_matrix(by):
     return fig(''.join(o),
               'Each of the Foundation’s eight claims against the verdict this tree returns. **Red = a defect '
               'confirmed here; green = the claim as stated is refuted; amber = partly; grey = not decidable from a '
-              'pruned node.** The headline (C1) is confirmed; the stated *mechanism* (C2) is the one refuted outright.',
+              'pruned node.** ' + (matrix_caption(TV) if TV else 'The headline (C1) is confirmed; the stated *mechanism* (C2) is the one refuted outright.'),
               'press claims versus local verdict')
 
 
@@ -1584,7 +1614,7 @@ def render(rows, rejected, unverified, stats, fp):
         VCOL = {'CONFIRMED': 'var(--gap)', 'PARTLY-CONFIRMED': 'var(--warn)', 'REFUTED': 'var(--ok)',
                 'CANNOT-DETERMINE-LOCALLY': 'var(--mut)'}
         if fore:
-            A(kpis([(str(len(fore)), 'findings that survived adversarial review'),
+            A(kpis(press_kpis(track_verdicts())) if track_verdicts() else kpis([(str(len(fore)), 'findings that survived adversarial review'),
                     (str(sum(1 for r in fore if r.get('audit_verdict') == 'CONFIRMED')), 'press claims confirmed here'),
                     (str(sum(1 for r in fore if r.get('audit_verdict') == 'REFUTED')), 'refuted here'),
                     (str(sum(1 for r in fore if r.get('audit_verdict') == 'CANNOT-DETERMINE-LOCALLY')),

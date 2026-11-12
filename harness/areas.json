@@ -2772,12 +2772,23 @@
   },
   {
    "id": "r29",
-   "pipeline_full": "pending",
-   "pipeline_project": "pending",
+   "pipeline_full": "pipeline_20261108T062853",
+   "pipeline_project": "pipeline_20261108T165350",
    "anchor": {
     "file": "harness/round.json",
     "quote": "\"evidence\": \"R29 opened 2026-11-07 from 7bbe2340 (R28",
     "line": 181
+   },
+   "pinned_why": "r30 Part A: pinned to the registry full run and the round's closing project-only PASS after the measured Part D (harness/round.json r29 pipeline_full; rft §13 R29)"
+  },
+  {
+   "id": "r30",
+   "pipeline_full": "pending",
+   "pipeline_project": "pending",
+   "anchor": {
+    "file": "harness/round.json",
+    "quote": "\"evidence\": \"R30 opened 2026-11-08 from 60195187 (R29",
+    "line": 201
    }
   }
  ],
@@ -2941,7 +2952,10 @@
     "harness/kat/test_liveness_lint_r29.py",
     "harness/kat/test_pipeline_hang_r29.py",
     "harness/kat/test_stallwatch_r29.py",
-    "harness/kat/test_merge_artifacts_r29.py"
+    "harness/kat/test_merge_artifacts_r29.py",
+    "harness/kat/test_area_seal_r26.py",
+    "harness/kat/test_tools_kats_r28.py",
+    "harness/kat/test_gomut_anchors_r26.py"
    ],
    "gates": [
     "G3",
@@ -3602,12 +3616,29 @@
       }
      },
      "kats": {
-      "value": "23/23",
+      "value": "25/25",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261104T213409.jsonl",
+       "file": "harness/loop/runs/pipeline_20261105T090420.jsonl",
        "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
        "line": 45
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "23/23",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261104T213409.jsonl",
+         "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
+         "line": 45
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261105T090420.jsonl",
+         "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
+         "line": 45
+        }
+       }
+      ]
      },
      "gates": {
       "value": "5/5",
@@ -3692,7 +3723,7 @@
       }
      },
      "kats": {
-      "value": "26/26",
+      "value": "28/28",
       "anchor": {
        "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
        "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
@@ -3708,6 +3739,21 @@
          "line": 49
         },
         "why": "r28 (N28-02): booked by record r27 from pipeline_20261105T163040, before the r27b KAT harness/kat/test_resource_hygiene_r27.py entered the pipeline (pipeline_20261105T190905); the pinned r27 records (pipeline_20261105T140432 + pipeline_20261105T193623, the last r27 project-only PASS) compute this value",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
+         "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
+         "line": 49
+        }
+       },
+       {
+        "date": "2026-11-08",
+        "was": "26/26",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
+         "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
+         "line": 49
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
         "evidence": {
          "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
          "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
@@ -3799,12 +3845,29 @@
       }
      },
      "kats": {
-      "value": "27/27",
+      "value": "30/30",
       "anchor": {
        "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
        "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
        "line": 56
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "27/27",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
+         "line": 56
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_intel_r19.py\"",
+         "line": 56
+        }
+       }
+      ]
      },
      "gates": {
       "value": "5/5",
@@ -4439,12 +4502,13 @@
     },
     {
      "id": "monetary_integrity_agrees",
-     "what": "GetMonetaryIntegrity totals equal GetEmissionAudit (CI24-1)",
+     "what": "GetMonetaryIntegrity totals equal GetEmissionAudit (CI24-1); r30 B231: the newest disclosure_live capture check S3 (1 PASS / 0 FAIL), booked by getinfo.version",
      "unit": "",
      "better": "higher",
      "noise_rel": 0.0,
      "source": {
-      "kind": "manual"
+      "kind": "disclosure_live",
+      "check": "S3"
      }
     },
     {
@@ -5385,7 +5449,8 @@
     "B19",
     "B42",
     "B43",
-    "B44"
+    "B44",
+    "B183"
    ],
    "history": {
     "r24": {
@@ -7463,7 +7528,10 @@
     }
    ],
    "kat_files": [
-    "harness/kat/test_error_census_r25.py"
+    "harness/kat/test_error_census_r25.py",
+    "harness/kat/test_node_r30.py",
+    "harness/kat/test_miners_r28.py",
+    "harness/kat/test_metric_registry_r28.py"
    ],
    "gates": [
     "G9",
@@ -7797,12 +7865,29 @@
       }
      },
      "kats": {
-      "value": "1/1",
+      "value": "3/3",
       "anchor": {
        "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
        "quote": "\"step\": \"harness/kat/test_error_census_r25.py\"",
        "line": 38
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "1/1",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_error_census_r25.py\"",
+         "line": 38
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_error_census_r25.py\"",
+         "line": 38
+        }
+       }
+      ]
      },
      "gates": {
       "value": "2/2",
@@ -7880,7 +7965,9 @@
    "kat_files": [
     "harness/kat/verify_deroarch.py",
     "harness/kat/test_coherence_r24.py",
-    "harness/kat/test_backlog_truth_r28.py"
+    "harness/kat/test_backlog_truth_r28.py",
+    "harness/kat/test_ledger_pages_r30.py",
+    "harness/kat/test_soundpage_r25.py"
    ],
    "gates": [
     "G1",
@@ -7896,7 +7983,16 @@
    ],
    "gomut_prefixes": [],
    "backlog": [
-    "B53"
+    "B53",
+    "B219",
+    "B220",
+    "B221",
+    "B223",
+    "B224",
+    "B225",
+    "B226",
+    "B227",
+    "B229"
    ],
    "history": {
     "r22": {
@@ -8169,12 +8265,29 @@
       }
      },
      "kats": {
-      "value": "2/2",
+      "value": "3/3",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+       "file": "harness/loop/runs/pipeline_20261104T083928.jsonl",
        "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
-       "line": 71
-      }
+       "line": 77
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "2/2",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261103T164836.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 71
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261104T083928.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 77
+        }
+       }
+      ]
      },
      "gates": {
       "value": "10/10",
@@ -8219,12 +8332,29 @@
       }
      },
      "kats": {
-      "value": "2/2",
+      "value": "3/3",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261104T213409.jsonl",
+       "file": "harness/loop/runs/pipeline_20261105T090420.jsonl",
        "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
        "line": 86
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "2/2",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261104T213409.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 86
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261105T090420.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 86
+        }
+       }
+      ]
      },
      "gates": {
       "value": "10/10",
@@ -8269,12 +8399,29 @@
       }
      },
      "kats": {
-      "value": "2/2",
+      "value": "3/3",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261105T163040.jsonl",
+       "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
        "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
-       "line": 92
-      }
+       "line": 93
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "2/2",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261105T163040.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 92
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 93
+        }
+       }
+      ]
      },
      "gates": {
       "value": "10/10",
@@ -8319,12 +8466,29 @@
       }
      },
      "kats": {
-      "value": "3/3",
+      "value": "4/4",
       "anchor": {
        "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
        "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
        "line": 104
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "3/3",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 104
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/verify_deroarch.py --mutations\"",
+         "line": 104
+        }
+       }
+      ]
      },
      "gates": {
       "value": "10/10",
@@ -8394,7 +8558,8 @@
     }
    ],
    "kat_files": [
-    "harness/kat/test_disclosure_track_r24.py"
+    "harness/kat/test_disclosure_track_r24.py",
+    "harness/kat/test_disclosure_track_r26.py"
    ],
    "gates": [
     "G22",
@@ -8403,7 +8568,18 @@
    "gomut_prefixes": [],
    "backlog": [
     "B8",
-    "B9"
+    "B9",
+    "B214",
+    "B228",
+    "BD1",
+    "BD2",
+    "BD3",
+    "BD4",
+    "BD5",
+    "BD6",
+    "BD7",
+    "BD8",
+    "BD9"
    ],
    "history": {
     "r22": {
@@ -8597,12 +8773,29 @@
       }
      },
      "kats": {
-      "value": "1/1",
+      "value": "2/2",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261104T213409.jsonl",
+       "file": "harness/loop/runs/pipeline_20261105T090420.jsonl",
        "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
        "line": 29
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "1/1",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261104T213409.jsonl",
+         "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
+         "line": 29
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261105T090420.jsonl",
+         "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
+         "line": 29
+        }
+       }
+      ]
      },
      "gates": {
       "value": "2/2",
@@ -8631,12 +8824,29 @@
       }
      },
      "kats": {
-      "value": "1/1",
+      "value": "2/2",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261105T163040.jsonl",
+       "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
        "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
        "line": 32
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "1/1",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261105T163040.jsonl",
+         "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
+         "line": 32
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
+         "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
+         "line": 32
+        }
+       }
+      ]
      },
      "gates": {
       "value": "2/2",
@@ -8665,12 +8875,29 @@
       }
      },
      "kats": {
-      "value": "1/1",
+      "value": "2/2",
       "anchor": {
        "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
        "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
        "line": 35
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "1/1",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
+         "line": 35
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_disclosure_track_r24.py\"",
+         "line": 35
+        }
+       }
+      ]
      },
      "gates": {
       "value": "2/2",
@@ -8688,13 +8915,8 @@
    "id": "miner",
    "title": "Miner (dero-miner CPU sort, GPU split, payouts per hash)",
    "owner_dim": "cpusort+gpu+payouts(miner half)",
-   "status": "paused",
+   "status": "active",
    "track": "miner",
-   "paused_why": {
-    "file": "artifacts/dero-rft.md",
-    "quote": "**State: PAUSED until the user explicitly asks to resume.**",
-    "line": 146
-   },
    "code_paths": [
     "cmd/dero-miner/",
     "astrobwt/",
@@ -8703,17 +8925,24 @@
     "harness/intel/miner_runs.py",
     "harness/intel/gpu_watch.py",
     "harness/intel/payout_census.py",
-    "harness/intel/contention.py"
+    "harness/intel/contention.py",
+    "harness/intel/hashrate_objective.py",
+    "harness/intel/payout_ledger.py",
+    "harness/intel/payout_24h_reads.py",
+    "harness/pipeline/quiet_window.py",
+    "tools/launchd/"
    ],
    "metrics": [
     {
      "id": "live_hs",
-     "what": "live TOTAL H/s window mean",
+     "what": "live TOTAL H/s, mean of the last run of the newest harness/runtime/minerintel_*.json (r30 B231: booked by run.version; a paused-round run is shown, not graded)",
      "unit": "H/s",
      "better": "higher",
      "noise_rel": 0.03,
      "source": {
-      "kind": "manual"
+      "kind": "minerintel",
+      "field": "hashrate.mean",
+      "unit": "H/s"
      }
     },
     {
@@ -8725,18 +8954,55 @@
      "source": {
       "kind": "manual"
      }
+    },
+    {
+     "id": "objective_live_hs",
+     "what": "G34: measured live TOTAL H/s window mean against the 150,000 objective (rft §2.21)",
+     "unit": "H/s",
+     "better": "higher",
+     "noise_rel": 0.03,
+     "source": {
+      "kind": "record_field",
+      "glob": "harness/runtime/r30_hashrate_objective_*.json",
+      "path": "window.mean_hs",
+      "scale": 150000,
+      "tool": "harness/intel/hashrate_objective.py --write"
+     }
+    },
+    {
+     "id": "dero_per_day",
+     "what": "B238 KPI: DERO/day from paid shares only, newest window of the payout ledger",
+     "unit": "DERO/day",
+     "better": "higher",
+     "noise_rel": 0.25,
+     "source": {
+      "kind": "record_field",
+      "glob": "harness/runtime/payout_daily.jsonl",
+      "path": "DERO_per_day",
+      "where": {
+       "kind": "window"
+      },
+      "tool": "harness/intel/payout_ledger.py"
+     }
     }
    ],
    "kat_files": [
     "harness/kat/test_intel_r21_splitpipe.py",
-    "harness/kat/test_intel_r23c_payouts.py"
+    "harness/kat/test_intel_r23c_payouts.py",
+    "harness/kat/test_hashrate_objective_r30.py",
+    "harness/kat/test_payout_ledger_r30.py",
+    "harness/kat/test_payout_24h_reads_r30.py",
+    "harness/kat/test_miner_intel_rot_r30.py",
+    "harness/kat/test_quiet_window_r30.py",
+    "harness/kat/test_miner_card_r30.py"
    ],
    "gates": [
     "G17",
     "G18",
     "G19",
     "G20",
-    "G21"
+    "G21",
+    "G34"
    ],
    "gomut_prefixes": [
     "gm-dsac",
@@ -8757,7 +9023,9 @@
     "gm-r21-watch",
     "gm-r21-ledger",
     "gm-r23c-expect",
-    "gm-r22-submit"
+    "gm-r22-submit",
+    "gm-r30",
+    "gm-r30-launchd"
    ],
    "backlog": [
     "B3",
@@ -8766,7 +9034,14 @@
     "B26",
     "B27",
     "B37",
-    "B50"
+    "B50",
+    "B234",
+    "B235",
+    "B236",
+    "B237",
+    "B238",
+    "B239",
+    "B222"
    ],
    "history": {
     "r23c": {
@@ -9101,7 +9376,8 @@
       }
      }
     }
-   }
+   },
+   "note": "r30 Part A: resumed (user 2026-11-08, rft §0.3 State ACTIVE, §2.18); r24-r29 were paused. r30 miner dimension: B26/B27/B239/L-C2 code, G34 + payout ledger + quiet-window runner (record_field metrics)."
   },
   {
    "id": "consensus",
@@ -9118,7 +9394,9 @@
     "p2p/consensus_obs_r25.go",
     "p2p/r25_consensus_obs_test.go",
     "cmd/derod/rpc/consensus_stats_r25.go",
-    "cmd/derod/rpc/r25_consensus_test.go"
+    "cmd/derod/rpc/r25_consensus_test.go",
+    "harness/intel/hf4_watch.py",
+    "harness/kat/test_node_r30.py"
    ],
    "metrics": [
     {
@@ -9276,7 +9554,8 @@
     "harness/kat/test_consensus_intel_r24.py",
     "harness/kat/test_consensus_intel_r25.py",
     "harness/kat/test_consensus_intel_r29.py",
-    "harness/kat/test_difficulty_crossimpl_r27.py"
+    "harness/kat/test_difficulty_crossimpl_r27.py",
+    "harness/kat/test_node_r30.py"
    ],
    "gates": [
     "G26"
@@ -9293,7 +9572,8 @@
     "B60",
     "B61",
     "B62",
-    "B72"
+    "B72",
+    "B195"
    ],
    "feeds": [
     {
@@ -9905,7 +10185,8 @@
     "harness/kit/privkit.py",
     "harness/kat/test_peer_intel_r24.py",
     "harness/kat/test_peer_intel_r25.py",
-    "harness/kat/test_privkit_r24.py"
+    "harness/kat/test_privkit_r24.py",
+    "harness/kat/test_node_r30.py"
    ],
    "metrics": [
     {
@@ -9916,7 +10197,8 @@
      "noise_rel": 0.15,
      "source": {
       "kind": "peerintel",
-      "field": "peers_active"
+      "field": "peers_active",
+      "keyed_by": "inbound_regime"
      }
     },
     {
@@ -9927,7 +10209,8 @@
      "noise_rel": 0.15,
      "source": {
       "kind": "peerintel",
-      "field": "netgroups"
+      "field": "netgroups",
+      "keyed_by": "inbound_regime"
      }
     },
     {
@@ -9938,7 +10221,8 @@
      "noise_rel": 0.0,
      "source": {
       "kind": "peerintel",
-      "field": "lag_max"
+      "field": "lag_max",
+      "keyed_by": "inbound_regime"
      },
      "alert_if": {
       "op": ">",
@@ -9954,7 +10238,8 @@
      "noise_rel": 0.2,
      "source": {
       "kind": "peerintel",
-      "field": "first_relay_top_share"
+      "field": "first_relay_top_share",
+      "keyed_by": "inbound_regime"
      },
      "class": "network"
     },
@@ -9966,7 +10251,8 @@
      "noise_rel": 0.0,
      "source": {
       "kind": "peerintel",
-      "field": "observed"
+      "field": "observed",
+      "keyed_by": "inbound_regime"
      },
      "class": "network"
     },
@@ -9978,7 +10264,8 @@
      "noise_rel": 0.0,
      "source": {
       "kind": "peerintel",
-      "field": "anomaly"
+      "field": "anomaly",
+      "keyed_by": "inbound_regime"
      },
      "class": "network"
     },
@@ -9990,7 +10277,8 @@
      "noise_rel": 0.0,
      "source": {
       "kind": "peerintel",
-      "field": "v2_seen_7d"
+      "field": "v2_seen_7d",
+      "keyed_by": "inbound_regime"
      },
      "class": "network"
     }
@@ -10000,7 +10288,8 @@
     "harness/kat/test_peer_intel_r25.py",
     "harness/kat/test_privkit_r24.py",
     "harness/kat/test_peer_intel_r27.py",
-    "harness/kat/test_peerkit_label_r29.py"
+    "harness/kat/test_peerkit_label_r29.py",
+    "harness/kat/test_node_r30.py"
    ],
    "gates": [
     "G27"
@@ -10015,7 +10304,8 @@
     "B68",
     "B69",
     "B70",
-    "B71"
+    "B71",
+    "B201"
    ],
    "history": {
     "r24": {
@@ -10481,7 +10771,19 @@
     "harness/kat/test_tooling_intel_r25.py",
     "harness/kat/test_meta_review_r25.py",
     "harness/intel/round_checkpoint.py",
-    "harness/kat/test_round_checkpoint_r25.py"
+    "harness/kat/test_round_checkpoint_r25.py",
+    "harness/kit/pdfscan.py",
+    "artifacts/src/print_copy.py",
+    "harness/intel/privacy_audit.py",
+    "harness/kat/test_privacy_pdf_r30.py",
+    "harness/intel/coherence_audit.py",
+    "harness/kat/test_coherence_audit_r30.py",
+    "harness/kat/test_tooling_r30.py",
+    "harness/kit/minerprotect.py",
+    "harness/kat/test_minerprotect_r30.py",
+    "harness/intel/round_pause.py",
+    "harness/kit/handoff.py",
+    "harness/kat/test_round_pause_r30.py"
    ],
    "metrics": [
     {
@@ -10681,7 +10983,15 @@
     "harness/kat/test_meta_review_r25.py",
     "harness/kat/test_round_checkpoint_r25.py",
     "harness/kat/test_artifacts_memory_r27.py",
-    "harness/kat/test_tooling_r29.py"
+    "harness/kat/test_tooling_r29.py",
+    "harness/kat/test_scratch_gc_r30.py",
+    "harness/kat/test_privacy_pdf_r30.py",
+    "harness/kat/test_coherence_audit_r30.py",
+    "harness/kat/test_artifacts_memory_r28.py",
+    "harness/kat/test_tooling_r30.py",
+    "harness/kat/test_minerprotect_r30.py",
+    "harness/kat/test_scratch_gc_ref_r30.py",
+    "harness/kat/test_round_pause_r30.py"
    ],
    "gates": [],
    "gomut_prefixes": [
@@ -10700,7 +11010,17 @@
     "B104",
     "B116",
     "B117",
-    "B119"
+    "B119",
+    "B206",
+    "B205",
+    "B193",
+    "B204",
+    "B228",
+    "B230",
+    "B231",
+    "B232",
+    "B233",
+    "B244"
    ],
    "history": {
     "r25": {
@@ -11211,12 +11531,29 @@
       }
      },
      "kats": {
-      "value": "4/4",
+      "value": "5/5",
       "anchor": {
        "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
        "quote": "\"step\": \"harness/kat/test_tooling_intel_r25.py\"",
        "line": 81
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "4/4",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_tooling_intel_r25.py\"",
+         "line": 81
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_tooling_intel_r25.py\"",
+         "line": 81
+        }
+       }
+      ]
      },
      "kat_mutation_kill_pct": {
       "value": 100.0,
@@ -11340,7 +11677,9 @@
     "harness/kat/test_forensics_frontend2_r26.py",
     "harness/runtime/forensics_replay.json",
     "harness/runtime/forensics_intel.json",
-    "harness/kat/test_forensics_r28.py"
+    "harness/kat/test_forensics_r28.py",
+    "harness/forensics/b182_census_r29.py",
+    "harness/forensics/canon_parity_r30.py"
    ],
    "metrics": [
     {
@@ -11509,7 +11848,18 @@
     "harness/kat/test_forensics_r28.py",
     "harness/kat/test_forensics_r29.py",
     "harness/kat/test_b182_fetch_r29.py",
-    "harness/kat/test_b182_deep_r29.py"
+    "harness/kat/test_b182_deep_r29.py",
+    "harness/kat/test_forensics_r30.py",
+    "harness/kat/test_forensics_bounds_r26.py",
+    "harness/kat/test_forensics_r28d.py",
+    "harness/kat/test_forensics_frontend2_r26.py",
+    "harness/kat/test_forensics_audit2_r26.py",
+    "harness/kat/test_forensics_classes_r26.py",
+    "harness/kat/test_forensics_r26.py",
+    "harness/kat/test_b182_census_r30.py",
+    "harness/kat/test_genesis_r30.py",
+    "harness/kat/test_merge_traps_r30.py",
+    "harness/kat/test_canon_parity_r30.py"
    ],
    "gates": [
     "G28",
@@ -11534,7 +11884,25 @@
     "B84",
     "B95",
     "B96",
-    "B97"
+    "B97",
+    "B202",
+    "B203",
+    "B207",
+    "B209",
+    "B210",
+    "B216",
+    "B217",
+    "B218",
+    "B110",
+    "B208",
+    "B211",
+    "B212",
+    "B213",
+    "B214",
+    "B215",
+    "B240",
+    "B246",
+    "B247"
    ],
    "history": {
     "r25": {
@@ -11701,12 +12069,29 @@
       }
      },
      "kats": {
-      "value": "2/2",
+      "value": "7/7",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261104T213409.jsonl",
+       "file": "harness/loop/runs/pipeline_20261105T090420.jsonl",
        "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
        "line": 38
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "2/2",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261104T213409.jsonl",
+         "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
+         "line": 38
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261105T090420.jsonl",
+         "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
+         "line": 38
+        }
+       }
+      ]
      },
      "gates": {
       "value": "3/3",
@@ -11847,12 +12232,29 @@
       }
      },
      "kats": {
-      "value": "2/2",
+      "value": "7/7",
       "anchor": {
-       "file": "harness/loop/runs/pipeline_20261105T163040.jsonl",
+       "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
        "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
        "line": 41
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "2/2",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261105T163040.jsonl",
+         "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
+         "line": 41
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261105T193623.jsonl",
+         "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
+         "line": 41
+        }
+       }
+      ]
      },
      "gates": {
       "value": "3/3",
@@ -11993,12 +12395,29 @@
       }
      },
      "kats": {
-      "value": "4/4",
+      "value": "9/9",
       "anchor": {
        "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
        "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
        "line": 45
-      }
+      },
+      "corrections": [
+       {
+        "date": "2026-11-08",
+        "was": "4/4",
+        "was_anchor": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
+         "line": 45
+        },
+        "why": "r30 B230/B170: 14 KAT files that were registered to no area are now owned (tooling, forensics, observability, docs, harness, disclosure); the area's kats count of this round's records now includes them",
+        "evidence": {
+         "file": "harness/loop/runs/pipeline_20261106T111617.jsonl",
+         "quote": "\"step\": \"harness/kat/test_forensics_r25.py\"",
+         "line": 45
+        }
+       }
+      ]
      },
      "gates": {
       "value": "5/5",
