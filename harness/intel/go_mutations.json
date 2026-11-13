@@ -13161,6 +13161,38 @@
    "test": "TestR30BuildRetry240Bits",
    "find": "\t\t\t\t\tif i >= n || fmt.Sprint(r) != \"currently we cannot use more than 240 bits\" {",
    "replace": "\t\t\t\t\tif i >= n {"
+  },
+  {
+   "id": "gm-r30b-launchd-gsplit-default",
+   "file": "tools/launchd/main.go",
+   "pkg": "./tools/launchd/",
+   "test": "TestR30bLeverDefaults",
+   "find": "const DEFAULT_GSPLIT = \"8192,3,2\"",
+   "replace": "const DEFAULT_GSPLIT = \"\""
+  },
+  {
+   "id": "gm-r30b-launchd-cpu-max",
+   "file": "tools/launchd/main.go",
+   "pkg": "./tools/launchd/",
+   "test": "TestR30bLeverDefaults",
+   "find": "\"--cpu-max=100\", \"--gpu=gpu-miner-poc/gpu_hash_sais\"",
+   "replace": "\"--cpu-max=90\", \"--gpu=gpu-miner-poc/gpu_hash_sais\""
+  },
+  {
+   "id": "gm-r30b-launchd-gpu-max",
+   "file": "tools/launchd/main.go",
+   "pkg": "./tools/launchd/",
+   "test": "TestR30bLeverDefaults",
+   "find": "\"--gpu-max=100\", \"--metrics-bind",
+   "replace": "\"--gpu-max=96\", \"--metrics-bind"
+  },
+  {
+   "id": "gm-r30b-launchd-env-block",
+   "file": "tools/launchd/main.go",
+   "pkg": "./tools/launchd/",
+   "test": "TestR30bLeverDefaults",
+   "find": "\tif g := strings.TrimSpace(c.GSplit); g != \"\" {",
+   "replace": "\tif g := strings.TrimSpace(c.GSplit); false && g != \"\" {"
   }
  ]
 }

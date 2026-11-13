@@ -39,7 +39,13 @@ const WALLET_PLACEHOLDER = "WALLET_ADDRESS"
 type plist_cfg struct {
 	Label, Dir, Binary, Wallet, Daemon, Log string
 	Extra                                   []string // further dero-miner flags, verbatim
+	GSplit                                  string   // DERO_GSPLIT batch,depth,inflight in EnvironmentVariables; "" = none
 }
+
+// r30 post-close (rft §2.29, §0.12 D-22, §7 B291): the defaults carry the levers the R30 quiet window measured B-WINS
+// (harness/runtime/r30_qw/results.json): --cpu-max 100 (L-C1, x1.016 ABBA n 6), --gpu-max 100 and DERO_GSPLIT=8192,3,2
+// (L-G1: x1.30 at gpu-max 96, x1.08 at gpu-max 100). Their live gain is measured by B291 against the r30 baseline.
+const DEFAULT_GSPLIT = "8192,3,2"
 
 // default_cfg roots the paths at the current directory: run it from the repository root (go run ./tools/launchd).
 // A hard-coded checkout path made the plist wrong on any other machine or checkout.
@@ -47,8 +53,8 @@ func default_cfg() plist_cfg {
 	dir, _ := os.Getwd() // "" (refused by check as not absolute) if the cwd is gone
 	return plist_cfg{Label: LABEL, Dir: dir, Binary: filepath.Join(dir, "bin", "dero-miner"), Wallet: WALLET_PLACEHOLDER,
 		Daemon: "127.0.0.1:10100", Log: filepath.Join(dir, "bin", "dero-miner.launchd.log"),
-		Extra: []string{"--mining-threads=20", "--cpu-max=90", "--gpu=gpu-miner-poc/gpu_hash_sais", "--gpu-mode=split",
-			"--gpu-max=96", "--metrics-bind=127.0.0.1:10110"}}
+		Extra: []string{"--mining-threads=20", "--cpu-max=100", "--gpu=gpu-miner-poc/gpu_hash_sais", "--gpu-mode=split",
+			"--gpu-max=100", "--metrics-bind=127.0.0.1:10110"}, GSplit: DEFAULT_GSPLIT}
 }
 
 // program_args is the miner's argv; --supervised is always present, exactly once.
@@ -93,6 +99,13 @@ func render(c plist_cfg) []byte {
 	kv("ThrottleInterval", func() { w.WriteString("<integer>30</integer>") })
 	kv("Nice", func() { w.WriteString("<integer>0</integer>") })
 	kv("ProcessType", func() { w.WriteString("<string>Interactive</string>") })
+	if g := strings.TrimSpace(c.GSplit); g != "" { // r30 post-close (B291): the GPU split geometry the quiet window measured
+		kv("EnvironmentVariables", func() {
+			w.WriteString("<dict><key>DERO_GSPLIT</key>")
+			xml_string(&w, g)
+			w.WriteString("</dict>")
+		})
+	}
 	kv("StandardInPath", func() { xml_string(&w, "/dev/null") })
 	kv("StandardOutPath", func() { xml_string(&w, c.Log) })
 	kv("StandardErrorPath", func() { xml_string(&w, c.Log) })
@@ -126,6 +139,7 @@ func run(args []string, out, errw io.Writer) int {
 	fs.StringVar(&c.Log, "log", c.Log, "stdout/stderr file")
 	fs.StringVar(&c.Label, "label", c.Label, "launchd label")
 	extra := fs.String("flags", strings.Join(c.Extra, " "), "further dero-miner flags, space separated")
+	fs.StringVar(&c.GSplit, "gsplit", c.GSplit, "DERO_GSPLIT batch,depth,inflight for split mode (\"\" = the miner's built-in default)")
 	strict := fs.Bool("check", true, "refuse a placeholder wallet address")
 	if err := fs.Parse(args); err != nil {
 		return 2

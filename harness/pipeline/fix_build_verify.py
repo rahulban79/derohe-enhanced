@@ -642,7 +642,8 @@ for _pkg, _pat in {
                   '|TestR23bRelayWindowDropsBeforeMempool|TestR23bRelayHF3TableRefused'
                   '|TestR23bRelayWindowPassesInWindow',
         './tools/launchd/': 'TestProgramArgsAlwaysSupervisedOnce|TestCheckRefusesPlaceholderWallet|TestRunTemplateAndStrict'
-                            '|TestRenderEscapes|TestPlutilLint|TestR30ProcessTypeInteractive',
+                            '|TestRenderEscapes|TestPlutilLint|TestR30ProcessTypeInteractive'
+                            '|TestR30bLeverDefaults',   # r30 post-close (B291): the R30 levers are the generator's defaults
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
@@ -860,15 +861,65 @@ def sh(cmd, timeout=1800, cwd=ROOT, env=None):
         raise
 
 
-def step_timeout(step, budgets, hk):
+CONTENTION_FACTOR_MAX = 3.0            # r30 post-close: the liveness limit stretches at most x3 under CPU contention
+
+
+def contention_factor(c):
+    """r30 post-close (B252f): how much slower a step runs on the cores the census leaves free.
+    factor = clamp(ncpu / max(1, ncpu - miner - foreign - node cores), 1, CONTENTION_FACTOR_MAX). Pure.
+    An unknown or failed census is 1.0: the limit is never stretched on a guess. Only the liveness hard limit
+    scales; no gate, KAT threshold or STEP_BUDGETS row changes (pipeline_20261113T003909: a 180 s row HUNG at
+    544 s of 540 with the miner on 18 of 20 cores; standalone it passed in 633 s)."""
+    try:
+        n = float(c.get('ncpu') or 0)
+        busy = sum(float(c.get(k) or 0) for k in ('miner_cores', 'foreign_cores', 'node_cores'))
+    except (AttributeError, TypeError, ValueError):
+        return 1.0
+    if n <= 0:
+        return 1.0
+    return round(min(CONTENTION_FACTOR_MAX, max(1.0, n / max(1.0, n - busy))), 2)
+
+
+def step_timeout(step, budgets, hk, factor=1.0):
     """r29: the hard limit of one S7 step = hangkit.budget_timeout(its STEP_BUDGETS row, else the default row);
-    2400 s (the pre-r29 literal) when the budget document or the kit is missing. Pure."""
+    2400 s (the pre-r29 literal) when the budget document or the kit is missing. Pure.
+    r30 post-close: x factor (contention_factor of the census at the stage start; 1.0 on a quiet box)."""
     if hk is None or not isinstance(budgets, dict):
         return 2400
     import re as _re
     key = _re.sub(r'pipeline-\d{8}T\d{6}', 'pipeline-<TS>', str(step).strip())
     b = (budgets.get('steps') or {}).get(key, budgets.get('default_s', 60))
-    return hk.budget_timeout(b)
+    return round(hk.budget_timeout(b) * max(1.0, float(factor)), 1)
+
+
+PAGE_CHECKS = (['harness/kit/soundpage.py', '--check-gen'], ['harness/kit/soundpage.py', '--check-known'],
+               ['harness/kit/soundpage.py', '--check-measured'], ['artifacts/src/gen_enhancements.py', '--check'])
+PAGE_SOURCES = ('artifacts/dero-rft.md', 'artifacts/dero-soundness-{r}.html', 'artifacts/dero-enhancements-r28-r30.html')
+
+
+def page_problems(checks, dirty):
+    """r30 post-close (B271a, D-25): why the COMMITTED generated pages cannot pass this run, before it spends ~30 min.
+    checks = [(argv, rc)] of PAGE_CHECKS on the work tree; dirty = page sources with uncommitted changes. Pure.
+    pipeline_20261113T022829 failed after 27 min at test_ledger_pages_r30 'soundness page generated blocks are stale':
+    b1c0131d/ee74da8e changed rft rows that feed the soundness page without regen_round --apply."""
+    out = [f"stale: {' '.join(a)} exit {rc} (run harness/pipeline/regen_round.py --apply, then commit)"
+           for a, rc in checks if rc != 0]
+    out += [f'uncommitted: {d} (the KATs read the committed pages: regen_round --apply, then commit)' for d in dirty]
+    return out
+
+
+def pages_preflight():
+    """r30 post-close (B271a): the page-freshness checks + a clean page set, as a stage before S1; FAIL fast (exit 10)"""
+    rid = str(CUR_ROUND.get('id') or '')
+    checks = [(a, sh([sys.executable, '-I'] + a, timeout=300)[0]) for a in PAGE_CHECKS]
+    srcs = [s.format(r=rid) for s in PAGE_SOURCES]
+    st = sh(['git', 'status', '--porcelain', '--'] + srcs, timeout=60)
+    dirty = sorted({ln[3:].strip() for ln in (st[1] or '').splitlines() if ln.strip()})
+    probs = page_problems(checks, dirty)
+    if probs:
+        event('pages', 'FAIL', why=probs)
+        finish(10)
+    event('pages', 'PASS', checks=len(checks), sources=srcs)
 
 
 def run_step(st, timeout, sh_fn, hk):
@@ -1727,8 +1778,11 @@ def s3k_kats():
         _budgets = _sb.load(ROOT) if _sb else None
     except (OSError, ValueError):
         _budgets = None
+    _census = ab_census()                              # r30 post-close (B252f): one census; the limit scales by it
+    _cf = contention_factor(_census)
+    event('kats', 'INFO', contention_factor=_cf, census={k: _census.get(k) for k in ('ncpu', 'miner_cores', 'foreign_cores', 'node_cores', 'load1')})
     for p in kats:
-        limit = step_timeout(str(p.relative_to(ROOT)), _budgets, _HK)
+        limit = step_timeout(str(p.relative_to(ROOT)), _budgets, _HK, _cf)
         rc, out, err, hung = run_step([sys.executable, '-I', str(p)], limit, sh, _HK)
         if hung:
             event('kats', 'FAIL', kat=p.name, why='HUNG', **hung)
@@ -2892,6 +2946,9 @@ def s7_project():
     # r30 (B225): the soundness page's generated record blocks must be current before G22 judges the page (exit 3 =
     # stale: run soundpage.py --write-gen, as regen_round does)
     steps += [[sys.executable, 'harness/kit/soundpage.py', '--check-gen']]
+    # r31 prep (user 2026-11-12, rft §2.27): the R28-R30 summary page is current and every figure on it is still on an
+    # rft line naming its row (exit 4 an unbacked figure, 3 the page is stale: run artifacts/src/gen_enhancements.py)
+    steps += [[sys.executable, 'artifacts/src/gen_enhancements.py', '--check']]
     steps += [[sys.executable, 'harness/run_gates.py', f'pipeline-{TS}'],
               [sys.executable, 'harness/gen_index.py'],
               # r24: the full cross-artifact coherence check (G25's set plus the index page gen_index just wrote); a
@@ -2907,6 +2964,9 @@ def s7_project():
         _budgets = _sb.load(ROOT) if _sb else None
     except (OSError, ValueError):
         _budgets = None
+    _census = ab_census()                              # r30 post-close (B252f): one census; the limit scales by it
+    _cf = contention_factor(_census)
+    event('project', 'INFO', contention_factor=_cf, census={k: _census.get(k) for k in ('ncpu', 'miner_cores', 'foreign_cores', 'node_cores', 'load1')})
     for st in steps:
         skip = paused_skip(st[1], MINER_TRACK[0], ROOT)                    # r26 B101
         if skip:
@@ -2916,7 +2976,7 @@ def s7_project():
         pat = JUDGED[key][1] if key else None
         before = [(p.name, p.stat().st_mtime_ns) for p in (HARNESS / 'runtime').glob(pat)] if pat else []
         t_step = time.monotonic()
-        limit = step_timeout(' '.join(st[1:3]), _budgets, _HK)            # r29: hard limit from STEP_BUDGETS
+        limit = step_timeout(' '.join(st[1:3]), _budgets, _HK, _cf)       # r29: hard limit from STEP_BUDGETS (x r30 _cf)
         rc, out, err, hung = run_step(st, limit, sh, _HK)
         secs = round(time.monotonic() - t_step, 1)                         # r28 (B133): the step's own wall seconds
         if hung:
@@ -3016,6 +3076,7 @@ def main():
         event('round', 'INFO', warnings=rwarn)
     if a.project_only:
         SUMMARY['mode'] = 'project-only'
+        pages_preflight()                     # r30 post-close (B271a): stale committed pages fail in seconds, not at S7
         s1_guard()
         s7_project()
         finish(0)
@@ -3035,6 +3096,7 @@ def main():
             finish(13)
         s4b_miner()
         finish(0)
+    pages_preflight()                         # r30 post-close (B271a)
     s1_guard()
     s2_format()
     s3a_flaky()

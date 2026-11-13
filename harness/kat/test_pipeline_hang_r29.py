@@ -98,10 +98,10 @@ def kat_ph4(over):
     tree = ast.parse(P(over).read_text(encoding='utf-8'))
     s7 = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 's7_project')
     src = ast.unparse(s7)
-    need = ["limit = step_timeout(' '.join(st[1:3]), _budgets, _HK)", 'run_step(st, limit, sh, _HK)', "why='HUNG'"]
+    need = ["limit = step_timeout(' '.join(st[1:3]), _budgets, _HK, _cf)", 'run_step(st, limit, sh, _HK)', "why='HUNG'"]
     miss = [n for n in need if n not in src]
     s3k = ast.unparse(next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 's3k_kats'))
-    miss += [f's3k: {n}' for n in ('limit = step_timeout(str(p.relative_to(ROOT)), _budgets, _HK)',
+    miss += [f's3k: {n}' for n in ('limit = step_timeout(str(p.relative_to(ROOT)), _budgets, _HK, _cf)',
                                    "run_step([sys.executable, '-I', str(p)], limit, sh, _HK)", "why='HUNG'") if n not in s3k]
     return not miss, miss
 
@@ -120,12 +120,12 @@ MUTATIONS = [
      "        return r.returncode, r.stdout, r.stderr", 'r29 pipeline-hang: sh is plain subprocess.run again'),
     ('fbv', "    if hasattr(_hangkit, 'mod'):\n        return _hangkit.mod", "    if False:\n        return _hangkit.mod",
      'r29 pipeline-hang: the kit is loaded per call (sh and S7 hold different Hung classes)'),
-    ('fbv', "    return hk.budget_timeout(b)", "    return 2400", 'r29 pipeline-hang: the step limit ignores STEP_BUDGETS'),
+    ('fbv', "    return round(hk.budget_timeout(b) * max(1.0, float(factor)), 1)", "    return 2400", 'r29 pipeline-hang: the step limit ignores STEP_BUDGETS'),
     ('fbv', "        if hk is None or not isinstance(e, hk.Hung):\n            raise", "        if True:\n            raise",
      'r29 pipeline-hang: a hung step is a traceback, not a verdict'),
-    ('fbv', "        limit = step_timeout(' '.join(st[1:3]), _budgets, _HK)", "        limit = 2400",
+    ('fbv', "        limit = step_timeout(' '.join(st[1:3]), _budgets, _HK, _cf)", "        limit = 2400",
      'r29 pipeline-hang: S7 keeps the fixed 2400 s limit'),
-    ('fbv', "        limit = step_timeout(str(p.relative_to(ROOT)), _budgets, _HK)", "        limit = 1800",
+    ('fbv', "        limit = step_timeout(str(p.relative_to(ROOT)), _budgets, _HK, _cf)", "        limit = 1800",
      'r29 pipeline-hang: S3k keeps the fixed 1800 s limit'),
 ]
 

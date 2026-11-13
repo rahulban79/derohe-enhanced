@@ -76,8 +76,9 @@ def kat_sb3(over):
     SB = load(over)
     doc = json.loads(P(over, 'budgets').read_text())
     names = re.findall(r'pipeline_\d{8}T\d{6}\.jsonl', doc.get('_doc', ''))
+    # r30 post-close (D-26): a landed step may live under artifacts/ (artifacts/src/gen_enhancements.py --check)
     # r30: a landed S7 step may carry its arguments ('harness/intel/hashrate_objective.py --write 1 s'), as derive() keys do
-    landed = dict((k, float(v)) for k, v in re.findall(r'(harness/\S+\.py(?: --?[\w-]+| [a-z]+)*) ([\d.]+) s',
+    landed = dict((k, float(v)) for k, v in re.findall(r'((?:harness|artifacts)/\S+\.py(?: --?[\w-]+| [a-z]+)*) ([\d.]+) s',
                                                         doc.get('_doc', '').split('landed:')[-1]))
     if len(names) != 3:
         return False, f'_doc names {len(names)} records'

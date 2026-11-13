@@ -37,6 +37,7 @@ STEPS = ([['harness/prep_corpus.py']]
             ['harness/kit/retrofit.py', 'apply', 'harness/model/evidence/release151-migration-report.json'],
             ['harness/kit/soundpage.py', '--write-gen'],   # r30 (B225): the soundness page's record blocks
             ['harness/kit/soundpage.py', '--write-known'], # r30 merge (v5): the dataset section; G30/G31 fail without it
+            ['artifacts/src/gen_enhancements.py'],         # r31 prep (rft §2.27): before the index that lists it
             ['harness/gen_index.py'],
             ['harness/kit/soundpage.py', '--check-measured'],
             ['harness/intel/coherence.py', '--record']])

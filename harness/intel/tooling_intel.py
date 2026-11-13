@@ -120,6 +120,8 @@ GENERATORS = [            # (command, output page) for --determinism; each is ru
     # r30 (rft §7 B232): the round-named ledger page (gen_ledger.py --last N OUT) was never double-run; the r29 audit
     # found the check stale and the ledger outside it. Run once per round with --determinism (a scratch copy)
     (['artifacts/src/gen_ledger.py'], LEDGER_PAGE),
+    # r31 prep (rft §2.27): the generated R28-R30 summary table
+    (['artifacts/src/gen_enhancements.py'], 'artifacts/dero-enhancements-r28-r30.html'),
 ]
 # §0.9 rule 1: every tooling defect class of R24/R25 and the KAT (file, id marker) that reproduces it
 DEFECT_CLASSES = [

@@ -10,7 +10,7 @@
    "anchor": {
     "file": "artifacts/src/gen_ledger.py",
     "quote": "('pipeline_20261029T094741', 'PASS: 93 new tests",
-    "line": 711
+    "line": 715
    },
    "ownership": {
     "chainperf": {
@@ -271,6 +271,14 @@
       "cmd/dero-wallet-cli/",
       "cmd/webwallet/"
      ],
+     "gates": []
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
      "gates": []
     }
    }
@@ -282,7 +290,7 @@
    "anchor": {
     "file": "artifacts/src/gen_ledger.py",
     "quote": "('pipeline_20261030T043422', 'new tests 116",
-    "line": 838
+    "line": 842
    },
    "ownership": {
     "chainperf": {
@@ -543,6 +551,14 @@
       "cmd/dero-wallet-cli/",
       "cmd/webwallet/"
      ],
+     "gates": []
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
      "gates": []
     }
    }
@@ -816,6 +832,14 @@
       "cmd/webwallet/"
      ],
      "gates": []
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
+     "gates": []
     }
    }
   },
@@ -1087,6 +1111,14 @@
       "cmd/dero-wallet-cli/",
       "cmd/webwallet/"
      ],
+     "gates": []
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
      "gates": []
     }
    }
@@ -1387,6 +1419,14 @@
       "cmd/dero-wallet-cli/",
       "cmd/webwallet/"
      ],
+     "gates": []
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
      "gates": []
     }
    }
@@ -1727,6 +1767,14 @@
       "cmd/dero-wallet-cli/",
       "cmd/webwallet/"
      ],
+     "gates": []
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
      "gates": []
     }
    }
@@ -2069,6 +2117,14 @@
       "cmd/webwallet/"
      ],
      "gates": []
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
+     "gates": []
     }
    }
   },
@@ -2409,6 +2465,14 @@
       "cmd/dero-wallet-cli/",
       "cmd/webwallet/"
      ],
+     "gates": []
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
      "gates": []
     }
    }
@@ -2756,6 +2820,14 @@
       "cmd/webwallet/"
      ],
      "gates": []
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
+     "gates": []
     }
    }
   },
@@ -2768,7 +2840,376 @@
     "quote": "\"evidence\": \"R28d opened 2026-11-06 from 8a8698fc (R28",
     "line": 161
    },
-   "pinned_why": "r29 Part A: pinned to the registry full run and the round's closing project-only PASS (harness/round.json r28d pipeline_full; rft §13 R28d)"
+   "pinned_why": "r29 Part A: pinned to the registry full run and the round's closing project-only PASS (harness/round.json r28d pipeline_full; rft §13 R28d)",
+   "ownership": {
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "harness": {
+     "code_paths": [
+      "harness/",
+      "harness/pipeline/",
+      "harness/kat/",
+      "harness/kit/",
+      "harness/run_gates.py",
+      "harness/consensus_guard.py",
+      "harness/round.json",
+      "harness/areas.json",
+      "harness/intel/go_mutate.py",
+      "harness/intel/area_intel.py",
+      "harness/miners/mine_areas.py",
+      "harness/kit/stateguard.py"
+     ],
+     "gates": [
+      "G3",
+      "G8",
+      "G13",
+      "G16",
+      "G23",
+      "G33"
+     ]
+    },
+    "security": {
+     "code_paths": [
+      "cmd/derod/rpc/rpc_abuse.go",
+      "cmd/derod/rpc/ws_hardening.go",
+      "cmd/derod/rpc/ws_foreign_rate.go",
+      "cmd/derod/rpc/param_bounds.go",
+      "cmd/derod/rpc/bind_policy*",
+      "cmd/derod/rpc/rpc_guard_test.go",
+      "cmd/derod/rpc/*security*",
+      "cmd/derod/rpc/*p2psec*",
+      "p2p/penalty.go",
+      "p2p/proven_lane.go",
+      "p2p/bans.go",
+      "p2p/grey_quarantine*",
+      "p2p/v2_offences*",
+      "p2p/tls_policy.go",
+      "p2p/rpc_handshake.go",
+      "p2p/inv_budget.go",
+      "p2p/*security*",
+      "p2p/*p2psec*",
+      "p2p/inbound_guard_test.go",
+      "p2p/hardening_test.go",
+      "glue/httpguard/"
+     ],
+     "gates": [
+      "G13"
+     ]
+    },
+    "cryptosupply": {
+     "code_paths": [
+      "cryptography/",
+      "transaction/",
+      "proof/",
+      "globals/",
+      "glue/txcanon/",
+      "glue/txprecheck/",
+      "glue/emission/",
+      "tools/emission-audit/",
+      "cmd/derod/rpc/emission_audit*",
+      "cmd/derod/rpc/monetary_integrity.go",
+      "cmd/derod/rpc/rpc_dero_getsupplyaudit*",
+      "cmd/derod/rpc/supply_audit*",
+      "cmd/derod/rpc/r24_decoy_sampler.go",
+      "cmd/derod/rpc/rpc_dero_getrandomaddress.go",
+      "cmd/derod/rpc/*cryptoinfl*",
+      "cmd/derod/rpc/*emission*",
+      "cmd/derod/rpc/r23c_verify_issued_test.go",
+      "walletapi/r24_v2proof*",
+      "p2p/hf3_parity.go",
+      "p2p/r23b_hf3_parity_test.go",
+      "dvm/"
+     ],
+     "gates": [
+      "G13",
+      "G22"
+     ]
+    },
+    "getworkops": {
+     "code_paths": [
+      "cmd/derod/rpc/getwork_*",
+      "cmd/derod/rpc/job_*",
+      "cmd/derod/rpc/websocket_getwork_server.go",
+      "cmd/derod/rpc/mining_outcome*",
+      "cmd/derod/rpc/template_*",
+      "cmd/derod/rpc/*getworkops*",
+      "cmd/derod/rpc/r23c_flip_test.go",
+      "cmd/derod/rpc/hashrate_estimate_test.go",
+      "cmd/derod/rpc/rpc_dero_getblocktemplate.go",
+      "cmd/derod/rpc/rpc_dero_submitblock.go",
+      "tools/launchd/",
+      "tools/launchd-derod/",
+      "tools/nodehealth/",
+      "tools/getworkprobe/"
+     ],
+     "gates": [
+      "G9"
+     ]
+    },
+    "mempool": {
+     "code_paths": [
+      "blockchain/mempool/",
+      "blockchain/regpool/",
+      "glue/txpolicy/",
+      "cmd/derod/rpc/rpc_dero_sendrawtransaction.go",
+      "cmd/derod/rpc/tx_pool_status.go",
+      "cmd/derod/rpc/recent_mined.go",
+      "cmd/derod/rpc/rpc_dero_getfeeestimate.go",
+      "cmd/derod/rpc/rpc_dero_gettxpool.go",
+      "cmd/derod/rpc/*txpool*",
+      "cmd/derod/rpc/template_txs.go",
+      "cmd/derod/rpc/r24_template_txs_test.go",
+      "cmd/derod/rpc/r23_finality_fee_test.go",
+      "cmd/simulator/",
+      "p2p/tx_flow*",
+      "p2p/tx_ask*",
+      "p2p/tx_known*",
+      "p2p/unrequested_tx_test.go"
+     ],
+     "gates": []
+    },
+    "chainperf": {
+     "code_paths": [
+      "p2p/sync_pipeline*",
+      "p2p/sync_prewarm*",
+      "p2p/r24_chainperf*",
+      "p2p/r23c_bench_test.go",
+      "p2p/codec_perf_test.go",
+      "p2p/latency_sort_bench_test.go",
+      "blockchain/difficulty.go",
+      "blockchain/storefs.go",
+      "blockchain/storetopo.go",
+      "blockchain/",
+      "block/",
+      "astrobwt/astrobwtv3/pow.go"
+     ],
+     "gates": []
+    },
+    "rpcws": {
+     "code_paths": [
+      "cmd/derod/rpc/",
+      "cmd/derod/rpc/*rpcws*",
+      "glue/rwc/",
+      "walletapi/rpcserver/",
+      "walletapi/xswd/",
+      "rpc/",
+      "cmd/derod/rpc/rpc_dero_gettransactions.go",
+      "cmd/derod/rpc/rpc_dero_getsc.go"
+     ],
+     "gates": []
+    },
+    "syncp2p": {
+     "code_paths": [
+      "p2p/",
+      "p2p/nat/",
+      "p2p/chain_sync.go",
+      "p2p/compact_block*",
+      "p2p/*syncp2p*",
+      "p2p/chunk_server.go",
+      "p2p/counter_registry*",
+      "harness/intel/event_scenarios.py",
+      "harness/intel/config_truth.py"
+     ],
+     "gates": [
+      "G9",
+      "G14"
+     ]
+    },
+    "wallet": {
+     "code_paths": [
+      "walletapi/",
+      "walletapi/mnemonics/",
+      "cmd/dero-wallet-cli/",
+      "cmd/webwallet/"
+     ],
+     "gates": []
+    },
+    "storage": {
+     "code_paths": [
+      "blockchain/storefs.go",
+      "blockchain/storetopo.go",
+      "blockchain/store.go",
+      "tools/storecheck/",
+      "harness/intel/datadir_intel.py"
+     ],
+     "gates": [
+      "G14"
+     ]
+    },
+    "observability": {
+     "code_paths": [
+      "harness/intel/",
+      "harness/miners/",
+      "metrics/",
+      "cmd/derod/rpc/node_metrics*",
+      "p2p/metrics_preregister*",
+      "p2p/object_errors*",
+      "tools/dashboard/"
+     ],
+     "gates": [
+      "G9",
+      "G15"
+     ]
+    },
+    "docs": {
+     "code_paths": [
+      "artifacts/",
+      "artifacts/src/",
+      "harness/gen_deroarch.py",
+      "harness/gen_index.py",
+      "harness/soundness.py",
+      "harness/kit/retrofit.py",
+      "harness/kat/verify_deroarch.py",
+      "ARCHITECTURE.md",
+      "RUN_REPORT.md",
+      "harness/intel/coherence.py"
+     ],
+     "gates": [
+      "G1",
+      "G2",
+      "G4",
+      "G5",
+      "G6",
+      "G7",
+      "G10",
+      "G11",
+      "G12",
+      "G25"
+     ]
+    },
+    "disclosure": {
+     "code_paths": [
+      "cryptography/bn256/",
+      "cryptography/crypto/",
+      "harness/model/raw/press.json",
+      "harness/model/raw/forensics.json",
+      "harness/miners/mine_press.py",
+      "harness/miners/mine_forensics.py",
+      "harness/loop/SOUNDNESS_CLAIMS.json"
+     ],
+     "gates": [
+      "G22",
+      "G24"
+     ]
+    },
+    "miner": {
+     "code_paths": [
+      "cmd/dero-miner/",
+      "astrobwt/",
+      "gpu-miner-poc/",
+      "harness/intel/miner_intel.py",
+      "harness/intel/miner_runs.py",
+      "harness/intel/gpu_watch.py",
+      "harness/intel/payout_census.py",
+      "harness/intel/contention.py",
+      "harness/intel/hashrate_objective.py",
+      "harness/intel/payout_ledger.py",
+      "harness/intel/payout_24h_reads.py",
+      "harness/pipeline/quiet_window.py",
+      "tools/launchd/"
+     ],
+     "gates": [
+      "G17",
+      "G18",
+      "G19",
+      "G20",
+      "G21",
+      "G34"
+     ]
+    },
+    "consensus": {
+     "code_paths": [
+      "harness/intel/consensus_intel.py",
+      "harness/miners/mine_consensus.py",
+      "harness/kit/consensuskit.py",
+      "harness/kat/test_consensus_intel_r24.py",
+      "harness/kat/test_consensus_intel_r25.py",
+      "harness/kat/test_consensus_intel_r29.py",
+      "p2p/consensus_obs_r25.go",
+      "p2p/r25_consensus_obs_test.go",
+      "cmd/derod/rpc/consensus_stats_r25.go",
+      "cmd/derod/rpc/r25_consensus_test.go",
+      "harness/intel/hf4_watch.py",
+      "harness/kat/test_node_r30.py"
+     ],
+     "gates": [
+      "G26"
+     ]
+    },
+    "peers": {
+     "code_paths": [
+      "harness/intel/peer_intel.py",
+      "harness/miners/mine_peers.py",
+      "harness/kit/peerkit.py",
+      "harness/kit/privkit.py",
+      "harness/kat/test_peer_intel_r24.py",
+      "harness/kat/test_peer_intel_r25.py",
+      "harness/kat/test_privkit_r24.py",
+      "harness/kat/test_node_r30.py"
+     ],
+     "gates": [
+      "G27"
+     ]
+    },
+    "tooling": {
+     "code_paths": [
+      ".skills/",
+      "memory-mirror/",
+      "*.sh",
+      "tools/",
+      "tools/memory-mirror/",
+      "harness/intel/tooling_intel.py",
+      "harness/loop/STALE_MEMORY_CLAIMS.json",
+      "harness/loop/meta_review.py",
+      "harness/kat/test_tooling_intel_r25.py",
+      "harness/kat/test_meta_review_r25.py",
+      "harness/intel/round_checkpoint.py",
+      "harness/kat/test_round_checkpoint_r25.py",
+      "harness/kit/pdfscan.py",
+      "artifacts/src/print_copy.py",
+      "harness/intel/privacy_audit.py",
+      "harness/kat/test_privacy_pdf_r30.py",
+      "harness/intel/coherence_audit.py",
+      "harness/kat/test_coherence_audit_r30.py",
+      "harness/kat/test_tooling_r30.py",
+      "harness/kit/minerprotect.py",
+      "harness/kat/test_minerprotect_r30.py",
+      "harness/intel/round_pause.py",
+      "harness/kit/handoff.py",
+      "harness/kat/test_round_pause_r30.py"
+     ],
+     "gates": []
+    },
+    "forensics": {
+     "code_paths": [
+      "harness/forensics/",
+      "tools/forensics/",
+      "forensics/",
+      "artifacts/src/forensics_section.py",
+      "harness/kat/test_forensics_r25.py",
+      "harness/kat/test_forensics_g30_r25.py",
+      "harness/kat/test_forensics_frontend2_r26.py",
+      "harness/runtime/forensics_replay.json",
+      "harness/runtime/forensics_intel.json",
+      "harness/kat/test_forensics_r28.py",
+      "harness/forensics/b182_census_r29.py",
+      "harness/forensics/canon_parity_r30.py"
+     ],
+     "gates": [
+      "G28",
+      "G29",
+      "G30",
+      "G31",
+      "G32"
+     ]
+    },
+    "dvm": {
+     "code_paths": [],
+     "gates": []
+    }
+   }
   },
   {
    "id": "r29",
@@ -2779,7 +3220,376 @@
     "quote": "\"evidence\": \"R29 opened 2026-11-07 from 7bbe2340 (R28",
     "line": 181
    },
-   "pinned_why": "r30 Part A: pinned to the registry full run and the round's closing project-only PASS after the measured Part D (harness/round.json r29 pipeline_full; rft §13 R29)"
+   "pinned_why": "r30 Part A: pinned to the registry full run and the round's closing project-only PASS after the measured Part D (harness/round.json r29 pipeline_full; rft §13 R29)",
+   "ownership": {
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "harness": {
+     "code_paths": [
+      "harness/",
+      "harness/pipeline/",
+      "harness/kat/",
+      "harness/kit/",
+      "harness/run_gates.py",
+      "harness/consensus_guard.py",
+      "harness/round.json",
+      "harness/areas.json",
+      "harness/intel/go_mutate.py",
+      "harness/intel/area_intel.py",
+      "harness/miners/mine_areas.py",
+      "harness/kit/stateguard.py"
+     ],
+     "gates": [
+      "G3",
+      "G8",
+      "G13",
+      "G16",
+      "G23",
+      "G33"
+     ]
+    },
+    "security": {
+     "code_paths": [
+      "cmd/derod/rpc/rpc_abuse.go",
+      "cmd/derod/rpc/ws_hardening.go",
+      "cmd/derod/rpc/ws_foreign_rate.go",
+      "cmd/derod/rpc/param_bounds.go",
+      "cmd/derod/rpc/bind_policy*",
+      "cmd/derod/rpc/rpc_guard_test.go",
+      "cmd/derod/rpc/*security*",
+      "cmd/derod/rpc/*p2psec*",
+      "p2p/penalty.go",
+      "p2p/proven_lane.go",
+      "p2p/bans.go",
+      "p2p/grey_quarantine*",
+      "p2p/v2_offences*",
+      "p2p/tls_policy.go",
+      "p2p/rpc_handshake.go",
+      "p2p/inv_budget.go",
+      "p2p/*security*",
+      "p2p/*p2psec*",
+      "p2p/inbound_guard_test.go",
+      "p2p/hardening_test.go",
+      "glue/httpguard/"
+     ],
+     "gates": [
+      "G13"
+     ]
+    },
+    "cryptosupply": {
+     "code_paths": [
+      "cryptography/",
+      "transaction/",
+      "proof/",
+      "globals/",
+      "glue/txcanon/",
+      "glue/txprecheck/",
+      "glue/emission/",
+      "tools/emission-audit/",
+      "cmd/derod/rpc/emission_audit*",
+      "cmd/derod/rpc/monetary_integrity.go",
+      "cmd/derod/rpc/rpc_dero_getsupplyaudit*",
+      "cmd/derod/rpc/supply_audit*",
+      "cmd/derod/rpc/r24_decoy_sampler.go",
+      "cmd/derod/rpc/rpc_dero_getrandomaddress.go",
+      "cmd/derod/rpc/*cryptoinfl*",
+      "cmd/derod/rpc/*emission*",
+      "cmd/derod/rpc/r23c_verify_issued_test.go",
+      "walletapi/r24_v2proof*",
+      "p2p/hf3_parity.go",
+      "p2p/r23b_hf3_parity_test.go",
+      "dvm/"
+     ],
+     "gates": [
+      "G13",
+      "G22"
+     ]
+    },
+    "getworkops": {
+     "code_paths": [
+      "cmd/derod/rpc/getwork_*",
+      "cmd/derod/rpc/job_*",
+      "cmd/derod/rpc/websocket_getwork_server.go",
+      "cmd/derod/rpc/mining_outcome*",
+      "cmd/derod/rpc/template_*",
+      "cmd/derod/rpc/*getworkops*",
+      "cmd/derod/rpc/r23c_flip_test.go",
+      "cmd/derod/rpc/hashrate_estimate_test.go",
+      "cmd/derod/rpc/rpc_dero_getblocktemplate.go",
+      "cmd/derod/rpc/rpc_dero_submitblock.go",
+      "tools/launchd/",
+      "tools/launchd-derod/",
+      "tools/nodehealth/",
+      "tools/getworkprobe/"
+     ],
+     "gates": [
+      "G9"
+     ]
+    },
+    "mempool": {
+     "code_paths": [
+      "blockchain/mempool/",
+      "blockchain/regpool/",
+      "glue/txpolicy/",
+      "cmd/derod/rpc/rpc_dero_sendrawtransaction.go",
+      "cmd/derod/rpc/tx_pool_status.go",
+      "cmd/derod/rpc/recent_mined.go",
+      "cmd/derod/rpc/rpc_dero_getfeeestimate.go",
+      "cmd/derod/rpc/rpc_dero_gettxpool.go",
+      "cmd/derod/rpc/*txpool*",
+      "cmd/derod/rpc/template_txs.go",
+      "cmd/derod/rpc/r24_template_txs_test.go",
+      "cmd/derod/rpc/r23_finality_fee_test.go",
+      "cmd/simulator/",
+      "p2p/tx_flow*",
+      "p2p/tx_ask*",
+      "p2p/tx_known*",
+      "p2p/unrequested_tx_test.go"
+     ],
+     "gates": []
+    },
+    "chainperf": {
+     "code_paths": [
+      "p2p/sync_pipeline*",
+      "p2p/sync_prewarm*",
+      "p2p/r24_chainperf*",
+      "p2p/r23c_bench_test.go",
+      "p2p/codec_perf_test.go",
+      "p2p/latency_sort_bench_test.go",
+      "blockchain/difficulty.go",
+      "blockchain/storefs.go",
+      "blockchain/storetopo.go",
+      "blockchain/",
+      "block/",
+      "astrobwt/astrobwtv3/pow.go"
+     ],
+     "gates": []
+    },
+    "rpcws": {
+     "code_paths": [
+      "cmd/derod/rpc/",
+      "cmd/derod/rpc/*rpcws*",
+      "glue/rwc/",
+      "walletapi/rpcserver/",
+      "walletapi/xswd/",
+      "rpc/",
+      "cmd/derod/rpc/rpc_dero_gettransactions.go",
+      "cmd/derod/rpc/rpc_dero_getsc.go"
+     ],
+     "gates": []
+    },
+    "syncp2p": {
+     "code_paths": [
+      "p2p/",
+      "p2p/nat/",
+      "p2p/chain_sync.go",
+      "p2p/compact_block*",
+      "p2p/*syncp2p*",
+      "p2p/chunk_server.go",
+      "p2p/counter_registry*",
+      "harness/intel/event_scenarios.py",
+      "harness/intel/config_truth.py"
+     ],
+     "gates": [
+      "G9",
+      "G14"
+     ]
+    },
+    "wallet": {
+     "code_paths": [
+      "walletapi/",
+      "walletapi/mnemonics/",
+      "cmd/dero-wallet-cli/",
+      "cmd/webwallet/"
+     ],
+     "gates": []
+    },
+    "storage": {
+     "code_paths": [
+      "blockchain/storefs.go",
+      "blockchain/storetopo.go",
+      "blockchain/store.go",
+      "tools/storecheck/",
+      "harness/intel/datadir_intel.py"
+     ],
+     "gates": [
+      "G14"
+     ]
+    },
+    "observability": {
+     "code_paths": [
+      "harness/intel/",
+      "harness/miners/",
+      "metrics/",
+      "cmd/derod/rpc/node_metrics*",
+      "p2p/metrics_preregister*",
+      "p2p/object_errors*",
+      "tools/dashboard/"
+     ],
+     "gates": [
+      "G9",
+      "G15"
+     ]
+    },
+    "docs": {
+     "code_paths": [
+      "artifacts/",
+      "artifacts/src/",
+      "harness/gen_deroarch.py",
+      "harness/gen_index.py",
+      "harness/soundness.py",
+      "harness/kit/retrofit.py",
+      "harness/kat/verify_deroarch.py",
+      "ARCHITECTURE.md",
+      "RUN_REPORT.md",
+      "harness/intel/coherence.py"
+     ],
+     "gates": [
+      "G1",
+      "G2",
+      "G4",
+      "G5",
+      "G6",
+      "G7",
+      "G10",
+      "G11",
+      "G12",
+      "G25"
+     ]
+    },
+    "disclosure": {
+     "code_paths": [
+      "cryptography/bn256/",
+      "cryptography/crypto/",
+      "harness/model/raw/press.json",
+      "harness/model/raw/forensics.json",
+      "harness/miners/mine_press.py",
+      "harness/miners/mine_forensics.py",
+      "harness/loop/SOUNDNESS_CLAIMS.json"
+     ],
+     "gates": [
+      "G22",
+      "G24"
+     ]
+    },
+    "miner": {
+     "code_paths": [
+      "cmd/dero-miner/",
+      "astrobwt/",
+      "gpu-miner-poc/",
+      "harness/intel/miner_intel.py",
+      "harness/intel/miner_runs.py",
+      "harness/intel/gpu_watch.py",
+      "harness/intel/payout_census.py",
+      "harness/intel/contention.py",
+      "harness/intel/hashrate_objective.py",
+      "harness/intel/payout_ledger.py",
+      "harness/intel/payout_24h_reads.py",
+      "harness/pipeline/quiet_window.py",
+      "tools/launchd/"
+     ],
+     "gates": [
+      "G17",
+      "G18",
+      "G19",
+      "G20",
+      "G21",
+      "G34"
+     ]
+    },
+    "consensus": {
+     "code_paths": [
+      "harness/intel/consensus_intel.py",
+      "harness/miners/mine_consensus.py",
+      "harness/kit/consensuskit.py",
+      "harness/kat/test_consensus_intel_r24.py",
+      "harness/kat/test_consensus_intel_r25.py",
+      "harness/kat/test_consensus_intel_r29.py",
+      "p2p/consensus_obs_r25.go",
+      "p2p/r25_consensus_obs_test.go",
+      "cmd/derod/rpc/consensus_stats_r25.go",
+      "cmd/derod/rpc/r25_consensus_test.go",
+      "harness/intel/hf4_watch.py",
+      "harness/kat/test_node_r30.py"
+     ],
+     "gates": [
+      "G26"
+     ]
+    },
+    "peers": {
+     "code_paths": [
+      "harness/intel/peer_intel.py",
+      "harness/miners/mine_peers.py",
+      "harness/kit/peerkit.py",
+      "harness/kit/privkit.py",
+      "harness/kat/test_peer_intel_r24.py",
+      "harness/kat/test_peer_intel_r25.py",
+      "harness/kat/test_privkit_r24.py",
+      "harness/kat/test_node_r30.py"
+     ],
+     "gates": [
+      "G27"
+     ]
+    },
+    "tooling": {
+     "code_paths": [
+      ".skills/",
+      "memory-mirror/",
+      "*.sh",
+      "tools/",
+      "tools/memory-mirror/",
+      "harness/intel/tooling_intel.py",
+      "harness/loop/STALE_MEMORY_CLAIMS.json",
+      "harness/loop/meta_review.py",
+      "harness/kat/test_tooling_intel_r25.py",
+      "harness/kat/test_meta_review_r25.py",
+      "harness/intel/round_checkpoint.py",
+      "harness/kat/test_round_checkpoint_r25.py",
+      "harness/kit/pdfscan.py",
+      "artifacts/src/print_copy.py",
+      "harness/intel/privacy_audit.py",
+      "harness/kat/test_privacy_pdf_r30.py",
+      "harness/intel/coherence_audit.py",
+      "harness/kat/test_coherence_audit_r30.py",
+      "harness/kat/test_tooling_r30.py",
+      "harness/kit/minerprotect.py",
+      "harness/kat/test_minerprotect_r30.py",
+      "harness/intel/round_pause.py",
+      "harness/kit/handoff.py",
+      "harness/kat/test_round_pause_r30.py"
+     ],
+     "gates": []
+    },
+    "forensics": {
+     "code_paths": [
+      "harness/forensics/",
+      "tools/forensics/",
+      "forensics/",
+      "artifacts/src/forensics_section.py",
+      "harness/kat/test_forensics_r25.py",
+      "harness/kat/test_forensics_g30_r25.py",
+      "harness/kat/test_forensics_frontend2_r26.py",
+      "harness/runtime/forensics_replay.json",
+      "harness/runtime/forensics_intel.json",
+      "harness/kat/test_forensics_r28.py",
+      "harness/forensics/b182_census_r29.py",
+      "harness/forensics/canon_parity_r30.py"
+     ],
+     "gates": [
+      "G28",
+      "G29",
+      "G30",
+      "G31",
+      "G32"
+     ]
+    },
+    "dvm": {
+     "code_paths": [],
+     "gates": []
+    }
+   }
   },
   {
    "id": "r30",
@@ -2789,6 +3599,375 @@
     "file": "harness/round.json",
     "quote": "\"evidence\": \"R30 opened 2026-11-08 from 60195187 (R29",
     "line": 201
+   },
+   "ownership": {
+    "harness": {
+     "code_paths": [
+      "harness/",
+      "harness/pipeline/",
+      "harness/kat/",
+      "harness/kit/",
+      "harness/run_gates.py",
+      "harness/consensus_guard.py",
+      "harness/round.json",
+      "harness/areas.json",
+      "harness/intel/go_mutate.py",
+      "harness/intel/area_intel.py",
+      "harness/miners/mine_areas.py",
+      "harness/kit/stateguard.py"
+     ],
+     "gates": [
+      "G3",
+      "G8",
+      "G13",
+      "G16",
+      "G23",
+      "G33"
+     ]
+    },
+    "security": {
+     "code_paths": [
+      "cmd/derod/rpc/rpc_abuse.go",
+      "cmd/derod/rpc/ws_hardening.go",
+      "cmd/derod/rpc/ws_foreign_rate.go",
+      "cmd/derod/rpc/param_bounds.go",
+      "cmd/derod/rpc/bind_policy*",
+      "cmd/derod/rpc/rpc_guard_test.go",
+      "cmd/derod/rpc/*security*",
+      "cmd/derod/rpc/*p2psec*",
+      "p2p/penalty.go",
+      "p2p/proven_lane.go",
+      "p2p/bans.go",
+      "p2p/grey_quarantine*",
+      "p2p/v2_offences*",
+      "p2p/tls_policy.go",
+      "p2p/rpc_handshake.go",
+      "p2p/inv_budget.go",
+      "p2p/*security*",
+      "p2p/*p2psec*",
+      "p2p/inbound_guard_test.go",
+      "p2p/hardening_test.go",
+      "glue/httpguard/"
+     ],
+     "gates": [
+      "G13"
+     ]
+    },
+    "cryptosupply": {
+     "code_paths": [
+      "cryptography/",
+      "transaction/",
+      "proof/",
+      "globals/",
+      "glue/txcanon/",
+      "glue/txprecheck/",
+      "glue/emission/",
+      "tools/emission-audit/",
+      "cmd/derod/rpc/emission_audit*",
+      "cmd/derod/rpc/monetary_integrity.go",
+      "cmd/derod/rpc/rpc_dero_getsupplyaudit*",
+      "cmd/derod/rpc/supply_audit*",
+      "cmd/derod/rpc/r24_decoy_sampler.go",
+      "cmd/derod/rpc/rpc_dero_getrandomaddress.go",
+      "cmd/derod/rpc/*cryptoinfl*",
+      "cmd/derod/rpc/*emission*",
+      "cmd/derod/rpc/r23c_verify_issued_test.go",
+      "walletapi/r24_v2proof*",
+      "p2p/hf3_parity.go",
+      "p2p/r23b_hf3_parity_test.go",
+      "dvm/"
+     ],
+     "gates": [
+      "G13",
+      "G22"
+     ]
+    },
+    "getworkops": {
+     "code_paths": [
+      "cmd/derod/rpc/getwork_*",
+      "cmd/derod/rpc/job_*",
+      "cmd/derod/rpc/websocket_getwork_server.go",
+      "cmd/derod/rpc/mining_outcome*",
+      "cmd/derod/rpc/template_*",
+      "cmd/derod/rpc/*getworkops*",
+      "cmd/derod/rpc/r23c_flip_test.go",
+      "cmd/derod/rpc/hashrate_estimate_test.go",
+      "cmd/derod/rpc/rpc_dero_getblocktemplate.go",
+      "cmd/derod/rpc/rpc_dero_submitblock.go",
+      "tools/launchd/",
+      "tools/launchd-derod/",
+      "tools/nodehealth/",
+      "tools/getworkprobe/"
+     ],
+     "gates": [
+      "G9"
+     ]
+    },
+    "mempool": {
+     "code_paths": [
+      "blockchain/mempool/",
+      "blockchain/regpool/",
+      "glue/txpolicy/",
+      "cmd/derod/rpc/rpc_dero_sendrawtransaction.go",
+      "cmd/derod/rpc/tx_pool_status.go",
+      "cmd/derod/rpc/recent_mined.go",
+      "cmd/derod/rpc/rpc_dero_getfeeestimate.go",
+      "cmd/derod/rpc/rpc_dero_gettxpool.go",
+      "cmd/derod/rpc/*txpool*",
+      "cmd/derod/rpc/template_txs.go",
+      "cmd/derod/rpc/r24_template_txs_test.go",
+      "cmd/derod/rpc/r23_finality_fee_test.go",
+      "cmd/simulator/",
+      "p2p/tx_flow*",
+      "p2p/tx_ask*",
+      "p2p/tx_known*",
+      "p2p/unrequested_tx_test.go"
+     ],
+     "gates": []
+    },
+    "chainperf": {
+     "code_paths": [
+      "p2p/sync_pipeline*",
+      "p2p/sync_prewarm*",
+      "p2p/r24_chainperf*",
+      "p2p/r23c_bench_test.go",
+      "p2p/codec_perf_test.go",
+      "p2p/latency_sort_bench_test.go",
+      "blockchain/difficulty.go",
+      "blockchain/storefs.go",
+      "blockchain/storetopo.go",
+      "blockchain/",
+      "block/",
+      "astrobwt/astrobwtv3/pow.go"
+     ],
+     "gates": []
+    },
+    "rpcws": {
+     "code_paths": [
+      "cmd/derod/rpc/",
+      "cmd/derod/rpc/*rpcws*",
+      "glue/rwc/",
+      "walletapi/rpcserver/",
+      "walletapi/xswd/",
+      "rpc/",
+      "cmd/derod/rpc/rpc_dero_gettransactions.go",
+      "cmd/derod/rpc/rpc_dero_getsc.go"
+     ],
+     "gates": []
+    },
+    "syncp2p": {
+     "code_paths": [
+      "p2p/",
+      "p2p/nat/",
+      "p2p/chain_sync.go",
+      "p2p/compact_block*",
+      "p2p/*syncp2p*",
+      "p2p/chunk_server.go",
+      "p2p/counter_registry*",
+      "harness/intel/event_scenarios.py",
+      "harness/intel/config_truth.py"
+     ],
+     "gates": [
+      "G9",
+      "G14"
+     ]
+    },
+    "wallet": {
+     "code_paths": [
+      "walletapi/",
+      "walletapi/mnemonics/",
+      "cmd/dero-wallet-cli/",
+      "cmd/webwallet/"
+     ],
+     "gates": []
+    },
+    "storage": {
+     "code_paths": [
+      "blockchain/storefs.go",
+      "blockchain/storetopo.go",
+      "blockchain/store.go",
+      "tools/storecheck/",
+      "harness/intel/datadir_intel.py"
+     ],
+     "gates": [
+      "G14"
+     ]
+    },
+    "observability": {
+     "code_paths": [
+      "harness/intel/",
+      "harness/miners/",
+      "metrics/",
+      "cmd/derod/rpc/node_metrics*",
+      "p2p/metrics_preregister*",
+      "p2p/object_errors*",
+      "tools/dashboard/"
+     ],
+     "gates": [
+      "G9",
+      "G15"
+     ]
+    },
+    "docs": {
+     "code_paths": [
+      "artifacts/",
+      "artifacts/src/",
+      "harness/gen_deroarch.py",
+      "harness/gen_index.py",
+      "harness/soundness.py",
+      "harness/kit/retrofit.py",
+      "harness/kat/verify_deroarch.py",
+      "ARCHITECTURE.md",
+      "RUN_REPORT.md",
+      "harness/intel/coherence.py"
+     ],
+     "gates": [
+      "G1",
+      "G2",
+      "G4",
+      "G5",
+      "G6",
+      "G7",
+      "G10",
+      "G11",
+      "G12",
+      "G25"
+     ]
+    },
+    "disclosure": {
+     "code_paths": [
+      "cryptography/bn256/",
+      "cryptography/crypto/",
+      "harness/model/raw/press.json",
+      "harness/model/raw/forensics.json",
+      "harness/miners/mine_press.py",
+      "harness/miners/mine_forensics.py",
+      "harness/loop/SOUNDNESS_CLAIMS.json"
+     ],
+     "gates": [
+      "G22",
+      "G24"
+     ]
+    },
+    "miner": {
+     "code_paths": [
+      "cmd/dero-miner/",
+      "astrobwt/",
+      "gpu-miner-poc/",
+      "harness/intel/miner_intel.py",
+      "harness/intel/miner_runs.py",
+      "harness/intel/gpu_watch.py",
+      "harness/intel/payout_census.py",
+      "harness/intel/contention.py",
+      "harness/intel/hashrate_objective.py",
+      "harness/intel/payout_ledger.py",
+      "harness/intel/payout_24h_reads.py",
+      "harness/pipeline/quiet_window.py",
+      "tools/launchd/"
+     ],
+     "gates": [
+      "G17",
+      "G18",
+      "G19",
+      "G20",
+      "G21",
+      "G34"
+     ]
+    },
+    "consensus": {
+     "code_paths": [
+      "harness/intel/consensus_intel.py",
+      "harness/miners/mine_consensus.py",
+      "harness/kit/consensuskit.py",
+      "harness/kat/test_consensus_intel_r24.py",
+      "harness/kat/test_consensus_intel_r25.py",
+      "harness/kat/test_consensus_intel_r29.py",
+      "p2p/consensus_obs_r25.go",
+      "p2p/r25_consensus_obs_test.go",
+      "cmd/derod/rpc/consensus_stats_r25.go",
+      "cmd/derod/rpc/r25_consensus_test.go",
+      "harness/intel/hf4_watch.py",
+      "harness/kat/test_node_r30.py"
+     ],
+     "gates": [
+      "G26"
+     ]
+    },
+    "peers": {
+     "code_paths": [
+      "harness/intel/peer_intel.py",
+      "harness/miners/mine_peers.py",
+      "harness/kit/peerkit.py",
+      "harness/kit/privkit.py",
+      "harness/kat/test_peer_intel_r24.py",
+      "harness/kat/test_peer_intel_r25.py",
+      "harness/kat/test_privkit_r24.py",
+      "harness/kat/test_node_r30.py"
+     ],
+     "gates": [
+      "G27"
+     ]
+    },
+    "tooling": {
+     "code_paths": [
+      ".skills/",
+      "memory-mirror/",
+      "*.sh",
+      "tools/",
+      "tools/memory-mirror/",
+      "harness/intel/tooling_intel.py",
+      "harness/loop/STALE_MEMORY_CLAIMS.json",
+      "harness/loop/meta_review.py",
+      "harness/kat/test_tooling_intel_r25.py",
+      "harness/kat/test_meta_review_r25.py",
+      "harness/intel/round_checkpoint.py",
+      "harness/kat/test_round_checkpoint_r25.py",
+      "harness/kit/pdfscan.py",
+      "artifacts/src/print_copy.py",
+      "harness/intel/privacy_audit.py",
+      "harness/kat/test_privacy_pdf_r30.py",
+      "harness/intel/coherence_audit.py",
+      "harness/kat/test_coherence_audit_r30.py",
+      "harness/kat/test_tooling_r30.py",
+      "harness/kit/minerprotect.py",
+      "harness/kat/test_minerprotect_r30.py",
+      "harness/intel/round_pause.py",
+      "harness/kit/handoff.py",
+      "harness/kat/test_round_pause_r30.py"
+     ],
+     "gates": []
+    },
+    "forensics": {
+     "code_paths": [
+      "harness/forensics/",
+      "tools/forensics/",
+      "forensics/",
+      "artifacts/src/forensics_section.py",
+      "harness/kat/test_forensics_r25.py",
+      "harness/kat/test_forensics_g30_r25.py",
+      "harness/kat/test_forensics_frontend2_r26.py",
+      "harness/runtime/forensics_replay.json",
+      "harness/runtime/forensics_intel.json",
+      "harness/kat/test_forensics_r28.py",
+      "harness/forensics/b182_census_r29.py",
+      "harness/forensics/canon_parity_r30.py"
+     ],
+     "gates": [
+      "G28",
+      "G29",
+      "G30",
+      "G31",
+      "G32"
+     ]
+    },
+    "cryptography": {
+     "code_paths": [],
+     "gates": []
+    },
+    "dvm": {
+     "code_paths": [],
+     "gates": []
+    }
    }
   }
  ],
@@ -2955,7 +4134,10 @@
     "harness/kat/test_merge_artifacts_r29.py",
     "harness/kat/test_area_seal_r26.py",
     "harness/kat/test_tools_kats_r28.py",
-    "harness/kat/test_gomut_anchors_r26.py"
+    "harness/kat/test_gomut_anchors_r26.py",
+    "harness/kat/test_area_intel_r31.py",
+    "harness/kat/test_pipeline_contention_r30.py",
+    "harness/kat/test_pages_preflight_r30.py"
    ],
    "gates": [
     "G3",
@@ -2978,7 +4160,15 @@
     "B54",
     "B98",
     "B101",
-    "B105"
+    "B105",
+    "B274",
+    "B276",
+    "B268",
+    "B271",
+    "B250",
+    "B272",
+    "B259",
+    "B282"
    ],
    "history": {
     "r24": {
@@ -3934,7 +5124,19 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "pipeline",
+    "gate",
+    "KAT",
+    "mutation",
+    "registry",
+    "stallwatch",
+    "STEP_BUDGETS",
+    "fix_build_verify",
+    "closed loop",
+    "project-only"
+   ]
   },
   {
    "id": "security",
@@ -4039,7 +5241,8 @@
     "B28",
     "B29",
     "B30",
-    "B48"
+    "B48",
+    "B280"
    ],
    "history": {
     "r23c": {
@@ -4048,7 +5251,7 @@
       "anchor": {
        "file": "artifacts/dero-rft.md",
        "quote": "pass 4,800/4,800 probes",
-       "line": 1973
+       "line": 2397
       },
       "display": "4,800/4,800",
       "note": "B28 as written after R23c (verify-p2psec)"
@@ -4424,7 +5627,77 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "DoS",
+    "ban",
+    "penalty",
+    "budget",
+    "abuse",
+    "flood",
+    "attack",
+    "surge",
+    "rate limit",
+    "AI agent"
+   ]
+  },
+  {
+   "id": "dvm",
+   "title": "DVM and smart contracts: the DERO Virtual Machine (parse, execution, builtins and gas, the store), SC install / invoke / revert in the chain, and the SC RPC and wallet paths",
+   "owner_dim": "dvm",
+   "status": "active",
+   "since": "r31",
+   "code_paths": [
+    "dvm/*.go",
+    "blockchain/transaction_execute.go",
+    "blockchain/hardcoded_contracts.go",
+    "blockchain/hardcoded_sc/",
+    "blockchain/sc_revert_log.go",
+    "blockchain/sc_revert_log_test.go",
+    "blockchain/r28_sc_flow_test.go",
+    "blockchain/r29_sc_recover_log_test.go",
+    "cmd/derod/rpc/rpc_dero_getsc.go",
+    "cmd/derod/rpc/rpc_dero_estimategas.go",
+    "walletapi/rpcserver/rpc_scinvoke.go",
+    "walletapi/rpcserver/r28d_scinvoke_fees_test.go",
+    "walletapi/rpcserver/r29_scinvoke_fees_sim_test.go"
+   ],
+   "metrics": [],
+   "kat_files": [
+    "harness/kat/test_dvm_rnd_crossimpl_r28.py"
+   ],
+   "gates": [],
+   "gomut_prefixes": [
+    "gm-r27-dvm",
+    "gm-r28-dvm-blockchain"
+   ],
+   "backlog": [
+    "B10",
+    "B33",
+    "B145",
+    "B157",
+    "B178",
+    "B191",
+    "B251",
+    "B286",
+    "B287",
+    "B288",
+    "B289",
+    "B290"
+   ],
+   "history": {},
+   "keywords": [
+    "DVM",
+    "smart contract",
+    "scinvoke",
+    "SCID",
+    "gas",
+    "dvm/",
+    "SC install",
+    "SC payout",
+    "revert",
+    "entrypoint"
+   ]
   },
   {
    "id": "cryptosupply",
@@ -4565,7 +5838,9 @@
     "B36",
     "B51",
     "B146",
-    "B145"
+    "B145",
+    "B281",
+    "B284"
    ],
    "history": {
     "r23c": {
@@ -4972,7 +6247,18 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "emission",
+    "supply",
+    "txcanon",
+    "decoder",
+    "inflation",
+    "monetary",
+    "coinbase",
+    "payee",
+    "premine"
+   ]
   },
   {
    "id": "getworkops",
@@ -5356,7 +6642,16 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "getwork",
+    "dispatcher",
+    "final flip",
+    "stale-height",
+    "supervis",
+    "health tool",
+    "job"
+   ]
   },
   {
    "id": "mempool",
@@ -5693,7 +6988,15 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "mempool",
+    "pool",
+    "admission",
+    "TPS",
+    "fee",
+    "tx_pool"
+   ]
   },
   {
    "id": "chainperf",
@@ -5972,7 +7275,15 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "prewarm",
+    "block add",
+    "PoW cost",
+    "difficulty cost",
+    "sync speed",
+    "catch-up rate"
+   ]
   },
   {
    "id": "rpcws",
@@ -6343,7 +7654,16 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "RPC",
+    "websocket",
+    "JSON-RPC",
+    "batch",
+    "jrpc",
+    "-326",
+    "push"
+   ]
   },
   {
    "id": "syncp2p",
@@ -6461,7 +7781,8 @@
     "B18",
     "B30",
     "B34",
-    "B47"
+    "B47",
+    "B269"
    ],
    "history": {
     "r23c": {
@@ -6929,7 +8250,18 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "peer",
+    "P2P",
+    "compact block",
+    "locator",
+    "inbound",
+    "sync hold",
+    "KCP",
+    "propagation",
+    "relay"
+   ]
   },
   {
    "id": "wallet",
@@ -7206,7 +8538,14 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "wallet",
+    "walletapi",
+    "payload",
+    "dero-wallet-cli",
+    "keystream"
+   ]
   },
   {
    "id": "storage",
@@ -7482,7 +8821,15 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "storefs",
+    "topo store",
+    "datadir",
+    "prune",
+    "snapshot",
+    "disk"
+   ]
   },
   {
    "id": "observability",
@@ -7544,7 +8891,8 @@
     "gm-r20-feed"
    ],
    "backlog": [
-    "B38"
+    "B38",
+    "B285"
    ],
    "history": {
     "r22": {
@@ -7915,7 +9263,16 @@
       "display": "0 (sum of 5 labelled series in the capture)"
      }
     }
-   }
+   },
+   "keywords": [
+    "metrics",
+    "/metrics",
+    "log_intel",
+    "console",
+    "error census",
+    "observab",
+    "ERROR line"
+   ]
   },
   {
    "id": "docs",
@@ -7932,7 +9289,9 @@
     "harness/kat/verify_deroarch.py",
     "ARCHITECTURE.md",
     "RUN_REPORT.md",
-    "harness/intel/coherence.py"
+    "harness/intel/coherence.py",
+    "artifacts/src/gen_enhancements.py",
+    "artifacts/src/enhancements_r28_r30.json"
    ],
    "metrics": [
     {
@@ -7967,7 +9326,8 @@
     "harness/kat/test_coherence_r24.py",
     "harness/kat/test_backlog_truth_r28.py",
     "harness/kat/test_ledger_pages_r30.py",
-    "harness/kat/test_soundpage_r25.py"
+    "harness/kat/test_soundpage_r25.py",
+    "harness/kat/test_enhancements_page_r31.py"
    ],
    "gates": [
     "G1",
@@ -7992,7 +9352,10 @@
     "B225",
     "B226",
     "B227",
-    "B229"
+    "B229",
+    "B273",
+    "B267",
+    "B279"
    ],
    "history": {
     "r22": {
@@ -8515,7 +9878,75 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "ledger page",
+    "PDF",
+    "pubscrub",
+    "GitHub",
+    "artifact",
+    "generator",
+    "soundness page",
+    "src-arch",
+    "scrub"
+   ]
+  },
+  {
+   "id": "cryptography",
+   "title": "Cryptography: the primitives and their uses (bn256 curve and field, ElGamal / Pedersen algebra, Keccak and hash-to-point, randomness, key and balance encodings, payment / receiver proofs)",
+   "owner_dim": "cryptography",
+   "status": "active",
+   "code_paths": [
+    "cryptography/bn256/*.go",
+    "cryptography/crypto/algebra_elgamal.go",
+    "cryptography/crypto/algebra_fieldvector.go",
+    "cryptography/crypto/algebra_pedersen.go",
+    "cryptography/crypto/algebra_pointvector.go",
+    "cryptography/crypto/balance_serdes.go",
+    "cryptography/crypto/bnred.go",
+    "cryptography/crypto/const.go",
+    "cryptography/crypto/fieldvector.go",
+    "cryptography/crypto/generatorparams.go",
+    "cryptography/crypto/group.go",
+    "cryptography/crypto/hash.go",
+    "cryptography/crypto/hashtopoint.go",
+    "cryptography/crypto/keccak.go",
+    "cryptography/crypto/keccak_test.go",
+    "cryptography/crypto/key_old.go",
+    "cryptography/crypto/polynomial.go",
+    "cryptography/crypto/random.go",
+    "cryptography/crypto/userdata.go",
+    "proof/*.go",
+    "globals/random.go"
+   ],
+   "metrics": [],
+   "kat_files": [],
+   "gates": [],
+   "gomut_prefixes": [],
+   "backlog": [
+    "B15",
+    "B32",
+    "B181",
+    "B275",
+    "B278",
+    "B283"
+   ],
+   "history": {},
+   "keywords": [
+    "bn256",
+    "Keccak",
+    "keccak",
+    "ElGamal",
+    "Pedersen",
+    "hash-to-point",
+    "scalar",
+    "curve",
+    "randomness",
+    "nonce",
+    "constant-time",
+    "cryptograph"
+   ],
+   "since": "r31"
   },
   {
    "id": "disclosure",
@@ -8909,7 +10340,16 @@
      }
     }
    },
-   "note": "Owned by the disclosure dimension (R24). No exploit content anywhere: fix designs are protocol-level and need a coordinated fork."
+   "note": "Owned by the disclosure dimension (R24). No exploit content anywhere: fix designs are protocol-level and need a coordinated fork.",
+   "keywords": [
+    "range-proof",
+    "range proof",
+    "Bulletproof",
+    "soundness",
+    "disclosure",
+    "inner-product",
+    "FX-"
+   ]
   },
   {
    "id": "miner",
@@ -8930,7 +10370,8 @@
     "harness/intel/payout_ledger.py",
     "harness/intel/payout_24h_reads.py",
     "harness/pipeline/quiet_window.py",
-    "tools/launchd/"
+    "tools/launchd/",
+    "harness/intel/levers_read.py"
    ],
    "metrics": [
     {
@@ -8994,7 +10435,8 @@
     "harness/kat/test_payout_24h_reads_r30.py",
     "harness/kat/test_miner_intel_rot_r30.py",
     "harness/kat/test_quiet_window_r30.py",
-    "harness/kat/test_miner_card_r30.py"
+    "harness/kat/test_miner_card_r30.py",
+    "harness/kat/test_levers_read_r30.py"
    ],
    "gates": [
     "G17",
@@ -9041,7 +10483,9 @@
     "B237",
     "B238",
     "B239",
-    "B222"
+    "B222",
+    "B277",
+    "B291"
    ],
    "history": {
     "r23c": {
@@ -9377,7 +10821,19 @@
      }
     }
    },
-   "note": "r30 Part A: resumed (user 2026-11-08, rft §0.3 State ACTIVE, §2.18); r24-r29 were paused. r30 miner dimension: B26/B27/B239/L-C2 code, G34 + payout ledger + quiet-window runner (record_field metrics)."
+   "note": "r30 Part A: resumed (user 2026-11-08, rft §0.3 State ACTIVE, §2.18); r24-r29 were paused. r30 miner dimension: B26/B27/B239/L-C2 code, G34 + payout ledger + quiet-window runner (record_field metrics).",
+   "keywords": [
+    "miner",
+    "H/s",
+    "hashrate",
+    "GPU",
+    "sort",
+    "payout",
+    "launchd",
+    "quiet window",
+    "ceiling",
+    "GSPLIT"
+   ]
   },
   {
    "id": "consensus",
@@ -10171,6 +11627,15 @@
       "ANOMALY"
      ]
     }
+   ],
+   "keywords": [
+    "consensus",
+    "reorg",
+    "block timing",
+    "difficulty rule",
+    "participants",
+    "final_violated",
+    "HF4"
    ]
   },
   {
@@ -10752,6 +12217,15 @@
       "ANOMALY"
      ]
     }
+   ],
+   "keywords": [
+    "peer_intel",
+    "peers ANOMALY",
+    "peer clock",
+    "D2 ",
+    "D9 ",
+    "D11",
+    "pseudonym"
    ]
   },
   {
@@ -11020,7 +12494,15 @@
     "B231",
     "B232",
     "B233",
-    "B244"
+    "B244",
+    "B270",
+    "B245",
+    "B241",
+    "B252a",
+    "B252b",
+    "B252c",
+    "B252d",
+    "B252e"
    ],
    "history": {
     "r25": {
@@ -11660,7 +13142,17 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "skill",
+    "memory",
+    "mirror",
+    "scratch_gc",
+    "tooling_intel",
+    "script",
+    "round_pause",
+    "checkpoint"
+   ]
   },
   {
    "id": "forensics",
@@ -12540,7 +14032,19 @@
       }
      }
     }
-   }
+   },
+   "keywords": [
+    "forensics",
+    "dataset",
+    "replay",
+    "audit2",
+    "DC0",
+    "DC1",
+    "DC2",
+    "genesis",
+    "B111",
+    "v5"
+   ]
   }
  ]
 }

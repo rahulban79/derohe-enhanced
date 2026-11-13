@@ -63,8 +63,8 @@ BOLD_RX = re.compile(r'\*\*\s*(?:[rR]\d+\w*\s*:?(?:\s+(?!(?:not|no|never|un\w*)\
 PAGES_RX = re.compile(r'\bPAGES IMPLEMENTED\b')
 # a CommonMark code span: a run of N backticks up to the next run of exactly N (r30 verify D6: ``a `b` c`` is one span)
 CODE_SPAN_RX = re.compile(r'(?<!`)(`+)(?!`)(?:.*?[^`])??\1(?!`)')
-ID_RX = re.compile(r'\b(BD?\d+)\b')
-ROW_ID = re.compile(r'BD?\d+')
+ID_RX = re.compile(r'\b(BD?\d+[a-z]?)\b')   # r31 prep: B252c-style sub-rows too
+ROW_ID = re.compile(r'BD?\d+[a-z]?')
 SCRATCH_RX = re.compile(r'<scratch>|/private/tmp/|^/|^~')
 
 

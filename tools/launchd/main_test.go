@@ -183,3 +183,31 @@ func TestR30ProcessTypeInteractive(t *testing.T) {
 		t.Fatalf("parser sanity: Nice %q Label %q", keys["Nice"], keys["Label"])
 	}
 }
+
+// r30 post-close (rft §2.29, D-22, B291): the generated plist runs the R30 quiet-window levers by default and --gsplit=""
+// leaves the geometry to the miner's built-in default.
+func TestR30bLeverDefaults(t *testing.T) {
+	c := default_cfg()
+	c.Wallet = "dero1qyexample"
+	args := strings.Join(program_args(c), " ")
+	for _, want := range []string{"--cpu-max=100", "--gpu-max=100"} {
+		if !strings.Contains(args, want) {
+			t.Fatalf("default argv %q lacks %s", args, want)
+		}
+	}
+	out := string(render(c))
+	if !strings.Contains(out, "<key>EnvironmentVariables</key><dict><key>DERO_GSPLIT</key><string>8192,3,2</string></dict>") {
+		t.Fatalf("default plist has no DERO_GSPLIT=8192,3,2 environment:\n%s", out)
+	}
+	c.GSplit = ""
+	if strings.Contains(string(render(c)), "EnvironmentVariables") {
+		t.Fatalf("--gsplit=\"\" still writes an EnvironmentVariables block")
+	}
+	var o, e bytes.Buffer
+	if rc := run([]string{"--wallet-address=dero1qyexample", "--gsplit=4096,4,2"}, &o, &e); rc != 0 {
+		t.Fatalf("run --gsplit rc %d: %s", rc, e.String())
+	}
+	if !strings.Contains(o.String(), "<string>4096,4,2</string>") {
+		t.Fatalf("--gsplit=4096,4,2 not rendered:\n%s", o.String())
+	}
+}

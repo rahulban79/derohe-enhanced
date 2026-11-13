@@ -230,7 +230,7 @@ def rft_backlog(text):
         cells = [c.strip() for c in re.split(r'(?<!\\)\|', l.strip().strip('|'))]
         if len(cells) > 5:                 # r28: a bare pipe in the status text (B105 'node|network') stays in the status
             cells = cells[:4] + [' | '.join(cells[4:])]
-        if len(cells) >= 3 and re.fullmatch(r'BD?\d+', cells[0]):
+        if len(cells) >= 3 and re.fullmatch(r'BD?\d+[a-z]?', cells[0]):   # r31 prep: sub-rows
             out[cells[0]] = (ln + k, cells[-1])
     return out
 
@@ -632,8 +632,12 @@ def check_areas(c):
     state = {a['id']: a.get('state') for a in ai.get('areas', [])}
     title = {a.get('title'): a['id'] for a in ai.get('areas', [])}
     tracks = c.rcur.get('tracks') or {}
+    _order = [r.get('id') for r in c.rounds]          # harness/round.json
     for a in reg.get('areas', []):
         c.fact()
+        # r31 (B275): an area registered 'since' a later round has no scorecard before that round opens
+        if a.get('since') in _order and c.rcur.get('id') in _order and _order.index(c.rcur['id']) < _order.index(a['since']):
+            continue
         if a['id'] not in state:
             c.drift('areas', src, None, f"a scorecard for area {a['id']}", 'none', 'harness/areas.json')
             continue
@@ -696,7 +700,7 @@ def check_backlog(c, ids=TRACKED_IDS):
     if not rft:
         return
     bl = rft_backlog(rft)
-    idrx = re.compile(r'\b(BD?\d+)\b')
+    idrx = re.compile(r'\b(BD?\d+[a-z]?)\b')
     targets = []
     lt = c.text(c.ledger)
     if lt:

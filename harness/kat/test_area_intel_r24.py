@@ -35,7 +35,8 @@ from pathlib import Path
 HARNESS = Path(__file__).resolve().parent.parent
 MOD = 'intel/area_intel.py'
 REQ = ('harness', 'security', 'cryptosupply', 'getworkops', 'mempool', 'chainperf', 'rpcws', 'syncp2p',
-       'wallet', 'storage', 'observability', 'docs', 'disclosure', 'miner', 'tooling')   # r25: tooling (§0.9)
+       'wallet', 'storage', 'observability', 'docs', 'disclosure', 'miner', 'tooling',   # r25: tooling (§0.9)
+       'cryptography', 'dvm')   # r31 (B275, B286): the new required areas
 
 
 def load(base):

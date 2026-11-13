@@ -281,7 +281,7 @@ OWNERS['r30 TR10'] = ['TR10', 'TR1']           # is_open reads body_rank: a body
 MUTATIONS = [   # (key, find, replace, why)
     ('ai', "    if not _BT:\n        _BT.append(_backlog_truth())\n    bt = _BT[0]\n    if bt.lead_class(status) == 'closed':\n        return False\n    return bt.body_rank(status)[0] != bt.RANK['closed']",
      "    return not re.match(r'^(CLOSED|REFUTED|DONE)\\b', status.strip(), re.I)", 'r30 TR1: B230 the 3-word is_open regex'),
-    ('ai', "        m = re.match(r'^\\|\\s*(BD?\\d+)\\s*\\|(.*)\\|\\s*$', l)", "        m = re.match(r'^\\|\\s*(B\\d+)\\s*\\|(.*)\\|\\s*$', l)",
+    ('ai', "        m = re.match(r'^\\|\\s*(BD?\\d+[a-z]?)\\s*\\|(.*)\\|\\s*$', l)", "        m = re.match(r'^\\|\\s*(B\\d+[a-z]?)\\s*\\|(.*)\\|\\s*$', l)",
      'r30 TR1: B230 BD rows invisible'),
     ('ai', "        if text[max(0, mt.start(1) - 1):mt.start(1)] == '~' or text[max(0, mt.start(1) - 6):mt.start(1)].endswith('$HOME'):",
      "        if False:", 'r30 TR2: B230 a home path is read as a broken tree anchor'),

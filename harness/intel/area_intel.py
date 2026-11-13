@@ -27,6 +27,12 @@ read 0 under the paused miner); the card lists it under 'not_stale' with the rea
 pipeline records into areas.json rounds when they are unpinned (N28-02 / B52: r27 was booked from
 pipeline_20261105T163040 and a later r27 run then recomputed kats 25/25 -> 26/26).
 
+r31 prep (rft §2.25, §7 B274-B276): every open §7 row of an area is a proposal ('backlog-open', or 'measure-pending'
+when it waits for a measurement); every still-open item of the newest ledger's "Open after Round 23c..30" lists without a
+§7 row is one ('ledger-open' / 'ledger-pending', area by the registry's 'keywords'); 'kat-gap' / 'mutation-gap' name
+coverage gaps; one proposal per row (co-owners in 'also_areas'); the feed carries 'coverage' and
+'areas_without_proposals'; G23 fails an incoherent feed (feed_problems). An area may open with a round ('since').
+
   python3 -I harness/intel/area_intel.py [--live]        # scorecards + proposals (exit 0; 2 = the registry is invalid)
   python3 -I harness/intel/area_intel.py check           # validate the registry and every anchor (exit 0 / 2)
   python3 -I harness/intel/area_intel.py fix-lines       # fill missing anchor 'line' fields (a quote found exactly once)
@@ -49,7 +55,9 @@ ROOT = HARNESS.parent
 PENDING = 'pending'
 STATUSES = ('active', 'paused')
 REQUIRED_AREAS = ('harness', 'security', 'cryptosupply', 'getworkops', 'mempool', 'chainperf', 'rpcws', 'syncp2p',
-                  'wallet', 'storage', 'observability', 'docs', 'disclosure', 'miner', 'tooling')   # r25: tooling (§0.9)
+                  'wallet', 'storage', 'observability', 'docs', 'disclosure', 'miner', 'tooling',   # r25: tooling (§0.9)
+                  'cryptography',   # r31 (user 2026-11-12, rft §2.25, B275): cryptographic primitives as an area
+                  'dvm')   # r31 (user 2026-11-12, rft §2.28, B286): the DERO Virtual Machine / smart contracts as an area
 AREA_FIELDS = ('id', 'title', 'owner_dim', 'status', 'code_paths', 'metrics', 'kat_files', 'gates', 'gomut_prefixes',
                'backlog', 'history')
 AUTO = ('new_tests', 'mutations', 'kats', 'gates')      # computed for every area from each round's records
@@ -230,10 +238,12 @@ def validate(reg, root):
                 err.append(f'{aid}: missing field {f!r}')
         if a.get('status') not in STATUSES:
             err.append(f"{aid}: status {a.get('status')!r} not in {STATUSES}")
+        if a.get('since') is not None and a['since'] not in rids + registry_rounds(root):          # r31 (B275)
+            err.append(f"{aid}: since {a['since']!r} is not a registered round")
         if a.get('status') == 'paused' and not resolved(resolve_anchor(root, a.get('paused_why'))):
             err.append(f'{aid}: paused without a resolving paused_why anchor')
         for b in a.get('backlog', []):
-            if not re.fullmatch(r'BD?\d+', str(b)):          # r30 B230: BD<n> (disclosure rows) too
+            if not re.fullmatch(r'BD?\d+[a-z]?', str(b)):    # r30 B230: BD<n>; r31 prep: a sub-row B252c too
                 err.append(f'{aid}: backlog id {b!r} is not B<n> / BD<n>')
         for g in a.get('gates', []):
             if not re.fullmatch(r'G\d+', str(g)):
@@ -1053,7 +1063,7 @@ def backlog_rows(root):
     except OSError:
         return out
     for i, l in enumerate(lines):
-        m = re.match(r'^\|\s*(BD?\d+)\s*\|(.*)\|\s*$', l)        # r30 B230: BD rows were invisible
+        m = re.match(r'^\|\s*(BD?\d+[a-z]?)\s*\|(.*)\|\s*$', l)   # r30 B230: BD rows; r31 prep: B252c-style sub-rows were invisible
         if not m:
             continue
         c = [x.strip() for x in m.group(2).split('|')]
@@ -1088,8 +1098,8 @@ def is_open(status):
 
 def backlog_key(b):
     """natural sort key of a §7 id: B2 < B10 < BD1. Pure."""
-    m = re.fullmatch(r'([A-Z]+)(\d+)', str(b))
-    return (m.group(1), int(m.group(2))) if m else (str(b), 0)
+    m = re.fullmatch(r'([A-Z]+)(\d+)([a-z]?)', str(b))
+    return (m.group(1), int(m.group(2)), m.group(3)) if m else (str(b), 0, '')
 
 
 def anchor_tokens(root, text, files=None):
@@ -1270,6 +1280,175 @@ def pid(area, kind, key):
     return f"AP-{area}-{kind}-{hashlib.sha256(f'{area}|{kind}|{key}'.encode()).hexdigest()[:6]}"
 
 
+# ───────────────────────────── r31 (rft §7 B274-B276): coverage sources and feed coherence ─────────────────────────────
+# The user (2026-11-12, rft §2.25): "massively improving harness/intel/area_intel.py ... so that more but cohorent proposals
+# land for all these categories". Until r31 an open §7 row was a proposal only when its anchor broke, an "Open after
+# Round N" ledger item without a §7 row was invisible to the feed, and an area with code but no KAT (7 of 18 at r30)
+# produced nothing unless kats + mutations + gates were all zero. Each source below is a pure function the KAT feeds.
+MEASURE_RX = re.compile(r'pending (?:measurement|live|quiet|event|the quiet|24 h)|quiet window|re-read|re-measure|\bMEASURE\b|'
+                        r'PENDING LIVE|pending a live|live (?:read|window) pending|needs? a (?:live|quiet)', re.I)
+HIGH_RX = re.compile(r'priority high|\bHIGH\b|soundness|inflation|consensus split|DoS\b|panic', re.I)
+LEDGER_ROUNDS = ('23c', '24', '25', '26', '27', '28', '28d', '29', '30')   # rft §2.25: "Open after Round 23c" .. "30"
+LEDGER_CLOSED_RX = re.compile(r'\b(CLOSED|FIXED|CONFIRMED|DONE|REFUTED|SUPERSEDED|DECIDED|CLOSED-OBSOLETE|not pursued|'
+                              r'IMPLEMENTED|answered|retired)\b', re.I)
+ROW_RX = re.compile(r'\b(BD?\d{1,3})\b')
+GO_LIKE = ('harness/', 'artifacts/', '.skills/', 'memory-mirror/', '*.sh', 'tools/memory-mirror/')
+
+
+def backlog_findings(a, blog):
+    """[(kind, severity, title, evidence, key)] for every OPEN §7 row registered to area `a`: 'measure-pending' when
+    its status waits for a measurement (MEASURE_RX), else 'backlog-open'; severity high on HIGH_RX, medium otherwise.
+    So each open row is a work item of its area's next round, not only when its anchor breaks. Pure."""
+    out = []
+    for b in a.get('backlog', []):
+        row = blog.get(b)
+        if not row or not is_open(row['status']):
+            continue
+        text = f"{row['item']} {row['status']}"
+        kind = 'measure-pending' if MEASURE_RX.search(row['status']) else 'backlog-open'
+        sev = 'high' if HIGH_RX.search(text) else 'medium'
+        out.append((kind, sev, f"{b} ({row['dim']}): {re.sub(r'[*`]', '', row['item'])[:180]}",
+                    [{'file': 'artifacts/dero-rft.md', 'quote': f'| {b} |', 'line': row['line']}], b))
+    return out
+
+
+def gap_findings(a, kat_present, mut_total, has_metrics):
+    """coverage gaps of an active area (r31): 'kat-gap' (code paths but no harness KAT registered) and 'mutation-gap'
+    (Go code paths but no go_mutate mutation in the newest record). Pure."""
+    out = []
+    code = [p for p in a.get('code_paths', []) if not p.startswith(GO_LIKE)]
+    if a.get('code_paths') and not kat_present:
+        out.append(('kat-gap', 'medium', f"no harness KAT is registered for {len(a['code_paths'])} code path(s) "
+                    f"(e.g. {a['code_paths'][0]}): add a KAT + mutation that fails on the area's newest fix", [], 'kat'))
+    if code and not mut_total:
+        out.append(('mutation-gap', 'medium', f"no go_mutate mutation covers the area's Go code ({code[0]} ...)", [], 'gomut'))
+    # no metric: the staleness() detector's 'no-metrics' already says it (one finding per fact; has_metrics is kept for
+    # the signature the KAT pins)
+    return out
+
+
+def ledger_items(html, rounds=LEDGER_ROUNDS):
+    """[{round, text, rows, chips, closed, pending}] of the <li> items of the 'Open after Round N' sections of a ledger
+    page. closed = the newest status chip ('R30 now: ...' or the last chip) names only closed words; pending = a
+    'pending' chip. Pure."""
+    import html as _h
+    out = []
+    for rid in rounds:
+        m = re.search(rf'<section[^>]*id="open{rid}"[^>]*>(.*?)</section>', html, re.S)
+        if not m:
+            continue
+        for li in re.findall(r'<li>(.*?)</li>', m.group(1), re.S):
+            chips = [_h.unescape(re.sub(r'<[^>]+>', '', c)).strip() for c in re.findall(r'<span class="chip[^"]*">(.*?)</span>', li, re.S)]
+            text = _h.unescape(re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', re.sub(r'<span class="chip.*?</span>', '', li, flags=re.S)))).strip()
+            now_chip = next((c for c in reversed(chips) if c.startswith('R30 now') or c.lower().startswith('r30 now')), chips[-1] if chips else '')
+            body = now_chip.split(':', 1)[-1]
+            words = [w.strip() for w in re.split(r'[;,]', body) if w.strip()]
+            closed = bool(words) and all(LEDGER_CLOSED_RX.search(w) for w in words) and not re.search(r'OPEN|PARTLY|pending', body, re.I)
+            out.append({'round': rid, 'text': text, 'rows': sorted(set(ROW_RX.findall(text + ' ' + ' '.join(chips))), key=backlog_key),
+                        'chips': chips, 'closed': closed,
+                        'pending': any('pending' in c.lower() for c in chips) and not closed})
+    return out
+
+
+def ledger_area(item, areas):
+    """the area an item without a §7 row belongs to: the most keyword hits (areas.json 'keywords'), else 'harness'."""
+    t = item['text'].lower()
+    best, hits = 'harness', 0
+    for a in areas:
+        n = sum(1 for k in a.get('keywords', []) if k.lower() in t)
+        if n > hits:
+            best, hits = a['id'], n
+    return best
+
+
+def ledger_findings(items, reg_bl, areas, page):
+    """{area: [(kind, severity, title, evidence, key)]} for ledger items still open: an item whose §7 rows are all
+    registered is already a backlog proposal of its area (or closed), so only items with no §7 row become proposals:
+    'ledger-pending' (a pending chip) or 'ledger-open'. Pure."""
+    out = {}
+    for it in items:
+        if it['closed'] or (it['rows'] and all(r in reg_bl for r in it['rows'])):
+            continue
+        if it['rows']:          # a row nobody owns: backlog-unassigned already says so
+            continue
+        aid = ledger_area(it, areas)
+        key = hashlib.sha256(f"{it['round']}|{it['text'][:200]}".encode()).hexdigest()[:10]
+        out.setdefault(aid, []).append(('ledger-pending' if it['pending'] else 'ledger-open', 'medium' if it['pending'] else 'low',
+                                        f"Open after Round {it['round']}: {it['text'][:200]}",
+                                        [{'file': page, 'quote': it['text'][:60]}], key))
+    return out
+
+
+def registry_rounds(root):
+    """the round ids of harness/round.json in order (the round registry; areas.json rounds stop at the last booked one)"""
+    try:
+        return [r.get('id') for r in json.loads(paths(root)['round'].read_text()).get('rounds', [])]
+    except (OSError, ValueError):
+        return []
+
+
+def area_opened(a, cur, order):
+    """r31 (B275): an area with 'since': '<round>' exists from that round on: while the current round comes before it,
+    coherence and G23 expect no scorecard for it (the closed pages of the earlier round stay byte-exact). Pure."""
+    s = a.get('since')
+    if not s or s not in order or cur not in order:
+        return True
+    return order.index(cur) >= order.index(s)
+
+
+def dedupe_rows(props, reg_order):
+    """one backlog proposal per §7 row: when two areas list the same row (B8/B9 in cryptosupply and disclosure), the
+    first area in registry order keeps it and names the others in 'also_areas'; the rest are dropped. Pure."""
+    kinds = ('backlog-open', 'measure-pending')
+    keep, seen = [], {}
+    rank = {a: i for i, a in enumerate(reg_order)}
+    for p in sorted(props, key=lambda p: rank.get(p['area'], 999)):
+        if p['kind'] in kinds:
+            row = p.get('row')
+            if row in seen:
+                seen[row].setdefault('also_areas', []).append(p['area'])
+                continue
+            seen[row] = p
+        keep.append(p)
+    return keep
+
+
+def coverage(props, reg):
+    """{area: {kind: n}} plus the active areas with no proposal at all (r31 feed summary). Pure."""
+    cov = {a['id']: {} for a in reg.get('areas', [])}
+    for p in props:
+        cov.setdefault(p['area'], {})
+        cov[p['area']][p['kind']] = cov[p['area']].get(p['kind'], 0) + 1
+    empty = [a['id'] for a in reg.get('areas', []) if a.get('status') == 'active' and not cov.get(a['id'])]
+    return cov, empty
+
+
+def feed_problems(pdoc, reg, root=None):
+    """the r31 coherence of a proposals feed: unique ids, every proposal's area in the registry, one backlog proposal
+    per §7 row, every evidence anchor with a file resolves (when root is given), a kind and severity on each. Pure
+    apart from the anchor reads."""
+    probs = []
+    ids = [p.get('id') for p in pdoc.get('proposals') or []]
+    if len(set(ids)) != len(ids):
+        probs.append(f'duplicate proposal ids ({len(ids) - len(set(ids))})')
+    known = {a['id'] for a in reg.get('areas', [])}
+    rows = {}
+    for p in pdoc.get('proposals') or []:
+        if p.get('area') not in known:
+            probs.append(f"{p.get('id')}: area {p.get('area')!r} is not in harness/areas.json")
+        if p.get('severity') not in ('high', 'medium', 'low') or not p.get('kind'):
+            probs.append(f"{p.get('id')}: no kind/severity")
+        if p.get('kind') in ('backlog-open', 'measure-pending'):
+            if p.get('row') in rows:
+                probs.append(f"{p.get('row')}: two backlog proposals ({rows[p['row']]}, {p.get('id')})")
+            rows[p.get('row')] = p.get('id')
+        if root is not None:
+            for e in p.get('evidence') or []:
+                if e.get('file') and not (Path(root) / e['file']).exists():
+                    probs.append(f"{p.get('id')}: evidence file {e['file']} missing")
+    return probs
+
+
 def evaluate(root, live=False, cur_override=None):
     """The whole computation. Returns (doc, proposals, errors)."""
     root = Path(root)
@@ -1306,6 +1485,14 @@ def evaluate(root, live=False, cur_override=None):
     kat_all = sorted(p.relative_to(root).as_posix() for p in paths(root)['kat'].glob('test_*.py')) + \
         (['harness/kat/verify_deroarch.py'] if (paths(root)['kat'] / 'verify_deroarch.py').exists() else [])
     owned_kats = {k for a in reg['areas'] for k in a.get('kat_files', [])}
+    # r31 (B276): the 'Open after Round 23c..30' items of the newest ledger page that have no §7 row, per area
+    _pages = sorted(root.glob('artifacts/dero-r1-r*.html'), key=lambda q: [int(x) if x.isdigit() else x for x in re.findall(r'\d+|\D+', q.stem)])
+    _page = _pages[-1] if _pages else None
+    try:
+        _ledger = ledger_findings(ledger_items(_page.read_text(errors='replace')), {b for x in reg['areas'] for b in x.get('backlog', [])},
+                                  reg['areas'], str(_page.relative_to(root))) if _page else {}
+    except OSError:
+        _ledger = {}
     # log_intel: ERROR kinds of the newest snapshot vs the 5 before it
     lis = sorted(paths(root)['runtime'].glob('logintel_*.json'))
     new_kinds = []
@@ -1328,8 +1515,11 @@ def evaluate(root, live=False, cur_override=None):
     props, cards = [], []
     triage = load_triage(root)
     stale_n = int(reg.get('stale_rounds', 2))
+    _rr = registry_rounds(root)
     for a in reg['areas']:
         aid = a['id']
+        if not area_opened(a, cur, _rr):        # r31 (B275): an area 'since' a later round is not scored before it
+            continue
         paused, pwhy = area_paused(a, tracks)
         found = []          # (kind, severity, title, evidence, key)
         # series per metric: history first, then computed records, then the current read for the current round
@@ -1488,10 +1678,15 @@ def evaluate(root, live=False, cur_override=None):
                     found.append(('backlog-anchor-broken', 'medium', f'{b}: anchor token(s) {bad_t} no longer resolve', ev, b))
                 elif not ok_t:
                     found.append(('backlog-unanchored', 'low', f'{b}: no tree anchor, only {gk or "free text"}: re-verify in code before acting', ev, b))
+        # r31 (B274): every open §7 row of the area is a work item; ledger items without a row; coverage gaps
+        found += backlog_findings(a, blog)
+        found += _ledger.get(aid, [])
         # coverage and staleness
         cov = len(kat_present) + mut_now['total'] + len(a.get('gates', []))
         if cov == 0:
             found.append(('zero-coverage', 'high', 'no KAT file, no go_mutate mutation and no gate covers this area', [], 'cov'))
+        else:
+            found += gap_findings(a, kat_present, mut_now['total'], bool(a.get('metrics')))
         not_stale, sf = staleness(mcards, a.get('metrics', []), tracks, order, cur, stale_n,
                                   paused_rounds_of(root, a.get('track')))
         if sf:
@@ -1509,6 +1704,8 @@ def evaluate(root, live=False, cur_override=None):
         for k, s, t, e, key in found:
             p = {'id': pid(aid, k, key), 'area': aid, 'owner_dim': a['owner_dim'], 'kind': k, 'severity': s, 'title': t,
                  'evidence': [x for x in e if x], 'round_found': cur}
+            if k in ('backlog-open', 'measure-pending'):
+                p['row'] = key
             if p['id'] in triage:                                  # r30 (B201): booked at its §7/§9 row, leaves WATCH
                 p['state'], p['booked'] = 'booked', triage[p['id']]
             evs = '; '.join(f"{x.get('file')}:{x.get('line')}" for x in p['evidence']) or f'area_intel {k}'
@@ -1537,6 +1734,8 @@ def evaluate(root, live=False, cur_override=None):
                           'severity': 'low', 'title': f'open §7 row {b} ({row["dim"]}) belongs to no area', 'round_found': cur,
                           'evidence': [{'file': 'artifacts/dero-rft.md', 'quote': f'| {b} |', 'line': row['line']}],
                           'suggested_row': f'| {b} | add {b} to an area in harness/areas.json | harness | artifacts/dero-rft.md:{row["line"]} | OPEN |'})
+    props = dedupe_rows(props, [a['id'] for a in reg['areas']])          # r31: one proposal per §7 row
+    _cov, _empty = coverage(props, reg)
     # carry first_seen across runs so a proposal that survives rounds shows its age
     try:
         _odoc = json.loads(paths(root)['props'].read_text())
@@ -1561,6 +1760,8 @@ def evaluate(root, live=False, cur_override=None):
             # r30 (rft §8 tooling: 'the 99 low area proposals'): {proposal id: {verdict, round, how, kind, title}}, verdict
             # one of TRIAGE_VERDICTS; carried from run to run (a verdict is never lost when the proposal leaves the feed)
             'triage': triage,
+            # r31 (B274): proposals per area and kind; active areas with none (each needs a stated reason)
+            'coverage': _cov, 'areas_without_proposals': _empty,
             'proposals': sorted(props, key=lambda p: ({'high': 0, 'medium': 1, 'low': 2}[p['severity']], p['area'], p['kind'], p['id']))}
     return doc, pdoc, errors
 
@@ -1630,7 +1831,9 @@ def g23(root=ROOT, at=None):
     if doc.get('registry', {}).get('sha') != sha(P['reg']):
         why.append('areas.json changed after the scorecard run')
     cards = {c['id']: c for c in doc.get('areas', [])}
-    active = [a['id'] for a in reg.get('areas', []) if a.get('status') == 'active']
+    _cur = json.loads(P['round'].read_text()).get('current') if P['round'].exists() else None
+    active = [a['id'] for a in reg.get('areas', []) if a.get('status') == 'active'
+              and area_opened(a, _cur, registry_rounds(root))]          # r31 (B275): an area 'since' a later round
     miss = [a for a in active if a not in cards]
     if miss:
         why.append(f'active areas without a scorecard {miss}')
@@ -1642,6 +1845,9 @@ def g23(root=ROOT, at=None):
             for p in m['series']:
                 if not is_pending(p['value']) and not resolved(resolve_anchor(root, p.get('anchor'))):
                     why.append(f"{c['id']}.{m['id']}@{p['round']} anchor no longer resolves")
+    fp = feed_problems(pdoc, reg, root)                       # r31 (B274): the feed is coherent
+    if fp:
+        why.append(f'proposal feed incoherent: {fp[:3]}')
     s = doc.get('summary', {})
     det = (f"{s.get('areas')} areas ({s.get('active')} active, {s.get('paused')} paused) states {s.get('states')} · "
            f"{s.get('proposals')} proposals {pdoc.get('counts')} · refused {s.get('refused_values')} · run {doc.get('run_id')} "
