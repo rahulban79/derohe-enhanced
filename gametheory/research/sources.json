@@ -1,0 +1,660 @@
+[
+ {
+  "n": 1,
+  "url": "https://github.com/deroproject/derohe",
+  "title": "deroproject/derohe GitHub repository page (README)",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A",
+   "B",
+   "D"
+  ],
+  "quote": "Each block has 10 mini blocks to rewards up to 10 differents miners"
+ },
+ {
+  "n": 2,
+  "url": "https://raw.githubusercontent.com/deroproject/derohe/main/README.md",
+  "title": "derohe README.md (raw)",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A",
+   "C",
+   "D",
+   "G"
+  ],
+  "quote": "Transactions size have a logarithm growth based on the anonymity set and must be chosen in powers of 2."
+ },
+ {
+  "n": 3,
+  "url": "https://docs.dero.io/",
+  "title": "DERO documentation home (network specifications, mining)",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A",
+   "C",
+   "D"
+  ],
+  "quote": "The daemon itself will retain a fixed fee of 1.6% for the daemon operator"
+ },
+ {
+  "n": 4,
+  "url": "https://docs.dero.io/developer/dvm.html",
+  "title": "DERO Virtual Machine (DVM-BASIC) documentation",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "B",
+   "F",
+   "G"
+  ],
+  "quote": "RANDOM returns a random using a PRNG seeded on BLID,SCID,TXID."
+ },
+ {
+  "n": 5,
+  "url": "https://docs.dero.io/developer/DHEBP.html",
+  "title": "DHEBP (DERO Homomorphic Encryption Blockchain Protocol) developer page",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A"
+  ],
+  "quote": "Proof which grows log in ring members"
+ },
+ {
+  "n": 6,
+  "url": "https://docs.dero.io/developer/astrobwt.html",
+  "title": "AstroBWT developer documentation",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "C"
+  ],
+  "quote": "all known implementations to this date, could not deliver an improvement even twice that of CPUs."
+ },
+ {
+  "n": 7,
+  "url": "https://docs.dero.io/getting-started/smartcontract.html",
+  "title": "Deploy your own Smart Contract (DERO docs)",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "B"
+  ],
+  "quote": "Save this Smart Contract ID as you will need this going forward."
+ },
+ {
+  "n": 8,
+  "url": "https://github.com/deroproject/derohe/blob/main/Changelog.md",
+  "title": "derohe Changelog.md",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "B",
+   "D"
+  ],
+  "quote": "SCs can now update themselves. however, new code will only run on next invocation"
+ },
+ {
+  "n": 9,
+  "url": "https://github.com/deroproject/derohe/releases",
+  "title": "derohe GitHub releases",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "C",
+   "D"
+  ],
+  "quote": "Release 152: Hard Fork 3 activates at block 7,504,640."
+ },
+ {
+  "n": 10,
+  "url": "https://github.com/deroproject/derohe/tree/main/astrobwt/astrobwtv3",
+  "title": "derohe astrobwt/astrobwtv3 directory listing",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "C"
+  ],
+  "quote": "derohe/astrobwt/astrobwtv3 at main · deroproject/derohe"
+ },
+ {
+  "n": 11,
+  "url": "https://github.com/deroproject/derohe/tree/main/dvm",
+  "title": "derohe dvm directory listing",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "B"
+  ],
+  "quote": "deterministic_random_number.go"
+ },
+ {
+  "n": 12,
+  "url": "https://github.com/deroproject/graviton",
+  "title": "deroproject/graviton README",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A"
+  ],
+  "quote": "every write is tracked, versioned and authenticated with cryptographic proofs."
+ },
+ {
+  "n": 13,
+  "url": "https://github.com/spectre-project/rusty-spectrex",
+  "title": "rusty-spectrex README (third-party AstroBWTv3 implementation, Spectre project)",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "C"
+  ],
+  "quote": "Step 5: Apply a branchy loop using RC4 stream encryption on the data from step 4.",
+  "note": "third-party implementation README, not an official DERO source"
+ },
+ {
+  "n": 14,
+  "url": "https://eprint.iacr.org/2019/191",
+  "title": "Bunz, Agrawal, Zamani, Boneh - Zether: Towards Privacy in a Smart Contract World (ePrint 2019/191, FC 2020)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A",
+   "G"
+  ],
+  "quote": "We design a new smart contract that keeps the account balances encrypted"
+ },
+ {
+  "n": 15,
+  "url": "https://eprint.iacr.org/2020/293",
+  "title": "Diamond - Many-out-of-Many Proofs and Applications to Anonymous Zether (ePrint 2020/293)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A"
+  ],
+  "quote": "Our protocol features proofs which grow only logarithmically in the size of the \"anonymity sets\" used"
+ },
+ {
+  "n": 16,
+  "url": "https://arxiv.org/abs/1704.04299",
+  "title": "Moser et al. - An Empirical Analysis of Traceability in the Monero Blockchain (arXiv 1704.04299)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A",
+   "G"
+  ],
+  "quote": "about 62% of transaction inputs with one or more mixins are vulnerable to \"chain-reaction\" analysis"
+ },
+ {
+  "n": 17,
+  "url": "https://arxiv.org/abs/1311.0243",
+  "title": "Eyal, Sirer - Majority is not Enough: Bitcoin Mining is Vulnerable (arXiv 1311.0243)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "We present an attack with which colluding miners obtain a revenue larger than their fair share."
+ },
+ {
+  "n": 18,
+  "url": "https://arxiv.org/abs/1507.06183",
+  "title": "Sapirshtein, Sompolinsky, Zohar - Optimal Selfish Mining Strategies in Bitcoin (arXiv 1507.06183)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "the profit threshold -- the minimal fraction of resources required for a profitable attack"
+ },
+ {
+  "n": 19,
+  "url": "https://www.cs.princeton.edu/~arvindn/publications/mining_CCS.pdf",
+  "title": "Carlsten, Kalodner, Weinberg, Narayanan - On the Instability of Bitcoin Without the Block Reward (ACM CCS 2016, extended)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "it can be made profitable for a miner with an arbitrarily low hash power share, and who is arbitrarily poorly connected within the network",
+  "note": "read from the PDF text; ligature 'fi' normalised in the quote"
+ },
+ {
+  "n": 20,
+  "url": "https://www.nber.org/papers/w24717",
+  "title": "Budish - The Economic Limits of Bitcoin and the Blockchain (NBER WP 24717, 2018)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "intrinsic economic limits to how economically important it can become in the first place"
+ },
+ {
+  "n": 21,
+  "url": "https://eprint.iacr.org/2013/881",
+  "title": "Sompolinsky, Zohar - Accelerating Bitcoin's Transaction Processing. Fast Money Grows on Trees, Not Chains (GHOST; ePrint 2013/881)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "The block generation rate can be securely increased to more than one block per second."
+ },
+ {
+  "n": 22,
+  "url": "https://eprint.iacr.org/2018/104",
+  "title": "Sompolinsky, Wyborski, Zohar - PHANTOM and GHOSTDAG (ePrint 2018/104)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "provides a robust total order on the blockDAG in a way that is eventually agreed upon by all honest nodes"
+ },
+ {
+  "n": 23,
+  "url": "https://arxiv.org/abs/1805.03870",
+  "title": "Li et al. - Scaling Nakamoto Consensus to Thousands of Transactions per Second (Conflux; arXiv 1805.03870)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "optimistically process concurrent blocks without discarding any as forks"
+ },
+ {
+  "n": 24,
+  "url": "https://arxiv.org/abs/1805.08832",
+  "title": "Ritz, Zugenmaier - The Impact of Uncle Rewards on Selfish Mining in Ethereum (arXiv 1805.08832)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "But the concept also reduces the risk for a selfish miner to gain no rewards from withholding a freshly minted block."
+ },
+ {
+  "n": 25,
+  "url": "https://arxiv.org/abs/1112.4980",
+  "title": "Rosenfeld - Analysis of Bitcoin Pooled Mining Reward Systems (arXiv 1112.4980)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "The total reward in a pool with a given average hashrate is constant. Any additional reward obtained by hoppers must be at the expense of continuous miners.",
+  "note": "quote taken from the downloaded PDF text"
+ },
+ {
+  "n": 26,
+  "url": "https://arxiv.org/abs/1411.7099",
+  "title": "Eyal - The Miner's Dilemma (arXiv 1411.7099)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E"
+  ],
+  "quote": "the miner's dilemma, an instance of the iterative prisoner's dilemma"
+ },
+ {
+  "n": 27,
+  "url": "https://arxiv.org/abs/2012.00854",
+  "title": "Roughgarden - Transaction Fee Mechanism Design for the Ethereum Blockchain: An Economic Analysis of EIP-1559 (arXiv 2012.00854)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E",
+   "F"
+  ],
+  "quote": "a burned base fee that rises and falls with demand"
+ },
+ {
+  "n": 28,
+  "url": "https://blog.ethereum.org/2014/03/28/schellingcoin-a-minimal-trust-universal-data-feed",
+  "title": "Buterin - SchellingCoin: A Minimal-Trust Universal Data Feed (Ethereum blog, 2014)",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "Every user who submitted a correctly submitted value between the 25th and 75th percentile gains a reward of N tokens.",
+  "note": "primary design source but a blog post: classed steer, never counted as evidence"
+ },
+ {
+  "n": 29,
+  "url": "https://blog.ethereum.org/2015/01/28/p-epsilon-attack",
+  "title": "Buterin - The P + epsilon Attack (Ethereum blog, 2015)",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "The attack has successfully managed to take over the mechanism at zero cost.",
+  "note": "primary design source but a blog post: classed steer, never counted as evidence"
+ },
+ {
+  "n": 30,
+  "url": "https://arxiv.org/abs/1501.01042",
+  "title": "Peterson et al. - Augur: a decentralized oracle and prediction market platform (arXiv 1501.01042)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "Token holders can post progressively-larger Reputation bonds to dispute proposed market outcomes"
+ },
+ {
+  "n": 31,
+  "url": "https://www.gwern.net/docs/www/kleros.io/d7e87742c80d3dbcb25e6b275f2105a7c41b05a0.pdf",
+  "title": "Lesaege, Ast, George - Kleros Short Paper v1.0.7 (2019; mirror copy)",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F",
+   "G"
+  ],
+  "quote": "making incoherent jurors, i.e. jurors whose votes do not agree with the ultimate ruling, pay part of their stake to coherent ones",
+  "note": "official Kleros paper read from a mirror; official long-whitepaper URL [55] failed"
+ },
+ {
+  "n": 32,
+  "url": "https://arxiv.org/abs/1710.09437",
+  "title": "Buterin, Griffith - Casper the Friendly Finality Gadget (arXiv 1710.09437)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "the validator's entire deposit is taken away with a small \"finder's fee\" given to the submitter of the evidence transaction",
+  "note": "quote taken from the downloaded PDF text"
+ },
+ {
+  "n": 33,
+  "url": "https://www.cs.princeton.edu/courses/archive/spr08/cos444/papers/myerson81.pdf",
+  "title": "Myerson - Optimal Auction Design (Mathematics of Operations Research 6(1), 1981; course mirror)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "The seller's problem is to design an auction game which has a Nash equilibrium giving him the highest possible expected utility.",
+  "note": "read from a course-site JSTOR copy; publisher DOI page 10.1287/moor.6.1.58 returned HTTP 403"
+ },
+ {
+  "n": 34,
+  "url": "https://eprint.iacr.org/2018/704",
+  "title": "Galal, Youssef - Verifiable Sealed-Bid Auction on the Ethereum Blockchain (ePrint 2018/704)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F",
+   "G"
+  ],
+  "quote": "no information about the losing bids is leaked to the bidders"
+ },
+ {
+  "n": 35,
+  "url": "https://www.nber.org/papers/w16433",
+  "title": "Kearney, Tufano, Guryan, Hurst - Making Savers Winners: An Overview of Prize-Linked Savings Products (NBER WP 16433, 2010)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "distribute periodic sizeable payments to some investors using a lottery-like drawing"
+ },
+ {
+  "n": 36,
+  "url": "https://arxiv.org/abs/1809.06421",
+  "title": "Buterin, Hitzig, Weyl - A Flexible Design for Funding Public Goods (arXiv 1809.06421)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "Under the \"standard model\" this yields first best public goods provision."
+ },
+ {
+  "n": 37,
+  "url": "https://eprint.iacr.org/2019/1096",
+  "title": "Karantias, Kiayias, Zindros - Proof-of-Burn (ePrint 2019/1096, FC 2020)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "Unspendability, which mandates that an address which verifies correctly as a burn address cannot be used for spending"
+ },
+ {
+  "n": 38,
+  "url": "https://faculty.washington.edu/weicaics/paper/papers/SizhengFanMWC2022.pdf",
+  "title": "Fan, Min, Wu, Wei - Towards understanding governance tokens in liquidity mining: a case study of decentralized exchanges (World Wide Web, 2022)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "On November 18, Uniswap's TVL plummeted by $1.29 billion",
+  "note": "quote taken from the downloaded PDF text"
+ },
+ {
+  "n": 39,
+  "url": "https://arxiv.org/abs/1703.03779",
+  "title": "Bartoletti, Carta, Cimoli, Saia - Dissecting Ponzi schemes on Ethereum: identification, analysis, and impact (FGCS 2020; arXiv 1703.03779)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "we end up with a dataset of 184 Ponzi schemes",
+  "note": "quote taken from the downloaded PDF text"
+ },
+ {
+  "n": 40,
+  "url": "https://arxiv.org/abs/2308.16391",
+  "title": "Huynh et al. - Improving the Accuracy of Transaction-Based Ponzi Detection on Ethereum (arXiv 2308.16391)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "a Ponzi developer can fool a detection model by obfuscating the opcode"
+ },
+ {
+  "n": 41,
+  "url": "https://arxiv.org/abs/1904.05234",
+  "title": "Daian et al. - Flash Boys 2.0: Frontrunning, Transaction Reordering, and Consensus Instability in Decentralized Exchanges (arXiv 1904.05234)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "E",
+   "G"
+  ],
+  "quote": "high fees paid for priority transaction ordering poses a systemic risk to consensus-layer security"
+ },
+ {
+  "n": 42,
+  "url": "https://arxiv.org/abs/1902.05164",
+  "title": "Eskandari, Moosavi, Clark - SoK: Transparent Dishonesty: front-running attacks on Blockchain (FC 2019 workshops; arXiv 1902.05164)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "G"
+  ],
+  "quote": "we distinguish three cases: displacement, insertion, and suppression attacks"
+ },
+ {
+  "n": 43,
+  "url": "https://eprint.iacr.org/2015/1015",
+  "title": "Bonneau, Clark, Goldfeder - On Bitcoin as a public randomness source (ePrint 2015/1015)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "B",
+   "F",
+   "G"
+  ],
+  "quote": "manipulation-resistant against an attacker with a stake of less than 50 bitcoins"
+ },
+ {
+  "n": 44,
+  "url": "https://arxiv.org/abs/2105.13822",
+  "title": "Heimbach, Wang, Wattenhofer - Behavior of Liquidity Providers in Decentralized Exchanges (arXiv 2105.13822)",
+  "kind": "paper",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "it is not clear how liquidity providers behave in such markets"
+ },
+ {
+  "n": 45,
+  "url": "https://www.whattomine.com/coins/442-dero-astrobwtv3",
+  "title": "WhatToMine - DERO (AstroBWTv3) coin page",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "C",
+   "D"
+  ],
+  "quote": "block reward of 0.31 DERO every 18.56s"
+ },
+ {
+  "n": 46,
+  "url": "https://dero-node-ch4k1pu.mysrv.cloud/mining-dero-on-desktop-and-servers",
+  "title": "Community node page - Mining DERO on desktop and servers",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "D"
+  ],
+  "quote": "1 out of 10 blocks mined is called an Integrator block.",
+  "fetch": "failed",
+  "fetch_note": "TLS error; quote is from a search-result snippet, not a fetch"
+ },
+ {
+  "n": 47,
+  "url": "https://wiki.dero.io/wiki/images/a/ab/The_DERO-HE_Stargate_White_Paper_according_to_secretnamebasis.pdf",
+  "title": "The DERO HE Stargate White Paper according to secretnamebasis (community-written, DERO wiki)",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A",
+   "D"
+  ],
+  "quote": "not retrieved (fetch failed)",
+  "fetch": "failed",
+  "fetch_note": "connection refused / timeout"
+ },
+ {
+  "n": 48,
+  "url": "https://wiki.dero.io/wiki/index.php/AstroBWT",
+  "title": "DERO wiki - AstroBWT",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "C"
+  ],
+  "quote": "not retrieved (fetch failed)",
+  "fetch": "failed",
+  "fetch_note": "connection refused"
+ },
+ {
+  "n": 49,
+  "url": "https://wiki.dero.io/wiki/index.php/Dero_HE_Features",
+  "title": "DERO wiki - Dero HE Features",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A"
+  ],
+  "quote": "not retrieved (fetch failed)",
+  "fetch": "failed",
+  "fetch_note": "connection refused"
+ },
+ {
+  "n": 50,
+  "url": "https://forum.dero.io/t/dero-astrobwt-proof-of-work-for-egalitarian-cpu-mining/1236",
+  "title": "DERO forum - AstroBWT proof of work for egalitarian CPU mining",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "C"
+  ],
+  "quote": "not retrieved (fetch failed)",
+  "fetch": "failed",
+  "fetch_note": "connection refused"
+ },
+ {
+  "n": 51,
+  "url": "https://medium.com/deroproject/stargate-rc2-testnet-update-3b2b9207b830",
+  "title": "DERO Project Medium - Stargate RC2 testnet update",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "D"
+  ],
+  "quote": "not retrieved (fetch failed)",
+  "fetch": "failed",
+  "fetch_note": "HTTP 403"
+ },
+ {
+  "n": 52,
+  "url": "https://medium.com/deroproject/stargate-a-private-decentralized-application-platform-d166baa7cc2",
+  "title": "DERO Project Medium - Stargate: A Private Decentralized Application Platform",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A",
+   "B",
+   "D"
+  ],
+  "quote": "not retrieved (fetch failed)",
+  "fetch": "failed",
+  "fetch_note": "HTTP 403"
+ },
+ {
+  "n": 53,
+  "url": "https://medium.com/@kryptoid/derohe-and-homomorphic-encryption-versus-other-blockchain-privacy-solutions-b795bab518c7",
+  "title": "Medium (kryptoid) - DEROHE and Homomorphic Encryption Versus Other Blockchain Privacy Solutions",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A"
+  ],
+  "quote": "not retrieved (fetch failed)",
+  "fetch": "failed",
+  "fetch_note": "HTTP 403"
+ },
+ {
+  "n": 54,
+  "url": "https://coinclear.pages.dev/privacy/dero",
+  "title": "CoinClear - DERO privacy rating",
+  "kind": "steer",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "A"
+  ],
+  "quote": "not retrieved (fetch failed)",
+  "fetch": "failed",
+  "fetch_note": "DNS not found"
+ },
+ {
+  "n": 55,
+  "url": "https://kleros.io/whitepaper_long_en.pdf",
+  "title": "Kleros long whitepaper (official URL)",
+  "kind": "doc",
+  "accessed": "2026-11-15",
+  "used_for": [
+   "F"
+  ],
+  "quote": "not retrieved (fetch failed)",
+  "fetch": "failed",
+  "fetch_note": "served 'Not found' instead of PDF"
+ }
+]

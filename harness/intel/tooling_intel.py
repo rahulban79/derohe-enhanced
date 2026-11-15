@@ -129,6 +129,8 @@ GENERATORS = [            # (command, output page) for --determinism; each is ru
     (['artifacts/src/gen_ledger.py'], LEDGER_PAGE),
     # r31 prep (rft §2.27): the generated R28-R30 summary table
     (['artifacts/src/gen_enhancements.py'], 'artifacts/dero-enhancements-r28-r30.html'),
+    # r32 (dero-game-theory-rft §0.2): the game-theory page, projected from its records
+    (['artifacts/src/gen_gametheory.py'], 'artifacts/dero-enhanced-game-theory.html'),
 ]
 # §0.9 rule 1: every tooling defect class of R24/R25 and the KAT (file, id marker) that reproduces it
 DEFECT_CLASSES = [

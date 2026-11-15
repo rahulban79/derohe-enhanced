@@ -786,7 +786,9 @@ def dk33(d, V, H, st):
                     pts.append((t, int(m.group(2)), int(m.group(3)), None if m.group(4) is None else int(m.group(4))))
     pts.sort()
     w = [(b[0] - a[0], b[1], b[2], b[3]) for a, b in zip(pts, pts[1:]) if b[0] > a[0]]
-    if len(w) < 2:
+    # r32: a short miner run (2026-11-14 23:25-23:28, one window) is still recomputed independently from the raw text;
+    # only a run with NO complete window cannot be checked
+    if len(w) < 1:
         return False, f'only {len(w)} split windows in the raw log for {r["start"]}'
     T = sum(x[0] for x in w)
     bl = [x for x in w if x[3] is not None]

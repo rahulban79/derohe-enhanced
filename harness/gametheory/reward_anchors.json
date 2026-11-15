@@ -1,0 +1,477 @@
+{
+ "_doc": "R32 block-reward / DAG anchors: every reward formula of DERO HE grounded at file:line in the Go source. quote is a verbatim substring of that line (>= 12 chars). Re-verify: python3 -I harness/gametheory/reward_intel.py --check (OK / MOVED = quote elsewhere in the file / DRIFT = quote gone, exit 4). Amounts in atomic units, 1 DERO = 100000.",
+ "anchors": [
+  {
+   "id": "RW01",
+   "what": "block time target (seconds)",
+   "formula": "BLOCK_TIME = 18",
+   "file": "config/config.go",
+   "line": 34,
+   "quote": "const BLOCK_TIME = uint64(18)"
+  },
+  {
+   "id": "RW02",
+   "what": "block time in milliseconds (difficulty input)",
+   "formula": "BLOCK_TIME_MILLISECS = BLOCK_TIME * 1000 = 18000",
+   "file": "config/config.go",
+   "line": 35,
+   "quote": "const BLOCK_TIME_MILLISECS = BLOCK_TIME * 1000"
+  },
+  {
+   "id": "RW03",
+   "what": "final-miniblock difficulty multiplier and normal-miniblock count basis",
+   "formula": "MINIBLOCK_HIGHDIFF = 9",
+   "file": "config/config.go",
+   "line": 36,
+   "quote": "const MINIBLOCK_HIGHDIFF = 9"
+  },
+  {
+   "id": "RW04",
+   "what": "halving interval in blocks",
+   "formula": "RewardReductionInterval = 210000 * 600 / BLOCK_TIME = 7,000,000",
+   "file": "blockchain/transaction_execute.go",
+   "line": 44,
+   "quote": "const RewardReductionInterval = 210000 * 600 / config.BLOCK_TIME"
+  },
+  {
+   "id": "RW05",
+   "what": "base reward constant (atomic units, 1 DERO = 100000)",
+   "formula": "BaseReward = 41 * 100000 * BLOCK_TIME / 600 = 123,000",
+   "file": "blockchain/transaction_execute.go",
+   "line": 45,
+   "quote": "const BaseReward = (41 * 100000 * config.BLOCK_TIME) / 600"
+  },
+  {
+   "id": "RW06",
+   "what": "emission function: base block reward at height h",
+   "formula": "CalcBlockReward(h) = BaseReward >> floor((h + RRI) / RRI); h < 7,000,000: 61,500; 7,000,000 <= h < 14,000,000: 30,750",
+   "file": "blockchain/transaction_execute.go",
+   "line": 61,
+   "quote": "return BaseReward >> ((height + RewardReductionInterval) / RewardReductionInterval)"
+  },
+  {
+   "id": "RW07",
+   "what": "premine (old-chain supply carried into HE at genesis)",
+   "formula": "PREMINE = 1,228,125,400,000 atomic = 12,281,254.00000 DERO",
+   "file": "config/config.go",
+   "line": 61,
+   "quote": "const PREMINE uint64 = 1228125400000"
+  },
+  {
+   "id": "RW08",
+   "what": "supply formula start: premine",
+   "formula": "CalcSupply(h) = PREMINE + 271,739,600 + sum over epochs of CalcBlockReward(epoch start) * blocks in epoch",
+   "file": "blockchain/supply.go",
+   "line": 6,
+   "quote": "supply := config.PREMINE"
+  },
+  {
+   "id": "RW09",
+   "what": "supply formula: early-registration grants",
+   "formula": "+ 271,739,600 (1,358,698 accounts x 200)",
+   "file": "blockchain/supply.go",
+   "line": 9,
+   "quote": "supply += 271739600"
+  },
+  {
+   "id": "RW10",
+   "what": "supply formula: per-epoch emission",
+   "formula": "+ CalcBlockReward(epochStart) * blocksInEpoch",
+   "file": "blockchain/supply.go",
+   "line": 19,
+   "quote": "supply += CalcBlockReward(epochStartHeight) * blocksInEpoch"
+  },
+  {
+   "id": "RW11",
+   "what": "early-registration grant (mainnet, height < 144,000)",
+   "formula": "registration at h < 144000 credits 200 atomic",
+   "file": "blockchain/transaction_execute.go",
+   "line": 194,
+   "quote": "if globals.IsMainnet() && height < 144000 {"
+  },
+  {
+   "id": "RW12",
+   "what": "registration pays no fee",
+   "formula": "process_transaction(REGISTRATION) returns 0 fee",
+   "file": "blockchain/transaction_execute.go",
+   "line": 202,
+   "quote": "return 0 // registration doesn't give any fees"
+  },
+  {
+   "id": "RW13",
+   "what": "block reward = base + fees",
+   "formula": "full_reward = CalcBlockReward(height) + fees_collected",
+   "file": "blockchain/transaction_execute.go",
+   "line": 127,
+   "quote": "full_reward := base_reward + fees"
+  },
+  {
+   "id": "RW14",
+   "what": "per-miniblock share (integer division)",
+   "formula": "share = floor(full_reward / len(MiniBlocks)) = floor(full_reward / 10)",
+   "file": "blockchain/transaction_execute.go",
+   "line": 133,
+   "quote": "share := full_reward / uint64(len(bl.MiniBlocks))"
+  },
+  {
+   "id": "RW15",
+   "what": "division remainder goes to the integrator",
+   "formula": "leftover = full_reward - share * len(MiniBlocks)",
+   "file": "blockchain/transaction_execute.go",
+   "line": 134,
+   "quote": "leftover := full_reward - (share * uint64(len(bl.MiniBlocks)))"
+  },
+  {
+   "id": "RW16",
+   "what": "integrator (Miner_TX.MinerAddress) credit",
+   "formula": "integrator += share + leftover",
+   "file": "blockchain/transaction_execute.go",
+   "line": 142,
+   "quote": "nb.Balance = nb.Balance.Plus(new(big.Int).SetUint64(share + leftover))"
+  },
+  {
+   "id": "RW17",
+   "what": "final miniblock is skipped in the miner loop (its share is the integrator's)",
+   "formula": "for each miniblock: if Final: skip",
+   "file": "blockchain/transaction_execute.go",
+   "line": 148,
+   "quote": "if mbl.Final {"
+  },
+  {
+   "id": "RW18",
+   "what": "each non-final miniblock credits its KeyHash owner one share",
+   "formula": "owner(mbl.KeyHash[:16]) += share, once per miniblock (a key with k miniblocks gets k shares)",
+   "file": "blockchain/transaction_execute.go",
+   "line": 151,
+   "quote": "_, key_compressed, balance_serialized, err := balance_tree.GetKeyValueFromHash(mbl.KeyHash[:16])"
+  },
+  {
+   "id": "RW19",
+   "what": "exactly 10 miniblocks per block",
+   "formula": "len(MiniBlocks) == BLOCK_TIME - MINIBLOCK_HIGHDIFF + 1 = 10",
+   "file": "blockchain/miniblocks_consensus.go",
+   "line": 80,
+   "quote": "if uint64(len(bl.MiniBlocks)) != (config.BLOCK_TIME - config.MINIBLOCK_HIGHDIFF + 1) {"
+  },
+  {
+   "id": "RW20",
+   "what": "at least one final miniblock",
+   "formula": "final_count >= 1",
+   "file": "blockchain/miniblocks_consensus.go",
+   "line": 75,
+   "quote": "if final_count < 1 {"
+  },
+  {
+   "id": "RW21",
+   "what": "from height 399,000 exactly 9 non-final miniblocks (so exactly 1 final)",
+   "formula": "h >= 399000: collection count == BLOCK_TIME - MINIBLOCK_HIGHDIFF = 9",
+   "file": "blockchain/miniblocks_consensus.go",
+   "line": 120,
+   "quote": "if bl.Height >= 399000 { // soft HF"
+  },
+  {
+   "id": "RW22",
+   "what": "template keeps only the first 9 normal miniblocks seen for the tip",
+   "formula": "mbls = mbls[:9] (arrival order at the integrating node); extra miniblocks earn nothing",
+   "file": "blockchain/miner_block.go",
+   "line": 338,
+   "quote": "mbls = mbls[:config.BLOCK_TIME-config.MINIBLOCK_HIGHDIFF]"
+  },
+  {
+   "id": "RW23",
+   "what": "after 9 normal miniblocks the job turns final; final KeyHash = block header hash, not a miner key",
+   "formula": "len(MiniBlocks) < 9: KeyHash = Sum(miner key); else Final = HighDiff = true",
+   "file": "blockchain/miner_block.go",
+   "line": 364,
+   "quote": "if uint64(len(bl.MiniBlocks)) < config.BLOCK_TIME-config.MINIBLOCK_HIGHDIFF {"
+  },
+  {
+   "id": "RW24",
+   "what": "the integrator address is written into the miner tx of the template",
+   "formula": "Miner_TX.MinerAddress = integrator_address (Create_new_miner_block arg)",
+   "file": "blockchain/miner_block.go",
+   "line": 307,
+   "quote": "copy(bl.Miner_TX.MinerAddress[:], miner_address.Compressed())"
+  },
+  {
+   "id": "RW25",
+   "what": "mining templates are built for the node's integrator address, not the miner's",
+   "formula": "Create_new_miner_block(chain.integrator_address)",
+   "file": "blockchain/miner_block.go",
+   "line": 401,
+   "quote": "_, bl, err = chain.Create_new_miner_block(chain.integrator_address)"
+  },
+  {
+   "id": "RW26",
+   "what": "--integrator-address default = Dev_Address",
+   "formula": "integrator = --integrator-address if given else globals.Config.Dev_Address",
+   "file": "blockchain/blockchain.go",
+   "line": 126,
+   "quote": "if addr, err = rpc.NewAddress(strings.TrimSpace(globals.Config.Dev_Address)); err != nil {"
+  },
+  {
+   "id": "RW27",
+   "what": "Dev_Address is the default integrator payee (config field)",
+   "formula": "Dev_Address: integrator payee when the operator gives none",
+   "file": "config/config.go",
+   "line": 96,
+   "quote": "Dev_Address        string // to which address the integrator rewatd will go"
+  },
+  {
+   "id": "RW28",
+   "what": "final miniblock PoW needs MINIBLOCK_HIGHDIFF x the block difficulty",
+   "formula": "HighDiff: target difficulty = D * 9",
+   "file": "blockchain/difficulty.go",
+   "line": 173,
+   "quote": "block_difficulty.Mul(block_difficulty, new(big.Int).SetUint64(config.MINIBLOCK_HIGHDIFF))"
+  },
+  {
+   "id": "RW29",
+   "what": "normal miniblocks must be mined by a registered key",
+   "formula": "non-final mbl with unregistered KeyHash: block rejected",
+   "file": "blockchain/blockchain.go",
+   "line": 598,
+   "quote": "if mbl.Final == false && !chain.IsAddressHashValid(true, miner_hash) {"
+  },
+  {
+   "id": "RW30",
+   "what": "fees summed over the block's txs",
+   "formula": "fees_collected += tx_fees (every tx of a topo-ordered block)",
+   "file": "blockchain/blockchain.go",
+   "line": 1028,
+   "quote": "fees_collected += tx_fees"
+  },
+  {
+   "id": "RW31",
+   "what": "side blocks: no reward, txs ignored (code comment)",
+   "formula": "side block reward = 0",
+   "file": "blockchain/blockchain.go",
+   "line": 985,
+   "quote": "// this means they donot get any reward , 0 reward"
+  },
+  {
+   "id": "RW32",
+   "what": "coinbase applied once per block executed onto the chain state",
+   "formula": "process_miner_transaction(bl, h==0, balance_tree, fees_collected, h)",
+   "file": "blockchain/blockchain.go",
+   "line": 1068,
+   "quote": "chain.process_miner_transaction(bl_current, bl_current.Height == 0, balance_tree, fees_collected, bl_current.Height)"
+  },
+  {
+   "id": "RW33",
+   "what": "only 1 tip per block (the DAG is a chain: topoheight == height)",
+   "formula": "len(bl.Tips) > 1 => rejected",
+   "file": "blockchain/blockchain.go",
+   "line": 491,
+   "quote": "if len(bl.Tips) > 1 {"
+  },
+  {
+   "id": "RW34",
+   "what": "Isblock_SideBlock = block has no topological order",
+   "formula": "sideblock(b) = topo(b) < 0",
+   "file": "blockchain/blockchain.go",
+   "line": 1376,
+   "quote": "block_topoheight := chain.Load_Block_Topological_order(blid)"
+  },
+  {
+   "id": "RW35",
+   "what": "topo record is (re)written along the winning chain only",
+   "formula": "Topo_store.Write(height, hash, commit_version, height) for the new tip back to the fork point",
+   "file": "blockchain/blockchain.go",
+   "line": 1089,
+   "quote": "chain.Store.Topo_store.Write(int64(fix_bl.Height), fix_bl.GetHash(), fix_commit_version, int64(fix_bl.Height))"
+  },
+  {
+   "id": "RW36",
+   "what": "minimum fee per KB",
+   "formula": "FEE_PER_KB = 20 atomic (0.00020 DERO)",
+   "file": "config/config.go",
+   "line": 49,
+   "quote": "const FEE_PER_KB = uint64(20)"
+  },
+  {
+   "id": "RW37",
+   "what": "fee floor formula",
+   "formula": "min_fee(size) = ceil(size / 1024) * FEE_PER_KB",
+   "file": "blockchain/tx_fees.go",
+   "line": 42,
+   "quote": "needed_fee := size_in_kb * config.FEE_PER_KB"
+  },
+  {
+   "id": "RW38",
+   "what": "fee floor enforced at block acceptance (not in the simulator)",
+   "formula": "calculated_fee > provided_fee => block rejected",
+   "file": "blockchain/blockchain.go",
+   "line": 892,
+   "quote": "block_logger.Error(fmt.Errorf(\"TX rejected due to low fees (calculated %d, provided %d)\""
+  },
+  {
+   "id": "RW39",
+   "what": "tx fee = sum of the zero-SCID payload statement fees",
+   "formula": "Fees() = sum(Payloads[i].Statement.Fees for SCID == 0)",
+   "file": "transaction/transaction.go",
+   "line": 230,
+   "quote": "fees += tx.Payloads[i].Statement.Fees"
+  },
+  {
+   "id": "RW40",
+   "what": "SC tx: the fee is preset as the returned gas",
+   "formula": "gas = tx.Fees() (named return)",
+   "file": "blockchain/transaction_execute.go",
+   "line": 271,
+   "quote": "gas = tx.Fees()"
+  },
+  {
+   "id": "RW41",
+   "what": "SC tx: success path returns the full fee (no refund of unused gas)",
+   "formula": "process_transaction_sc returns tx.Fees() regardless of gascompute/gasstorage",
+   "file": "blockchain/transaction_execute.go",
+   "line": 436,
+   "quote": "return tx.Fees(), nil"
+  },
+  {
+   "id": "RW42",
+   "what": "DVM compute gas limit is fixed per call",
+   "formula": "GasComputeLimit = 10,000,000",
+   "file": "dvm/sc.go",
+   "line": 238,
+   "quote": "state.GasComputeLimit = int64(10000000)"
+  },
+  {
+   "id": "RW43",
+   "what": "DVM storage gas limit = min(tx fee, MAX_STORAGE_GAS_ATOMIC_UNITS)",
+   "formula": "GasStoreLimit = min(Fees(), 20000)",
+   "file": "dvm/sc.go",
+   "line": 246,
+   "quote": "gasstorage_incoming = config.MAX_STORAGE_GAS_ATOMIC_UNITS"
+  },
+  {
+   "id": "RW44",
+   "what": "storage-gas cap constant",
+   "formula": "MAX_STORAGE_GAS_ATOMIC_UNITS = 20000",
+   "file": "config/config.go",
+   "line": 46,
+   "quote": "const MAX_STORAGE_GAS_ATOMIC_UNITS = 20000"
+  },
+  {
+   "id": "RW45",
+   "what": "gas estimate RPC runs the simulator (fees = 0), reports gas only",
+   "formula": "GetGasEstimate -> SCInstall/RunSC(..., fees 0)",
+   "file": "cmd/derod/rpc/rpc_dero_estimategas.go",
+   "line": 78,
+   "quote": "if result.GasCompute, result.GasStorage, err = s.RunSC(incoming_values, p.SC_RPC, signer, 0); err != nil {"
+  },
+  {
+   "id": "RW46",
+   "what": "registration tx in a block: txid PoW (byte0 == 0 or byte1 == 0)",
+   "formula": "refused iff tx_hash[0] != 0 && tx_hash[1] != 0",
+   "file": "blockchain/blockchain.go",
+   "line": 717,
+   "quote": "if chain.simulator == false && tx_hash[0] != 0 && tx_hash[1] != 0 {"
+  },
+  {
+   "id": "RW47",
+   "what": "registration tx in the pool: txid PoW (3 leading zero bytes)",
+   "formula": "refused unless tx_hash[0..2] == 0",
+   "file": "blockchain/blockchain.go",
+   "line": 1255,
+   "quote": "if chain.simulator == false && !(tx_hash[0] == 0 && tx_hash[1] == 0 && tx_hash[2] == 0) {"
+  },
+  {
+   "id": "RW48",
+   "what": "HF2 height (PoW change; difficulty reset to genesis for 3 heights)",
+   "formula": "MAJOR_HF2_HEIGHT = 481,600",
+   "file": "config/config.go",
+   "line": 109,
+   "quote": "MAJOR_HF2_HEIGHT:        481600,"
+  },
+  {
+   "id": "RW49",
+   "what": "HF3 height (consensus fixes; no reward change)",
+   "formula": "MAJOR_HF3_HEIGHT = 7,504,640",
+   "file": "config/config.go",
+   "line": 110,
+   "quote": "MAJOR_HF3_HEIGHT:        7504640,"
+  },
+  {
+   "id": "RW50",
+   "what": "difficulty: exponential adjustment",
+   "formula": "D_next = D_tip * floor(e^((1 - solve/18000)/M) * 10000) / 10000",
+   "file": "blockchain/difficulty.go",
+   "line": 119,
+   "quote": "diff = new(big.Int).Mul(prev_diff, new(big.Int).SetInt64(easypart))"
+  },
+  {
+   "id": "RW50b",
+   "what": "difficulty: DiffBig is the function the chain calls",
+   "formula": "difficulty = DiffBig(solve, 18000, M, D_tip)",
+   "file": "blockchain/difficulty.go",
+   "line": 252,
+   "quote": "difficulty := DiffBig(solve_time, block_time, M, tip_difficulty)"
+  },
+  {
+   "id": "RW51",
+   "what": "difficulty: solve time clamp",
+   "formula": "solve = min(tip_ts - parent_ts, 2 * 18000)",
+   "file": "blockchain/difficulty.go",
+   "line": 247,
+   "quote": "if solve_time > (block_time * 2) { // there should not be sudden decreases"
+  },
+  {
+   "id": "RW52",
+   "what": "difficulty: damping constant",
+   "formula": "M = 8",
+   "file": "blockchain/difficulty.go",
+   "line": 251,
+   "quote": "M := int64(8)"
+  },
+  {
+   "id": "RW53",
+   "what": "difficulty floor",
+   "formula": "D >= MAINNET_MINIMUM_DIFFICULTY (100000)",
+   "file": "blockchain/difficulty.go",
+   "line": 254,
+   "quote": "if difficulty.Cmp(MinimumDifficulty) < 0 {"
+  },
+  {
+   "id": "RW54",
+   "what": "RPC header reward field = base reward only (fees not included)",
+   "formula": "header.reward = CalcBlockReward(height)",
+   "file": "cmd/derod/rpc/blockheader.go",
+   "line": 50,
+   "quote": "result.Reward = blockchain.CalcBlockReward(uint64(result.Height))"
+  },
+  {
+   "id": "RW55",
+   "what": "RPC header sideblock field",
+   "formula": "header.sideblock = Isblock_SideBlock(hash)",
+   "file": "cmd/derod/rpc/blockheader.go",
+   "line": 49,
+   "quote": "result.SideBlock = chain.Isblock_SideBlock(hash)"
+  },
+  {
+   "id": "RW56",
+   "what": "fee is independent of the hard-fork version argument",
+   "formula": "Calculate_TX_fee(hf, size) ignores hf",
+   "file": "blockchain/tx_fees.go",
+   "line": 35,
+   "quote": "func (chain *Blockchain) Calculate_TX_fee(hard_fork_version int64, tx_size uint64) uint64 {"
+  },
+  {
+   "id": "RW57",
+   "what": "burned value is destroyed, not paid to anyone",
+   "formula": "BURN_TX/NORMAL/SC_TX: burned amount is not added anywhere",
+   "file": "blockchain/transaction_execute.go",
+   "line": 204,
+   "quote": "case transaction.BURN_TX, transaction.NORMAL, transaction.SC_TX: // burned amount is not added anywhere"
+  },
+  {
+   "id": "RW58",
+   "what": "GetInfo total_supply = CalcSupply(height) / 100000 (whole DERO, the formula, not a coin count)",
+   "formula": "total_supply = floor(CalcSupply(height) / 100000)",
+   "file": "cmd/derod/rpc/rpc_dero_getinfo.go",
+   "line": 83,
+   "quote": "result.Total_Supply = blockchain.CalcSupply(uint64(chain.Get_Height()))"
+  }
+ ]
+}

@@ -94,6 +94,9 @@
        feeds a co-process's stdin in a loop and reads its stdout without a feeder thread (B182 hang 1), no network call
        without a timeout; hits pass only via pipeline/liveness_allow.json with a reason, stale entries fail (KAT
        test_liveness_lint_r29.py).
+  r32 G35 the game-theory layer is proven and private (harness/gametheory/gt_gate.py; dero-game-theory-rft): the newest
+       gt_pipeline record passed research, discovery, implementation, debug, enhancement and playbook, every econsim
+       check ok, every GO mechanism has its contract, no banned address in the tree (KAT test_gt_mechanisms_r32.py).
   r30 G34 progress to the 150 kH/s objective from measured live windows (harness/intel/hashrate_objective.py g34; B235,
        rft §2.21): the live mean of the miner's TOTAL lines (newest run) / 150,000 with its window anchor, and the ceiling
        min(S, G/(1-own)) from records (quiet bench records, else the B27 live law; else 'pending', never a literal).
@@ -913,6 +916,28 @@ def main():
     except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
         res.append(('G34 progress to the 150 kH/s objective from measured live windows', False,
                     f'hashrate_objective could not run: {type(e).__name__}: {e}'))
+
+    # G35 (r32, dero-game-theory-rft §0.2) — the game-theory layer is proven and private: the newest gt_pipeline record
+    # passed every stage (research .. playbook) with every econsim check ok, every GO mechanism has its contract, and no
+    # banned address (D-GT-2, by hash) is in the game-theory tree or its pages
+    try:
+        import importlib.util as _iu35
+        _sp35 = _iu35.spec_from_file_location(f'gt_gate_for_gates_{id(HERE)}', HERE / 'gametheory/gt_gate.py')
+        GG = _iu35.module_from_spec(_sp35)
+        _sp35.loader.exec_module(GG)
+        ok35, det35 = GG.g35(HERE.parent)
+        res.append(('G35 game-theory layer proven and private (gt_pipeline, econsim, ban scan)', ok35, det35))
+    except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
+        res.append(('G35 game-theory layer proven and private (gt_pipeline, econsim, ban scan)', False,
+                    f'gt_gate could not run: {type(e).__name__}: {e}'))
+
+    # G36 (r32, D-GT-5) — one full MAINNET cycle measured end to end (register, mined + credited, roles funded, contract
+    # deployed, a game settled); INFO with the blocker until then (report-only, like G34: the round is not DONE before it)
+    try:
+        ok36, det36 = GG.g36(HERE.parent)
+        res.append(('G36 one full mainnet game-theory cycle measured end to end', G34_INFO if ok36 == 'INFO' else ok36, det36))
+    except Exception as e:                                           # noqa: BLE001 — a gate that cannot look fails
+        res.append(('G36 one full mainnet game-theory cycle measured end to end', False, f'gt_gate could not run: {type(e).__name__}: {e}'))
 
     # G13 — a fix may change logging and peer handling, never what the node accepts or computes
     import consensus_guard as CG

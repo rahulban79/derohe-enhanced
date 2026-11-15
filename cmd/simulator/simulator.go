@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -66,7 +67,7 @@ DERO : A secure, private blockchain with smart-contracts
 Simulates DERO block single node which helps in development and tests
 
 Usage:
-  simulator [--help] [--version] [--testnet] [--debug] [--noautomine] [--use-xswd] [--xswd-allow-remote] [--sync-node] [--data-dir=<directory>] [--rpc-bind=<127.0.0.1:9999>] [--http-address=<0.0.0.0:8080>] [--clog-level=1] [--flog-level=1]
+  simulator [--help] [--version] [--testnet] [--debug] [--noautomine] [--use-xswd] [--xswd-allow-remote] [--sync-node] [--data-dir=<directory>] [--rpc-bind=<127.0.0.1:9999>] [--http-address=<0.0.0.0:8080>] [--getwork-bind=<127.0.0.1:0>] [--clog-level=1] [--flog-level=1]
   simulator -h | --help
   simulator --version
 
@@ -83,6 +84,7 @@ Options:
   --data-dir=<directory>    Store blockchain data at this location
   --rpc-bind=<127.0.0.1:9999>    daemon RPC listens on this ip:port
   --http-address=<0.0.0.0:8080>   explorer listens on this port to serve user requests
+  --getwork-bind=<127.0.0.1:0>    r32: also serve getwork so dero-miner can mine this private chain to any registered address (off unless given; loopback only, never the mainnet/testnet default 10100)
   `
 
 var Exit_In_Progress = make(chan bool)
@@ -202,6 +204,23 @@ func main() {
 	p2p.P2P_Init(params)
 
 	rpcserver, _ := derodrpc.RPCServer_Start(params)
+
+	// r32 (dero-game-theory-rft D-GT-1): an opt-in getwork server for the private simulator chain, so the R32
+	// playbooks can run real dero-miner processes that mine to dedicated wallets. Refused unless loopback and not
+	// the default getwork port (a simulator must never shadow or collide with a real node's 10100).
+	if gw, ok := globals.Arguments["--getwork-bind"].(string); ok && gw != "" {
+		if why := simulator_getwork_refusal(gw); why != "" {
+			logger.Info("getwork not started", "reason", why, "address", gw)
+		} else {
+			// getwork templates are built for the integrator address (websocket_getwork_server.go send_job), and the
+			// simulator builds a template only for a registered address (blockchain/miner_block.go): the default
+			// integrator (the mainnet dev address) is not registered here, so the genesis wallet takes that role
+			chain.SetIntegratorAddress(genesis_wallet.GetAddress())
+			go derodrpc.Getwork_server()
+		}
+	} else {
+		globals.Arguments["--getwork-bind"] = nil
+	}
 
 	register_wallets(chain)                               // setup 22 wallets
 	Mine_block_single(chain, genesis_wallet.GetAddress()) //mine single block to confirm all 22 registrations
@@ -772,4 +791,24 @@ func filterInput(r rune) (rune, bool) {
 		return r, false
 	}
 	return r, true
+}
+
+// simulator_getwork_refusal returns why --getwork-bind is refused ("" = accepted): port 0 disables it, the address
+// must parse, be loopback, and must not be the default getwork port 10100 (r32, D-GT-1).
+func simulator_getwork_refusal(gw string) string {
+	host, port, err := net.SplitHostPort(gw)
+	if err != nil {
+		return "invalid address"
+	}
+	if port == "0" {
+		return "disabled (port 0)"
+	}
+	if port == fmt.Sprintf("%d", config.Mainnet.GETWORK_Default_Port) || port == fmt.Sprintf("%d", config.Testnet.GETWORK_Default_Port) {
+		return "the default getwork port is reserved for a real node"
+	}
+	ip := net.ParseIP(host)
+	if host != "localhost" && (ip == nil || !ip.IsLoopback()) {
+		return "not a loopback address"
+	}
+	return ""
 }

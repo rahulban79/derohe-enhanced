@@ -1565,6 +1565,22 @@ for _pkg, _pat in {
 }.items():
     NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
+# r32 (dero-game-theory-rft; D-GT-1..7; non-consensus: tests + the simulator's opt-in getwork + the gt-wallet tool): the
+# three mechanism contracts executed in the DVM, the reward-split pins on the real functions, the simulator getwork
+# refusal and the gt-wallet guards
+for _pkg, _pat in {
+        './dvm/': 'TestR32GTAttestHonestUnchallenged|TestR32GTAttestFalseClaimRejected|TestR32GTAttestHonestChallengedUpheld'
+                  '|TestR32GTAttestNoJurorsUpholds|TestR32GTAttestGuards|TestR32GTServiceRebate|TestR32GTPrizeRound'
+                  '|TestR32GTPrizeFairnessAndBoost|TestR32GTGasBound',
+        './blockchain/': 'TestR32_RewardConstants|TestR32_CalcBlockReward|TestR32_CalcSupply|TestR32_SplitNoFees|TestR32_SplitFeesLeftoverToIntegrator|TestR32_IntegratorAlsoMines|TestR32_SplitPreHF2Era|TestR32_FeeFloor|TestR32_DifficultyLiveTriple',
+        './cmd/simulator/': 'TestR32SimulatorGetworkRefusal',
+        './cmd/gt-wallet/': 'TestR32GTWalletDaemonGuard|TestR32GTWalletFileGuard|TestR32GTWalletBanGuard|TestR32GTWalletIsRegistered',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+OWNED += ['dvm/r32_gametheory_test.go', 'blockchain/r32_reward_split_test.go', 'cmd/simulator/r32_getwork_bind_test.go',
+          'cmd/gt-wallet/main.go', 'cmd/gt-wallet/main_test.go']
+VET_PKGS += ['./cmd/gt-wallet/']
+
 UPSTREAM_BASE = 'bf274e5'           # pristine Release153 content (harness/baseline); rule #28 compares against it
 NEW_TESTS_BASE = 'HEAD'
 # r31 Part B dimension 4 (observability; rft §7 B285): Add_TX_To_Pool refusals counted by reason at the admission wrapper
@@ -3135,6 +3151,11 @@ def s7_project():
              [sys.executable, 'harness/forensics/facts.py', '--write', 'harness/runtime/forensics_intel.json'],
              # r31 dimension 0 (rft §0.12 D-20, §7 B280-B285, B287): the area detectors scan the tree (static, no RPC)
              # and write harness/runtime/detector_<name>.json right before area_intel turns each finding into a proposal
+             # r32 (before the detectors: test_detectors_r31 DA4 keeps detectors right before area_intel)
+             # r32 (dero-game-theory-rft §0.2, gate G35): the zero-touch game-theory pipeline re-proves the research
+             # dossier, the DVM discovery facts, the contracts, their DVM tests and the econsim checks, and re-derives
+             # playbooks/params_r32.json; the sim-chain playbook run (--sim) is a separate harness-tracked job
+             [sys.executable, 'harness/gametheory/gt_pipeline.py'],
              [sys.executable, 'harness/intel/detectors.py', '--all'],
              [sys.executable, 'harness/intel/area_intel.py', '--live']]   # r24: per-area scorecards + proposals (G23)
     # the stand-alone KAT files (harness/kat/test_*.py): before R19 test_guard_build_inputs.py existed but no stage ran it
@@ -3162,6 +3183,13 @@ def s7_project():
     # r31 prep (user 2026-11-12, rft §2.27): the R28-R30 summary page is current and every figure on it is still on an
     # rft line naming its row (exit 4 an unbacked figure, 3 the page is stale: run artifacts/src/gen_enhancements.py)
     steps += [[sys.executable, 'artifacts/src/gen_enhancements.py', '--check']]
+    # r32 (dero-game-theory-rft §0.2): the game-theory page is current against its records (exit 3 stale: run
+    # artifacts/src/gen_gametheory.py; 4 a record missing or a path/address would reach the page). r32 pipeline run 4:
+    # the page projects LIVE mainnet records (gt_earn_mainnet.json, gt_mainnet_cycle.json) that this pipeline's own
+    # steps rewrite while the earn job mines, so --check alone was always STALE; re-render first (the write path runs
+    # the same banguard / home-path / address refusals, exit 4), then --check proves the render is deterministic
+    steps += [[sys.executable, 'artifacts/src/gen_gametheory.py'],
+              [sys.executable, 'artifacts/src/gen_gametheory.py', '--check']]
     steps += [[sys.executable, 'harness/run_gates.py', f'pipeline-{TS}'],
               [sys.executable, 'harness/gen_index.py'],
               # r24: the full cross-artifact coherence check (G25's set plus the index page gen_index just wrote); a
