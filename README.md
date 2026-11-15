@@ -5,6 +5,55 @@
 An enhanced build of the DERO HE daemon (`derod`), miner (`dero-miner`) and wallet CLI. Every change is
 non-consensus: it runs on the current mainnet with no fork. Highlights:
 
+Round 31 (`+22102026.r31`) adds (node-only: the miner track was paused for this round):
+
+- **Detectors:** seven static area detectors (RPC and P2P budgets, decoder fuzz coverage, discarded errors, crypto input
+  checks, value paths, log and metric coverage, smart-contract builtins) feed every area's work list with anchored findings.
+- **Node:** a block refused for a future timestamp is one log line with its skew (the 50 ms rule is unchanged), per-peer
+  skew metrics, peer ids instead of addresses on the console, a cap on event subscriptions, reorg record errors reported.
+- **Observability:** every derod error and warning line is classed by the error census; pool refusals are counted by reason.
+- **DVM:** smart-contract install, invoke, revert and out-of-gas metrics fed from log lines outside execution, fuzz and
+  simulator tests; behaviour a node cannot change alone is pinned by tests and documented, never changed.
+- **Cryptography and wallet:** a decoder census pinned by tests, fuzz targets, wallet-side key checks.
+- **Harness:** scoped test mutations, an opt-in cache for the guard and format stages, page checks in the regeneration,
+  push-notified user actions; a sealed forensic dataset is replayed through its pinned source.
+
+Read on a running node for 60 minutes after the restart: synced throughout, no ERROR lines, emission audit clean, the new
+counters present from the start (their events did not occur in the window).
+
+Round 30 (`+22102026.r30`) adds:
+
+- **Miner:** a stale-SHA counter, a P/E-core split metric, the launchd profile that keeps the miner off the efficiency-core
+  clamp, a shared-memory preflight; the measured defaults `--cpu-max 100`, `--gpu-max 100` and GPU split `8192,3,2`
+  (×1.098 live against the same build).
+- **Payouts:** 24-hour reads of orphans, job staleness and final-flip delay, a payout ledger, uptime 0.9999 over 55 h.
+- **Rounds:** a round can pause and resume without loss; decisions are logged with their evidence.
+- **Harness:** the miner health check reads the rotated node log chain, a quiet-window bench runner, an objective gate.
+
+Read live: 60 samples, no restarts, the invariants held; the miner averaged 96.0 kH/s, at the measured ceiling of this box.
+
+Round 29 (`+22102026.r29`) adds (node-only):
+
+- **Observability:** the lazily created /metrics families exist from the start, a bridge error is a JSON-RPC error body
+  and counted, a TYPE line for every family that writes its own HELP.
+- **Pool and config:** the pool orders by milli-units of fee per byte; derod refuses to start on a consensus override
+  set through the environment; both money-format copies exact at 128 bits.
+- **Forensics:** wall and inclusion rows tagged, smart-contract payouts of the exemption window exact.
+- **Harness:** bounded pipeline steps, a hang lint gate and a stall watchdog for long jobs.
+
+Read on a running node for 60 minutes after the restart: synced throughout, no ERROR or WARN lines, emission audit clean.
+
+Round 28d (`+22102026.r28d`) adds:
+
+- **Merged from the community branch** (new or measured better only): chain-request lists stop at the first unreadable
+  topo index instead of sending an empty block id; optional fees on the wallet's smart-contract invoke.
+- **Tests:** the range-proof binding census and the proof-system assumption table as tests (no forging content), the
+  nonce comparison mutations, a registration proof-of-work pin.
+- **Monetary forensics:** dataset v4 of the HF3-exemption window.
+
+Read on a running node for 60 minutes after the restart: synced throughout, no ERROR or WARN lines; a node built from the
+community branch followed the same chain (120/120 hashes equal).
+
 Round 28 (`+22102026.r28`) adds:
 
 - **RPC:** `GetInfo` reports `tx_pool_unmined` (the pool minus the transactions of the recent blocks); the JSON-RPC
