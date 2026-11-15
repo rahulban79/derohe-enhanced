@@ -114,7 +114,7 @@ MUTATIONS = [
      'r29 merge-artifacts: the claim drops the merge count'),
     ('coh', "log = git(c, 'log', '--no-merges', '--format=%h%x09%s'", "log = git(c, 'log', '--format=%h%x09%s'",
      'r29 merge-artifacts: coherence expects merge commits on the evolution page'),
-    ('claims', 'only gained eight test files', 'only gained seven test files',
+    ('claims', 'only gained ten test files', 'only gained nine test files',
      'r29 merge-artifacts: the soundness sentence keeps the old crypto test count'),
 ]
 

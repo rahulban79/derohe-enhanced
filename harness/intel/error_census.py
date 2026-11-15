@@ -16,10 +16,18 @@ websocket_getwork_server.go:629/675, r25 rpc state refusals); a zap "WARN" level
                             recovered panic (the node should have answered with a typed error: B85)
             peer-caused     the line is about a peer: component P2P.* naming a peer, an rpc2 ServerError, a peer's
                             path or answer (log_intel CLASSES remote-*; "peer answered"; rft lessons #35-#36)
+            sc_revert       (r31 B290) a DVM line: an SC tx that reverts on every node (SC not found, error executing sc)
+            sc_panic_recovered  (r31 B290) an SC execution panic process_transaction_sc recovered (consensus behaviour)
             operational     a known operator WARNING (a miner absent, an endpoint reachable from the network, a r25
                             state refusal: the node did the right thing and says so)
             node-bug        every other ERROR, and every recovered panic not matched to our calls
             unclassified    a WARNING line no rule knows (a new kind: read it)
+            r31 d4 (B285)   SIGNAL_RULES name every derod ERROR/WARNING literal detectors.py signal-coverage finds:
+                            future_timestamp, block_rejected, tx_rejected, miner-caused, operator-input, local-io,
+                            network-env, audit-alert, more peer-caused, and named node-bugs (see the block below)
+  future_timestamp (r31 d4, B269 d) the run's future-timestamp refusals by blid, peer (the verdict's peer_id, else a
+            salted pseudonym of the P2P line's address) and outcome (accepted-later: a later 'Chain extended' of the
+            same blid; never), whether logged by the pre-r31 ERROR or the r31 INFO forms
   run       the census covers ONE derod run: from the last start-up line (derod/main.go "DERO HE daemon :") to the end
             (--run N picks the N-th run from the end, 1 = the last). Timestamps are parsed WITH their UTC offset
             (the log crosses DST: -0700 before 2026-11-01, -0800 after), and lines keep file order.
@@ -60,6 +68,20 @@ OPERATIONAL = [('WARNING: no miner connected', 'no miner connected: payout-relev
                ('WARNING: getwork is reachable from the network', 'bind policy warning (operator choice)'),
                ('WARNING: daemon RPC is reachable from the network', 'bind policy warning (operator choice)'),
                ('WARNING: state read below the prune point refused', 'r25 B85: the node refused a pruned state read with a typed error')]
+# r31 (rft §7 B290, D-21): the DVM's own log lines. A smart contract that fails or panics fails on EVERY node (consensus
+# behaviour: the tx reverts, the fee is kept); it is the SC's or the sender's failure, not this node's. Matched on the
+# message start: (prefix, class, why). The hard-coded name-service SC failing to parse panics derod at init: a real
+# node bug (a broken build), kept node-bug but named. /metrics twins: sc_revert_total{reason}, sc_panic_recovered_total
+DVM_RULES = [('Recover while executing SC', 'sc_panic_recovered',
+              'process_transaction_sc recovered an SC execution panic: the tx fails on every node (B157; V(2) Info since r29)'),
+             ('SC not found', 'sc_revert',
+              'an SC call/install found no parseable code (a bricked SC, B145): the tx reverts on every node'),
+             ('error executing sc', 'sc_revert', 'an SC execution failed and reverted (simulator chains only)'),
+             ('SC install rejected', 'sc_revert', 'an SC install whose source does not parse: the tx reverts on every node'),
+             ('SC reverted for an anonymous sender', 'sc_revert',
+              'an anonymous SC tx failed: fee kept, burn destroyed on every node (sc_revert_log.go)'),
+             ('error Parsing hard coded sc', 'node-bug',
+              'the built-in name-service SC does not parse: derod panics at init (a broken build)')]
 PEER_TEXT = ('peer answered', 'ServerError', 'rpc2', 'bltx_store', 'Invalid Major Version', 'closed pipe')
 FRAME = re.compile(r'^(\S+)\(.*\)$')
 FILELINE = re.compile(r'^\s+(\S+\.go):(\d+)')
@@ -67,6 +89,212 @@ HEX = re.compile(r'\b[0-9a-f]{16,}\b')
 NUM = re.compile(r'\b\d+\b')
 PEER_N = re.compile(r'^(P2P\.(?:incoming|outgoing))\..*$')
 HOME = re.compile(r'/(?:Users|home)/[^/\s"]+')
+
+
+# ═════════════ r31 Part B dimension 4 (rft §7 B285 follow-up, B269 (d)): signal classes of the derod literals ═════════════
+# detectors.py signal-coverage found 165 derod ERROR/WARNING literals that fell to the fallback 'node-bug: an ERROR no
+# rule explains'. Each literal now has a class saying WHOSE error it is (anchored rules on the message or on a literal
+# error text, see the verify fix below; first hit wins, checked after the self/DVM/operational/peer rules and before the fallback). A named node-bug stays a
+# node bug (the census exits 5) but says which one. Classes:
+#   future_timestamp  B269: a block refused because its timestamp is > 50 ms ahead of our clock (the SENDER's clock)
+#   block_rejected    a consensus rule refused a block or a submitted miniblock (the builder's fault; the node did right)
+#   tx_rejected       mempool admission refused a transaction (the sender's fault)
+#   miner-caused      a getwork submission this node could not use (a stale job, a bad blob, an unregistered miner)
+#   operator-input    a start-up flag, the environment or an operator console command was refused or is unusable
+#   local-io          this node's own file, store, listener or TLS material failed (environment: disk, permissions)
+#   network-env       the network around the node: a dial, a DNS/DoH update lookup, no peer to send to, the system clock
+#   audit-alert       one of our own monitors raised its alarm (emission auditor, finality monitor): read it at once
+#   peer-caused       (as above) a peer's object or answer that could not be used
+# NON_EVENT_CLASSES never mark a network event, so detectors.py does not ask them for a /metrics counter.
+# r31 d4 verify fix (VERIFY.md): every rule is ANCHORED (re.fullmatch) to one whole derod literal and says WHERE it looks:
+#   'msg'  the log message M (the literal's own text; never the runtime error)
+#   'err'  the error text, for literals whose error is itself a fmt.Errorf/errors.New literal of the source (fullmatch:
+#          a dynamic error equal to a consensus refusal text IS that refusal)
+# A generic wrapper message (WRAPPERS: 'Block rejected by chain', 'rejecting block', ...) carries a RUNTIME error: it is
+# classed by that error only, against the known refusal texts (REFUSAL_ERR); any other error (a store failure while a
+# block was added: 'leveldb: closed', 'missing node', the 7,412,674 stall class) falls through to node-bug.
+_MSG, _ERR = 'msg', 'err'
+SIGNAL_RULES = [
+    (_ERR, r'Rejecting Block, timestamp is too much into future(?:, make sure that system clock is correct)?', 'future_timestamp',
+     'B269: the block timestamp is more than 50 ms ahead of our NTP-checked clock: the builder\'s clock (blockchain.go rule)'),
+    (_MSG, r'Rejecting Block, timestamp is too much into future', 'future_timestamp', 'B269: the r31 V(1) form of the same rule'),
+    (_ERR, BLOCK_REFUSAL_TEXTS := r'More than 1 tips present in block rejecting|Tip is NOT present in chain, skipping it till we get a parent|'
+     r'Block  rejected since it is in too past|Genesis block cannot have tips\.|Genesis block can only be at height 0|'
+     r'Block timestamp is less than or equal to its parent\.|Rejecting !! Block has invalid fork version|'
+     r'Rejecting !! Block has invalid reachability|Rusty TIP  mined by ROGUE miner discarding block|'
+     r'Block is bigger than max permitted|MiniBlock has invalid PoW|Miner tx failed verification for genesis|'
+     r'Miner tx failed  it is not coinbase|Missing TX|duplicate TX|Invalid TX Height|TX data mismatch|Double Registration TX|'
+     r'Registration TX already exists|Colliding TXs|Double Spend TX within block|Invalid SCID|TX nonce verification failed|'
+     r'TX verification failed|TX rejected due to low fees \(calculated (?:\d+|%d), provided (?:\d+|%d)\)',
+     'block_rejected', 'a consensus rule of Add_Complete_Block refused the block: the builder\'s fault, counted by '
+     'blockchain_block_rejected_total{reason}'),
+    (_MSG, r'tx nonce verification failed|tx verification failed|Invalid TX within block|'
+     r'Block %s rejected by chain due to duplicate hwork\.|Invalid miner address', 'block_rejected',
+     'a consensus rule refused the block or miniblock: the builder\'s fault, counted by blockchain_block_rejected_total{reason} '
+     '/ p2p_miniblock_refused_total{reason}'),
+    (_ERR, r'coinbase tx cannot appear in mempool|Huge TX', 'tx_rejected',
+     'mempool admission (Add_TX_To_Pool) refused the transaction: the sender\'s fault, counted by tx_pool_refused_total{reason} '
+     'at the admission wrapper (glue/txpolicy, r31)'),
+    (_MSG, r'Incoming TX nonce verification failed|Incoming TX could not be verified', 'tx_rejected',
+     'mempool admission (Add_TX_To_Pool) refused the transaction: the sender\'s fault, counted by tx_pool_refused_total{reason}'),
+    (_MSG, r'Error Deserializing blob|Error parsing submitted work block template|Job not found in cache|unregistered miner %s',
+     'miner-caused', 'a getwork job or submission this node could not use (stale job, bad blob, unregistered miner); the '
+     'getwork_* counters and the miner-side RejectedCount carry the event'),
+    (_ERR, r'This function requires \d+ parameters, .+|Start value should be be between 0 and current height|'
+     r'Stop value should be > start and current height|POP needs argument n to pop this many blocks from the top|'
+     r'(?:regpool|mempool)_delete_tx  needs a single transaction id as argument|Rewind failed|'
+     r'--prune-history should be positive and more than 1|--min-peers should be positive and more than 1|'
+     r'--max-peers should be positive and more than --min-peers|'
+     r'Mining is deactivated since daemon is running with --sync-mode, please check program options\.',
+     'operator-input', 'the operator\'s start-up flag or console command was refused (cmd/derod console, flag parsing)'),
+    (_MSG, r'Invalid start value|Invalid stop value|err parsing txid|invalid address|'
+     r'Skipping block at height due to error(?:\s*\\n)?|Error deserializing block|cannot write the graph|'
+     r'error Parsing --prune-history|not pruning|Error Parsing --(?:min|max)-peers|--(?:p2p|rpc)-bind address is invalid|'
+     r'invalid --p2p-nat \(use auto, pcp, natpmp, upnp, probe or off\); NAT port mapping disabled|'
+     r'consensus parameter overridden by the environment: this node will compute a different difficulty than the network|'
+     r'refusing to start: the consensus settings could not be checked|cannot check the consensus settings|'
+     r'err parsing metrics url|Error parsing socks proxy:|Error creating socks proxy|Could not start cpu profiling\.|'
+     r'could not start CPU profile|Not suported',
+     'operator-input', 'the operator\'s start-up flag, environment or console command was refused (cmd/derod console, '
+     'flag parsing): not a network event'),
+    (_MSG, r'opening ban data file|Error unmarshalling ban data|creating ban data file|opening peer file|'
+     r'Error unmarshalling peer data|saving peer file|saving first_relay\.json|Error unmarshalling first_relay\.json|'
+     r'Error unmarshalling v2 offence data|saving v2 offence file|Cannot open store|error rewriting graviton store|'
+     r'err reading(?:/writing)? toporecord|Error pruning blockchain|Error starting blockchain|Could not listen|'
+     r'ListenAndServe failed|Err while accepting incoming connection|Unable to marshal ECDSA private key|'
+     r'Certificate cannot be (?:created|loaded)\.|Private key cannot be created\.|loading block|'
+     r'Tx could not be loaded from disk|block template error',
+     'local-io', 'this node\'s own file, store, listener or TLS material failed (also a block template, which is read '
+     'from the topo/balance store): an environment fault (disk, permissions, port), read the error text'),
+    (_MSG, r'Dial failed|Resolve address failed:|Could not read DNS length prefix|Frame length is too small|'
+     r'Could not read +DNS data|Error which packing DNS query for program update|error reading response from DNS server|'
+     r'error decoding DOH response|Could NOT decode (?:base64|json) update message|Could NOT update version|'
+     r'we want to broadcast block, but donot have peers, most possibly block will go stale|'
+     r'Your system time deviation is more than 1 secs \(%s\)\.(?s:.*)',
+     'network-env', 'the network around the node (a dial, the DNS/DoH update lookup, no peer to broadcast to) or the '
+     'system clock: an environment condition, not this node\'s fault'),
+    (_MSG, r'EMISSION AUDIT ALERT|FINALITY VIOLATION: .+', 'audit-alert',
+     'one of our own monitors raised its alarm (emission auditor B171 / finality monitor): read it at once'),
+    (_ERR, r'Could not Parse Difficulty in common', 'peer-caused', 'a peer\'s chain answer that could not be used'),
+    (_MSG, r'Error Incoming block could not be deserialised\.|Error Incoming TX could not be deserialized|'
+     r'Error Incoming TX has mismatch\.|Call failed Chain|'
+     r'we have or others have deviated too much\.you may have to use --sync-node option|'
+     r'Incoming (?:block|TX) could not be deserilised|This peer should be banned(?: and terminated)?|Should be banned|'
+     r'(?:tx|Block) cannot be deserialized\.Should be banned|'
+     r'Incoming Block could not be added due to (?:missing past, so skipping future block|some error)|'
+     r'error deserializing (?:block|txset)|error reconstructing data|error joining data|Bootstrap failed',
+     'peer-caused', 'a peer\'s object or chain answer that could not be used (deserialisation, chunk reconstruction, '
+     'bootstrap, a chain request): the peer\'s fault (rft lessons #35-#36)'),
+    (_MSG, r'Failed to add genesis block, we can no longer continue\.|Chain corruption detected|'
+     r'You need to delete existing mainnet folder and resync chain again', 'node-bug',
+     'chain store corruption or genesis failure at start-up: derod cannot continue (resync)'),
+    (_MSG, r'Mempool House Keeping triggered panic', 'node-bug', 'a recovered panic in mempool house keeping'),
+    (_MSG, r'Recovere3?d while sending tx', 'node-bug', 'a recovered panic in the tx broadcast path (connection_pool.go)'),
+    (_MSG, r'Recovered', 'node-bug', 'a recovered panic of the operator console loop (readline_loop)'),
+]
+SIGNAL_RULES = [(via, re.compile(rx), cls, why) for via, rx, cls, why in SIGNAL_RULES]
+# generic wrapper messages: the class comes from the runtime error (REFUSAL_ERR), else none (node-bug)
+WRAPPERS = [(re.compile(r'Block rejected by chain|rejecting block'), 'block_rejected'),
+            (re.compile(r'Block Rejected|Tx not found in pool or DB, rejecting submitted block'), 'block_rejected'),
+            (re.compile(r'Submitting block|miniblock insertion failed'), 'miner-caused')]
+REFUSAL_ERR = re.compile(  # errormsg/errormsg.go refusals + the literal refusal texts above + getwork refusals
+    r'Invalid Block|Invalid PoW|Already Exists|Past blocks are missing|Invalid Timestamp in past|TX double spend attempt|'
+    r'DEAD TX included in block|Invalid Size|Invalid TX|Account Unregistered|'
+    r'unregistered miner or you need to wait 15 mins|Invalid miner address|' + BLOCK_REFUSAL_TEXTS)
+FUTURE_ERR = re.compile(r'Invalid Timestamp in future')
+NON_EVENT_CLASSES = ('operator-input', 'local-io', 'network-env', 'audit-alert')
+
+
+def wrapper_class(msg):
+    """the class a generic wrapper message gets when its runtime error is a known refusal, or None. Pure."""
+    m = str(msg or '').strip()
+    return next((cls for rx, cls in WRAPPERS if rx.fullmatch(m)), None)
+
+
+def signal_class(d, err):
+    """(class, why, via) of an ERROR/WARNING by the r31 signal rules, or None; via 'msg', 'err' or 'wrap' (VERIFY.md:
+    only a 'msg' match may waive detectors.py's counter requirement). Pure."""
+    m, e = str(d.get('M', '') or '').strip(), str(err or '').strip()
+    for via, rx, cls, why in SIGNAL_RULES:
+        if via == _ERR and e and rx.fullmatch(e):
+            return cls, why, via
+    w = wrapper_class(m)
+    if w:
+        if FUTURE_ERR.fullmatch(e):
+            return 'future_timestamp', 'B269: the chain refused the block for its future timestamp (wrapper line)', 'wrap'
+        if e and REFUSAL_ERR.fullmatch(e):
+            return w, f'a wrapper line whose error is a known refusal ({e[:60]})', 'wrap'
+        return None                       # a store or other failure behind a wrapper: node-bug, read it
+    for via, rx, cls, why in SIGNAL_RULES:
+        if via == _MSG and m and rx.fullmatch(m):
+            return cls, why, via
+    return None
+FUTURE_RX = re.compile(r'timestamp is too much into future|Invalid Timestamp in future')
+FUTURE_ADDR = re.compile(r'^P2P\.(?:incoming|outgoing)\.(.+?)(?::\d+)?$')
+BLID_N = re.compile(r'(blid_)[0-9a-f]{16,}')   # a logger named after one block (CORE.blid_<hash>): HEX needs a word boundary
+FUTURE_PEER_WINDOW_S = 5.0      # the p2p line naming the sender follows the chain's refusal within milliseconds
+
+
+def future_timestamps(run, salt=None):
+    """B269 (d): the future-timestamp refusals of a run by peer and outcome. A refusal is the chain's own line (pre-r31
+    ERROR, error 'Rejecting Block, timestamp is too much into future...'; r31 V(1) Info 'Rejecting Block, timestamp is
+    too much into future'; both from logger CORE.blid_<blid>) or the p2p verdict 'Block rejected' reason
+    future_timestamp (r25+, kv blid + peer_id). One entry per blid. peer: the verdict's peer_id; else a P2P line naming
+    'Invalid Timestamp in future' within FUTURE_PEER_WINDOW_S after it, by its salted address pseudonym (salt given),
+    else 'unattributed'. outcome: 'accepted-later' when a later 'Chain extended' line of logger CORE.blid_<same blid>
+    exists in the run ('Chain extended but height is same' too: a side block), else 'never'. Pure given salt."""
+    blocks, order = {}, []
+    for i, d in enumerate(run):
+        n, m = str(d.get('N', '')), str(d.get('M', '') or '')
+        if m == 'Block rejected' and str(d.get('reason', '')) == 'future_timestamp' and d.get('blid'):
+            blid, peer = str(d['blid']), str(d.get('peer_id') or '') or None
+        elif n.startswith('CORE.blid_') and (FUTURE_RX.search(m) or FUTURE_RX.search(str(d.get('error', '') or ''))):
+            blid, peer = n[len('CORE.blid_'):], None
+        else:
+            continue
+        b = blocks.get(blid)
+        if b is None:
+            b = blocks[blid] = {'blid': blid[:16], 'first': d.get('T'), 'first_i': i, 'refusal_lines': 0, 'peer': None,
+                                'skew_ms_max': None, 'height': None}
+            order.append(blid)
+        b['refusal_lines'] += 1
+        b['peer'] = b['peer'] or peer
+        try:
+            sk = int(d.get('skew_ms'))
+            b['skew_ms_max'] = sk if b['skew_ms_max'] is None else max(b['skew_ms_max'], sk)
+        except (TypeError, ValueError):
+            pass
+        if d.get('height') is not None and b['height'] is None:
+            b['height'] = str(d.get('height'))
+    used = set()
+    for blid in order:
+        b = blocks[blid]
+        if not b['peer']:
+            t0 = epoch(b['first'])
+            for j in range(b['first_i'], len(run)):
+                d = run[j]
+                if epoch(d['T']) - t0 > FUTURE_PEER_WINDOW_S:
+                    break
+                a = FUTURE_ADDR.match(str(d.get('N', '')))
+                if j in used or not a or not FUTURE_RX.search(str(d.get('error', '') or '') + ' ' + str(d.get('M', ''))):
+                    continue
+                used.add(j)
+                b['peer'] = privkit.pseudo_ip(a.group(1), salt) if salt else 'unattributed'
+                break
+        b['peer'] = b['peer'] or 'unattributed'
+        later = next((d for d in run[b['first_i']:] if str(d.get('N', '')) == 'CORE.blid_' + blid
+                      and str(d.get('M', '')).startswith('Chain extended')), None)   # also 'Chain extended but height is same'
+        b['outcome'] = 'accepted-later' if later else 'never'
+        b.pop('first_i')
+    by_peer, by_outcome = {}, {'accepted-later': 0, 'never': 0}
+    for blid in order:
+        b = blocks[blid]
+        p = by_peer.setdefault(b['peer'], {'blocks': 0, 'refusal_lines': 0, 'accepted-later': 0, 'never': 0})
+        p['blocks'] += 1
+        p['refusal_lines'] += b['refusal_lines']
+        p[b['outcome']] += 1
+        by_outcome[b['outcome']] += 1
+    return {'blocks': len(order), 'by_outcome': by_outcome, 'by_peer': by_peer, 'detail': [blocks[x] for x in order]}
 
 
 def files(explicit=None):
@@ -166,7 +394,8 @@ def component(d):
 def kind_of(d, lv):
     err = d.get('error', '') or d.get('r', '') or d.get('peer_error', '')
     of = own_frame(d.get('stack')) if d.get('stack') else None
-    key = (lv, component(d), str(d.get('C', '')), norm(d.get('M', ''))[:100], norm(err), of[1] if of else '')
+    # r31 d4: a component naming a block (CORE.blid_<hash>) is one kind, not one kind per block
+    key = (lv, BLID_N.sub(r'\1H', component(d)), str(d.get('C', '')), norm(d.get('M', ''))[:100], norm(err), of[1] if of else '')
     kid = 'EK-' + hashlib.blake2b('|'.join(key).encode(), digest_size=5).hexdigest()
     return kid, key, of, err
 
@@ -202,6 +431,9 @@ def classify(d, lv, of, err, calls):
     for c in calls:
         if c['from'] <= t <= c['to'] and (not of or handler_of(of).lower() == c['method']):
             return 'self-inflicted', f"{c['why']} ({c['anchor']})", panic_line
+    for pref, cls, why in DVM_RULES:
+        if str(d.get('M', '')).startswith(pref):
+            return cls, why, cls == 'node-bug'
     if lv == 'WARN':
         for pref, why in OPERATIONAL:
             if str(d.get('M', '')).startswith(pref):
@@ -210,12 +442,15 @@ def classify(d, lv, of, err, calls):
         return 'peer-caused', 'a P2P line about a peer (its answer, its path, or an rpc2 ServerError)', False
     if any(p in text for p in PEER_TEXT):
         return 'peer-caused', 'the text is a peer\'s answer or path (rft lessons #35-#36)', False
+    sc = signal_class(d, err)               # r31 d4 (B285): the signal class of a known derod literal
+    if sc:
+        return sc[0], sc[1], sc[0] == 'node-bug' and panic_line
     if lv == 'WARN':
         return 'unclassified', 'a WARNING no rule knows: read it', False
     return 'node-bug', ('a recovered panic not caused by our calls' if panic_line else 'an ERROR no rule explains'), panic_line
 
 
-def census(recs, run_from_end=1, call_log=None):
+def census(recs, run_from_end=1, call_log=None, salt=None):
     runs = split_runs(list(recs))
     if not runs:
         return None
@@ -250,7 +485,8 @@ def census(recs, run_from_end=1, call_log=None):
                                       'run_from_end': run_from_end},
             'kinds': sorted(kinds.values(), key=lambda k: (-k['count'], k['kind'])), 'by_class': by_class,
             'node_bug_kinds': sorted(k['kind'] for k in kinds.values() if k['class'] == 'node-bug' or k['also_node_bug']),
-            'self_inflicted_lines': by_class.get('self-inflicted', 0)}
+            'self_inflicted_lines': by_class.get('self-inflicted', 0),
+            'future_timestamp': future_timestamps(run, salt)}       # r31 d4 (B269 d): by peer and outcome
 
 
 def leaks(text):
@@ -273,7 +509,7 @@ def main():
     if not paths:
         print('error_census: no derod JSON log found', file=sys.stderr)
         return 2
-    rep = census(records(paths), a.run, a.call_log)
+    rep = census(records(paths), a.run, a.call_log, salt=privkit.load_salt(create=False))
     if rep is None:
         print('error_census: the log holds no records', file=sys.stderr)
         return 2
@@ -293,6 +529,10 @@ def main():
             print(f"  {k['kind']} {k['level']:5s} x{k['count']:<4d} {k['class']:14s} {k['component']} {k['caller']} "
                   f"{k['message'][:60]!r}" + (f" own frame {k['own_frame']}" if k['own_frame'] else '') +
                   (' (also a node bug: should be a typed error)' if k['also_node_bug'] and k['class'] != 'node-bug' else ''))
+        ft = rep['future_timestamp']
+        if ft['blocks']:                     # r31 d4 (B269 d)
+            print(f"  future_timestamp: {ft['blocks']} block(s) refused, {ft['by_outcome']}, by peer "
+                  + ', '.join(f"{p} {v['blocks']} ({v['accepted-later']} accepted later)" for p, v in sorted(ft['by_peer'].items())))
         print(f'wrote {out}')
     return 5 if rep['node_bug_kinds'] else 0
 

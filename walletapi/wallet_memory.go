@@ -235,6 +235,10 @@ func Open_Encrypted_Wallet_Memory(password string, filedata []byte) (w *Wallet_M
 	if err != nil {
 		return
 	}
+	if err = check_account_keys(w.account.Keys); err != nil { // r31 (B283): the key pair must be consistent
+		w = nil
+		return
+	}
 	var scid crypto.Hash
 	d := rpc.GetEncryptedBalance_Result{SCID: scid, Registration: -1}
 	w.setEncryptedBalanceresult(scid, d)

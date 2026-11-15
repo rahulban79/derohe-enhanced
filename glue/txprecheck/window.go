@@ -17,16 +17,16 @@ package txprecheck
 //
 // Rules, and why each refuses only transactions that can never be mined on top of our chain:
 //   - too_old: tip_height > tx.Height + TX_VALIDITY_HEIGHT. Every block extending our tip has height >= tip+1, and
-//     blockchain.go:786 refuses a block holding a tx with block_height - tx.Height >= TX_VALIDITY_HEIGHT; miner_block.go
+//     blockchain.go:791 refuses a block holding a tx with block_height - tx.Height >= TX_VALIDITY_HEIGHT; miner_block.go
 //     :275 never selects one either. p2p chain_sync.go has used this same bound for relayed txs since upstream; r23b
 //     shares it with SendRawTransaction, which had none, and moves it before Deserialize there.
-//   - too_new: tx.Height > tip_height. blockchain.go:778 requires tx.BLID in the block's 25-block history and :782
+//   - too_new: tx.Height > tip_height. blockchain.go:783 requires tx.BLID in the block's 25-block history and :782
 //     requires tx.Height == the height of that BLID; every block in the history of a block extending our tip is at
 //     a height <= tip_height. (Add_TX_To_Pool refuses these too: it reads Topo_store at tx.Height, and topoheight
 //     >= height, so a record past our topoheight is missing: "height reference not found".) One height read serves
 //     both bounds (upstream's too-old check already made it); a Load_TOPO_HEIGHT would be a second store read.
 //   - hf3_table: the TXID is one of the 75 grandfathered HF3 transactions (blockchain/hardfork_fixes.go). Every one is
-//     mined at height <= 7,497,942, so a copy is refused by the pool's already-mined guard (blockchain.go:1300) and by
+//     mined at height <= 7,497,942, so a copy is refused by the pool's already-mined guard (blockchain.go:1305) and by
 //     the validity window; but transaction_verify.go:232 seeds the proof cache for a table TXID before verification,
 //     so on a node still syncing below HF3 a same-TXID body with a changed proof could otherwise reach the mempool.
 //     Refused by TXID, before any verification.

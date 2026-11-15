@@ -62,7 +62,7 @@ var (
 
 // parse_payment_proof extracts (B, v) from a deroproof string.
 func parse_payment_proof(proof_str string) (blinder *bn256.G1, amount uint64, err error) {
-	addr, err := rpc.NewAddress(strings.TrimSpace(proof_str))
+	addr, err := canonical_address_key(proof_str) // r31 (B283): the blinder's bytes must be its canonical encoding
 	if err != nil {
 		return nil, 0, err
 	}
@@ -146,7 +146,7 @@ func (w *Wallet_Memory) VerifyReceivedPaymentProof(proof_str, tx_hex string, rin
 	keys := make([][]*bn256.G1, len(ring))
 	for t := range ring {
 		for _, s := range ring[t] {
-			a, err := rpc.NewAddress(s)
+			a, err := canonical_address_key(s) // r31 (B283)
 			if err != nil {
 				return 0, err
 			}

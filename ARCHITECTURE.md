@@ -2659,3 +2659,27 @@ a declared stop marker as final (B257); gpu_watch skips the disturbance check wh
 **49.5 Decisions.** §0.11/§0.12 of the rft: every decision is a row with options, choice, quality reason, evidence anchors
 and a re-check; `harness/intel/coherence_audit.py` fails a row without a resolving anchor.
 
+
+## 50. ★ Round 31: area detectors before the feed, seven verified node dimensions, a self-repairing closed loop (+22102026.r31, 2026-11-14)
+
+> Filled from the R31 records: the Part A notes (`~/derohe-persist/round_state/r31_NOTES.md`), the detector records
+> (`harness/runtime/detector_<name>.json`), the builder and verifier deltas, the pipeline records
+> (`pipeline_20261113T215409`, `pipeline_20261113T154019`) and the live window (`harness/runtime/r31_live_window_20261114.txt`).
+
+**50.1 Detectors as a proposal source.** `harness/intel/detectors.py` scans the tree statically (no network) and writes one
+record per detector with a fingerprint over the files it read; area_intel turns each finding into one `detector-<name>`
+proposal of the finding's area (area_of), refuses a broken anchor and flags a stale or missing record. S7 runs the
+detectors right before `area_intel --live`; regen_round re-runs them when stale and reports a stale feed (exit 5).
+
+**50.2 Consensus discipline under a node-only round.** Every Go change in a consensus package is logging- or observation-only
+(guard S1 PASS): the future-timestamp rule's decision line is byte-identical (B269), the DVM counters are fed from V(9)
+logger lines by a wrapper that forces only that level (B288, fixed after the verifier showed the first wrapper turned on a
+V(1)-guarded block), and decoder or DVM behaviour that a node cannot change alone is pinned by a test and reported
+(B292, B297, B327).
+
+**50.3 The closed loop repairs its harness.** Each closed-loop failure became a test or a harness fix before the next run;
+the sealed newest dataset is now replayed through its pinned source (pinsnap snapshot, B326), and the slow KATs scope their
+mutations by declared reach with a canary (B272-W1, D-32).
+
+**50.4 Measured.** On the restarted r31 derod: 62/62 samples synced, 0 ERROR, emission OK, invariants hold; the new event
+families are registered from start and still await their first event (pending-event, §13 R31).

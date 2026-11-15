@@ -74,6 +74,13 @@ ROOT = HARNESS.parent
 PENDING = 'pending'
 INDEX_MAX_LINE = 300          # §0.9 rule 4: one line per topic, at most 300 characters
 INDEX_MAX_LINES = 200         # §0.9 rule 4: under 200 lines
+INDEX_MAX_BYTES = INDEX_MAX_LINE * INDEX_MAX_LINES   # r31 (B295): the most §0.9 rule 4 allows (areas.json alert_if)
+# r31 (B296, §0.4 a reading is booked to the round it was produced in): KPIs read from a pipeline record name the round
+# of that record (its BEGIN event), not the round open when tooling_intel ran; kpi_rounds maps each to it.
+RECORD_ROUND_OF = {'project_wall_s': 'harness_record_round', 'kat_mutation_kill_pct': 'harness_record_round',
+                   'kat_mutations_proved': 'harness_record_round', 'kat_mutations_total': 'harness_record_round',
+                   'kat_mutations_coupled': 'harness_record_round', 'kats_passed': 'harness_record_round',
+                   'gates_pass': 'harness_record_round', 'flaky': 'flaky_record_round'}
 PROJECT_HOME = 'derohe-Release142'     # the Claude project whose memory dir this repo's rounds use (rft §0.2 Memories)
 MEMORY_SHOWN = '<memory>'        # r28: pubscrub's placeholder (the tool's project-dir form is a tool-config path)
 MIRROR = 'memory-mirror'
@@ -281,13 +288,23 @@ def step_runtimes(ev):
     return out
 
 
+def record_round(ev):
+    """the round a pipeline record ran in: its BEGIN ('run') event's 'round'; 'pending' when it names none. Pure."""
+    return next((str(o['round']) for o in ev if o.get('stage') == 'run' and o.get('round')), PENDING)
+
+
+def kpi_rounds(k):
+    """{kpi: round} for every pipeline-derived KPI present in `k` whose record names its round (r31 B296). Pure."""
+    return {f: k[rf] for f, rf in RECORD_ROUND_OF.items() if f in k and str(k.get(rf, PENDING)).startswith('r')}
+
+
 def project_summary(ev, rel):
     """KPIs of one pipeline record that ran S7 (a project-only run or the end of a full run). Pure."""
-    k = {}
+    k = {'harness_record_round': record_round(ev)}        # r31 (B296)
     start = next((ts(o) for o in ev if o.get('stage') == 'project' and o.get('status') == 'START'), None)
     end = next((o for o in ev if o.get('stage') == 'project' and o.get('status') in ('PASS', 'FAIL')), None)
     if not end:
-        return {'harness_record': rel, 'kats_passed': PENDING}
+        return {'harness_record': rel, 'kats_passed': PENDING, 'harness_record_round': k['harness_record_round']}
     kf, mf = frac(end.get('kats')), frac(end.get('mutations'))
     g = GATES_RX.match(str(end.get('gates') or ''))
     k['harness_record'] = rel
@@ -328,8 +345,10 @@ def harness_kpis(root):
         if fl is not None and str(fl.get('flaky', '')).isdigit():
             out['flaky'] = int(fl['flaky'])
             out['flaky_record'] = f'harness/loop/runs/{p.name}'
+            out['flaky_record_round'] = record_round(ev)        # r31 (B296)
             break
     out['kat_files'] = len(list((Path(root) / 'harness/kat').glob('test_*.py')))
+    out['kpi_rounds'] = kpi_rounds(out)                    # r31 (B296): area_intel books each to its record's round
     return out
 
 

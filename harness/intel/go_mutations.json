@@ -8379,8 +8379,8 @@
    "file": "glue/txpolicy/txpolicy.go",
    "pkg": "./glue/txpolicy/",
    "test": "TestR24PanickingAdmissionLeavesPolicyUsable",
-   "find": "\tdefer func() {\n\t\tp.leave(key)\n\t\tclose(f.done)\n\t}()\n\n\terr = add(tx)\n\tf.err = err\n",
-   "replace": "\terr = add(tx)\n\tf.err = err\n\tp.leave(key)\n\tclose(f.done)\n"
+   "find": "\tdefer func() {\n\t\tp.leave(key)\n\t\tclose(f.done)\n\t}()\n\n\terr = count_pool_refusal(add(tx)) // r31 d4 (B285)\n\tf.err = err\n",
+   "replace": "\terr = count_pool_refusal(add(tx)) // r31 d4 (B285)\n\tf.err = err\n\tp.leave(key)\n\tclose(f.done)\n"
   },
   {
    "id": "gm-r24-txpool-registration",
@@ -9308,8 +9308,8 @@
    "file": "cmd/derod/rpc/reorg_events.go",
    "pkg": "./cmd/derod/rpc/",
    "test": "TestR25ReorgLifetimePersistsAcrossRestarts",
-   "find": "\t\t\t_ = os.Rename(path, path+\".corrupt\")\n",
-   "replace": "\n"
+   "find": "\t\t\tif err := os.Rename(path, path+\".corrupt\"); err != nil {",
+   "replace": "\t\t\tif err := error(nil); err != nil {"
   },
   {
    "id": "gm-r25-consensus-reorg-not-logged",
@@ -12295,8 +12295,8 @@
    "file": "glue/emission/emission.go",
    "pkg": "./glue/txprecheck/",
    "test": "TestR28ConsensusCitationsHold",
-   "find": "(the snapshot of Tips[0], blockchain.go:958)",
-   "replace": "(the snapshot of Tips[0], blockchain.go:964)"
+   "find": "(the snapshot of Tips[0], blockchain.go:963)",
+   "replace": "(the snapshot of Tips[0], blockchain.go:969)"
   },
   {
    "id": "gm-r28-glue-global-citation-table",
@@ -13193,6 +13193,910 @@
    "test": "TestR30bLeverDefaults",
    "find": "\tif g := strings.TrimSpace(c.GSplit); g != \"\" {",
    "replace": "\tif g := strings.TrimSpace(c.GSplit); false && g != \"\" {"
+  },
+  {
+   "id": "gm-r31-crypto-gfp-exceeds",
+   "file": "cryptography/bn256/gfp.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31GfpUnmarshalModulusCheck",
+   "find": "\t\t\treturn errors.New(\"bn256: coordinate exceeds modulus\")",
+   "replace": "\t\t\treturn nil // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-gfp-equals",
+   "file": "cryptography/bn256/gfp.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31GfpUnmarshalModulusCheck",
+   "find": "\treturn errors.New(\"bn256: coordinate equals modulus\")",
+   "replace": "\treturn nil // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-g1-identity",
+   "file": "cryptography/bn256/bn256.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31Bn256DecodeClassCensus",
+   "find": "\tif e.p.x == zero && e.p.y == zero {",
+   "replace": "\tif false && e.p.x == zero && e.p.y == zero { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-g1-oncurve",
+   "file": "cryptography/bn256/bn256.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31Bn256DecodeClassCensus",
+   "find": "\t\te.p.z = *newGFp(1)\n\t\te.p.t = *newGFp(1)\n\n\t\tif !e.p.IsOnCurve() {",
+   "replace": "\t\te.p.z = *newGFp(1)\n\t\te.p.t = *newGFp(1)\n\n\t\tif false && !e.p.IsOnCurve() { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-g2-oncurve",
+   "file": "cryptography/bn256/bn256.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31Bn256DecodeClassCensus",
+   "find": "\t\te.p.z.SetOne()\n\t\te.p.t.SetOne()\n\n\t\tif !e.p.IsOnCurve() {",
+   "replace": "\t\te.p.z.SetOne()\n\t\te.p.t.SetOne()\n\n\t\tif false && !e.p.IsOnCurve() { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-gt-length",
+   "file": "cryptography/bn256/bn256.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31Bn256DecodeClassCensus",
+   "find": "\tif len(m) < 12*numBytes {",
+   "replace": "\tif len(m) < 11*numBytes { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-flag-strict",
+   "file": "cryptography/bn256/changes.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31CompressedDecodeClassCensus",
+   "find": "\tsmaller := y1.Cmp(y2) < 0",
+   "replace": "\tif xb[32] > 1 { // r31 mutated: a stricter decoder is a consensus change the pin must see\n\t\treturn nil, errors.New(\"r31 mutated\")\n\t}\n\tsmaller := y1.Cmp(y2) < 0"
+  },
+  {
+   "id": "gm-r31-crypto-marshal-err",
+   "file": "cryptography/bn256/changes.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31CompressedDecodeClassCensus",
+   "find": "\tg1 := new(G1)\n\tg1.Unmarshal(g)\n\treturn g1",
+   "replace": "\tg1 := new(G1)\n\tif _, err := g1.Unmarshal(g); err != nil { // r31 mutated\n\t\treturn new(G1).ScalarBaseMult(big.NewInt(1))\n\t}\n\treturn g1"
+  },
+  {
+   "id": "gm-r31-crypto-order-constant",
+   "file": "cryptography/bn256/constants.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31Bn256ConstantsKAT",
+   "find": "var Order = bigFromBase10(\"21888242871839275222246405745257275088548364400416034343698204186575808495617\")",
+   "replace": "var Order = bigFromBase10(\"21888242871839275222246405745257275088548364400416034343698204186575808495619\") // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-label",
+   "file": "cryptography/crypto/const.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31HashLabelsKAT",
+   "find": "const PROTOCOL_CONSTANT = \"DERO\"",
+   "replace": "const PROTOCOL_CONSTANT = \"DERX\" // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-keccak-legacy",
+   "file": "cryptography/crypto/hashtopoint.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31HashLabelsKAT",
+   "find": "\thasher := sha3.NewLegacyKeccak256()",
+   "replace": "\thasher := sha3.New256() // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-point-text-hexerr",
+   "file": "cryptography/crypto/group.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31PointTextDecodeCensus",
+   "find": "\ttmp, err := hex.DecodeString(string(text))\n\tif err != nil {\n\t\treturn err\n\t}",
+   "replace": "\ttmp, _ := hex.DecodeString(string(text)) // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-elgamal-len",
+   "file": "cryptography/crypto/algebra_elgamal.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31PanicDecodersPinned",
+   "find": "\tif len(data) != 66 {",
+   "replace": "\tif len(data) < 66 { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-noncebalance-panic",
+   "file": "cryptography/crypto/balance_serdes.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31PanicDecodersPinned",
+   "find": "\tif size <= 0 {\n\t\tpanic(\"buf too small or value larger than 64 bits\")\n\t}\n\t//",
+   "replace": "\tif size < 0 { // r31 mutated\n\t\tpanic(\"buf too small or value larger than 64 bits\")\n\t}\n\t//"
+  },
+  {
+   "id": "gm-r31-crypto-globals-rand-source",
+   "file": "globals/random.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31RandomnessSourceCensus",
+   "find": "\trand.Read(b[:])",
+   "replace": "\tmathrand.Read(b[:]) // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-wallet-rand-source",
+   "file": "walletapi/transaction_build.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31RandomnessSourceCensus",
+   "find": "\tcrand := mathrand.New(globals.NewCryptoRandSource())",
+   "replace": "\tcrand := mathrand.New(mathrand.NewSource(1)) // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-wallet-open-keys",
+   "file": "walletapi/wallet_memory.go",
+   "pkg": "./walletapi/",
+   "test": "TestR31WalletOpenRefusesInconsistentKeys",
+   "find": "\tif err = check_account_keys(w.account.Keys); err != nil {",
+   "replace": "\tif err = check_account_keys(w.account.Keys); false && err != nil { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-wallet-keys-match",
+   "file": "walletapi/r31_wallet_keys.go",
+   "pkg": "./walletapi/",
+   "test": "TestR31WalletOpenRefusesInconsistentKeys",
+   "find": "\tif !bytes.Equal(want, k.Public.EncodeCompressed()) {",
+   "replace": "\tif false && !bytes.Equal(want, k.Public.EncodeCompressed()) { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-proof-canonical-key",
+   "file": "walletapi/r31_wallet_keys.go",
+   "pkg": "./walletapi/",
+   "test": "TestR31PaymentProofRefusesNonCanonicalKey",
+   "find": "\tif !bytes.Equal(raw, a.PublicKey.EncodeCompressed()) {",
+   "replace": "\tif false && !bytes.Equal(raw, a.PublicKey.EncodeCompressed()) { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-key-text-len",
+   "file": "cryptography/crypto/key_old.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "FuzzR31CryptoTextDecoders",
+   "find": "\tif len(byteSlice) != 32 {\n\t\treturn fmt.Errorf(\"Incorrect key size\")",
+   "replace": "\tif false && len(byteSlice) != 32 { // r31 mutated\n\t\treturn fmt.Errorf(\"Incorrect key size\")"
+  },
+  {
+   "id": "gm-r31-crypto-hash-text-len",
+   "file": "cryptography/crypto/hash.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "FuzzR31CryptoTextDecoders",
+   "find": "\tif len(byteSlice) != 32 {\n\t\treturn fmt.Errorf(\"Incorrect hash size\")",
+   "replace": "\tif false && len(byteSlice) != 32 { // r31 mutated\n\t\treturn fmt.Errorf(\"Incorrect hash size\")"
+  },
+  {
+   "id": "gm-r31-crypto-key-frombytes",
+   "file": "cryptography/crypto/key_old.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "FuzzR31CryptoTextDecoders",
+   "find": "\t*p = b",
+   "replace": "\t_ = b // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-hextokey-panic",
+   "file": "cryptography/crypto/key_old.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31PanicDecodersPinned",
+   "find": "func HexToKey(h string) (result Key) {\n\tbyteSlice, _ := hex.DecodeString(h)\n\tif len(byteSlice) != 32 {",
+   "replace": "func HexToKey(h string) (result Key) {\n\tbyteSlice, _ := hex.DecodeString(h)\n\tif len(byteSlice) > 32 { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-bnred-text-prefix",
+   "file": "cryptography/crypto/bnred.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31TextDecodersDiscardHexErrorPinned",
+   "find": "\t_, err := fmt.Sscan(\"0x\"+string(text), ((*big.Int)(x)))",
+   "replace": "\t_, err := fmt.Sscan(string(text), ((*big.Int)(x))) // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-noncebalance-deserialize",
+   "file": "cryptography/crypto/balance_serdes.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31PanicDecodersPinned",
+   "find": "\treturn x.Unmarshal(buf)",
+   "replace": "\treturn x // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-unmarshalnonce-panic",
+   "file": "cryptography/crypto/balance_serdes.go",
+   "pkg": "./cryptography/crypto/",
+   "test": "TestR31PanicDecodersPinned",
+   "find": "\tif size <= 0 {\n\t\tpanic(\"buf too small or value larger than 64 bits\")\n\t}\n}",
+   "replace": "\tif size < 0 { // r31 mutated\n\t\tpanic(\"buf too small or value larger than 64 bits\")\n\t}\n}"
+  },
+  {
+   "id": "gm-r31-crypto-ambiguous-len",
+   "file": "cryptography/bn256/changes.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31Bn256DecodeClassCensus",
+   "find": "func DecompressAmbiguous(xb []byte) (*G1, *G1, error) {\n\tif len(xb) != 33 {",
+   "replace": "func DecompressAmbiguous(xb []byte) (*G1, *G1, error) {\n\tif false && len(xb) != 33 { // r31 mutated"
+  },
+  {
+   "id": "gm-r31-crypto-g1-uncompressed-err",
+   "file": "cryptography/bn256/changes.go",
+   "pkg": "./cryptography/bn256/",
+   "test": "TestR31Bn256DecodeClassCensus",
+   "find": "\t_, err := e.Unmarshal(input)\n\treturn err",
+   "replace": "\te.Unmarshal(input)\n\treturn nil // r31 mutated"
+  },
+  {
+   "id": "gm-r31-d3-future-rule-info",
+   "file": "blockchain/blockchain.go",
+   "pkg": "./p2p/",
+   "test": "TestR31FutureTimestampLogHygieneOnChain",
+   "find": "block_logger.Info(\"Rejecting Block, timestamp is too much into future\", ",
+   "replace": "block_logger.Error(fmt.Errorf(\"Rejecting Block, timestamp is too much into future\"), \"\", "
+  },
+  {
+   "id": "gm-r31-d3-hex-stack-v2",
+   "file": "blockchain/blockchain.go",
+   "pkg": "./p2p/",
+   "test": "TestR31FutureTimestampLogHygieneOnChain",
+   "find": "logger.V(2).Info(\"Block rejected by chain\", \"BLID\", block_hash, \"err\", fmt.Sprint(err), \"bl\"",
+   "replace": "logger.V(1).Info(\"Block rejected by chain\", \"BLID\", block_hash, \"err\", fmt.Sprint(err), \"bl\""
+  },
+  {
+   "id": "gm-r31-d3-echo-error",
+   "file": "blockchain/blockchain.go",
+   "pkg": "./p2p/",
+   "test": "TestR31FutureTimestampLogHygieneOnChain",
+   "find": "logger.V(1).Info(\"Block rejected by chain\", \"BLID\", block_hash, \"err\", fmt.Sprint(err))",
+   "replace": "logger.V(1).Error(err, \"Block rejected by chain\", \"BLID\", block_hash)"
+  },
+  {
+   "id": "gm-r31-d3-skew-per-peer",
+   "file": "p2p/future_skew_r31.go",
+   "pkg": "./p2p/",
+   "test": "TestR31FutureSkewAttributedPerPeer",
+   "find": "c.obs.future_blocks.Add(1)",
+   "replace": "c.obs.future_blocks.Add(0)"
+  },
+  {
+   "id": "gm-r31-d3-skew-max",
+   "file": "p2p/future_skew_r31.go",
+   "pkg": "./p2p/",
+   "test": "TestR31FutureSkewAttributedPerPeer",
+   "find": "if skew <= old || c.obs.future_skew_max.CompareAndSwap(old, skew) {",
+   "replace": "if true || c.obs.future_skew_max.CompareAndSwap(old, skew) {"
+  },
+  {
+   "id": "gm-r31-d3-skew-histogram",
+   "file": "p2p/future_skew_r31.go",
+   "pkg": "./p2p/",
+   "test": "TestR31FutureSkewAttributedPerPeer",
+   "find": "\tfuture_skew_seconds.Update(s)\n",
+   "replace": "\t_ = s\n"
+  },
+  {
+   "id": "gm-r31-d3-skew-ratelimited",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR31FutureSkewAttributedPerPeer",
+   "find": "if reason == \"future_timestamp\" { // r31 (B269 b): counted per peer",
+   "replace": "if false && reason == \"future_timestamp\" { // r31 (B269 b): counted per peer"
+  },
+  {
+   "id": "gm-r31-d3-skew-line",
+   "file": "p2p/consensus_obs_r25.go",
+   "pkg": "./p2p/",
+   "test": "TestR31FutureSkewAttributedPerPeer",
+   "find": "\"err\", fmt.Sprint(err), \"suppressed\", held, \"skew_ms\", skew)",
+   "replace": "\"err\", fmt.Sprint(err), \"suppressed\", held, \"skew\", skew)"
+  },
+  {
+   "id": "gm-r31-d3-incoming-callsite",
+   "file": "p2p/chain_sync.go",
+   "pkg": "./p2p/",
+   "test": "TestR31IncomingBlockFailureLinePseudonymous",
+   "find": "log_incoming_block_failure(connection, err, false) // r31 (B269 c)",
+   "replace": "connection.logger.V(2).Error(err, \"Incoming Block could not be added due to some error\")"
+  },
+  {
+   "id": "gm-r31-d3-incoming-logger",
+   "file": "p2p/future_skew_r31.go",
+   "pkg": "./p2p/",
+   "test": "TestR31IncomingBlockFailureLinePseudonymous",
+   "find": "logger.V(2).Info(msg, \"peer_id\", peer_label(conn_peer(c)), \"err\", refusal_error_text(err))",
+   "replace": "c.logger.V(2).Info(msg, \"err\", refusal_error_text(err))"
+  },
+  {
+   "id": "gm-r31-d3-p2p-keygen-err",
+   "file": "p2p/controller.go",
+   "pkg": "./p2p/",
+   "test": "TestR31TLSKeyGenErrorChecked",
+   "find": "if err != nil { // r31 (DF-error-paths): was overwritten",
+   "replace": "if false && err != nil { // r31 (DF-error-paths): was overwritten"
+  },
+  {
+   "id": "gm-r31-d3-rpc-keygen-err",
+   "file": "cmd/derod/rpc/websocket_getwork_server.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR31GetworkTLSKeyGenErrorChecked",
+   "find": "if err != nil { // r31 (DF-error-paths): was overwritten",
+   "replace": "if false && err != nil { // r31 (DF-error-paths): was overwritten"
+  },
+  {
+   "id": "gm-r31-d3-parseip-canonical",
+   "file": "p2p/controller.go",
+   "pkg": "./p2p/",
+   "test": "FuzzR31ParseIPNoError",
+   "find": "\treturn ip2.String(), nil\n",
+   "replace": "\treturn s, nil\n"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-install-ok",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\tcase install:\n\t\tInstallOK.Inc()",
+   "replace": "\tcase install:\n\t\t_ = InstallOK // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-install-err",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\tcase install && failed:\n\t\tInstallErr.Inc()",
+   "replace": "\tcase install && failed:\n\t\t_ = InstallErr // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-invoke-ok",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\tdefault:\n\t\tInvokeOK.Inc()",
+   "replace": "\tdefault:\n\t\t_ = InvokeOK // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-invoke-err",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\tcase failed:\n\t\tInvokeErr.Inc()",
+   "replace": "\tcase failed:\n\t\t_ = InvokeErr // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-revert",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\tRevert[reason].Inc()",
+   "replace": "\t_ = Revert[reason] // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-out-of-gas",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\t\tOutOfGas.Inc()",
+   "replace": "\t\t_ = OutOfGas // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-panic-recovered",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\t\tPanicRecovered.Inc()",
+   "replace": "\t\t_ = PanicRecovered // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-exec-panic-reason",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\tcase p.panicked:\n\t\treason = \"exec_panic\"",
+   "replace": "\tcase false:\n\t\treason = \"exec_panic\" // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-parse-reason",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\tcase p.parse:\n\t\treason = \"parse\"",
+   "replace": "\tcase false:\n\t\treason = \"parse\" // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-no-action-skip",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\tif !args.Has(rpc.SCACTION, rpc.DataUint64) {\n\t\treturn",
+   "replace": "\tif false {\n\t\treturn // r31 mutated",
+   "test": "TestR31DVMObsCounters",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-classify-oog",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\t\treturn \"out_of_gas\"\n\tcase strings.Contains(s, \"Recovered in function\")",
+   "replace": "\t\treturn \"vm_panic\" // r31 mutated\n\tcase strings.Contains(s, \"Recovered in function\")",
+   "test": "TestR31DVMObsClassify",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-handler-recover",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\t\tif r := recover(); r != nil {\n\t\t\tHandlerPanics.Inc()\n\t\t}",
+   "replace": "\t\tHandlerPanics.Add(0) // r31 mutated: no recover",
+   "test": "TestR31DVMObsHandlerNeverPanics",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-core-only",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "func (s *sink) core() bool { return s.name == CoreName }",
+   "replace": "func (s *sink) core() bool { return true } // r31 mutated",
+   "test": "TestR31DVMObsSinkForwarding",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-core-enabled",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\treturn (s.core() && level == DvmLevel) || (s.under != nil && s.under.Enabled(level))",
+   "replace": "\treturn s.under != nil && s.under.Enabled(level) // r31 mutated",
+   "test": "TestR31DVMObsSinkForwarding",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-forward-gated",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\tif s.under != nil && s.under.Enabled(level) {\n\t\ts.under.Info(level, msg, kv...)",
+   "replace": "\tif s.under != nil {\n\t\ts.under.Info(level, msg, kv...) // r31 mutated",
+   "test": "TestR31DVMObsSinkForwarding",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-gas-histogram",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\t\tGasCompute.Update(float64(g))",
+   "replace": "\t\t_ = g // r31 mutated",
+   "test": "TestR31DVMObsHistograms",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-exec-histogram",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\t\tExecSeconds.Update(o.now().Sub(p.start).Seconds())",
+   "replace": "\t\t_ = p.start // r31 mutated",
+   "test": "TestR31DVMObsHistograms",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-derod-wrap",
+   "file": "cmd/derod/main.go",
+   "find": "\tglobals.Logger = dvmobs.Wrap(core_logger, nil)\n",
+   "replace": "\tglobals.Logger = core_logger // r31 mutated\n\t_ = dvmobs.Wrap\n",
+   "test": "TestR31DVMObsMessagesPinned",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-dvm-exec-outcome-line",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\tlogger.V(9).Info(\"dvm outcome\", \"txid\", txhash, \"scdata\", tx.SCDATA, \"error\", err, \"gascompute\", gascompute, \"gasstorage\", gasstorage) // r31 B288: every return, final named results\n",
+   "replace": "\t\t_ = 0 // r31 mutated\n",
+   "test": "TestR31DVMMetricsChainFlow",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r31-dvm-exec-panic-line",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\t\tlogger.V(9).Info(\"dvm panic recovered\", \"txid\", txhash) // r31 B288: /metrics only (glue/dvmobs)\n",
+   "replace": "",
+   "test": "TestR31DVMMetricsChainFlow",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r31-dvm-exec-zero-signer-line",
+   "file": "blockchain/transaction_execute.go",
+   "find": "\t\t\t\tlogger.V(9).Info(\"dvm outcome\", \"txid\", txhash, \"scdata\", tx.SCDATA, \"error\", err, \"zero_signer\", true, \"gascompute\", gascompute, \"gasstorage\", gasstorage) // r31 B288: /metrics only (glue/dvmobs)\n",
+   "replace": "",
+   "test": "TestR31DVMMetricsChainFlow",
+   "pkg": "./blockchain/"
+  },
+  {
+   "id": "gm-r31-dvm-gas-compute-limit",
+   "file": "dvm/sc.go",
+   "find": "\tstate.GasComputeLimit = int64(10000000)",
+   "replace": "\tstate.GasComputeLimit = int64(20000000) // r31 mutated",
+   "test": "TestR31GasComputeLimitKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-gas-compute-check",
+   "file": "dvm/dvm.go",
+   "find": "\t\tif state.GasComputeCheck && state.GasComputeUsed > state.GasComputeLimit {",
+   "replace": "\t\tif state.GasComputeCheck && state.GasComputeUsed > state.GasComputeLimit+5000 { // r31 mutated",
+   "test": "TestR31GasComputeLimitKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-gas-line-charge",
+   "file": "dvm/dvm.go",
+   "find": "\t\ti.State.ConsumeGas(5000) // every line number has some gas costs",
+   "replace": "\t\ti.State.ConsumeGas(4000) // r31 mutated",
+   "test": "TestR31GasComputeLimitKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-gas-storage-per-byte",
+   "file": "dvm/dvm_store.go",
+   "find": "\ttx_store.State.ConsumeStorageGas(int64(len(vbytes)) * 1)",
+   "replace": "\ttx_store.State.ConsumeStorageGas(int64(len(vbytes)) * 0) // r31 mutated",
+   "test": "TestR31GasStorageKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-gas-storage-check",
+   "file": "dvm/dvm.go",
+   "find": "\t\tif state.GasStoreCheck && state.GasStoreUsed > state.GasStoreLimit {",
+   "replace": "\t\tif false && state.GasStoreCheck && state.GasStoreUsed > state.GasStoreLimit { // r31 mutated",
+   "test": "TestR31GasStorageKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-revert-nonzero-commits",
+   "file": "dvm/sc.go",
+   "find": "result.ValueUint64 == 0 { // confirm the changes",
+   "replace": "result.ValueUint64 <= 1 { // r31 mutated",
+   "test": "TestR31SimulatorRevertConservationKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-revert-refund",
+   "file": "dvm/simulator.go",
+   "find": "\t\t\tnb.Balance = nb.Balance.Plus(new(big.Int).SetUint64(burnvalue)) // add back burn value",
+   "replace": "\t\t\tnb.Balance = nb.Balance.Plus(new(big.Int).SetUint64(burnvalue - burnvalue)) // r31 mutated: the refund adds 0",
+   "test": "TestR31SimulatorRevertConservationKAT",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-b292-min-pin",
+   "file": "dvm/dvm_functions.go",
+   "find": "\ta2 := dvm.eval(expr.Args[1])\n\tif _, ok := a1.(uint64); !ok {\n\t\tpanic(\"input argument must be uint64\")\n\t}\n\n\tif a1.(uint64) < a2.(uint64) {",
+   "replace": "\ta2 := dvm.eval(expr.Args[1])\n\tif _, ok := a2.(uint64); !ok { // r31 mutated: the would-be fix\n\t\tpanic(\"input argument must be uint64\")\n\t}\n\n\tif a1.(uint64) < a2.(uint64) {",
+   "test": "TestR31MinMaxSecondArgPinned",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-b292-max-pin",
+   "file": "dvm/dvm_functions.go",
+   "find": "\ta2 := dvm.eval(expr.Args[1])\n\tif _, ok := a1.(uint64); !ok {\n\t\tpanic(\"input argument must be uint64\")\n\t}\n\n\tif a1.(uint64) > a2.(uint64) {",
+   "replace": "\ta2 := dvm.eval(expr.Args[1])\n\tif _, ok := a2.(uint64); !ok { // r31 mutated: the would-be fix\n\t\tpanic(\"input argument must be uint64\")\n\t}\n\n\tif a1.(uint64) > a2.(uint64) {",
+   "test": "TestR31MinMaxSecondArgPinned",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-b292-recover",
+   "file": "dvm/dvm.go",
+   "find": "\t\t\terr = fmt.Errorf(\"Recovered in function %+v stack %s\", r, string(debug.Stack()))",
+   "replace": "\t\t\t_ = debug.Stack\n\t\t\tpanic(r) // r31 mutated: RunSmartContract no longer recovers",
+   "test": "TestR31MinMaxSecondArgPinned",
+   "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r31-dvm-scinvoke-budget-call",
+   "file": "walletapi/rpcserver/rpc_scinvoke.go",
+   "find": "\tif err = scinvoke_scdata_budget(p.SC_RPC); err != nil {",
+   "replace": "\tif false {",
+   "test": "TestR31ScInvokeSCDATABound",
+   "pkg": "./walletapi/rpcserver/"
+  },
+  {
+   "id": "gm-r31-dvm-scinvoke-budget-size",
+   "file": "walletapi/rpcserver/rpc_scinvoke.go",
+   "find": "uint64(len(b)) > SCINVOKE_MAX_SCDATA {",
+   "replace": "uint64(len(b)) > 2*SCINVOKE_MAX_SCDATA { // r31 mutated",
+   "test": "TestR31ScInvokeSCDATABound",
+   "pkg": "./walletapi/rpcserver/"
+  },
+  {
+   "id": "gm-r31-dvm-metrics-core-level",
+   "file": "glue/dvmobs/dvmobs.go",
+   "find": "\treturn (s.core() && level == DvmLevel) || (s.under != nil && s.under.Enabled(level))",
+   "replace": "\treturn s.core() || (s.under != nil && s.under.Enabled(level)) // r31 mutated: the pre-verify bug",
+   "test": "TestR31DVMObsCoreEnabledParity",
+   "pkg": "./glue/dvmobs/"
+  },
+  {
+   "id": "gm-r31-d2-subscribe-cap",
+   "file": "cmd/derod/rpc/ws_hardening.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR31SubscribeEventsCap",
+   "find": "\tif len(p.Events) > MAX_SUBSCRIBE_EVENTS { // r31 (B280): bounded before any lookup",
+   "replace": "\tif false && len(p.Events) > MAX_SUBSCRIBE_EVENTS { // r31 (B280): bounded before any lookup"
+  },
+  {
+   "id": "gm-r31-d2-reorg-aside",
+   "file": "cmd/derod/rpc/reorg_events.go",
+   "pkg": "./cmd/derod/rpc/",
+   "test": "TestR31ReorgCorruptAsideErrorReported",
+   "find": "\t\t\t\taside = fmt.Errorf(\"corrupt reorg record not kept aside: %w\", err)",
+   "replace": "\t\t\t\t_ = err"
+  },
+  {
+   "id": "gm-r31-d2-fuzz-ckey-len",
+   "file": "rpc/address.go",
+   "pkg": "./rpc/",
+   "test": "FuzzR31NewAddressFromCompressedKeys",
+   "find": "\tif len(ckey) != 33 {",
+   "replace": "\tif len(ckey) < 33 {"
+  },
+  {
+   "id": "gm-r31-d2-fuzz-arg-uint64",
+   "file": "rpc/rpc.go",
+   "pkg": "./rpc/",
+   "test": "FuzzR31ArgumentUnmarshalJSON",
+   "find": "\tcase DataUint64:\n\t\tvar x uint64",
+   "replace": "\tcase DataUint64:\n\t\tvar x int64"
+  },
+  {
+   "id": "gm-r31-d2-fuzz-parseaddress-canon",
+   "file": "p2p/bans.go",
+   "pkg": "./p2p/",
+   "test": "FuzzR31ParseAddress",
+   "find": "\t\t\tresult = ip.String()",
+   "replace": "\t\t\tresult = address"
+  },
+  {
+   "id": "gm-r31-d2-fuzz-decode-memo-key",
+   "file": "walletapi/daemon_communication.go",
+   "pkg": "./walletapi/",
+   "test": "FuzzR31DecodeEncryptedBalance",
+   "find": "\tkey := string(el.Serialize())",
+   "replace": "\tkey := string(el.Right.EncodeCompressed())"
+  },
+  {
+   "id": "gm-r31-d6-vs-reg-sim-grant",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteRegistrationGrant",
+   "find": "zerobalance = zerobalance.Plus(new(big.Int).SetUint64(100000000))",
+   "replace": "zerobalance = zerobalance.Plus(new(big.Int).SetUint64(100000001))"
+  },
+  {
+   "id": "gm-r31-d6-vs-reg-mainnet-grant",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteRegistrationGrant",
+   "find": "zerobalance = zerobalance.Plus(new(big.Int).SetUint64(200))",
+   "replace": "zerobalance = zerobalance.Plus(new(big.Int).SetUint64(0))"
+  },
+  {
+   "id": "gm-r31-d6-vs-reg-mainnet-height",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteRegistrationGrant",
+   "find": "if globals.IsMainnet() && height < 144000 {",
+   "replace": "if globals.IsMainnet() && height <= 144000 {"
+  },
+  {
+   "id": "gm-r31-d6-vs-transfer-add",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteTransferAddsCommitments",
+   "find": "nb.Balance = nb.Balance.Add(echanges) // homomorphic addition of changes",
+   "replace": "nb.Balance = nb.Balance.Add(echanges).Add(echanges) // homomorphic addition of changes"
+  },
+  {
+   "id": "gm-r31-d6-vs-transfer-parity",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteTransferAddsCommitments",
+   "find": "\t\t\t\tif (i%2 == 0) == parity { // this condition is well thought out and works good enough\n\t\t\t\t\tnb.NonceHeight = height",
+   "replace": "\t\t\t\tif (i%2 == 0) != parity { // this condition is well thought out and works good enough\n\t\t\t\t\tnb.NonceHeight = height"
+  },
+  {
+   "id": "gm-r31-d6-vs-transfer-fee",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteTransferAddsCommitments",
+   "find": "\t\treturn tx.Fees()\n\n\tdefault:",
+   "replace": "\t\treturn tx.Fees() + 1\n\n\tdefault:"
+  },
+  {
+   "id": "gm-r31-d6-vs-sc-noscdata-fee",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteSCFeesAndBurn",
+   "find": "\tif len(tx.SCDATA) == 0 {\n\t\treturn tx.Fees(), nil",
+   "replace": "\tif len(tx.SCDATA) == 0 {\n\t\treturn 0, nil"
+  },
+  {
+   "id": "gm-r31-d6-vs-sc-named-gas",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteSCFeesAndBurn",
+   "find": "\tgas = tx.Fees()\n",
+   "replace": "\tgas = 0\n"
+  },
+  {
+   "id": "gm-r31-d6-vs-sc-noaction-fee",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteSCFeesAndBurn",
+   "find": "//  tx doesn't have sc action\n\t\treturn tx.Fees(), nil",
+   "replace": "//  tx doesn't have sc action\n\t\treturn 0, nil"
+  },
+  {
+   "id": "gm-r31-d6-vs-sc-burn-incoming",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteSCFeesAndBurn",
+   "find": "incoming_value[payload.SCID] = payload.BurnValue",
+   "replace": "incoming_value[payload.SCID] = payload.BurnValue / 2"
+  },
+  {
+   "id": "gm-r31-d6-vs-sc-success-fee",
+   "file": "blockchain/transaction_execute.go",
+   "pkg": "./blockchain/",
+   "test": "TestR31ValueSiteSCFeesAndBurn",
+   "find": "\treturn tx.Fees(), nil\n}\n\n// func extract signer",
+   "replace": "\treturn 0, nil\n}\n\n// func extract signer"
+  },
+  {
+   "id": "gm-r31-d6-fz-decodetx-reserialise",
+   "file": "glue/emission/archive.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR31DecodeTxRefusesTruncatedProof",
+   "find": "\tif n := len(tx.Serialize()); n != len(b) {",
+   "replace": "\tif n := len(b); n != len(b) {"
+  },
+  {
+   "id": "gm-r31-d6-fz-decodetx-recover",
+   "file": "glue/emission/archive.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR31DecodeTxVerdicts",
+   "find": "\t\tif r := recover(); r != nil {\n\t\t\ttx, err = nil, fmt.Errorf(\"tx does not decode: %v\", r)",
+   "replace": "\t\tif r := recover(); false && r != nil {\n\t\t\ttx, err = nil, fmt.Errorf(\"tx does not decode: %v\", r)"
+  },
+  {
+   "id": "gm-r31-d6-fz-series-crc",
+   "file": "glue/emission/series.go",
+   "pkg": "./glue/emission/",
+   "test": "TestR31SeriesDecoderVerdicts",
+   "find": "if err != nil || uint32(want) != crc32.ChecksumIEEE(l[:i]) {",
+   "replace": "if err != nil || false && uint32(want) != crc32.ChecksumIEEE(l[:i]) {"
+  },
+  {
+   "id": "gm-r31-d6-fz-series-crc-fuzz",
+   "file": "glue/emission/series.go",
+   "pkg": "./glue/emission/",
+   "test": "FuzzR31SeriesDecoders",
+   "find": "if err != nil || uint32(want) != crc32.ChecksumIEEE(l[:i]) {",
+   "replace": "if err != nil || uint32(want) == 0 {"
+  },
+  {
+   "id": "gm-r31-d6-fz-series-bad-count",
+   "file": "glue/emission/series.go",
+   "pkg": "./glue/emission/",
+   "test": "FuzzR31SeriesDecoders",
+   "find": "\t\tif r, ok := ParseSeriesLine(l); ok {\n\t\t\tout = append(out, r)\n\t\t} else {\n\t\t\tbad++\n\t\t}",
+   "replace": "\t\tif r, ok := ParseSeriesLine(l); ok {\n\t\t\tout = append(out, r)\n\t\t} else {\n\t\t\tbad += 0\n\t\t}"
+  },
+  {
+   "id": "gm-r31-d6-fz-unmarshalproofs-len",
+   "file": "transaction/transaction.go",
+   "pkg": "./transaction/",
+   "test": "TestR31UnmarshalProofsRealBody",
+   "find": "if err = a.Proof.Deserialize(r, crypto.GetPowerof2(len(",
+   "replace": "if err = a.Proof.Deserialize(r, 1+crypto.GetPowerof2(len("
+  },
+  {
+   "id": "gm-r31-d6-ep-unknown-type-pin",
+   "file": "transaction/transaction.go",
+   "pkg": "./transaction/",
+   "test": "TestR31DeserializeUnknownTypePanics",
+   "find": "\ttx.TransactionType = TransactionType(tmp_uint64)\n\n\tswitch tx.TransactionType {\n\tcase PREMINE, REGISTRATION, COINBASE, BURN_TX, NORMAL, SC_TX:\n\tdefault:\n\t\tpanic(\"unknown transaction type\")",
+   "replace": "\ttx.TransactionType = TransactionType(tmp_uint64)\n\n\tswitch tx.TransactionType {\n\tcase PREMINE, REGISTRATION, COINBASE, BURN_TX, NORMAL, SC_TX:\n\tdefault:\n\t\treturn fmt.Errorf(\"unknown transaction type\")"
+  },
+  {
+   "id": "gm-r31-d6-keydiff-membership",
+   "file": "tools/forensics/keydiff/main.go",
+   "pkg": "./tools/forensics/keydiff/",
+   "test": "TestR31KeyDiffLeavesTheUnregisteredKey",
+   "find": "\t\tif _, ok := regs[k]; ok {",
+   "replace": "\t\tif _, ok := regs[k]; !ok {"
+  },
+  {
+   "id": "gm-r31-d6-keydiff-regs-side",
+   "file": "tools/forensics/keydiff/main.go",
+   "pkg": "./tools/forensics/keydiff/",
+   "test": "TestR31KeyDiffLeavesTheUnregisteredKey",
+   "find": "\t\tif _, ok := seen[d]; !ok {\n\t\t\tr.RegsNotInKeys++",
+   "replace": "\t\tif _, ok := seen[d]; ok {\n\t\t\tr.RegsNotInKeys++"
+  },
+  {
+   "id": "gm-r31-d6-keydiff-copy-guard",
+   "file": "tools/forensics/keydiff/main.go",
+   "pkg": "./tools/forensics/keydiff/",
+   "test": "TestR31KeyDiffReadsRegkeysAndRefusesALiveStore",
+   "find": "\tif os.Getenv(\"FORENSICS_STORE_COPY_OK\") != abs {",
+   "replace": "\tif false && os.Getenv(\"FORENSICS_STORE_COPY_OK\") != abs {"
+  },
+  {
+   "id": "gm-r31-d6-keydiff-sidecar-len",
+   "file": "tools/forensics/keydiff/main.go",
+   "pkg": "./tools/forensics/keydiff/",
+   "test": "TestR31KeyDiffReadsRegkeysAndRefusesALiveStore",
+   "find": "\tif len(b)%32 != 0 {",
+   "replace": "\tif len(b)%32 != 0 && false {"
+  },
+  {
+   "id": "gm-r31-d6-keydiff-digest",
+   "file": "tools/forensics/keydiff/main.go",
+   "pkg": "./tools/forensics/keydiff/",
+   "test": "TestR31KeyDiffLeavesTheUnregisteredKey",
+   "find": "\t\tkeys = append(keys, sha256.Sum256(k))",
+   "replace": "\t\tkeys = append(keys, sha256.Sum256(k[1:]))"
+  },
+  {
+   "id": "gm-r31-d4-pool-refused-detached",
+   "file": "glue/txpolicy/txpolicy.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR31PoolRefusedCountedByReason",
+   "find": "return count_pool_refusal(add(tx)) // r31 d4",
+   "replace": "return add(tx) // r31 d4"
+  },
+  {
+   "id": "gm-r31-d4-pool-refused-attached",
+   "file": "glue/txpolicy/txpolicy.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR31PoolRefusedCountedByReason",
+   "find": "err = count_pool_refusal(add(tx)) // r31 d4 (B285)",
+   "replace": "err = add(tx) // r31 d4 (B285)"
+  },
+  {
+   "id": "gm-r31-d4-pool-reason-oversize",
+   "file": "glue/txpolicy/pool_refused_r31.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR31PoolRefusalReasonsCoverAddTXToPool",
+   "find": "regexp.MustCompile(`rejected\\s+Size \\d+ byte Max possible`)",
+   "replace": "regexp.MustCompile(`rejected Size \\d+ byte Max possible`)"
+  },
+  {
+   "id": "gm-r31-d4-pool-reason-nonce-first",
+   "file": "glue/txpolicy/pool_refused_r31.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR31PoolRefusedCountedByReason",
+   "find": "{\"nonce\", regexp.MustCompile(`nonce verification failed`)},\n\t{\"proof\", regexp.MustCompile(`could not be verified`)},",
+   "replace": "{\"proof\", regexp.MustCompile(`could not be verified`)},\n\t{\"nonce\", regexp.MustCompile(`nonce verification failed`)},"
+  },
+  {
+   "id": "gm-r31-d4-pool-refused-admitted",
+   "file": "glue/txpolicy/pool_refused_r31.go",
+   "pkg": "./glue/txpolicy/",
+   "test": "TestR31PoolRefusedCountedByReason",
+   "find": "\tif err != nil {\n\t\tpool_refused[pool_refusal_reason(err)].Inc()",
+   "replace": "\tif err != nil || true {\n\t\tpool_refused[pool_refusal_other].Inc()"
+  },
+  {
+   "id": "gm-r31-d6-keydiff-datadir-guard",
+   "file": "tools/forensics/keydiff/main.go",
+   "find": "\tif underLiveDatadir(abs) {",
+   "replace": "\tif false && underLiveDatadir(abs) { // r31 mutated",
+   "test": "TestR31KeydiffRefusesLiveDatadir",
+   "pkg": "./tools/forensics/keydiff/"
+  },
+  {
+   "id": "gm-r31-d7-udpdelay-listen",
+   "file": "cmd/r18udpdelay/main.go",
+   "pkg": "./cmd/r18udpdelay/",
+   "test": "TestR31UdpdelayResolvePair",
+   "find": "\tla, err := net.ResolveUDPAddr(\"udp\", listen)\n\tif err != nil {",
+   "replace": "\tla, err := net.ResolveUDPAddr(\"udp\", listen)\n\tif err != nil && false {"
+  },
+  {
+   "id": "gm-r31-d7-udpdelay-upstream",
+   "file": "cmd/r18udpdelay/main.go",
+   "pkg": "./cmd/r18udpdelay/",
+   "test": "TestR31UdpdelayResolvePair",
+   "find": "\tua, err := net.ResolveUDPAddr(\"udp\", upstream)\n\tif err != nil {",
+   "replace": "\tua, err := net.ResolveUDPAddr(\"udp\", upstream)\n\tif err != nil && false {"
+  },
+  {
+   "id": "gm-r31-d7-explorer-hex",
+   "file": "cmd/explorer/explorerlib/explorerlib.go",
+   "pkg": "./cmd/explorer/explorerlib/",
+   "test": "TestR31ExplorerDecodeHexBlob",
+   "find": "\tb, err := hex.DecodeString(s)\n\tif err != nil {",
+   "replace": "\tb, err := hex.DecodeString(s)\n\tif err != nil && false {"
   }
  ]
 }

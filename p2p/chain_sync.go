@@ -460,7 +460,7 @@ func (connection *Connection) process_object_response_run(response Objects, sent
 		}
 
 		if !ok && err == errormsg.ErrPastMissing {
-			connection.logger.V(2).Error(err, "Incoming Block could not be added due to missing past, so skipping future block")
+			log_incoming_block_failure(connection, err, true) // r31 (B269 c)
 			if syncing {
 				return nil
 			} else {
@@ -469,7 +469,7 @@ func (connection *Connection) process_object_response_run(response Objects, sent
 		}
 
 		if !ok {
-			connection.logger.V(2).Error(err, "Incoming Block could not be added due to some error")
+			log_incoming_block_failure(connection, err, false) // r31 (B269 c)
 		} else {
 			observe_block_txs(response.CBlocks[i].Txs, cbl.Txs) // r23: only txs of an accepted block are observed
 		}

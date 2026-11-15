@@ -36,9 +36,9 @@ var r28_cited_file = map[string]string{
 
 // citation -> a fragment the cited line (or any line of a cited range) must contain
 var r28_citation_holds = map[string]string{
-	"blockchain.go:284": "Mempool.HouseKeeping", "blockchain.go:778": "unreferable history",
-	"blockchain.go:786": "TX_VALIDITY_HEIGHT", "blockchain.go:911": "WriteTX(", "blockchain.go:958": "ReadBlockSnapshotVersion(bl.Tips[0])",
-	"blockchain.go:1300": "already mined", "blockchain.go:1344": "Verify_Transaction_NonCoinbase_CheckNonce_Tips(",
+	"blockchain.go:284": "Mempool.HouseKeeping", "blockchain.go:783": "unreferable history",
+	"blockchain.go:791": "TX_VALIDITY_HEIGHT", "blockchain.go:916": "WriteTX(", "blockchain.go:963": "ReadBlockSnapshotVersion(bl.Tips[0])",
+	"blockchain.go:1305": "already mined", "blockchain.go:1349": "Verify_Transaction_NonCoinbase_CheckNonce_Tips(",
 	"transaction_execute.go:126-160": "CalcBlockReward", "transaction_execute.go:239": "ConstructElGamal(tx.Payloads[t].Statement.C[i], tx.Payloads[t].Statement.D)",
 	"transaction_execute.go:244": "HF3_Affected_Txs", "hf3_parity.go:77": "t.Parity = (height > t.Height) == t.Tx_Parity",
 	"transaction_verify.go:225-319": "tx.Version != 1", "transaction_verify.go:232": "HF3_Affected_Txs",

@@ -26,7 +26,12 @@ read of the tracked tree.
   HS7  B53   harness/pipeline/regen_round.py: the miner order equals the pipeline's S7 order; prep_corpus first,
              coverage after every miner, build after coverage, gen_index after build, coherence last; no step reads
              the live node (--capture/--live); the dry run runs nothing; apply() stops at the first failing step
-             (exit 3) and returns 4 when coherence still drifts.
+             (exit 3) and returns 4 when coherence still drifts. r31 (B271b): the current round's ledger page is
+             re-rendered as S7 does (gen_ledger.py --last <N> from harness/round.json 'current'; r28d -> 28; no page,
+             no step), between retrofit and gen_index, and apply() runs it. r31 (Part B item 7): a stale or missing
+             detector record puts detectors.py --all right after prep_corpus (before the miners; fresh records: no
+             step); no step reads the node; a feed not built from the records on disk (a record stale, or newer than
+             the feed's detectors[].generated_at, or no feed) makes apply() exit 5 naming area_intel.py --live.
   HS8  r28   live_window.event_lines: every PENDING_EVENTS id gets one line; zero deltas say 'no event in S s / N
              blocks (node uptime U s, k samples)'; a counter that rose says 'EVENT +n'; an absent counter is
              'pending (absent)'; B61 counts samples with topoheight != height; summarise() appends the lines.
@@ -311,6 +316,20 @@ def kat_hs6(over):
     return not bad, '; '.join(bad) or 'scrapes masked before they are written; summary unchanged'
 
 
+FAKE_DETECTORS = '''import json
+from pathlib import Path
+DETECTORS = {'alpha': ('harness', 'B1', 'a'), 'beta': ('harness', 'B2', 'b')}
+OUT_DIR = 'harness/runtime'
+
+
+def stale_reasons(root, name, doc=None):
+    p = Path(root) / OUT_DIR / f'detector_{name}.json'
+    if not p.exists():
+        return ['missing']
+    return [] if json.loads(p.read_text()).get('fresh') else ['inputs changed']
+'''
+
+
 def kat_hs7(over):
     RG = load(over, 'rg')
     bad = []
@@ -328,6 +347,9 @@ def kat_hs7(over):
         bad.append('prep_corpus is not first')
     if None in (cov, build, gi, coh) or not (max(miners) < cov < build < gi < coh == len(steps) - 1):
         bad.append(f'order prep/miners/coverage/build/index/coherence broken: {steps}')
+    wm, cm = idx('harness/kit/soundpage.py --write-measured'), idx('harness/kit/soundpage.py --check-measured')
+    if wm is None or cm is None or not wm < cm:   # r31 (B329): a registry change must not leave the measured line stale
+        bad.append(f'soundpage --write-measured is not before --check-measured: {wm} {cm}')
     if '--strict' not in steps[build or 0]:
         bad.append('build is not --strict')
     if any(f in s for s in steps for f in ('--capture', '--live')):
@@ -344,7 +366,80 @@ def kat_hs7(over):
     rc4, _ = RG.apply(Path('.'), run=lambda a, c: 4 if 'coherence' in a[0] else 0, log=lambda *x: None)
     if rc4 != 4:
         bad.append(f'coherence drift returns {rc4} (want 4)')
-    return not bad, '; '.join(bad) or f'{len(steps)} steps in S7 order; stops on failure; drift = 4'
+    # r31 (B271b): the current round's ledger page is re-rendered as S7 does, the round read from harness/round.json
+    with tempfile.TemporaryDirectory() as d:
+        def forged(cur, page=True):
+            r = Path(d) / cur
+            (r / 'harness').mkdir(parents=True, exist_ok=True)
+            (r / 'harness/round.json').write_text(json.dumps({'current': cur}))
+            if page:
+                n = re.sub(r'\D', '', cur)
+                (r / 'artifacts').mkdir(exist_ok=True)
+                (r / f'artifacts/dero-r1-r{n}.html').write_text('x')
+            return r
+        want = {'r31': [['artifacts/src/gen_ledger.py', '--last', '31', 'artifacts/dero-r1-r31.html']],
+                'r28d': [['artifacts/src/gen_ledger.py', '--last', '28', 'artifacts/dero-r1-r28.html']]}
+        for cur, w in want.items():
+            got = RG.ledger_step(forged(cur))
+            if got != w:
+                bad.append(f'ledger_step {cur}: {got} (want {w})')
+        if RG.ledger_step(forged('r40', page=False)) != []:
+            bad.append('ledger_step without the round page is not []')
+        fst = [' '.join(s) for s in RG.steps(forged('r31'))]
+        li = next((i for i, s in enumerate(fst) if s.startswith('artifacts/src/gen_ledger.py --last 31')), None)
+        ri = next((i for i, s in enumerate(fst) if s.startswith('harness/kit/retrofit.py')), None)
+        gi2 = next((i for i, s in enumerate(fst) if s.startswith('harness/gen_index.py')), None)
+        if None in (li, ri, gi2) or not (ri < li < gi2):
+            bad.append(f'the ledger re-render is not between retrofit and gen_index: {fst}')
+        seen = []
+        RG.apply(forged('r31'), run=lambda a, c: (seen.append(' '.join(a)), 0)[1], log=lambda *x: None)
+        if not any(x.startswith('artifacts/src/gen_ledger.py --last 31') for x in seen):
+            bad.append('apply() does not run the ledger re-render')
+    # r31 (rft §8 R31 Part B item 7): stale detector records are re-run (on-disk, after prep_corpus, before the miners);
+    # the area feed is area_intel's (it reads /metrics): a feed not built from the records on disk is named, exit 5
+    with tempfile.TemporaryDirectory() as d:
+        def forged_det(states, feed_gen, feed=True):
+            r = Path(d) / f'det{len(list(Path(d).iterdir()))}'
+            (r / 'harness/intel').mkdir(parents=True)
+            (r / 'harness/runtime').mkdir(parents=True)
+            (r / 'harness/round.json').write_text(json.dumps({'current': 'r31'}))
+            (r / 'harness/intel/detectors.py').write_text(FAKE_DETECTORS)
+            for n, (fresh, gen) in states.items():
+                (r / f'harness/runtime/detector_{n}.json').write_text(json.dumps({'fresh': fresh, 'generated_at': gen}))
+            if feed:
+                (r / 'harness/runtime/area_proposals.json').write_text(json.dumps(
+                    {'run_id': 'X', 'detectors': {n: {'generated_at': g} for n, g in feed_gen.items()}}))
+            return r
+        fresh = forged_det({'alpha': (True, 't1'), 'beta': (True, 't2')}, {'alpha': 't1', 'beta': 't2'})
+        if RG.detector_step(fresh) != [] or RG.feed_stale(fresh) != []:
+            bad.append(f'fresh detectors: step {RG.detector_step(fresh)}, feed {RG.feed_stale(fresh)}')
+        rcf, _ = RG.apply(fresh, run=lambda a, c: 0, log=lambda *x: None)
+        if rcf != 0:
+            bad.append(f'a fresh feed exits {rcf} (want 0)')
+        stale = forged_det({'alpha': (True, 't1'), 'beta': (False, 't2')}, {'alpha': 't1', 'beta': 't2'})
+        st = [' '.join(x) for x in RG.steps(stale)]
+        di = next((i for i, x in enumerate(st) if x == 'harness/intel/detectors.py --all'), None)
+        m1 = next((i for i, x in enumerate(st) if x.startswith('harness/miners/mine_')), None)
+        if di != 1 or m1 is None or not di < m1:
+            bad.append(f'stale detectors: detectors.py --all at {di} (want 1, after prep_corpus, before the miners {m1})')
+        if any(f in x for x in st for f in ('--capture', '--live')):
+            bad.append('the stale-detector regeneration reads the live node')
+        logs = []
+        rcs, dn = RG.apply(stale, run=lambda a, c: 0, log=logs.append)
+        if rcs != 5 or not any('area_intel.py --live' in x and 'STALE' in x for x in logs):
+            bad.append(f'a stale detector record: apply rc {rcs} (want 5, naming area_intel.py --live): {logs[-1:]}')
+        if not any(x[0] == 'harness/intel/detectors.py --all' for x in dn):
+            bad.append('apply() does not run detectors.py --all on stale records')
+        moved = forged_det({'alpha': (True, 't1'), 'beta': (True, 't9')}, {'alpha': 't1', 'beta': 't2'})
+        fs = RG.feed_stale(moved)
+        if RG.detector_step(moved) or not fs or not any('beta' in x for x in fs):
+            bad.append(f'records newer than the feed: step {RG.detector_step(moved)}, feed {fs}')
+        if RG.apply(moved, run=lambda a, c: 0, log=lambda *x: None)[0] != 5:
+            bad.append('records newer than the feed exit 0')
+        if not RG.feed_stale(forged_det({'alpha': (True, 't1'), 'beta': (True, 't2')}, {}, feed=False)):
+            bad.append('a missing feed is not stale')
+    return not bad, '; '.join(bad) or (f'{len(steps)} steps in S7 order; stops on failure; drift = 4; ledger re-render from round.json; '
+                                       'stale detectors re-run after prep_corpus; a stale feed names area_intel --live, exit 5')
 
 
 def rows_fixture(topo_off=0, inc=0):
@@ -490,7 +585,7 @@ KATS = [('HS1', kat_hs1), ('HS2', kat_hs2), ('HS3', kat_hs3), ('HS4', kat_hs4), 
 
 # katmut (harness/kit/katmut.py, rft §0.9 rule 1): the reason starts with the defect id; OWNERS names the owning KATs
 OWNERS = {'B149': ['HS1', 'HS12'], 'r28 N28-03': ['HS2'], 'r28 checkpoint': ['HS3'], 'r28 N28-02': ['HS4'], 'B133': ['HS5', 'HS10'],
-          'B135': ['HS6', 'HS9', 'HS12'], 'B53': ['HS7'], 'r28 events': ['HS8'], 'B148': ['HS11']}
+          'B135': ['HS6', 'HS9', 'HS12'], 'B53': ['HS7'], 'B329': ['HS7'], 'B271b': ['HS7'], 'r31 regen-feed': ['HS7'], 'r28 events': ['HS8'], 'B148': ['HS11']}
 
 _FE2 = json.loads((ROOT / 'harness/loop/STEP_BUDGETS.json').read_text())['steps']['harness/kat/test_forensics_frontend2_r26.py']
 MUTATIONS = [
@@ -521,12 +616,35 @@ MUTATIONS = [
     ('lw', "                f.write(scrub_prom(metrics()))           # r28 B135: no peer address reaches the raw scrape",
      "                f.write(metrics())", 'B135: the raw scrape keeps peer addresses'),
     ('lw', "    return privkit.mask(text or '')", "    return text or ''", 'B135: scrub_prom masks nothing'),
-    ('rg', "          'areas', 'consensus', 'peers')\nSTEPS", "          'consensus', 'areas', 'peers')\nSTEPS", 'B53: the miner order differs from S7'),
-    ('rg', "            ['harness/miners/mine_triage.py'],             # on-disk inputs only (no --capture)",
-     "            ['harness/miners/mine_triage.py', '--capture'],", 'B53: the regeneration reads the live node'),
+    ('rg', "          'areas', 'consensus', 'peers')\nHEAD_STEPS", "          'consensus', 'areas', 'peers')\nHEAD_STEPS", 'B53: the miner order differs from S7'),
+    ('rg', "                 ['harness/miners/mine_triage.py'],             # on-disk inputs only (no --capture)",
+     "                 ['harness/miners/mine_triage.py', '--capture'],", 'B53: the regeneration reads the live node'),
+    ('rg', "    return HEAD_STEPS[:1] + detector_step(root) + HEAD_STEPS[1:] + ledger_step(root) + TAIL_STEPS",
+     "    return HEAD_STEPS[:1] + detector_step(root) + HEAD_STEPS[1:] + TAIL_STEPS",
+     'B271b: the regeneration drops the ledger re-render'),
+    ('rg', "    return [['artifacts/src/gen_ledger.py', '--last', m.group(1), f'artifacts/dero-r1-r{m.group(1)}.html']]",
+     "    return [['artifacts/src/gen_ledger.py', '--last', '30', 'artifacts/dero-r1-r30.html']]", 'B271b: the round is a literal, not round.json'),
+    ('rg', "    return HEAD_STEPS[:1] + detector_step(root) + HEAD_STEPS[1:] + ledger_step(root) + TAIL_STEPS",
+     "    return HEAD_STEPS[:1] + detector_step(root) + HEAD_STEPS[1:] + TAIL_STEPS[:-2] + ledger_step(root) + TAIL_STEPS[-2:]",
+     'B271b: the ledger re-render runs after gen_index'),
+    ('rg', "    for s in steps(root):", "    for s in STEPS:", 'B271b: apply() runs the import-time steps, not the tree\'s'),
     ('rg', "        if rc not in OK_RC.get(s[0], (0,)):", "        if False:", 'B53: a failing step does not stop the regeneration'),
-    ('rg', "            ['harness/gen_index.py'],\n            ['harness/kit/soundpage.py', '--check-measured'],",
-     "            ['harness/kit/soundpage.py', '--check-measured'],", 'B53: gen_index dropped (index stale after the build)'),
+    ('rg', "    return [[DETECTORS, '--all']] if detector_stale(root, D) else []", "    return []",
+     'r31 regen-feed: a stale detector record is not re-run'),
+    ('rg', "    return HEAD_STEPS[:1] + detector_step(root) + HEAD_STEPS[1:] + ledger_step(root) + TAIL_STEPS",
+     "    return HEAD_STEPS + detector_step(root) + ledger_step(root) + TAIL_STEPS", 'r31 regen-feed: the detectors re-run after the miners read the tree'),
+    ('rg', "    return [[DETECTORS, '--all']] if detector_stale(root, D) else []",
+     "    return [[DETECTORS, '--all'], ['harness/intel/area_intel.py', '--live']] if detector_stale(root, D) else []",
+     'r31 regen-feed: the regeneration runs area_intel --live (reads the node)'),
+    ('rg', "        if (seen.get(n) or {}).get('generated_at') != gen:", "        if False:",
+     'r31 regen-feed: a record newer than the feed is not compared'),
+    ('rg', "        return FEED_STALE, done", "        return 0, done", 'r31 regen-feed: a stale feed exits 0'),
+    ('rg', "f'{\" ...\" if len(fs) > 3 else \"\"}): run {FEED_CMD} (it reads /metrics; this tool never does)')",
+     "f'{\" ...\" if len(fs) > 3 else \"\"})')", 'r31 regen-feed: the stale-feed message does not name the command'),
+    ('rg', "            ['harness/gen_index.py'],\n            ['harness/kit/soundpage.py', '--write-measured'],",
+     "            ['harness/kit/soundpage.py', '--write-measured'],", 'B53: gen_index dropped (index stale after the build)'),
+    ('rg', "            ['harness/kit/soundpage.py', '--write-measured'],  # r31 (B329): the measured line reads round.json; write it, then check\n",
+     "", 'B329: regen_round only checks the measured line'),
     ('lw', "        elif delta > 0:", "        elif delta > 99:", 'r28 events: a counter that rose is reported as no event'),
     ('lw', "        if not seen:\n            verdict = 'pending (absent)'", "        if False:\n            verdict = 'pending (absent)'",
      'r28 events: an absent counter reads as no event'),

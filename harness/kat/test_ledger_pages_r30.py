@@ -30,7 +30,10 @@ memory or temp dirs; the committed checks read this tree's records and the close
              rejection of runs A/B a tool artifact (D2-14); a closed page (29) keeps the two-run text.
   LP13 B214   the r30 entry's LIVE-track clause reads the track: booked at R30 (R27/R28/R28d), carried (R24-R26),
              pending (R29/R30); LP5 also reads tip_age from the record (R30 D3d).
-  Committed: the track is at R30 with FX-N4 / FX-N9 implemented, every claim re-tested R30, G24 lag/FX<->BD clean;
+  LP16 B271b  (r31) the in-progress r31 page: open30(track='PAUSED') renders the miner rows pending with no 'decision
+             (a)' (the default keeps the r30 text); round_opened / detector_rows / feed_text read their records; every
+             frozen root of a page >= 30 classifies its §7 rows (the frozen r30 root lacked backlog_truth.py at R31 Part A).
+  Committed: every closed page --last 21..30 regenerates byte-exact (rft §0.6); the track is at R30 with FX-N4 / FX-N9 implemented, every claim re-tested R30, G24 lag/FX<->BD clean;
              the newest DEROFDN watch record is UNCHANGED; the soundness page's generated blocks are current.
 
   python3 -I harness/kat/test_ledger_pages_r30.py   # exit 0 ok · 3 a KAT failed · 4 a mutation not caught / INVALID
@@ -42,7 +45,9 @@ HARNESS = Path(__file__).resolve().parent.parent
 ROOT = HARNESS.parent
 FILES = ['artifacts/src/r30_section.py', 'artifacts/src/observatory_section.py', 'artifacts/src/forensics_section.py',
          'harness/gen_index.py', 'harness/gen_deroarch.py', 'harness/soundness.py', 'harness/loop/ledger_item_map.json',
-         'harness/prep_corpus.py']
+         'harness/prep_corpus.py',
+         # r31 (B271b follow-up): the closed r30 page's frozen inputs include the §7 lead classifier it rendered with
+         'artifacts/src/frozen/r30/harness/intel/backlog_truth.py', 'artifacts/src/frozen/r30/artifacts/dero-rft.md']
 DIRS = ['harness/kit', 'harness/intel', 'harness/miners']
 
 
@@ -521,9 +526,84 @@ def lp15(base):
     return f
 
 
+def lp16(base):
+    """r31 (B271b follow-up): the in-progress r31 page. open30 renders a PAUSED miner track as pending (no 'decision (a)'),
+    the default stays the r30 text; round_opened reads the registry evidence; detector_rows / feed_text read the records;
+    every frozen root of a page >= 30 resolves the backlog_truth.py rft_rows imports (the r30 page failed to regenerate at
+    R31 Part A without it)."""
+    f = []
+    R = load(base, 'artifacts/src/r30_section.py', 'r31')
+    rows = forged_rows()
+    o = {x[1]: x for x in R.open30(rows, {}, rnd=31, track='PAUSED')}
+    if o.get('B2', ('',) * 5)[4] != 'R31: miner PAUSED; OPEN' or o['B2'][3] != 'pending':
+        f.append(f'LP16 a paused miner row renders {o.get("B2")}')
+    o = {x[1]: x for x in R.open30(rows, {})}
+    if o.get('B2', ('',) * 5)[4] != 'R30: miner ACTIVE, decision (a); OPEN' or o['B2'][3] != 'warn':
+        f.append(f'LP16 the default (r30) miner row changed: {o.get("B2")}')
+    if R.round_opened({'evidence': 'R31 opened 2026-11-13 by Part A'}) != '2026-11-13' or R.round_opened({}) != R.PENDING:
+        f.append('LP16 round_opened does not read the registry evidence')
+    td = Path(tempfile.mkdtemp(prefix='lp31_'))
+    try:
+        (td / 'harness/runtime').mkdir(parents=True)
+        (td / 'harness/runtime/detector_beta.json').write_text(json.dumps({'detector': 'beta', 'row': 'B2', 'rev': 'abcdef0123', 'findings': [{}, {}]}))
+        (td / 'harness/runtime/detector_alpha.json').write_text(json.dumps({'detector': 'alpha', 'row': 'B1', 'rev': 'fedcba9876', 'findings': []}))
+        (td / 'harness/runtime/detector_gamma.json').write_text('{not json')
+        d = R.detector_rows(str(td))
+        if [(n, r, k, v) for n, r, k, v, _ in d] != [('alpha', 'B1', 0, 'fedcba98'), ('beta', 'B2', 2, 'abcdef01')]:
+            f.append(f'LP16 detector_rows {d}')
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
+    ft = R.feed_text({'run_id': 'X1', 'counts': {'high': 1, 'medium': 2, 'low': 3}, 'proposals': [{}] * 6})
+    if ft != 'run X1: 6 proposals (high 1, medium 2, low 3)' or R.feed_text(None) != R.PENDING:
+        f.append(f'LP16 feed_text {ft}')
+    for fz in sorted((base / 'artifacts/src/frozen').glob('r*')) if (base / 'artifacts/src/frozen').is_dir() else []:
+        if int(re.sub(r'\D', '', fz.name) or 0) < 30:
+            continue
+        try:
+            n = len(R.rft_rows(str(fz)))
+        except Exception as e:                                       # noqa: BLE001 — a missing frozen tool is the defect
+            n, why = 0, f'{type(e).__name__}: {e}'
+        else:
+            why = ''
+        if n < 200:
+            f.append(f'LP16 the frozen root {fz.name} does not classify its §7 rows ({n} rows) {why[:120]}')
+    if not (base / 'artifacts/src/frozen/r30').is_dir():
+        f.append('LP16 no frozen r30 root')
+    return f
+
+
+def closed_pages():
+    """r31: every closed page (--last 21..30, frozen inputs from r24 on) regenerates byte-exact from this tree (rft §0.6)."""
+    import subprocess
+    f = []
+    td = Path(tempfile.mkdtemp(prefix='lp31pages_'))
+    try:
+        for n in range(21, 31):
+            out = td / f'p{n}.html'
+            r = subprocess.run([sys.executable, '-I', str(ROOT / 'artifacts/src/gen_ledger.py'), '--last', str(n), str(out)],
+                               capture_output=True, text=True, cwd=str(ROOT))
+            if r.returncode != 0 or not out.exists() or out.read_bytes() != (ROOT / f'artifacts/dero-r1-r{n}.html').read_bytes():
+                f.append(f'closed page --last {n} is not byte-exact (rc {r.returncode}) {(r.stderr or "").strip()[-160:]}')
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
+    return f
+
+
 def committed():
     f = []
-    t = json.loads((ROOT / 'harness/loop/disclosure_track.json').read_text())
+    live = json.loads((ROOT / 'harness/loop/disclosure_track.json').read_text())
+    # r31 (dimension 6): the track moves on every round (rft §6 step 10: an entry per claim per round, current_round
+    # advances), so the R30 committed state is the closed r30 page's frozen input; the live track must keep every R30
+    # entry and stand at or after R30 (G24 L7 below reads the live track)
+    fz = ROOT / 'artifacts/src/frozen/r30/harness/loop/disclosure_track.json'
+    t = json.loads(fz.read_text()) if fz.exists() else live
+    order = live.get('rounds') or []
+    cur = live.get('current_round')
+    if 'R30' not in order or cur not in order or order.index(cur) < order.index('R30'):
+        f.append(f'committed: live track current_round {cur} before R30')
+    for c in live.get('claims') or []:
+        if not any(h.get('round') == 'R30' for h in c.get('history') or []):
+            f.append(f'committed: {c["id"]} lost its R30 entry')
     if t.get('current_round') != 'R30':
         f.append(f'committed: track current_round {t.get("current_round")}')
     fx = {x['id']: x for x in t.get('fixes') or []}
@@ -544,12 +624,13 @@ def committed():
         f.append('committed: the r30 entry still types the LIVE-track rounds instead of reading the track')
     DT = load(ROOT, 'harness/intel/disclosure_track.py', 'dtc')
     reg = json.loads((ROOT / 'harness/round.json').read_text())
-    if DT.lag_problems(t, reg) or DT.fx_bd_problems(t, DT.bd_leads(ROOT)):
-        f.append(f'committed: G24 lag / FX<->BD: {DT.lag_problems(t, reg) + DT.fx_bd_problems(t, DT.bd_leads(ROOT))}')
+    if DT.lag_problems(live, reg) or DT.fx_bd_problems(live, DT.bd_leads(ROOT)):
+        f.append(f'committed: G24 lag / FX<->BD: {DT.lag_problems(live, reg) + DT.fx_bd_problems(live, DT.bd_leads(ROOT))}')
     W = load(ROOT, 'harness/intel/derofdn_watch.py', 'dwc')
     nr = W.newest_record(ROOT)
     if not nr or json.loads(Path(nr).read_text()).get('result') != 'UNCHANGED':
         f.append(f'committed: newest DEROFDN watch {nr} not UNCHANGED')
+    f += closed_pages()
     SP = load(ROOT, 'harness/kit/soundpage.py', 'spc')
     if SP.write_gen(ROOT, check=True)[0]:
         f.append('committed: the soundness page generated blocks are stale')
@@ -558,7 +639,7 @@ def committed():
 
 def kats(base):
     f = []
-    for fn in (lp1, lp2, lp3, lp4, lp5, lp6, lp7, lp8, lp9, lp10, lp11, lp12, lp13, lp14, lp15):
+    for fn in (lp1, lp2, lp3, lp4, lp5, lp6, lp7, lp8, lp9, lp10, lp11, lp12, lp13, lp14, lp15, lp16):
         try:
             f += fn(base)
         except Exception as e:                                       # noqa: BLE001
@@ -627,6 +708,13 @@ MUTATIONS = [   # (file under the copied base, old, new)
     ('harness/kit/roundlists.py', "            if evolution_label(rid) not in L['disclosure']:", "            if False:"),
     ('harness/intel/derofdn_watch.py', "    changed = bool(moved or gone or new_heads or new_tags or moved_tags)", "    changed = bool(gone or new_heads)"),
     ('harness/intel/derofdn_watch.py', "            if kind == 'tags' and not peeled and name in out['tags']:", "            if False:"),
+    # r31 (B271b follow-up, LP16)
+    ('artifacts/src/r30_section.py', "'warn' if track == 'ACTIVE' else 'pending',", "'warn',"),
+    ('artifacts/src/r30_section.py', "f'R{rnd}: miner {track}' + (', decision (a)' if track == 'ACTIVE' else '')", "f'R{rnd}: miner ACTIVE, decision (a)'"),
+    ('artifacts/src/r30_section.py', "    m = re.search(r'\\bopened (\\d{4}-\\d\\d-\\d\\d)\\b', str((entry or {}).get('evidence', '')))", "    m = None"),
+    ('artifacts/src/r30_section.py', "        out.append((d['detector'], d.get('row', PENDING), len(d.get('findings') or []),", "        out.append((d['detector'], d.get('row', PENDING), len(d.get('allowed') or []),"),
+    ('artifacts/src/r30_section.py', "    sev = ', '.join(f'{k} {c[k]}' for k in ('high', 'medium', 'low') if isinstance(c.get(k), int))", "    sev = ', '.join(f'{k} {c[k]}' for k in ('high', 'low') if isinstance(c.get(k), int))"),
+    ('artifacts/src/frozen/r30/harness/intel/backlog_truth.py', "def backlog_rows(", "def backlog_rows_r29("),
 ]
 
 
@@ -654,7 +742,7 @@ def main():
             f.append(f'committed crashed: {type(e).__name__}: {e}')
     finally:
         shutil.rmtree(base, ignore_errors=True)
-    print('LP1-LP15 + committed:', 'PASS' if not f else 'FAIL\n  ' + '\n  '.join(f))
+    print('LP1-LP16 + committed:', 'PASS' if not f else 'FAIL\n  ' + '\n  '.join(f))
     if f:
         return 3
     rc, caught, n = 0, 0, 0
@@ -674,7 +762,7 @@ def main():
                 print(f'mutation {i} NOT CAUGHT ({fn}): {old.strip()[:80]}' + (f' [only crashes: {mf[0][:80]}]' if mf else '')); rc = 4
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
-    print(f'r30 ledger-pages KATs: 15/15 ok · mutations caught {caught}/{n}')
+    print(f'r30 ledger-pages KATs: 16/16 ok · mutations caught {caught}/{n}')
     return rc
 
 

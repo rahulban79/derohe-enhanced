@@ -50,8 +50,13 @@ never on the live tree, and none reaches the network, the live node or a path ou
 
 Mutation independence (harness/kit/katmut.py): each mutation's reason starts with its defect id (r28 TK<n>); it is
 proved only when that KAT fails; a failure of another KAT is counted as coupled (target 0).
+r31 (rft §7 B272-W1): ONE clone, restored after every run (katmut.Workspace), and file-level scope: a mutation of file
+X re-runs only the KATs whose declared REACH names X; before the mutations a canary run checks every declaration (each
+KAT passes with every mutated file outside its reach replaced by a stub that raises at import and holds none of the
+file's text, else that KAT runs for every mutation). --no-scope runs every KAT for every mutation (the verdicts must be
+the same line for line).
 
-  python3 -I harness/kat/test_tools_kats_r28.py
+  python3 -I harness/kat/test_tools_kats_r28.py [--no-scope] [TK<n> ...]
 Exit 0 all ok · 3 a KAT failed · 4 a mutation was not caught by its own KAT, was INVALID, or coupled.
 """
 import ast, hashlib, importlib.util, json, os, re, shutil, subprocess, sys, tempfile
@@ -719,9 +724,36 @@ def clone_tree(dst):
     return dst
 
 
-def run_kats(P):
+# r31 (B272-W1): each KAT's declared FILE REACH among the mutated files (the tools it runs in-process or as a
+# subprocess, the modules those import, the files it reads as data). A mutation of file X re-runs only the KATs whose
+# reach names X (katmut.file_scope); the declaration is checked by the canary before any mutation (main: every mutated
+# file outside a KAT's reach is replaced by katmut.canary_text and the KAT must still pass, else it falls back to
+# running for every mutation). Derived with the per-file canary on the R31 tree (2026-11-13), then checked every run.
+REACH = {
+    'TK7': ['harness/ask.py'],
+    'TK8': ['harness/forensics/s7_replay.py'],
+    'TK9': ['harness/forensics/write_manifest.py'],
+    'TK10': ['harness/hooks/autosync.py'],
+    'TK11': ['harness/kit/cutfix.py'],
+    'TK12': ['harness/kit/textkit.py'],
+    'TK13': ['harness/kit/assetkit.py'],
+    'TK14': ['harness/kit/retrofit.py', 'harness/kit/assetkit.py', 'harness/kit/textkit.py'],
+    'TK15': ['harness/kit/kitgate.py', 'harness/kit/assetkit.py', 'harness/kit/textkit.py'],
+    'TK16': ['harness/kit/urlcheck.py'],
+    'TK17': ['harness/intel/tooling_intel.py', 'harness/kit/roundlists.py'],
+    'TK18': ['harness/kat/test_harness_tooling_r26.py', 'harness/miners/mine_evolution.py'],
+    'TK19': ['harness/intel/round_checkpoint.py'],
+    'TK20': ['harness/miners/mine_evolution.py', 'harness/miners/minelib.py'],
+    'TK21': ['harness/intel/tooling_intel.py', 'harness/kit/roundlists.py'],
+    'TK22': ['harness/miners/mine_coverage.py', 'harness/miners/minelib.py'],
+}
+
+
+def run_kats(P, names=None):
     res = []
     for name, fn in KATS:
+        if names is not None and name not in names:
+            continue
         try:
             o, det = fn({'root': P['root']})
         except Exception as e:                                    # noqa: BLE001
@@ -731,6 +763,7 @@ def run_kats(P):
 
 
 def run_on(mutation=None):
+    """one fresh clone, one run of every KAT (the pre-r31 runner; kept for callers that want a single run)"""
     with tempfile.TemporaryDirectory(prefix='tk28_') as d:
         root = clone_tree(Path(d) / 'r')
         if mutation:
@@ -749,39 +782,84 @@ def katmut():
     return m
 
 
+def canary(K, W, files, log=print):
+    """r31 (B272-W1): {kat: True/False} — each KAT run once with every mutated file outside its declared reach stubbed
+    (katmut.canary_plan); the clone is restored after each. A KAT with nothing to stub needs no canary (True)."""
+    names = [n for n, _ in KATS]
+    plan = K.canary_plan(names, REACH, files)
+    ok = {k: True for k in REACH if k not in plan}
+    for k, stub in plan.items():
+        for f in stub:
+            W.write(f, K.canary_text(f))
+        try:                                                          # r31 verify (d7): a crash under the stub is a
+            r = run_kats({'root': Path(W.work)}, [k])                 # wrong declaration, never a dead run
+        except Exception as e:                                        # noqa: BLE001
+            r = [(k, False, f'{type(e).__name__}: {e}')]
+        finally:
+            W.restore()
+        ok[k] = bool(r) and bool(r[0][1])
+        if not ok[k]:
+            log(f'  canary FAIL {k}: fails with {len(stub)} file(s) outside its declared reach stubbed '
+                f'({str(r[0][2])[:160] if r else "no result"}): the declaration is wrong; {k} runs for every mutation')
+    return ok
+
+
 def main(argv=()):
     if {'-h', '--help'} & set(argv):
         print(__doc__)
         return 0
     only = [a for a in argv if not a.startswith('-')]
-    res = run_on()
-    for name, o, det in res:
-        print(f"{'ok  ' if o else 'FAIL'} {name} {det[:600]}")
-    if not all(o for _, o, _ in res):
-        return 3
+    no_scope = '--no-scope' in argv
     K = katmut()
-    missed = coupled = 0
-    muts = [m for m in MUTATIONS if not only or any(K.defect_of(m[3]) == f'r28 {x}' for x in only)]
-    for mut in muts:
-        rel, find, repl, why = mut
-        text = (ROOT / rel).read_text(encoding='utf-8')
-        if text.count(find) != 1:
-            print(f'  ??      {why}: find text occurs {text.count(find)} times')
-            missed += 1
-            continue
-        try:
-            res = run_on(mut)
-        except SyntaxError as e:
-            print(f'  INVALID {why}: mutant does not compile ({e.msg})')
-            missed += 1
-            continue
-        failed = [n for n, o, _ in res if not o]
-        verdict, extra = K.classify(failed, OWNERS.get(K.defect_of(why), []))
-        print(f"  {verdict:8} {why}" + (f'  [{",".join(failed)}]' if failed else '')
-              + (f'  COUPLED {extra}' if extra and verdict == 'proved' else ''))
-        missed += verdict != 'proved'
-        coupled += bool(extra) and verdict == 'proved'
-    print('\n' + K.summary('r28 tools-kats KATs', len(KATS), len(muts), missed, coupled))
+    names = [n for n, _ in KATS]
+    with tempfile.TemporaryDirectory(prefix='tk28_') as d:
+        W = K.Workspace(clone_tree(Path(d) / 'base'), Path(d) / 'r')    # r31 (B272-W1): one clone, restored per run
+        root = Path(W.work)
+        res = run_kats({'root': root})
+        W.restore()
+        for name, o, det in res:
+            print(f"{'ok  ' if o else 'FAIL'} {name} {det[:600]}")
+        if not all(o for _, o, _ in res):
+            return 3
+        missed = coupled = runs = 0
+        muts = [m for m in MUTATIONS if not only or any(K.defect_of(m[3]) == f'r28 {x}' for x in only)]
+        files = sorted({m[0] for m in muts})
+        if no_scope:
+            reach = None
+        else:
+            ok = canary(K, W, files)
+            runs += len([k for k in ok if k in K.canary_plan(names, REACH, files)])
+            reach = K.checked_reach(REACH, ok)
+            print(f'scope: declared file reach; canary {sum(ok.values())}/{len(ok)} declarations hold')
+        for mut in muts:
+            rel, find, repl, why = mut
+            text = (ROOT / rel).read_text(encoding='utf-8')
+            if text.count(find) != 1:
+                print(f'  ??      {why}: find text occurs {text.count(find)} times')
+                missed += 1
+                continue
+            mt = text.replace(find, repl, 1)
+            if rel.endswith('.py'):
+                try:
+                    compile(mt, rel, 'exec')
+                except SyntaxError as e:
+                    print(f'  INVALID {why}: mutant does not compile ({e.msg})')
+                    missed += 1
+                    continue
+            sel = names if reach is None else K.file_scope(names, reach, rel)
+            W.write(rel, mt)
+            res = run_kats({'root': root}, sel)
+            W.restore()
+            runs += len(sel)
+            failed = [n for n, o, _ in res if not o]
+            verdict, extra = K.classify(failed, OWNERS.get(K.defect_of(why), []))
+            print(f"  {verdict:8} {why}" + (f'  [{",".join(failed)}]' if failed else '')
+                  + (f'  COUPLED {extra}' if extra and verdict == 'proved' else ''))
+            missed += verdict != 'proved'
+            coupled += bool(extra) and verdict == 'proved'
+    print(f"\nKAT runs: {runs} for {len(muts)} mutations ({'--no-scope: every KAT' if no_scope else 'file scope + canary'}; "
+          f"unscoped {len(muts) * len(names)})")
+    print(K.summary('r28 tools-kats KATs', len(KATS), len(muts), missed, coupled))
     return 4 if missed or coupled else 0
 
 

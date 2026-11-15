@@ -1823,3 +1823,41 @@ Round 31 as decisions.
 
 **Open after Round 30**: B259, B252c, B252d, B36 EQUAL re-read, B111 set-diff, B245, the HF4 watch (rft §7).
 
+
+## Round 31 (2026-11-13/14) — the node-only detector round: area detectors before the feed, seven verified dimensions, a closed loop that fixed its own harness eight times; installed as +22102026.r31 and measured live
+
+**Why.** The user paused the miner track for R31 (rft §2.25, §2.30: "keep it off for all of R31 (miner track paused)"),
+asked for the derod console errors to be addressed (§2.24), for DVM work (§2.28, non-consensus only, D-21) and for more,
+coherent proposals in every area (§2.25). Base cdbc0bb2; registry `r31`, tracks miner `paused`, node `active`.
+
+**Part A.** R31 opened at 23bf1dbe (§0.3 State PAUSED, areas.json miner paused, forensics v5 sealed, r30 ledger frozen,
+the §1 prompt contradiction fixed, D-28..D-30). The process rows landed (B270 push-notified DUE items, B271/B271b page
+gates and the current ledger in regen_round, B273 soundness header, B279 neutral PDF info, B252c opt-in S1/S2 stage cache,
+B252d katmut scoping). Dimension 0 built seven static area detectors (`harness/intel/detectors.py`: budget-census,
+fuzz-coverage, error-paths, crypto-input, value-paths, signal-coverage, dvm-builtins; 412 findings) and area_intel lands
+each finding as an anchored proposal: the R31 feed of record had 515 proposals over all 19 active areas (D-20, D-31).
+
+**Part B.** Seven dimensions, each a builder in its own `--shared` clone and a fresh adversarial verifier: d1 cryptography
+(primitives census pins, fuzz targets, wallet key checks; the consensus decoders' non-canonical input is REPORT-ONLY B297),
+d2 security/rpcws/wallet (Subscribe cap, reorg keep-aside error, fuzz, a KAT per kat-gap area), d3 node (the B269
+future-timestamp ERROR → one V(1) line, per-peer skew metrics, peer-id-only console lines; the 50 ms rule unchanged), d4
+observability (all 291 signal-coverage findings resolved; tx_pool_refused_total; the B269 census class), d5 dvm (sc_*
+families from logger lines outside execution, fuzz and simulator KATs, census classes, the DVM skill section), d6
+forensics/disclosure (value-site pins, the B111 set-diff, the R31 disclosure entries), d7 harness/tooling/docs (B272-W1
+scoping: test_tools_kats_r28 615 → 117 s with identical verdicts, the first dero-r1-r31.html). 0 REFUTED; four real bugs the
+verifiers found were fixed at the merge (dvmobs CORE verbosity, error_census classification, keydiff datadir guard, katmut
+canary crash).
+
+**Closed loop.** Runs 1–8 each failed on one defect, each fixed with a test before the next run (B321–B328: a flaky
+global-histogram test, the sc_* families unlinked in the rpc tests, line citations moved by the logging edits, a 1 ns
+rounding in a miner test, stale mutation anchors and soundness backings, the sealed-dataset replay through pinsnap, the
+0x3a SCID that cannot name a graviton tree, a probabilistic race mutation). Run 9 `pipeline_20261113T215409` PASS: KATs
+35/35, harness mutations 34/34, gates 31/34 + 3 PAUSED (miner), go mutations 1,761/1,761, race 27 packages 0 races,
+shadow 120/120 per node.
+
+**Measured.** Installed 2026-11-14 01:39:46; the user restarted derod 17:24:03; the live window
+(`harness/runtime/r31_live_window_20261114.txt`, 62 samples) read synced 62/62, 0 ERROR, emission OK, B61/B141/B152 holding;
+the R31 event families are registered at 0 and their events did not occur in the window (pending-event).
+
+**Open after Round 31**: dataset v6 (B311, B312), B110, B213, B319, B298, B299, B301, B302, B303, B314, B320, B330, the
+pending live events B269e/B304/B305, the STEP_BUDGETS re-derive (D-36), the HF4 watch, the held miner rows (rft §7, §8 R32 carry).

@@ -701,6 +701,9 @@ func getwork_cert_serial() *big.Int {
 	return new(big.Int).SetBytes(b[:])
 }
 
+// tls_key_gen makes the certificate's P-256 key; a variable so a test can make it fail (r31).
+var tls_key_gen = func() (*ecdsa.PrivateKey, error) { return ecdsa.GenerateKey(elliptic.P256(), rand.Reader) }
+
 func generate_random_tls_cert() tls.Certificate {
 
 	/* RSA can do only 500 exchange per second, we need to be faster
@@ -717,7 +720,11 @@ func generate_random_tls_cert() tls.Certificate {
 	})
 	*/
 	// EC256 does roughly 20000 exchanges per second
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	key, err := tls_key_gen()
+	if err != nil { // r31 (DF-error-paths): was overwritten by the next call, so a failure surfaced as a nil-key crash
+		logger.Error(err, "Private key cannot be created.")
+		panic(err)
+	}
 	b, err := x509.MarshalECPrivateKey(key)
 	if err != nil {
 		logger.Error(err, "Unable to marshal ECDSA private key")

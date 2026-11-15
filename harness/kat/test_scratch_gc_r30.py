@@ -20,6 +20,8 @@ every repo, tree and patch is a temp dir.
             touched: with the root above it the descent stops at the clone (KEEP, hollow tree inside untouched); with
             the root inside it only the hollow tree goes.
   RH11 r30 B148 resource_intel.walk counts only trees with a HEAD (or a .git file): a hollow .git is no clone tree.
+  RH12 r31 B245 an .idx without its .pack is proof-only: an orphan index of objects the reference holds is DELETE-HOLLOW,
+            one of objects no reference holds is KEEP H3 naming the orphan index.
 
   python3 -I harness/kat/test_scratch_gc_r30.py [--before FILE]   # FILE: another scratch_gc.py (the pre-r30 one FAILS)
 Exit 0 all ok · 3 a KAT failed · 4 a mutation was not proved (MISSED / WRONG-KAT / INVALID) or was coupled.
@@ -229,10 +231,51 @@ def kat_rh11(over):
     return ok, f'walk counts {n} (full {nf}) trees of clone + worktree + hollow; want 2'
 
 
-KATS = [('GC1', kat_gc1), ('RH10', kat_rh10), ('RH11', kat_rh11)]
+def kat_rh12(over):
+    """r31 B245: an .idx without its .pack is proof-only: an orphan index of objects the reference holds is
+    DELETE-HOLLOW; an orphan index of objects no reference holds is KEEP H3 naming the orphan index (the r23b/github/rewrite
+    shape: 96 objects listed only by an .idx whose .pack was gone)"""
+    G = load(over, 'gc')
+    bad = []
+    with tempfile.TemporaryDirectory(prefix='gc31o-') as td:
+        td = Path(td).resolve()
+        ref = td / 'ref'
+        ref.mkdir()
+        sh('git', 'init', '-q', '-b', 'main', cwd=ref)
+        (ref / 'a.txt').write_text('one\n')
+        sh('git', 'add', '-A', cwd=ref)
+        sh('git', 'commit', '-q', '-m', 'base', cwd=ref)
+        sh('git', 'repack', '-q', '-a', '-d', cwd=ref)
+        fr = td / 'foreign'
+        fr.mkdir()
+        sh('git', 'init', '-q', cwd=fr)
+        (fr / 'g.txt').write_text('foreign pack\n')
+        goid = sh('git', 'hash-object', '-w', 'g.txt', cwd=fr).decode().strip()
+        pk = td / 'fpack'
+        pk.mkdir()
+        name = sh('git', 'pack-objects', '-q', str(pk / 'pack'), cwd=fr, input_=goid + '\n').decode().strip()
+        root = td / 'scr'
+        root.mkdir()
+        own = hollow_copy(ref, root / 'r29' / 'own_orphan')
+        for p_ in (own / '.git' / 'objects' / 'pack').glob('*.pack'):
+            p_.unlink()                                  # the ref's own index, its pack gone
+        lost = hollow_copy(ref, root / 'r29' / 'lost_orphan', {f'.git/objects/pack/pack-{name}.idx': (pk / f'pack-{name}.idx').read_bytes()})
+        if list((own / '.git' / 'objects' / 'pack').glob('*.pack')) or not list((own / '.git' / 'objects' / 'pack').glob('*.idx')):
+            return False, 'fixture: own_orphan is not an index without its pack'
+        r1 = G.judge(own, root, str(ref), [], 0, '')
+        r2 = G.judge(lost, root, str(ref), [], 0, '')
+        if r1['verdict'] != 'DELETE-HOLLOW':
+            bad.append(f"an orphan index of objects the reference holds: {r1['verdict']} {r1.get('why', '')[:120]}")
+        if r2['verdict'] != 'KEEP' or 'orphan index' not in r2.get('why', '') or goid not in r2.get('why', ''):
+            bad.append(f"an orphan index of objects no reference holds: {r2['verdict']} {r2.get('why', '')[:160]}")
+    return not bad, '; '.join(bad) or 'orphan .idx proof-only: held objects DELETE-HOLLOW, lost objects KEEP H3 (orphan index named)'
+
+
+KATS = [('GC1', kat_gc1), ('RH10', kat_rh10), ('RH11', kat_rh11), ('RH12', kat_rh12)]
 # GC1 and RH10 own each other's defects by construction: GC1's hollow tree (an index + an only-copy file) is KEEP
 # only through check (b), and RH10's hollow tree inside a dirty clone is DELETE-HOLLOW only with git pinned to it.
-OWNERS = {'r30 GC1': ['GC1', 'RH10'], 'r30 RH10': ['RH10', 'GC1'], 'r30 RH11': ['RH11']}
+# r31: RH12 (B245) proves an orphan index through the same H3 reference lookup, so it co-owns RH10's check (c)
+OWNERS = {'r30 GC1': ['GC1', 'RH10'], 'r30 RH10': ['RH10', 'GC1', 'RH12'], 'r30 RH11': ['RH11'], 'B245': ['RH12']}
 
 MUTATIONS = [   # (key, find, replace, why)
     ('gc', "    pin = ['--git-dir', str(Path(tree) / '.git'), '--work-tree', str(tree)] if own else []", "    pin = []",
@@ -244,6 +287,12 @@ MUTATIONS = [   # (key, find, replace, why)
     ('gc', "    for d in protect:\n        if under(tree, d):", "    for d in []:\n        if under(tree, d):",
      'r30 RH10: the --protect check dropped'),
     ('ri', " and is_clone(d)\n", "\n", 'r30 RH11: walk counts a hollow .git as a clone tree (the pre-r30 code)'),
+    # r31 (B245): an orphan .idx is proof-only
+    ('gc', "        if miss:\n            return (f'H3 {len(miss)} object(s) the reference lacks ('", "        if miss and not orphan:\n            return (f'H3 {len(miss)} object(s) the reference lacks ('",
+     'B245: an orphan .idx is skipped by H3 (its lost objects deleted unproved)'),
+    ('gc', "    if packs - idx:", "    if packs ^ idx:", 'B245: an orphan .idx is refused outright (a held index KEEPs the tree forever)'),
+    ('gc', "('orphan index, its .pack is gone: the index is the only '\n                    'list of them' if orphan else 'pack')", "'pack'",
+     'B245: the KEEP reason does not name the orphan index'),
 ]
 
 

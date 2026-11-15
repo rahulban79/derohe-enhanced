@@ -13,6 +13,10 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	// r31 closed loop (B322): derod links glue/dvmobs (cmd/derod wires it), whose sc_* counters are created at start;
+	// this test process must link the same set to see the page a fresh derod serves
+	_ "github.com/deroproject/derohe/glue/dvmobs"
 )
 
 func TestR29LazyFamiliesOnAFreshPage(t *testing.T) {

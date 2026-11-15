@@ -110,7 +110,13 @@ def nr3(base):
     open_ = [{'severity': 'medium'}]
     tri = A.load_triage(ROOT)
     s1, s2, s3 = A.area_state(booked, False, 4), A.area_state(open_ + booked, False, 4), A.area_state(booked, True, 4)
-    ok = s1 == 'OK' and s2 == 'WATCH' and s3 == 'PAUSED' and len(tri) == 10 and set(tri.values()) == {'§7 B201'}
+    # r31 d3: the triage file grows every round (R31 Part A booked B278/B293-B296); the r30 property is that the 10
+    # R29 network/observatory proposals stay booked under B201, not that the file never changes (it failed at 9f4cfcc1)
+    r30_ids = ('AP-consensus-network-observation-658583', 'AP-consensus-network-observation-f26bbb',
+               'AP-consensus-network-observation-fcb1b5', 'AP-consensus-observatory-observed-999cd9',
+               'AP-peers-network-observation-09ac26', 'AP-peers-network-observation-47e833', 'AP-peers-network-observation-8976de',
+               'AP-peers-network-observation-b9adb1', 'AP-peers-observatory-observed-c262e3', 'AP-peers-observatory-observed-f4d4fe')
+    ok = s1 == 'OK' and s2 == 'WATCH' and s3 == 'PAUSED' and all(tri.get(i) == '§7 B201' for i in r30_ids)
     return ok, f'booked {s1} open {s2} paused {s3}; triage {len(tri)} {set(tri.values())}'
 
 

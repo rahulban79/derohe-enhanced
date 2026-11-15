@@ -235,6 +235,39 @@ ROW_WATCH = PENDING_EVENTS + (
     ('BD5', 'a proof scalar >= Order refused at admission', ('tx_proof_scalar_nonreduced_rejected_total',), None),
     ('B144', 'none: globals ParseAmount/FormatMoney have no live series (unit-proven)', (), None),
     ('B157', 'none: SC burn conservation by path has no live series (unit-proven)', (), None),
+) + (
+    # r31 d4 (rft §7 B285, detector-signal-coverage): the event counters no tool read. Each row is a refusal, drop, guard
+    # or failure series: the sampler states it 'event seen' / 'registered, no event' (with its denominator) / 'absent',
+    # so a moving defence counter is a reading of the round, not a number nobody looks at.
+    ('B285-pool', 'a mempool admission refusal by Add_TX_To_Pool (any reason) or a pool discard',
+     ('tx_pool_refused_total', 'mempool_discarded_total'), None),
+    ('B285-canon', 'a non-canonical tx encoding or proof layout accepted, refused or seen in a block (R22/R25 census)',
+     ('tx_noncanonical_encoding_total', 'tx_noncanonical_roundtrip_rejected_total',
+      'tx_registration_noncanonical_rejected_total', 'tx_proof_scalar_layout_unknown_total',
+      'block_tx_noncanonical_encoding_total', 'block_tx_proof_scalar_nonreduced_total'), None),
+    ('B285-rpc-defence', 'an RPC refusal by a guard, a bound, the abuse table or a per-address limit',
+     ('rpc_abuse_refused_total', 'rpc_abuse_bad_request_total', 'rpc_abuse_unknown_method_total',
+      'rpc_abuse_aggregate_bans_total', 'rpc_abuse_aggregate_short_total', 'rpc_abuse_surge_scored_total',
+      'rpc_abuse_surge_trusted_total', 'rpc_abuse_trust_revoked_total', 'rpc_foreign_rate_limited_total',
+      'rpc_guard_refused_total', 'rpc_param_bound_refused_total', 'rpc_param_bound_body_refused_total',
+      'rpc_ws_items_inflight_refused_total', 'rpc_http_shape_refused_total', 'rpc_input_refused_total',
+      'rpc_limited_total', 'rpc_params_refused_total', 'rpc_unknown_method_total'), None),
+    ('B285-rpc-drops', 'a websocket block/miniblock push dropped (ordered push queue full)',
+     ('rpc_ws_push_post_dropped_total',), None),
+    ('B285-p2p-defence', 'a p2p refusal, quarantine, fetch-budget drop or a chunk dropped for an unknown tip',
+     ('p2p_busy_rejections_total', 'p2p_gossip_quarantine_refusals_total', 'p2p_grey_quarantined_total',
+      'p2p_outbound_netgroup_refused_total', 'p2p_tx_fetch_budget_drops_total', 'p2p_tx_fetch_short_replies_total',
+      'p2p_chunks_unknown_tip_total'), None),
+    ('B285-bootstrap', 'a bootstrap (fastsync) fallback or a foreign key in a bootstrap section',
+     ('p2p_bootstrap_fallbacks_total', 'p2p_bootstrap_prefill_fallbacks_total', 'p2p_bootstrap_foreign_keys_total'), None),
+    ('B285-own-broadcast', 'a broadcast of our own miniblock that failed (miner paused: none expected)',
+     ('miniblock_ours_broadcast_failed_total', 'miniblock_ours_broadcast_failed_by_reason_total'), None),
+    ('B285-getwork-guard', 'a getwork guard refusal, bad share or ban',
+     ('getwork_guard_bad_shares_total', 'getwork_guard_bans_total', 'getwork_guard_refused_total'), None),
+    ('B285-node-errors', 'a node-side failure: an emission-audit pass error, a job without template or a failed job '
+     'write, a sync locator read error',
+     ('dero_emission_audit_errors_total', 'getwork_template_errors_total', 'getwork_job_write_errors_total',
+      'p2p_sync_locator_read_errors_total'), None),
 )
 # r30: rules graded on every sample (a violation is a finding at once, never a pending event)
 INVARIANTS = (

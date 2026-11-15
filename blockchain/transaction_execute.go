@@ -285,14 +285,18 @@ func (chain *Blockchain) process_transaction_sc(cache map[crypto.Hash]*graviton.
 		if r := recover(); r != nil {
 			if is_zero_signer_revert(r) { // anonymous SC tx failed: fee kept, burn value stays burned (see sc_revert_log.go)
 				logger.V(1).Info("SC reverted for an anonymous sender; burn value destroyed, fee kept", "txid", txhash)
+				logger.V(9).Info("dvm outcome", "txid", txhash, "scdata", tx.SCDATA, "error", err, "zero_signer", true, "gascompute", gascompute, "gasstorage", gasstorage) // r31 B288: /metrics only (glue/dvmobs)
 				return
 			}
 			// r29 (B157, user decision 2026-11-08 (a)): logr Error ignores V, so this printed an ERROR with a stack on every
 			// node for any mined SC tx that recovers here (DB28-2); it is a V(2) Info line now, logging only (guard S1)
 			logger.V(2).Info("Recover while executing SC ", "txid", txhash, "error", r, "stack", fmt.Sprintf("%s", string(debug.Stack())))
+			logger.V(9).Info("dvm panic recovered", "txid", txhash) // r31 B288: /metrics only (glue/dvmobs)
 
 		}
+		logger.V(9).Info("dvm outcome", "txid", txhash, "scdata", tx.SCDATA, "error", err, "gascompute", gascompute, "gasstorage", gasstorage) // r31 B288: every return, final named results
 	}()
+	logger.V(9).Info("dvm start", "txid", txhash) // r31 B288: /metrics only (glue/dvmobs)
 
 	if !tx.SCDATA.Has(rpc.SCACTION, rpc.DataUint64) { //  tx doesn't have sc action
 		return tx.Fees(), nil

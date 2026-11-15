@@ -454,8 +454,11 @@ func (chain *Blockchain) Add_Complete_Block(cbl *block.Complete_Block) (err erro
 			}
 
 		} else {
-			logger.V(1).Error(err, "Block rejected by chain", "BLID", block_hash, "bl", fmt.Sprintf("%x", bl.Serialize()), "stack", debug.Stack())
-			logger.V(1).Error(err, "Block rejected by chain", "BLID", block_hash)
+			// r31 (B269 a): most rules log their own line; the verdict reaches the console via the p2p caller
+			// (consensus_obs_r25.go "Block rejected") or the local miner (miner_block.go "Block Rejected"); this generic
+			// echo is file-log only, the block hex + stack at V(2)
+			logger.V(2).Info("Block rejected by chain", "BLID", block_hash, "err", fmt.Sprint(err), "bl", fmt.Sprintf("%x", bl.Serialize()), "stack", string(debug.Stack()))
+			logger.V(1).Info("Block rejected by chain", "BLID", block_hash, "err", fmt.Sprint(err))
 		}
 	}()
 
@@ -524,7 +527,9 @@ func (chain *Blockchain) Add_Complete_Block(cbl *block.Complete_Block) (err erro
 	// make sure time is NOT into future,
 	// if clock diff is more than  50 millisecs, reject the block
 	if bl.Timestamp > (uint64(globals.Time().UTC().UnixMilli() + 50)) { // give 50 millisec passing
-		block_logger.Error(fmt.Errorf("Rejecting Block, timestamp is too much into future, make sure that system clock is correct"), "")
+		// r31 (B269 a): the SENDER's clock is ahead (ours is NTP-checked, p2p/timecheck.go); one V(1) line with the skew,
+		// never a console ERROR. The p2p caller names the peer by its pseudonym and counts the skew (consensus_obs_r25.go).
+		block_logger.Info("Rejecting Block, timestamp is too much into future", "height", bl.Height, "skew_ms", int64(bl.Timestamp)-globals.Time().UTC().UnixMilli(), "limit_ms", 50)
 		return errormsg.ErrFutureTimestamp, false
 	}
 

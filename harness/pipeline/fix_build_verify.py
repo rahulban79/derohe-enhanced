@@ -7,6 +7,9 @@ installed, so bin/ only ever receives binaries that passed every stage before IN
 
   S1 guard     consensus_guard: changed consensus-package lines are logging-only
   S2 format    gofmt on the files this round owns; go vet shows no finding absent from the base
+  r31 B252c    --stage-cache (opt-in): S1 and S2 reuse an identical earlier PASS, keyed by sha256(HEAD, the work tree's
+               git tree id incl. untracked files via a temp index, the stage argv, the Go env subset, go version); a hit
+               is a PASS event with cached=true naming the key and the prior record; no other stage is cached
   S3a flaky    (R20) the tests THIS change adds (git diff vs --new-tests-base, plus untracked *_test.go) run -race
                -count=3: 3/3 failures stop the run; 1-2/3 are FLAKY, recorded separately (flaky.json) and do not
                stop it — a timing test that flakes on the live mining box must be told apart from a real failure
@@ -72,7 +75,7 @@ installed, so bin/ only ever receives binaries that passed every stage before IN
   python3 harness/pipeline/fix_build_verify.py [--shadow-seconds 1200] [--no-install] [--project-only]
                                                [--new-tests-base <rev>]   (r23c: default from harness/round.json)
 """
-import argparse, contextlib, datetime, fcntl, importlib.util, json, os, re, shutil, signal, subprocess, sys, time, urllib.request
+import argparse, contextlib, datetime, fcntl, hashlib, importlib.util, json, os, re, shutil, signal, subprocess, sys, tempfile, time, urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -969,6 +972,130 @@ def full_record(summary):
     return summary.get('mode', 'full') == 'full' and 'minerbench' in (summary.get('stages') or {})
 
 
+# ───────────────────────────── r31 (B252c): the S1/S2 stage-result cache (opt-in: --stage-cache) ─────────────────────────────
+# A died pipeline re-ran S1-S7 in full (closed-loop run 9 after run 8). S1 guard and S2 format are pure functions of
+# (HEAD, the work tree incl. untracked files, the stage's argv, the Go env subset, the Go toolchain): a PASS of a run
+# whose key equals this one is reused and recorded as an event naming the key and the prior record. Every other stage
+# reads time, box load or live state and is never cached. KEY_EXCLUDE = the pipeline's own outputs, which neither
+# consensus_guard.py nor gofmt/vet read (KAT SC5 checks consensus_guard.py names none of them); ignored *.go files are
+# added to the key (consensus_guard greps every *.go file, ignored or not). A FAIL is never cached.
+STAGE_CACHE = [False]
+STAGE_CACHE_FILE = HARNESS / 'loop/runs/stage_cache.json'
+STAGE_CACHE_KEEP = 20                 # entries kept per stage
+KEY_ENV = ('GOFLAGS', 'GOOS', 'GOARCH', 'CGO_ENABLED', 'GOEXPERIMENT', 'GOWORK', 'GO111MODULE', 'GOTOOLCHAIN', 'GOPATH',
+           'GOROOT', 'GOMODCACHE', 'GOPROXY', 'GONOSUMDB', 'GOPRIVATE')
+KEY_EXCLUDE = ('harness/loop/runs', 'harness/loop/PIPELINE_LAST.json', 'harness/loop/PIPELINE_FULL_LAST.json',
+               'harness/loop/.PIPELINE_LAST.json.tmp')
+S1_ARGV = [sys.executable, 'harness/consensus_guard.py', '--json', 'harness/loop/CONSENSUS_GUARD.json']
+VET_PKGS = ['./p2p/', './blockchain/', './astrobwt/astrobwtv3/', './cmd/dero-miner/', './cmd/dero-miner/dsa/',
+            './cmd/dero-miner/gsplit/', './glue/rwc/', './walletapi/rpcserver/', './metrics/', './cmd/derod/', './cmd/derod/rpc/',
+            './p2p/nat/', './cmd/explorer/...', './walletapi/...', './cmd/dero-wallet-cli/', './cmd/simulator/',
+            './tools/dashboard/', './glue/httpguard/', './globals/', './glue/txcanon/']   # Round 20/22 merge
+
+
+def stage_key(head, tree, argv, env, gover):
+    """sha256 of the five inputs a cacheable stage is a pure function of. Pure."""
+    doc = {'head': str(head), 'tree': str(tree), 'argv': [str(a) for a in argv],
+           'env': sorted((k, str(v)) for k, v in (env or {}).items()), 'go': str(gover)}
+    return hashlib.sha256(json.dumps(doc, sort_keys=True).encode()).hexdigest()
+
+
+def worktree_tree(root=ROOT, exclude=KEY_EXCLUDE):
+    """the git tree id of the WORK TREE (tracked changes, untracked non-ignored files and ignored *.go files), built in
+    a temporary index (a copy of the real one, for its stat cache): the real index is never written. KEY_EXCLUDE paths
+    are dropped. None when git fails."""
+    def g(*a, env=None):
+        r = subprocess.run(['git', *a], cwd=root, capture_output=True, text=True, env=env, timeout=600)
+        return r.returncode, r.stdout
+    rc, idx = g('rev-parse', '--git-path', 'index')
+    if rc != 0:
+        return None
+    real = Path(root) / idx.strip() if not os.path.isabs(idx.strip()) else Path(idx.strip())
+    with tempfile.TemporaryDirectory(prefix='stagekey-') as d:
+        tmp = os.path.join(d, 'index')
+        if real.exists():
+            shutil.copyfile(real, tmp)
+        env = dict(os.environ, GIT_INDEX_FILE=tmp)
+        if g('add', '-A', '--', '.', env=env)[0] != 0:
+            return None
+        rc, ign = g('ls-files', '-z', '--others', '--ignored', '--exclude-standard', '--', '*.go', env=env)
+        ign = [f for f in ign.split('\0') if f]
+        if ign and g('add', '-f', '--', *ign, env=env)[0] != 0:
+            return None
+        g('rm', '-r', '-q', '--cached', '--ignore-unmatch', '--', *exclude, env=env)
+        rc, tree = g('write-tree', env=env)
+    return tree.strip() if rc == 0 else None
+
+
+def stage_cache_key(argv, root=ROOT):
+    """(key, parts) of one cacheable stage in `root` now; key None when a part cannot be read (no reuse then)."""
+    head = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True, text=True, timeout=60).stdout.strip()
+    tree = worktree_tree(root)
+    try:
+        gv = subprocess.run(['go', 'version'], cwd=root, capture_output=True, text=True, timeout=60).stdout.strip()
+        ge = subprocess.run(['go', 'env', 'GOFLAGS', 'GOEXPERIMENT', 'GOTOOLCHAIN'], cwd=root, capture_output=True, text=True,
+                            timeout=60).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        gv = ge = ''
+    env = {k: os.environ[k] for k in KEY_ENV if k in os.environ}
+    parts = {'head': head, 'tree': tree, 'argv': [str(a) for a in argv], 'env': env, 'go': f'{gv} | {ge}'}
+    if not head or not tree or not gv:
+        return None, parts
+    return stage_key(head, tree, argv, env, parts['go']), parts
+
+
+def cache_lookup(path, stage, key):
+    """the prior PASS record of `stage` under `key`, or None. Pure apart from the read."""
+    if not key:
+        return None
+    try:
+        doc = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+    hit = ((doc.get(stage) or {}).get(key)) if isinstance(doc, dict) else None
+    return hit if isinstance(hit, dict) and hit.get('status') == 'PASS' else None
+
+
+def cache_record(path, stage, key, parts, status, record):
+    """store a PASS of `stage` under `key` (a FAIL or a missing key is never stored); keeps STAGE_CACHE_KEEP per stage"""
+    if not key or status != 'PASS':
+        return False
+    p = Path(path)
+    try:
+        doc = json.loads(p.read_text())
+    except (OSError, ValueError):
+        doc = {}
+    st = dict(doc.get(stage) or {})
+    st[key] = {'status': 'PASS', 'parts': parts, **record}
+    doc[stage] = dict(list(st.items())[-STAGE_CACHE_KEEP:])
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(p.name + '.tmp')
+    tmp.write_text(json.dumps(doc, indent=1, default=str) + '\n')
+    os.replace(tmp, p)
+    return True
+
+
+def cached_pass(stage, argv):
+    """(key, parts, prior): with --stage-cache, the key of this stage now and its prior PASS (None on a miss); a hit
+    records the reuse event (naming the key and the prior record) and the caller returns."""
+    if not STAGE_CACHE[0]:
+        return None, None, None
+    key, parts = stage_cache_key(argv)
+    prior = cache_lookup(STAGE_CACHE_FILE, stage, key)
+    if prior:
+        event(stage, 'PASS', cached=True, key=key, prior={k: prior.get(k) for k in ('run', 'events', 't')},
+              **{k: v for k, v in (prior.get('result') or {}).items()})
+    else:
+        event(stage, 'INFO', cache='miss', key=key or 'unreadable')
+    return key, parts, prior
+
+
+def remember_pass(stage, key, parts, result):
+    if STAGE_CACHE[0] and key:
+        cache_record(STAGE_CACHE_FILE, stage, key, parts, 'PASS',
+                     {'run': TS, 'events': str(EVENTS.relative_to(ROOT)), 't': now(), 'result': result})
+
+
 # ───────────────────────────── stages ─────────────────────────────
 def s1_guard():
     event('guard', 'START')
@@ -978,16 +1105,23 @@ def s1_guard():
         event('guard', 'FAIL', why=f'{j.relative_to(ROOT)} exists: a killed go_mutate run left a source file mutated; '
                                    'run harness/intel/go_mutate.py --only none (it restores) or restore by hand')
         finish(5)
-    rc, out, err = sh([sys.executable, 'harness/consensus_guard.py', '--json', 'harness/loop/CONSENSUS_GUARD.json'])
+    key, parts, prior = cached_pass('guard', S1_ARGV)     # r31 (B252c): opt-in reuse of an identical PASS
+    if prior:
+        return
+    rc, out, err = sh(S1_ARGV)
     files = [l.strip() for l in out.splitlines() if l.startswith('  ') and 'VIOLATION' not in l]
     if rc != 0:
         event('guard', 'FAIL', output=out[-600:])
         finish(5)
     event('guard', 'PASS', files=files)
+    remember_pass('guard', key, parts, {'files': files})
 
 
 def s2_format():
     event('format', 'START')
+    key, parts, prior = cached_pass('format', ['gofmt', '-l', *OWNED] + ['go', 'vet', *VET_PKGS])   # r31 (B252c)
+    if prior:
+        return
     rc, out, err = sh(['gofmt', '-l', *OWNED])
     if rc != 0 or err.strip():
         # R22: gofmt's exit code and stderr were ignored, so an OWNED file that is missing or does not parse printed
@@ -995,11 +1129,7 @@ def s2_format():
         event('format', 'FAIL', gofmt_rc=rc, gofmt_err=err[-600:])
         finish(6)
     unformatted = [l for l in out.split() if l != 'blockchain/transaction_execute.go']
-    rc, vet_new, vet_err = sh(['go', 'vet', './p2p/', './blockchain/', './astrobwt/astrobwtv3/', './cmd/dero-miner/',
-                               './cmd/dero-miner/dsa/', './cmd/dero-miner/gsplit/', './glue/rwc/', './walletapi/rpcserver/',
-                               './metrics/', './cmd/derod/', './cmd/derod/rpc/', './p2p/nat/', './cmd/explorer/...',
-                               './walletapi/...', './cmd/dero-wallet-cli/', './cmd/simulator/', './tools/dashboard/',
-                               './glue/httpguard/', './globals/', './glue/txcanon/'], timeout=900)  # Round 20/22 merge
+    rc, vet_new, vet_err = sh(['go', 'vet', *VET_PKGS], timeout=900)
     msgs = lambda t: sorted({re.sub(r':\d+:\d+:', ':', l) for l in t.splitlines() if l and not l.startswith('#')})
     known = {'blockchain/blockchain.go: unreachable code', 'blockchain/transaction_execute.go: unreachable code',
              'cmd/derod/main.go: unreachable code'}  # pre-existing on 9703e42
@@ -1008,6 +1138,7 @@ def s2_format():
         event('format', 'FAIL', unformatted=unformatted, vet_new=new)
         finish(6)
     event('format', 'PASS', gofmt='clean', vet='only the 3 pre-existing "unreachable code" findings')
+    remember_pass('format', key, parts, {'gofmt': 'clean', 'vet': 'only the 3 pre-existing "unreachable code" findings'})
 
 
 def s3_test():
@@ -1364,9 +1495,84 @@ for _pkg, _pat in {
 # r30 merge (closed-loop run 5 race FAIL, rft §7 B251): the R28 SC-flow KAT rebuilds a tx whose wallet build hit the
 # upstream 240-bit retry panic (an SC-install txid artefact); the retry helper's own test
 NEW_TESTS['./blockchain/'] = f"{NEW_TESTS['./blockchain/']}|TestR30BuildRetry240Bits"
+# r31 Part B dimension 3 (node; rft §7 B269 (a)-(c), DF-error-paths / DF-fuzz-coverage triage and fixes)
+for _pkg, _pat in {
+        './p2p/': 'TestR31FutureSkewAttributedPerPeer|TestR31IncomingBlockFailureLinePseudonymous'
+                  '|TestR31FutureTimestampLogHygieneOnChain|TestR31TLSKeyGenErrorChecked|FuzzR31ParseIPNoError',
+        './cmd/derod/rpc/': 'TestR31GetworkTLSKeyGenErrorChecked',
+        './blockchain/': 'TestR31TopoSearchPinsDiscardedReads'}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 31 dimension 1, cryptography (rft §7 B278, B283): the primitives census. bn256 / crypto tests PIN today's decoder
+# classes, constants, hash labels and randomness sources (consensus code unchanged, S1); the walletapi tests cover the
+# wallet-side key checks (open key consistency, canonical keys in receiver payment proofs). Fuzz targets run their seeds.
+for _pkg, _pat in {
+        './cryptography/bn256/': 'TestR31Bn256ConstantsKAT|TestR31ScalarOrderReduction|TestR31GfpUnmarshalModulusCheck'
+                                 '|TestR31Bn256DecodeClassCensus|TestR31CompressedDecodeClassCensus|FuzzR31Bn256Decoders',
+        './cryptography/crypto/': 'TestR31HashLabelsKAT|TestR31PointTextDecodeCensus|TestR31StatementTruncationPinned'
+                                  '|TestR31PanicDecodersPinned|TestR31TextDecodersDiscardHexErrorPinned'
+                                  '|TestR31RandomnessSourceCensus|FuzzR31CryptoTextDecoders|FuzzR31NonceBalanceDecoders',
+        './walletapi/': 'TestR31WalletOpenRefusesInconsistentKeys|TestR31PaymentProofRefusesNonCanonicalKey',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# r31 dvm (rft §7 B288-B292, D-21 non-consensus): the sc_* /metrics families (glue/dvmobs, fed by logger lines only) end to
+# end on a simulator chain, the VM guard KATs (compute / storage gas, revert conservation), the B292 MIN/MAX pin, the DVM
+# fuzz targets (seeds run as KATs here) and the wallet scinvoke size budget
+for _pkg, _pat in {
+        './glue/dvmobs/': 'TestR31DVMObsClassify|TestR31DVMObsCounters|TestR31DVMObsHistograms|TestR31DVMObsHandlerNeverPanics'
+                          '|TestR31DVMObsSinkForwarding|TestR31DVMObsMessagesPinned|TestR31DVMObsCoreEnabledParity',
+        './blockchain/': 'TestR31DVMMetricsChainFlow',
+        './dvm/': 'TestR31MinMaxSecondArgPinned|TestR31GasComputeLimitKAT|TestR31GasStorageKAT|TestR31SimulatorRevertConservationKAT'
+                  '|FuzzR31ParseSmartContract|FuzzR31VariableUnmarshalBinary|FuzzR31SCMetaUnmarshal|FuzzR31ExecuteUnderGasLimit',
+        './walletapi/rpcserver/': 'TestR31ScInvokeSCDATABound',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+OWNED += ['glue/dvmobs/dvmobs.go', 'glue/dvmobs/r31_dvmobs_test.go', 'blockchain/r31_dvm_metrics_test.go', 'dvm/r31_dvm_test.go',
+          'dvm/r31_fuzz_test.go', 'walletapi/rpcserver/rpc_scinvoke.go', 'walletapi/rpcserver/r31_scinvoke_bound_test.go']
+VET_PKGS += ['./glue/dvmobs/']
+
+# r31 dimension 2 (security + rpcws + wallet, dero-rft §8 R31 item 2): B280 budget-census DERO.Subscribe events cap, the
+# reorg record keep-aside error, and the fuzz targets of the five decoders the fuzz-coverage detector found unreached
+# (rpc/ test files only: rpc/ stays consensus-guarded). Not env-gated; each guards a gm-r31-d2-* mutation.
+for _pkg, _pat in {
+    './cmd/derod/rpc/': 'TestR31SubscribeEventsCap|TestR31ReorgCorruptAsideErrorReported',
+    './rpc/': 'FuzzR31NewAddressFromCompressedKeys|FuzzR31ArgumentUnmarshalJSON',
+    './p2p/': 'FuzzR31ParseAddress',
+    './walletapi/': 'FuzzR31DecodeEncryptedBalance',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# r31 dimension 6 (forensics + disclosure + cryptosupply; rft §7 B281 B284 B111): the value-site KATs of
+# process_transaction / process_transaction_sc, the seeded fuzz targets of the 4 unfuzzed cryptosupply decoders, the
+# auditor's truncated-proof refusal, the pin of transaction.go:321, and the B111 key set-diff helper. Fuzz targets run
+# their seed corpora.
+for _pkg, _pat in {
+        './blockchain/': 'TestR31ValueSiteRegistrationGrant|TestR31ValueSiteTransferAddsCommitments|TestR31ValueSiteSCFeesAndBurn|TestR31ValueSiteColonSCIDInstallNeverCommits',
+        './glue/emission/': 'FuzzR31SeriesDecoders|TestR31SeriesDecoderVerdicts|FuzzR31DecodeTx|TestR31DecodeTxVerdicts'
+                            '|TestR31DecodeTxRefusesTruncatedProof',
+        './transaction/': 'FuzzR31UnmarshalProofs|TestR31UnmarshalProofsRealBody|TestR31DeserializeUnknownTypePanics',
+        './tools/forensics/keydiff/': 'TestR31KeyDiffLeavesTheUnregisteredKey|TestR31KeyDiffReadsRegkeysAndRefusesALiveStore|TestR31KeydiffRefusesLiveDatadir',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+
+# Round 31 dimension 7 (dero-rft §8 R31 Part B item 7; detector error-paths findings of the harness area): the UDP
+# delay tool resolves its flags with errors, the explorer refuses a non-hex daemon blob; each guards a gm-r31-d7-*
+# mutation in harness/intel/go_mutations.json. Neither is env-gated.
+for _pkg, _pat in {
+        './cmd/r18udpdelay/': 'TestR31UdpdelayResolvePair',
+        './cmd/explorer/explorerlib/': 'TestR31ExplorerDecodeHexBlob',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
 
 UPSTREAM_BASE = 'bf274e5'           # pristine Release153 content (harness/baseline); rule #28 compares against it
 NEW_TESTS_BASE = 'HEAD'
+# r31 Part B dimension 4 (observability; rft §7 B285): Add_TX_To_Pool refusals counted by reason at the admission wrapper
+NEW_TESTS['./glue/txpolicy/'] = (f"{NEW_TESTS['./glue/txpolicy/']}|" if './glue/txpolicy/' in NEW_TESTS else '') + \
+    'TestR31PoolRefusalReasonsCoverAddTXToPool|TestR31PoolRefusedCountedByReason'
+OWNED += [f for f in ('glue/txpolicy/txpolicy.go', 'glue/txpolicy/pool_refused_r31.go', 'glue/txpolicy/r31_pool_refused_test.go')
+          if f not in OWNED]
+VET_PKGS += [] if './glue/txpolicy/' in VET_PKGS else ['./glue/txpolicy/']
 
 # r23c: the round registry. Before r23c every round re-typed its ids into the run command (--new-tests-base) and into
 # this file (ROUND_NEW_METHODS), and the next session had to dig them out of a transcript. harness/round.json now
@@ -1783,11 +1989,15 @@ def s3k_kats():
     event('kats', 'INFO', contention_factor=_cf, census={k: _census.get(k) for k in ('ncpu', 'miner_cores', 'foreign_cores', 'node_cores', 'load1')})
     for p in kats:
         limit = step_timeout(str(p.relative_to(ROOT)), _budgets, _HK, _cf)
+        t0 = time.monotonic()
         rc, out, err, hung = run_step([sys.executable, '-I', str(p)], limit, sh, _HK)
         if hung:
             event('kats', 'FAIL', kat=p.name, why='HUNG', **hung)
             finish(13)
         done[p.name] = (out + err).strip().splitlines()[-1:] if (out + err).strip() else []
+        # r31 (B250): one INFO event per KAT, so the record shows the stage's work while it runs (a watchdog judging
+        # liveness by the log / record saw nothing for 40-76 min and declared closed-loop run 4 STALLED in S3k)
+        event('kats', 'INFO', kat=p.name, rc=rc, secs=round(time.monotonic() - t0, 1), last=done[p.name])
         if rc != 0:
             event('kats', 'FAIL', kat=p.name, tail=(out + err)[-800:])
             finish(13)
@@ -2923,6 +3133,9 @@ def s7_project():
              # with the committed harness/runtime/r30_*.json (the checkpoint records SKIPPED and labelled where it is absent)
              [sys.executable, 'harness/forensics/s0_checkpoint.py', '--check'],
              [sys.executable, 'harness/forensics/facts.py', '--write', 'harness/runtime/forensics_intel.json'],
+             # r31 dimension 0 (rft §0.12 D-20, §7 B280-B285, B287): the area detectors scan the tree (static, no RPC)
+             # and write harness/runtime/detector_<name>.json right before area_intel turns each finding into a proposal
+             [sys.executable, 'harness/intel/detectors.py', '--all'],
              [sys.executable, 'harness/intel/area_intel.py', '--live']]   # r24: per-area scorecards + proposals (G23)
     # the stand-alone KAT files (harness/kat/test_*.py): before R19 test_guard_build_inputs.py existed but no stage ran it
     steps += [[sys.executable, str(p.relative_to(ROOT))] for p in sorted((HARNESS / 'kat').glob('test_*.py'))]
@@ -3045,6 +3258,8 @@ def main():
                     'alone on the already staged bin/.staging/dero-miner (the quiet-window runner, harness/pipeline/quiet_window.py)')
     ap.add_argument('--contended-ok', action='store_true', help='R23: a contended (REFUSED) A/B is recorded and the run goes on')
     ap.add_argument('--soundness-only', action='store_true', help='R23b: S1 + S3s alone (records harness/loop/SOUNDNESS_LAST.json)')
+    ap.add_argument('--stage-cache', action='store_true', help='r31 (B252c): reuse an identical earlier PASS of S1 guard '
+                    'and S2 format (key: HEAD, work-tree hash incl. untracked, stage argv, Go env subset, go version); off by default')
     ap.add_argument('--root', default=None, help='r25 (B49): run this pipeline in another checkout (its own copy of this '
                                                  'file, cwd = that root), e.g. a dimension clone; default: this file\'s repo')
     a = ap.parse_args()
@@ -3056,6 +3271,7 @@ def main():
         sys.exit(subprocess.run(rx, cwd=Path(rx[2]).resolve().parents[2]).returncode)
     global BENCH_LOCK, NEW_TESTS_BASE, NO_BENCHLOCK, GPU_BENCH, CONTENDED_OK
     CONTENDED_OK = a.contended_ok
+    STAGE_CACHE[0] = bool(a.stage_cache)
     if a.gpu_bench_only:
         a.gpu_bench = True
     GPU_BENCH = 'run' if a.gpu_bench else ('off' if a.no_gpu_bench else None)

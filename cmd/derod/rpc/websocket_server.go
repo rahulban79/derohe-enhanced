@@ -185,7 +185,7 @@ func RPCServer_Start(params map[string]interface{}) (*RPCServer, error) {
 
 	// r25 (CO24-C6): the reorg monitor's lifetime counts survive restarts (reorg_events.go)
 	if err := reorg_state.enable_persist(filepath.Join(globals.GetDataDirectory(), REORG_MONITOR_FILE)); err != nil {
-		logger.V(1).Info("reorg monitor not persisted", "err", err.Error())
+		logger.V(1).Info("reorg monitor record", "err", err.Error()) // not persisted, or (r31) a corrupt file not kept aside
 	}
 
 	go r.Run()

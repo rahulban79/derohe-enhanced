@@ -91,6 +91,8 @@ RULES = {
                      'this reading (regression_claims refused; gate G20)',
     'cpu_starved_unattributed': 'WARN: the miner got less than 80 % of its core budget while the census finds no foreign '
                                 'contention — the limit is inside the miner (throttle, cgo yield, GPU feed), not the box',
+    'dvm_handler_panics': 'WARN: the DVM /metrics handler (glue/dvmobs) recovered a panic of its own '
+                          '(sc_metrics_handler_panics_total > 0; r31 B288: must stay 0)',
 }
 
 
@@ -144,6 +146,37 @@ def rate(a, b, name, dt, **labels):
     return round((y - x) / dt, 2)
 
 
+# r31 (rft §7 B288 / B290): the DVM card, from the sc_* families glue/dvmobs exports (counters + 3 vmhistograms; the
+# histograms are absent until the first SC executes, metric_registry LAZY_BY_DESIGN)
+DVM_FAMILIES = ('sc_install_total', 'sc_invoke_total', 'sc_revert_total', 'sc_out_of_gas_total', 'sc_panic_recovered_total',
+                'sc_metrics_handler_panics_total', 'sc_gas_compute_used', 'sc_gas_storage_used', 'sc_exec_seconds')
+
+
+def dvm_card(d0, d1, dt):
+    """the DVM card; None when derod exports no sc_* family (a pre-r31 binary). Pure."""
+    if d1 is None or 'sc_install_total' not in d1:
+        return None
+
+    def mean(name):
+        c, sm = val(d1, name + '_count'), val(d1, name + '_sum')
+        return round(sm / c, 6) if c else None
+
+    by = {}
+    for labels, v in (d1.get('sc_revert_total') or {}).items():
+        r = dict(labels).get('reason')
+        if r and v:
+            by[r] = n(v)
+    execs = lambda M: (val(M, 'sc_install_total', 0) or 0) + (val(M, 'sc_invoke_total', 0) or 0)  # noqa: E731
+    return {'installs_ok': val(d1, 'sc_install_total', 0, result='ok'), 'installs_error': val(d1, 'sc_install_total', 0, result='error'),
+            'invokes_ok': val(d1, 'sc_invoke_total', 0, result='ok'), 'invokes_error': val(d1, 'sc_invoke_total', 0, result='error'),
+            'reverts': val(d1, 'sc_revert_total', 0), 'revert_by_reason': dict(sorted(by.items())),
+            'out_of_gas': val(d1, 'sc_out_of_gas_total', 0), 'panic_recovered': val(d1, 'sc_panic_recovered_total', 0),
+            'handler_panics': val(d1, 'sc_metrics_handler_panics_total', 0),
+            'gas_compute_mean': mean('sc_gas_compute_used'), 'gas_storage_mean': mean('sc_gas_storage_used'),
+            'exec_seconds_mean': mean('sc_exec_seconds'),
+            'executions_per_min': None if d0 is None or dt <= 0 else round((execs(d1) - execs(d0)) / dt * 60, 2)}
+
+
 HS_KEY = 'dero_miner_hashes_effective_total'    # r30 B26 (cmd/dero-miner/hsreport_r30.go)
 
 
@@ -173,6 +206,9 @@ def derive(d0, d1, m0, m1, dt, cpu_max=None):
         }
         s, p, o = out['derod']['ours_submitted'], out['derod']['ours_paid'], out['derod']['ours_orphaned']
         out['derod']['paid_fraction'] = round(p / (p + o), 4) if p is not None and (p + (o or 0)) > 0 else None
+        card = dvm_card(d0, d1, dt)
+        if card is not None:
+            out['dvm'] = card
     if m1 is not None:
         hashed, dropped = val(m1, 'dero_miner_split_hashed_total', 0), val(m1, 'dero_miner_split_dropped_total', 0)
         hashes, up = val(m1, 'dero_miner_hashes_total'), val(m1, 'dero_miner_uptime_seconds')
@@ -277,6 +313,9 @@ def rules(agg, up):
             out.append(('tip_age', 'ALERT', f"tip is {d['tip_age_s']:.0f} s old"))
         if d.get('recovered_panics'):
             out.append(('recovered_panics', 'WARN', f"{d['recovered_panics']:.0f} recovered panic(s)"))
+    v = agg.get('dvm') or {}
+    if v.get('handler_panics'):
+        out.append(('dvm_handler_panics', 'WARN', f"{v['handler_panics']:.0f} DVM /metrics handler panic(s) recovered"))
     if m:
         if m.get('connected') == 0:
             out.append(('miner_disconnected', 'ALERT', 'dero_miner_connected 0'))
@@ -347,6 +386,13 @@ def facts(agg, alerts):
                  f"cpu_cores={bd['cpu_cores']} cpu_budget_fraction={bd['cpu_budget_fraction']} "
                  f"gpu_ceiling_staged_hs={bd['gpu_ceiling_staged_hs']} cpu_own_hs={bd['cpu_own_hs']} "
                  f"cpu_own_hashes_per_idle_try={bd['cpu_own_hashes_per_idle_try']} interval_s={agg['interval_s']}")
+    v = {k: n(x) for k, x in (agg.get('dvm') or {}).items()}
+    if v:
+        f.append(f"live dvm installs_ok={v['installs_ok']} installs_error={v['installs_error']} invokes_ok={v['invokes_ok']} "
+                 f"invokes_error={v['invokes_error']} reverts={v['reverts']} out_of_gas={v['out_of_gas']} "
+                 f"panic_recovered={v['panic_recovered']} handler_panics={v['handler_panics']} "
+                 f"gas_compute_mean={v['gas_compute_mean']} exec_seconds_mean={v['exec_seconds_mean']} "
+                 f"executions_per_min={v['executions_per_min']} revert_by_reason={v['revert_by_reason']}")
     if agg.get('contention') and agg['contention'].get('contended') is not None:
         f.append(CT.fact(agg['contention']))
     f.append(f"live dashboard alerts={sum(1 for a in alerts if a['level'] == 'ALERT')} "

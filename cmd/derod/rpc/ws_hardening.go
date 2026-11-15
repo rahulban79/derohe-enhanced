@@ -491,9 +491,23 @@ func parse_subscriptions(events []string) (bits uint32, names []string, err erro
 	return
 }
 
+// MAX_SUBSCRIBE_EVENTS (r31, dero-rft §7 B280 budget-census): DERO.Subscribe took a client-sized list priced at the
+// generic 1 token, so one /ws message (up to the 32 MiB body cap) could name millions of entries and each was looked
+// up. There are 4 events; 16 leaves room for duplicates and future names. More is an invalid-params error (counted in
+// rpc_param_bound_refused_total like the other remote bounds), never a silent clip. Non-consensus (RPC input only).
+const MAX_SUBSCRIBE_EVENTS = 16
+
+func subscribe_bound_error(n int) error {
+	param_bound_refused.Inc()
+	return &jrpc2.Error{Code: code.InvalidParams, Message: fmt.Sprintf("events holds %d names; at most %d per call", n, MAX_SUBSCRIBE_EVENTS)}
+}
+
 // Subscribe replaces this websocket's event set; an empty list unsubscribes. Block and Height keep being sent to
 // every websocket client as before, so existing clients see no change.
 func Subscribe(ctx context.Context, p Subscribe_Params) (result Subscribe_Result, err error) {
+	if len(p.Events) > MAX_SUBSCRIBE_EVENTS { // r31 (B280): bounded before any lookup
+		return result, subscribe_bound_error(len(p.Events))
+	}
 	bits, names, err := parse_subscriptions(p.Events)
 	if err != nil {
 		return result, err

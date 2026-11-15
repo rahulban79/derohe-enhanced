@@ -10,6 +10,7 @@ instead of a pipeline that waits without end.
   PH3 run_step passes a normal step's (rc, out, err) through and re-raises an error that is not a hang
   PH5 _hangkit is loaded once: sh()'s Hung is the class S7's run_step checks (two loads = two classes = a traceback)
   PH4 S7 and S3k wire it: the limit comes from step_timeout, the step runs through run_step, a hung step FAILs why=HUNG
+  PH6 r31 (B250) S3k writes one 'kats' INFO event per KAT (kat, rc, secs, last) as it ends, before the stage PASS
 
   python3 -I harness/kat/test_pipeline_hang_r29.py      # KATs, then the mutations; exit 0 · 3 KAT failed · 4 missed
 """
@@ -112,8 +113,35 @@ def kat_ph5(over):
     return a is b and a is not None, (a is b)
 
 
-KATS = [('PH1', kat_ph1), ('PH2', kat_ph2), ('PH3', kat_ph3), ('PH4', kat_ph4), ('PH5', kat_ph5)]
-OWNERS = {'r29 pipeline-hang': [k for k, _ in KATS]}
+def kat_ph6(over):
+    """r31 (B250): S3k writes one 'kats' INFO event per KAT (kat, rc, secs, last) as each one ends, before the stage's
+    PASS, so the record shows the work while the stage runs (s3k_kats run on two fake KAT files, every helper faked)"""
+    tree = ast.parse(P(over).read_text(encoding='utf-8'))
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 's3k_kats')
+    events = []
+    with tempfile.TemporaryDirectory(prefix='ph6-') as d:
+        h = Path(d) / 'harness'
+        (h / 'kat').mkdir(parents=True)
+        for n in ('test_a.py', 'test_b.py'):
+            (h / 'kat' / n).write_text('')
+        ns = {'Path': Path, 'sys': sys, 'time': time, 'HARNESS': h, 'ROOT': Path(d),
+              'event': lambda stage, status, **k: events.append((stage, status, k)),
+              'finish': lambda code: (_ for _ in ()).throw(SystemExit(code)),
+              '_hangkit': lambda: None, '_stepbudget': lambda: None, 'ab_census': lambda: {}, 'contention_factor': lambda c: 1.0,
+              'step_timeout': lambda *a: 30, 'sh': None,
+              'run_step': lambda argv, limit, sh, hk: (0, f'{Path(argv[-1]).name} KATs: 1/1 ok\n', '', None)}
+        exec(compile(ast.Module(body=[fn], type_ignores=[]), str(P(over)), 'exec'), ns)   # noqa: S102 — this repo's own code
+        ns['s3k_kats']()
+    info = [k for st, s, k in events if st == 'kats' and s == 'INFO' and 'kat' in k]
+    order = [s for st, s, k in events if st == 'kats']
+    ok = ([i.get('kat') for i in info] == ['test_a.py', 'test_b.py'] and all(i.get('rc') == 0 and isinstance(i.get('secs'), float)
+          and i.get('last') == [f"{i['kat']} KATs: 1/1 ok"] for i in info) and order and order[-1] == 'PASS'
+          and order.index('PASS') > max(i for i, s in enumerate(order) if s == 'INFO'))
+    return ok, (info, order)
+
+
+KATS = [('PH1', kat_ph1), ('PH2', kat_ph2), ('PH3', kat_ph3), ('PH4', kat_ph4), ('PH5', kat_ph5), ('PH6', kat_ph6)]
+OWNERS = {'r29 pipeline-hang': ['PH1', 'PH2', 'PH3', 'PH4', 'PH5'], 'B250': ['PH6']}
 MUTATIONS = [
     ('fbv', "        return HK.run_bounded(cmd, timeout, cwd=cwd, env=env, shell=isinstance(cmd, str))",
      "        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, shell=isinstance(cmd, str), env=env)\n"
@@ -127,6 +155,10 @@ MUTATIONS = [
      'r29 pipeline-hang: S7 keeps the fixed 2400 s limit'),
     ('fbv', "        limit = step_timeout(str(p.relative_to(ROOT)), _budgets, _HK, _cf)", "        limit = 1800",
      'r29 pipeline-hang: S3k keeps the fixed 1800 s limit'),
+    ('fbv', "        event('kats', 'INFO', kat=p.name, rc=rc, secs=round(time.monotonic() - t0, 1), last=done[p.name])\n", "",
+     'B250: S3k writes nothing per KAT (a watchdog sees no work for the whole stage)'),
+    ('fbv', "        event('kats', 'INFO', kat=p.name, rc=rc, secs=round(time.monotonic() - t0, 1), last=done[p.name])",
+     "        event('kats', 'INFO', kat=p.name, rc=rc, last=done[p.name])", 'B250: the per-KAT event carries no seconds'),
 ]
 
 

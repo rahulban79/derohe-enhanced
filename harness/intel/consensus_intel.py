@@ -121,7 +121,10 @@ LOG_KINDS = [
     ('miniblock_refused_r25', 'M', 'Miniblock refused', 'Info("Miniblock refused", "reason"'),
     ('reorganisation', 'M', 'Reorganisation', 'logger.Info("Reorganisation", "seq"'),
 ]
-REJECT_RX = re.compile(r'block_logger(?:\.V\(\d\))?\.Error\(fmt\.Errorf\("([^"%]{8,})"')
+# r31 (B269 a): the future-timestamp rule now logs a V(1) Info ("Rejecting Block, timestamp is too much into future",
+# height, skew_ms), not an ERROR; a "Rejecting ..." Info literal is a rejection line too (older logs keep the ERROR form,
+# which contains the same text, so D02 counts both). Other block_logger.Info literals ("Chain extended") are not.
+REJECT_RX = re.compile(r'block_logger(?:\.V\(\d\))?\.(?:Error\(fmt\.Errorf\(|Info\((?="Rejecting ))"([^"%]{8,})"')
 REJECT_FILE = 'blockchain/blockchain.go'
 
 

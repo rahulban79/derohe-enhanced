@@ -36,7 +36,9 @@
 All inputs are forged in temporary directories (ROUND_CKPT_* / ROUND_PAUSE_* overrides); nothing outside them is
 written; RP3 starts only its own marker processes and stops them.
 
-  python3 -I harness/kat/test_round_pause_r30.py      # KATs, then the mutations; exit 0 · 3 KAT failed · 4 mutation missed
+  python3 -I harness/kat/test_round_pause_r30.py [--no-scope]   # KATs, then the mutations; exit 0 · 3 KAT failed · 4 missed
+r31 (B252d): each mutation re-runs only the KATs that entered its top-level def in the traced pristine run (katmut
+scope rule; RP3's keeper subprocess declared in SUBPROCESS_REACH); --no-scope re-runs all, as before.
 """
 import contextlib, datetime, importlib.util, io, json, os, shutil, signal, subprocess, sys, tempfile, time, uuid
 from pathlib import Path
@@ -515,30 +517,64 @@ def defect(why):
     return ' '.join(why.split(':')[0].split()[:2])
 
 
-def run_kats(over):
+# r31 (B252d, katmut scope rule): a def that starts a subprocess running this file's code -> (file, defs entered as
+# such, entry defs whose static closure the subprocess may reach). The tracer sees only this process: launch_keeper
+# runs `round_pause.py keep NAME`, whose main() returns keep(NAME) before any other branch (main itself counts, its
+# other branches' callees do not), then keep() and everything it references.
+SUBPROCESS_REACH = {('tool', 'launch_keeper'): ('tool', ['main'], ['keep'])}
+
+
+def run_kats(over, only=None, trace=None):
+    """[(name, ok, detail)] of the KATs (all, or the names in `only`); `trace` = {} collects {kat: {file key: defs}}"""
     res = []
     for name, fn in KATS:
+        if only is not None and name not in only:
+            continue
+        t = None
+        if trace is not None:
+            t = katmut().Tracer({k: ROOT / v for k, v in PATHS.items()})
+            t.__enter__()
         try:
             with contextlib.redirect_stdout(io.StringIO()):
                 ok, det = fn(over)
         except (Exception, SystemExit) as e:                      # noqa: BLE001 — a crash is a failure
             ok, det = False, f'{type(e).__name__}: {e}'
+        finally:
+            if t is not None:
+                t.__exit__(None, None, None)
+                trace[name] = t.called
         res.append((name, bool(ok), str(det)))
     return res
+
+
+def kat_deps(trace, K):
+    """the traced defs per KAT, plus the defs its subprocesses reach (SUBPROCESS_REACH, static closure)"""
+    deps = {k: {f: set(v) for f, v in d.items()} for k, d in trace.items()}
+    for (f, d), (tf, itself, entries) in SUBPROCESS_REACH.items():
+        src = (ROOT / PATHS[tf]).read_text(encoding='utf-8')
+        for k, dd in deps.items():
+            if d in dd.get(f, ()):
+                dd.setdefault(tf, set()).update(set(itself) | K.static_closure(src, entries))
+    return deps
 
 
 def main(argv):
     if {'-h', '--help'} & set(argv):
         print(__doc__)
         return 0
-    res = run_kats({})
+    t_all = time.time()
+    scoped = '--no-scope' not in argv
+    trace = {} if scoped else None
+    res = run_kats({}, trace=trace)
     for name, ok, det in res:
         print(f"{'ok  ' if ok else 'FAIL'} {name} {det[:300]}")
     if not all(ok for _, ok, _ in res):
         print(f'\nr30 round-pause KATs: {sum(o for _, o, _ in res)}/{len(KATS)} ok · mutations not run (a KAT failed)')
         return 3
     K = katmut()
+    deps = kat_deps(trace, K) if scoped else {}
     missed = coupled = 0
+    kat_runs = 0
     for key, find, repl, why in MUTATIONS:
         text = (ROOT / PATHS[key]).read_text(encoding='utf-8')
         if text.count(find) != 1:
@@ -551,11 +587,17 @@ def main(argv):
                 shutil.copy2(ROOT / rel, Path(d) / rel)
             shutil.copy2(HARNESS / 'kit' / 'katmut.py', Path(d) / 'harness/kit/katmut.py')
             (Path(d) / PATHS[key]).write_text(text.replace(find, repl, 1), encoding='utf-8')
-            failed = [n for n, ok, _ in run_kats({'root': d}) if not ok]
+            only = K.scope([n for n, _ in KATS], deps, key, K.enclosing_def(text, find)) if scoped else None
+            got = run_kats({'root': d}, only=only)
+            kat_runs += len(got)
+            failed = [n for n, ok, _ in got if not ok]
         verdict, cpl = K.classify(failed, OWNERS.get(defect(why), []))
-        print(f'  {verdict:<9} {why}' + (f'  [{",".join(failed)}]' if failed else ''))
+        print(f'  {verdict:<9} {why}' + (f'  [{",".join(failed)}]' if failed else '')
+              + (f'  (scope {len(got)}/{len(KATS)})' if scoped else ''))
         missed += verdict != 'proved'
         coupled += bool(cpl)
+    print(f"\nmutation KAT runs: {kat_runs} of {len(MUTATIONS) * len(KATS)} ({'scoped: katmut.scope' if scoped else '--no-scope'}); "
+          f'{time.time() - t_all:.1f} s')
     print('\n' + K.summary('r30 round-pause KATs', len(KATS), len(MUTATIONS), missed, coupled))
     return 4 if missed else 0
 

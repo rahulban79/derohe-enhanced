@@ -319,6 +319,10 @@ func note_block_result(c *Connection, cbl *block.Complete_Block, err error, ok b
 		block_duplicates.Inc()
 		return
 	}
+	skew := int64(0)
+	if reason == "future_timestamp" { // r31 (B269 b): counted per peer even when the line below is rate-limited
+		skew = note_future_skew(c, cbl.Bl.Timestamp, globals.Time().UTC().UnixMilli())
+	}
 	log_it, held := block_rejected.add(reason, time.Now())
 	if !log_it {
 		return
@@ -328,6 +332,11 @@ func note_block_result(c *Connection, cbl *block.Complete_Block, err error, ok b
 	v := 0
 	if block_reject_routine(reason) {
 		v = 1
+	}
+	if reason == "future_timestamp" { // r31 (B269 a): the one console line of this event, with the sender's skew
+		logger.V(v).Info("Block rejected", "blid", blid.String(), "height", cbl.Bl.Height, "reason", reason, "peer_id", peer_label(conn_peer(c)),
+			"err", fmt.Sprint(err), "suppressed", held, "skew_ms", skew)
+		return
 	}
 	logger.V(v).Info("Block rejected", "blid", blid.String(), "height", cbl.Bl.Height, "reason", reason, "peer_id", peer_label(conn_peer(c)),
 		"err", fmt.Sprint(err), "suppressed", held)

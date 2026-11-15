@@ -33,6 +33,13 @@ when it waits for a measurement); every still-open item of the newest ledger's "
 coverage gaps; one proposal per row (co-owners in 'also_areas'); the feed carries 'coverage' and
 'areas_without_proposals'; G23 fails an incoherent feed (feed_problems). An area may open with a round ('since').
 
+r31 dimension 0 (rft §0.12 D-20, §7 B280-B285, B287): the area DETECTORS (harness/intel/detectors.py, run before this
+tool in S7) write harness/runtime/detector_<name>.json; each finding becomes one 'detector-<name>' proposal of the area
+owning its file (co-owner in 'also_areas'), anchored {file, quote, line} (an anchor that no longer resolves is refused:
+'detector-anchor-broken', and feed_problems fails a landed one that stopped resolving); a missing or stale detector JSON
+is a 'detector-missing' / 'detector-stale' proposal of the detector's home area; the feed's 'detectors' names each one's
+state. Without detectors.py in the tree nothing changes (detector_source returns no source).
+
   python3 -I harness/intel/area_intel.py [--live]        # scorecards + proposals (exit 0; 2 = the registry is invalid)
   python3 -I harness/intel/area_intel.py check           # validate the registry and every anchor (exit 0 / 2)
   python3 -I harness/intel/area_intel.py fix-lines       # fill missing anchor 'line' fields (a quote found exactly once)
@@ -998,6 +1005,11 @@ def current_values(root, reg):
                     e = {'value': kv, 'anchor': line_anchor(root, capr, q)}
                     if isinstance(raw, list):
                         e['display'] = f'{kv} (entries of the list)'
+                    # r31 (B296, §0.4): a KPI read from a pipeline record is booked to that record's round, not to the
+                    # round open when tooling_intel ran (project_wall_s of an R30 post-close run was booked to r31)
+                    kr = record_round_of(tdoc, s['field'])
+                    if kr:
+                        e['live_round'] = kr
             elif k == 'forensics':          # r25 (rft §0.8.8): a KPI of harness/runtime/forensics_intel.json (forensics/facts.py --write)
                 try:
                     fdoc = json.loads((Path(root) / 'harness/runtime/forensics_intel.json').read_text())
@@ -1022,6 +1034,13 @@ def current_values(root, reg):
                     e = {'value': PENDING, 'why': 'read, but no anchor line found: refused (no anchor, no row)'}
                 out[a['id']][m['id']] = e
     return out, {'prom': prel, 'prom_round': prom_round, 'logintel': li.name if li else None, 'datadir': dd.name if dd else None}
+
+
+def record_round_of(tdoc, field):
+    """r31 (B296): the round a tooling KPI was produced in when tooling_intel took it from a pipeline record
+    (kpis.kpi_rounds[field], an 'r..' id), else None (a KPI of the tree, booked to the current round). Pure."""
+    kr = (((tdoc or {}).get('kpis') or {}).get('kpi_rounds') or {}).get(field)
+    return kr if isinstance(kr, str) and re.fullmatch(r'r\d+[a-z]?', kr) else None
 
 
 def record_field(root, s):
@@ -1109,10 +1128,21 @@ def anchor_tokens(root, text, files=None):
     ok, bad, gk = [], [], []
     if files is None:
         files = {p.name for p in root.rglob('*') if p.is_file() and '.git' not in p.parts and 'vendor' not in p.parts}
-    for mt in re.finditer(r'`?([\w./-]+\.(?:go|py|json|jsonl|txt|md|swift|html|sh))(?::\d+)?`?', text):
+    # r31 (rft §8 R31 Part B item 7): the longer extension first and a word end after it: 'x.jsonl' was read as the
+    # token 'x.json' (a file that does not exist), so 4 open rows anchored on a pipeline record were 'anchor-broken'
+    # r31 (d7): a glob such as `dvm/*_test.go` is one token resolved by globbing (it was read as the file '_test.go')
+    for mt in re.finditer(r'`?([\w./*-]+\.(?:go|py|jsonl|json|txt|md|swift|html|sh))(?![\w-])(?::\d+)?`?', text):
         t = mt.group(1)
         if text[max(0, mt.start(1) - 1):mt.start(1)] == '~' or text[max(0, mt.start(1) - 6):mt.start(1)].endswith('$HOME'):
             gk.append(t)                               # r30 B230: a home path is outside the tree: testimony
+            continue
+        t = re.sub(r'^\*\*+', '', t)                    # markdown bold (**path**) is not a glob
+        if '*' in t:
+            try:
+                hit = next(iter(root.glob(t.lstrip('/'))), None) is not None
+            except ValueError:                         # not a valid glob pattern: no resolving token
+                hit = False
+            (ok if hit else bad).append(t)
             continue
         (ok if ((root / t).exists() or Path(t).name in files) else bad).append(t)
     arch = (root / 'ARCHITECTURE.md').read_text(errors='replace') if (root / 'ARCHITECTURE.md').exists() else ''
@@ -1289,9 +1319,12 @@ MEASURE_RX = re.compile(r'pending (?:measurement|live|quiet|event|the quiet|24 h
                         r'PENDING LIVE|pending a live|live (?:read|window) pending|needs? a (?:live|quiet)', re.I)
 HIGH_RX = re.compile(r'priority high|\bHIGH\b|soundness|inflation|consensus split|DoS\b|panic', re.I)
 LEDGER_ROUNDS = ('23c', '24', '25', '26', '27', '28', '28d', '29', '30')   # rft §2.25: "Open after Round 23c" .. "30"
+# r31 Part B (item 7): the closed words of backlog_truth's lead classifier count here too (REPORT-ONLY, MITIGATED,
+# REJECTED, SHIPPED, ACCEPTED: an item whose §7 lead is one needs no action from this project; six such items were
+# 'ledger-open' proposals in the feed of run 20261113T085728), and a lettered sub-row id (B252d) is a row
 LEDGER_CLOSED_RX = re.compile(r'\b(CLOSED|FIXED|CONFIRMED|DONE|REFUTED|SUPERSEDED|DECIDED|CLOSED-OBSOLETE|not pursued|'
-                              r'IMPLEMENTED|answered|retired)\b', re.I)
-ROW_RX = re.compile(r'\b(BD?\d{1,3})\b')
+                              r'IMPLEMENTED|answered|retired|REPORT-ONLY|MITIGATED|REJECTED|SHIPPED|ACCEPTED)(?![\w-])', re.I)
+ROW_RX = re.compile(r'\b(BD?\d{1,3}[a-z]?)\b')
 GO_LIKE = ('harness/', 'artifacts/', '.skills/', 'memory-mirror/', '*.sh', 'tools/memory-mirror/')
 
 
@@ -1446,7 +1479,83 @@ def feed_problems(pdoc, reg, root=None):
             for e in p.get('evidence') or []:
                 if e.get('file') and not (Path(root) / e['file']).exists():
                     probs.append(f"{p.get('id')}: evidence file {e['file']} missing")
+            # r31 dimension 0: a detector finding is its anchor; one that no longer resolves is no proposal (no anchor,
+            # no row): re-run the detector and area_intel
+            if str(p.get('kind', '')).startswith('detector-') and p.get('finding_id'):
+                ev0 = (p.get('evidence') or [{}])[0]
+                if not resolved(resolve_anchor(root, ev0)):
+                    probs.append(f"{p.get('id')}: detector anchor {ev0.get('file')}:{ev0.get('line')} no longer resolves")
     return probs
+
+
+# ───────────────────────────── r31 dimension 0 (rft §0.12 D-20, §7 B280-B285, B287): detector findings ─────────────────
+DETECTOR_TOOL = 'harness/intel/detectors.py'
+
+
+def detector_source(root, reg, opened):
+    """The detector JSONs (harness/runtime/detector_<name>.json, written by harness/intel/detectors.py) as proposals:
+    ({area: [(kind, severity, title, evidence, key)]}, {(area, kind, key): extra proposal fields}, summary | None).
+    Each finding is ONE proposal of kind 'detector-<name>' in the area that owns its file among the areas opened at the
+    current round (area_of; the detector's home area when none does), its co-owner (the home area) in 'also_areas';
+    a finding whose {file, quote, line} anchor no longer resolves is refused ('detector-anchor-broken'); a detector
+    whose JSON is missing, unreadable or stale (stale_reasons: tool, registry or scanned inputs changed) is a
+    'detector-missing' / 'detector-stale' proposal of its home area, never skipped. Without the tool in the tree there
+    is no source (None): the earlier feeds stay byte-stable."""
+    root = Path(root)
+    tool = root / DETECTOR_TOOL
+    if not tool.exists():
+        return {}, {}, None
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('area_intel_detectors', tool)
+    D = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(D)
+    areas_open = [a for a in reg.get('areas', []) if a.get('id') in opened]
+    found, extra, summary = {}, {}, {}
+    for name, (home, row, what) in D.DETECTORS.items():
+        rel = f'harness/runtime/detector_{name}.json'
+        home_eff = home if home in opened else 'harness'
+        try:
+            doc = json.loads((root / rel).read_text())
+        except OSError:
+            doc, reasons = None, ['missing']
+        except ValueError:
+            doc, reasons = None, ['unreadable']
+        else:
+            reasons = D.stale_reasons(root, name, doc)
+        st = {'file': rel, 'row': row, 'home_area': home, 'state': 'fresh' if not reasons else
+              ('missing' if reasons == ['missing'] else 'stale'), 'reasons': reasons,
+              'rev': (doc or {}).get('rev'), 'generated_at': (doc or {}).get('generated_at'),
+              'findings': len((doc or {}).get('findings') or []), 'landed': 0, 'refused': 0}
+        if reasons:
+            k = 'detector-missing' if reasons == ['missing'] else 'detector-stale'
+            ev = [line_anchor(root, rel, f'"detector": "{name}"')] if doc is not None else []
+            found.setdefault(home_eff, []).append((k, 'medium', f"detector-{name} ({row}): {'; '.join(reasons)}: run "
+                                                   f"python3 -I {DETECTOR_TOOL} {name} before area_intel", ev, name))
+        for f in (doc or {}).get('findings') or []:
+            a = resolve_anchor(root, {'file': f.get('file'), 'quote': f.get('quote'), 'line': f.get('line')})
+            ja = line_anchor(root, rel, f'"id": "{f.get("id")}"')
+            aid = area_of(areas_open, str(f.get('file'))) or home_eff
+            if not resolved(a):
+                st['refused'] += 1
+                found.setdefault(aid, []).append(('detector-anchor-broken', 'medium',
+                                                  f"detector-{name} finding {f.get('id')} refused: its anchor "
+                                                  f"{f.get('file')}:{f.get('line')} is {a['status']} (re-run the detector)",
+                                                  [ja] if ja else [], f.get('id')))
+                continue
+            st['landed'] += 1
+            k = f'detector-{name}'
+            sev = f.get('severity') if f.get('severity') in ('high', 'medium', 'low') else 'medium'
+            ev = [{'file': f['file'], 'quote': f['quote'], 'line': a['line']}] + ([ja] if ja else [])
+            found.setdefault(aid, []).append((k, sev, f"{f.get('id')} ({f.get('kind')}): {f.get('why')}", ev, f.get('id')))
+            also = sorted({x for x in [home] + list(f.get('also_areas') or []) if x != aid and x in opened})
+            x = {'detector': name, 'finding_id': f.get('id'), 'finding_kind': f.get('kind'),
+                 'suggested_row': f"| B? | ({row}, detector-{name}) {f.get('why')} | {aid} | `{f['file']}:{a['line']}` | "
+                                  f"OPEN (self-detected by detector-{name} at {str(st['rev'] or 'no-git')[:8]}) |"}
+            if also:
+                x['also_areas'] = also
+            extra[(aid, k, f.get('id'))] = x
+        summary[name] = st
+    return found, extra, summary
 
 
 def evaluate(root, live=False, cur_override=None):
@@ -1516,6 +1625,8 @@ def evaluate(root, live=False, cur_override=None):
     triage = load_triage(root)
     stale_n = int(reg.get('stale_rounds', 2))
     _rr = registry_rounds(root)
+    # r31 dimension 0 (B280-B285, B287): the detector findings, by the area that owns each file at this round
+    _det_found, _det_extra, _det_sum = detector_source(root, reg, {a['id'] for a in reg['areas'] if area_opened(a, cur, _rr)})
     for a in reg['areas']:
         aid = a['id']
         if not area_opened(a, cur, _rr):        # r31 (B275): an area 'since' a later round is not scored before it
@@ -1681,6 +1792,7 @@ def evaluate(root, live=False, cur_override=None):
         # r31 (B274): every open §7 row of the area is a work item; ledger items without a row; coverage gaps
         found += backlog_findings(a, blog)
         found += _ledger.get(aid, [])
+        found += _det_found.get(aid, [])          # r31 dimension 0: one proposal per detector finding
         # coverage and staleness
         cov = len(kat_present) + mut_now['total'] + len(a.get('gates', []))
         if cov == 0:
@@ -1710,6 +1822,8 @@ def evaluate(root, live=False, cur_override=None):
                 p['state'], p['booked'] = 'booked', triage[p['id']]
             evs = '; '.join(f"{x.get('file')}:{x.get('line')}" for x in p['evidence']) or f'area_intel {k}'
             p['suggested_row'] = suggested_row(k, t, a['owner_dim'], evs, cur)
+            if (aid, k, key) in _det_extra:                       # r31: a detector finding's ready §7 row, co-owners
+                p.update(_det_extra[(aid, k, key)])
             aprops.append(p)
         props += aprops
         state = area_state(aprops, paused, total_vals)
@@ -1763,6 +1877,8 @@ def evaluate(root, live=False, cur_override=None):
             # r31 (B274): proposals per area and kind; active areas with none (each needs a stated reason)
             'coverage': _cov, 'areas_without_proposals': _empty,
             'proposals': sorted(props, key=lambda p: ({'high': 0, 'medium': 1, 'low': 2}[p['severity']], p['area'], p['kind'], p['id']))}
+    if _det_sum is not None:        # r31 dimension 0: every detector's state (fresh / stale / missing), findings landed
+        pdoc['detectors'] = _det_sum
     return doc, pdoc, errors
 
 

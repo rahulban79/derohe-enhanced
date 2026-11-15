@@ -661,6 +661,8 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None, prior=None, walls=N
                         'inv_txids_clipped': p.get('inv_txids_clipped'), 'objects_unserved': p.get('objects_unserved'),
                         'short_answers': p.get('short_answers'), 'sync_failures': p.get('sync_failures'),
                         'sync_hold_s': p.get('sync_hold_seconds')})
+        if 'future_blocks' in p:                            # r31 build (B269 b): its blocks refused as future-stamped
+            row.update({'future_blocks': p.get('future_blocks'), 'future_skew_max_ms': p.get('future_skew_max_ms')})
         row['line'] = C.add({k: v for k, v in row.items()})
         peers.append(row)
     # ── first relays (block builders that reached us first through each peer)
@@ -857,6 +859,14 @@ def analyse(cap, logscan, ps, root=ROOT, ts=None, prev=None, prior=None, walls=N
                     d['findings'].append({'peer': p['peer'], 'grade': 'NORMAL', 'what': f"clock offset {o:+.1f} ms at {rtt:.1f} ms RTT on this path, but the same node ({p['node']}) reads {q['clock_offset_ms']:+.1f} ms at {q.get('latency_ms') or 0.0:.1f} ms RTT through {q['peer']}: a path-asymmetry candidate, not a clock fault (B72 cross-check)", 'cap_line': p['line'], 'cross_line': q['line']})
                     continue
                 d['findings'].append({'peer': p['peer'], 'grade': 'ANOMALY', 'what': f"clock offset {o:+.1f} ms at {rtt:.1f} ms RTT (|offset| - RTT/2 = {abs(o) - rtt / 2:.1f} ms > {CLOCK_FUTURE_MS} ms; {side})" + (f"; the same node reads beyond the bound on all {len(others) + 1} of its addresses" if others else ''), 'cap_line': p['line']})
+        # r31 (B269 b): the rule FIRING on a peer's blocks (GetPeerInfo future_blocks, p2p/future_skew_r31.go) is the
+        # evidence the offset only predicts. The stamp is the block BUILDER's clock: a peer may only relay the block.
+        for p in peers:
+            if (p.get('future_blocks') or 0) > 0:
+                d['findings'].append({'peer': p['peer'], 'grade': 'OBSERVED', 'source': 'GetPeerInfo.future_blocks',
+                                      'what': f"{p['future_blocks']} block(s) it delivered were refused here as stamped more than "
+                                              f"{CLOCK_FUTURE_MS} ms in the future (largest skew {p.get('future_skew_max_ms')} ms); the stamp is "
+                                              "the builder's clock, the peer may only have relayed them (B269)", 'cap_line': p['line']})
     det('D6', 'Clock skew of peers', 'clock_future', f_clock, f'test: |clock_offset_ms| - latency_ms/2 > {CLOCK_FUTURE_MS} (the consensus future-timestamp allowance, beyond the +/- RTT/2 measurement uncertainty of the offset), on every address of the same node id (r25, B72)')
 
     def f_pen(d):

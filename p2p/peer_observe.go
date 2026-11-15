@@ -53,6 +53,8 @@ type conn_observe struct {
 	short_answers    atomic.Uint64 // sync GetObject replies with fewer blocks than asked (CO24-N6)
 	sync_strikes     atomic.Int32  // consecutive failed syncs (B47)
 	sync_hold_until  atomic.Int64  // unix nanos; trigger_sync skips the connection until then (B47)
+	future_blocks    atomic.Uint64 // r31 (B269 b): its blocks refused for a timestamp ahead of our clock
+	future_skew_max  atomic.Int64  // r31 (B269 b): the largest such skew, ms
 }
 
 var chain_requests_served = metrics.Set.GetOrCreateCounter("p2p_chain_requests_served_total")

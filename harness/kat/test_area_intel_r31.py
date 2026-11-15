@@ -19,6 +19,16 @@ and a feed coherence check that G23 enforces; the new 'cryptography' area owns t
       (B286) is required, opens 'since' r31 and owns dvm/, the SC execution path and the SC RPC / wallet files
   AI7 coherence.check_areas: no drift for an area that has not opened; a drift once its round is current
   AI8 a lettered sub-row (B252c) is a §7 row: parsed, accepted in an area's backlog, sorted after its parent
+  AI9 B296 tooling_intel books a pipeline-derived KPI to its record's round (record_round, kpi_rounds; harness_kpis on
+      forged records: an r30 project-only run read during r31 is r30); area_intel's current read carries that round as
+      live_round, so live_belongs() books it to r30 and never to r31; a tree KPI (memory_index_bytes) has none
+  AI10 B295 the memory-index metrics are contract-driven (the index grows a line per round, rft §0.6): better 'none'
+      with alert_if longest > 300 (§0.9 rule 4) and bytes > tooling_intel.INDEX_MAX_BYTES (300 x 200 = 60,000), so
+      265 -> 273 and 8,875 -> 9,684 raise no regression and 301 / 60,001 trip the alert
+  AI12 on the r31 page ('R31 now:' chips) a REPORT-ONLY / MITIGATED item is closed (backlog_truth's closed
+      words); a lettered sub-row id (B252d) names its row (the r31 feed's 9 ledger-open items: 6 report-only, 3 lettered)
+  AI11 anchor_tokens reads a '.jsonl' record as itself (it read 'x.jsonl' as the token 'x.json': B250 / B259 / B268 /
+      B272 were 'anchor-broken' on existing pipeline records) and a glob anchor (`dvm/*_test.go`, B289) by globbing
 
   python3 -I harness/kat/test_area_intel_r31.py      # exit 0 · 3 a KAT failed · 4 a mutation was missed
 """
@@ -27,8 +37,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 HARNESS = ROOT / 'harness'
-PATHS = {'tool': 'harness/intel/area_intel.py', 'coh': 'harness/intel/coherence.py'}
-SIBLINGS = ('harness/intel/area_intel.py', 'harness/intel/coherence.py', 'harness/intel/backlog_truth.py')
+PATHS = {'tool': 'harness/intel/area_intel.py', 'coh': 'harness/intel/coherence.py', 'ti': 'harness/intel/tooling_intel.py',
+         'areas': 'harness/areas.json'}
+SIBLINGS = ('harness/intel/area_intel.py', 'harness/intel/coherence.py', 'harness/intel/backlog_truth.py',
+            'harness/intel/tooling_intel.py', 'harness/areas.json')
 
 
 def load(over):
@@ -172,8 +184,121 @@ def kat_ai8(over):
     return ok, (sorted(rows), errs, order)
 
 
-KATS = [('AI1', kat_ai1), ('AI2', kat_ai2), ('AI3', kat_ai3), ('AI4', kat_ai4), ('AI5', kat_ai5), ('AI6', kat_ai6), ('AI7', kat_ai7), ('AI8', kat_ai8)]
-OWNERS = {'B274': ['AI1', 'AI3', 'AI4', 'AI5', 'AI8'], 'B276': ['AI2'], 'B275': ['AI6', 'AI7']}
+def load_ti(over):
+    root = Path(over.get('root') or ROOT)
+    spec = importlib.util.spec_from_file_location(f'ti31_{uuid.uuid4().hex[:6]}', root / PATHS['ti'])
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def _ev(rnd, wall_end='2026-11-13T05:02:35-08:00'):
+    return [{'t': '2026-11-13T04:00:00-08:00', 'stage': 'run', 'status': 'BEGIN', 'round': rnd},
+            {'t': '2026-11-13T04:00:30-08:00', 'stage': 'flaky', 'status': 'PASS', 'flaky': '0'},
+            {'t': '2026-11-13T04:00:00-08:00', 'stage': 'project', 'status': 'START'},
+            {'t': wall_end, 'stage': 'project', 'status': 'PASS', 'kats': '35/35', 'mutations': '34/34', 'gates': '32/34'}]
+
+
+def kat_ai9(over):
+    """B296: a pipeline-derived tooling KPI is booked to the round of the record it was read from"""
+    T, m = load_ti(over), load(over)
+    bad = []
+    if T.record_round(_ev('r30')) != 'r30' or T.record_round([{'stage': 'run'}]) != T.PENDING:
+        bad.append(f'record_round {T.record_round(_ev("r30"))}')
+    with tempfile.TemporaryDirectory() as d:
+        runs = Path(d) / 'harness/loop/runs'
+        runs.mkdir(parents=True)
+        (Path(d) / 'harness/kat').mkdir(parents=True)
+        (runs / 'pipeline_20261113T040000.jsonl').write_text('\n'.join(json.dumps(o) for o in _ev('r30')) + '\n')
+        k = T.harness_kpis(Path(d))
+        if k.get('project_wall_s') != 3755 or (k.get('kpi_rounds') or {}).get('project_wall_s') != 'r30' \
+                or (k.get('kpi_rounds') or {}).get('flaky') != 'r30' or 'memory_index_bytes' in (k.get('kpi_rounds') or {}):
+            bad.append(f"harness_kpis {k.get('project_wall_s')} {k.get('kpi_rounds')}")
+        tdoc = {'capture_file': 'tooling_x.json', 'kpis': {'project_wall_s': 3755, 'memory_index_bytes': 9684,
+                                                            'kpi_rounds': {'project_wall_s': 'r30'}}}
+        rt = Path(d) / 'harness/runtime'
+        rt.mkdir(parents=True)
+        (rt / 'tooling_intel.json').write_text(json.dumps(tdoc))
+        (rt / 'tooling_x.json').write_text(json.dumps(tdoc, indent=1))
+        reg = {'rounds': [{'id': 'r30'}, {'id': 'r31'}], 'areas': [{'id': 'tooling', 'metrics': [
+            {'id': 'project_wall_s', 'source': {'kind': 'tooling', 'field': 'project_wall_s'}},
+            {'id': 'memory_index_bytes', 'source': {'kind': 'tooling', 'field': 'memory_index_bytes'}}]}]}
+        cv = m.current_values(Path(d), reg)[0]['tooling']
+        pw, mb = cv.get('project_wall_s') or {}, cv.get('memory_index_bytes') or {}
+        if pw.get('value') != 3755 or pw.get('live_round') != 'r30' or m.live_belongs(pw, 'r31') or not m.live_belongs(pw, 'r30'):
+            bad.append(f'project_wall_s current read {pw}')
+        if mb.get('value') != 9684 or 'live_round' in mb:
+            bad.append(f'memory_index_bytes current read {mb}')
+    if m.record_round_of({'kpis': {'kpi_rounds': {'x': 'not-a-round'}}}, 'x') is not None:
+        bad.append('record_round_of accepts a non-round')
+    return not bad, '; '.join(bad) or 'pipeline KPIs booked to their record round'
+
+
+def kat_ai10(over):
+    """B295: the memory-index metrics take better none + alert_if (the R28 L25-24 rule for a contract-driven metric)"""
+    T, m = load_ti(over), load(over)
+    root = Path(over.get('root') or ROOT)
+    reg = json.loads((root / PATHS['areas']).read_text())
+    tool = next(a for a in reg['areas'] if a['id'] == 'tooling')
+    ms = {x['id']: x for x in tool['metrics']}
+    bad = []
+    want = {'memory_index_longest': T.INDEX_MAX_LINE, 'memory_index_bytes': T.INDEX_MAX_BYTES}
+    for mid, cap in want.items():
+        x = ms.get(mid) or {}
+        r = x.get('alert_if') or {}
+        if x.get('better') != 'none' or r.get('op') != '>' or r.get('value') != cap:
+            bad.append(f"{mid}: better {x.get('better')} alert_if {r} (want none, > {cap})")
+            continue
+        if m.alert(r, cap) or not m.alert(r, cap + 1):
+            bad.append(f'{mid}: alert at {cap} / {cap + 1} wrong')
+    if T.INDEX_MAX_BYTES != T.INDEX_MAX_LINE * T.INDEX_MAX_LINES or T.INDEX_MAX_LINE != 300:
+        bad.append(f'INDEX_MAX_BYTES {T.INDEX_MAX_BYTES}')
+    if m.trend(8875, 9684, ms.get('memory_index_bytes', {}).get('better'), 0.02)[1] or \
+            m.trend(265, 273, ms.get('memory_index_longest', {}).get('better'), 0.0)[1]:
+        bad.append('the R31 growth (8,875 -> 9,684 B, 265 -> 273) is still a regression')
+    return not bad, '; '.join(bad) or 'memory index: better none, alert > 300 / > 60,000'
+
+
+HTML31 = ('<section id="open24"><h2>Open after Round 24</h2><ul>'
+          '<li>Batch proof verification is in guarded code <span class="chip warn">R25: still report-only</span> '
+          '<span class="chip warn">R31 now: REPORT-ONLY</span></li>'
+          '<li>cookie stays report-only <span class="chip warn">R31 now: MITIGATED</span></li>'
+          '<li>mempool admission ranks every tx 0 <span class="chip warn">R31 now: OPEN</span></li>'
+          '<li>B252d: a slow KAT <span class="chip warn">R31 now: PARTIAL</span></li></ul></section>')
+
+
+def kat_ai12(over):
+    """r31 Part B: on the r31 page ('R31 now:' chips, the last chip) a REPORT-ONLY / MITIGATED lead is closed (backlog_truth's
+    closed words: no action from this project); a lettered sub-row id (B252d) is the row it names"""
+    m = load(over)
+    items = m.ledger_items(HTML31, rounds=('24',))
+    closed = [i['closed'] for i in items]
+    rows = [i['rows'] for i in items]
+    areas = [{'id': 'mempool', 'keywords': ['mempool']}, {'id': 'tooling', 'keywords': ['KAT']}]
+    f = m.ledger_findings(items, {'B252d'}, areas, 'artifacts/dero-r1-r31.html')
+    got = {a: [k for k, s, t, e, key in v] for a, v in f.items()}
+    ok = closed == [True, True, False, False] and rows[3] == ['B252d'] and got == {'mempool': ['ledger-open']}
+    return ok, (closed, rows, got)
+
+
+def kat_ai11(over):
+    """a .jsonl pipeline record in a §7 anchor cell is one token that resolves"""
+    m = load(over)
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / 'harness/loop/runs').mkdir(parents=True)
+        (Path(d) / 'harness/loop/runs/pipeline_20261111T231923.jsonl').write_text('{}\n')
+        (Path(d) / 'dvm').mkdir()
+        (Path(d) / 'dvm/a_test.go').write_text('package dvm\n')
+        ok_t, bad_t, _ = m.anchor_tokens(Path(d), '`harness/loop/runs/pipeline_20261111T231923.jsonl` (step x); `gone.json`; '
+                                                  '`dvm/*_test.go`, `wallet/*_test.go`')
+    ok = ok_t == ['harness/loop/runs/pipeline_20261111T231923.jsonl', 'dvm/*_test.go'] and bad_t == ['gone.json', 'wallet/*_test.go']
+    return ok, (ok_t, bad_t)
+
+
+KATS = [('AI1', kat_ai1), ('AI2', kat_ai2), ('AI3', kat_ai3), ('AI4', kat_ai4), ('AI5', kat_ai5), ('AI6', kat_ai6), ('AI7', kat_ai7), ('AI8', kat_ai8),
+        ('AI9', kat_ai9), ('AI10', kat_ai10), ('AI11', kat_ai11), ('AI12', kat_ai12)]
+OWNERS = {'B274': ['AI1', 'AI3', 'AI4', 'AI5', 'AI8'], 'B276': ['AI2', 'AI12'], 'B275': ['AI6', 'AI7'], 'B296': ['AI9'], 'B295': ['AI10'],
+          'r31 anchor-jsonl': ['AI11'], 'r31 ledger-open': ['AI12']}
 MUTATIONS = [
     ('tool', "        kind = 'measure-pending' if MEASURE_RX.search(row['status']) else 'backlog-open'",
      "        kind = 'backlog-open'", 'B274: a row waiting on a measurement is not measure-pending'),
@@ -197,6 +322,31 @@ MUTATIONS = [
     ('tool', "                  'cryptography',   # r31 (user", "                  # r31 (user", 'B275: the cryptography area is not required'),
     ('tool', "    return order.index(cur) >= order.index(s)", "    return True", 'B275: an area is scored before the round it opens with'),
     ('tool', "                  'dvm')   # r31", "                  )   # r31", 'B275: the dvm area is not required'),
+    # r31 Part B (B296, B295, anchor-jsonl)
+    ('ti', "    k = {'harness_record_round': record_round(ev)}        # r31 (B296)", "    k = {'harness_record_round': 'r31'}",
+     'B296: the record round is the current round, not the record\'s'),
+    ('ti', "    out['kpi_rounds'] = kpi_rounds(out)                    # r31 (B296): area_intel books each to its record's round",
+     "    out['kpi_rounds'] = {}", 'B296: tooling_intel does not name the record round of its KPIs'),
+    ('ti', "            out['flaky_record_round'] = record_round(ev)        # r31 (B296)", "            pass",
+     'B296: the flaky KPI is not booked to its record round'),
+    ('tool', "                    if kr:\n                        e['live_round'] = kr", "                    if False:\n                        e['live_round'] = kr",
+     'B296: area_intel books a pipeline KPI to the current round'),
+    ('tool', "    return kr if isinstance(kr, str) and re.fullmatch(r'r\\d+[a-z]?', kr) else None", "    return kr or None",
+     'B296: any string is taken as a round'),
+    ('areas', '"unit": "B",\n     "better": "none",\n     "noise_rel": 0.02,', '"unit": "B",\n     "better": "lower",\n     "noise_rel": 0.02,',
+     'B295: the index size is lower-is-better again (the 8,875 -> 9,684 high proposal)'),
+    ('areas', '"field": "memory_index_longest"\n     },\n     "alert_if": {\n      "op": ">",\n      "value": 300',
+     '"field": "memory_index_longest"\n     },\n     "alert_if": {\n      "op": ">",\n      "value": 265',
+     'B295: the longest-line alert is below the rule (265, not 300)'),
+    ('ti', "INDEX_MAX_BYTES = INDEX_MAX_LINE * INDEX_MAX_LINES", "INDEX_MAX_BYTES = 9000", 'B295: the byte cap is a hand number below the rule'),
+    ('tool', "(?:go|py|jsonl|json|txt|md|swift|html|sh))(?![\\w-])", "(?:go|py|json|jsonl|txt|md|swift|html|sh))",
+     'r31 anchor-jsonl: a .jsonl record is read as a missing .json'),
+    ('tool', "    for mt in re.finditer(r'`?([\\w./*-]+\\.", "    for mt in re.finditer(r'`?([\\w./-]+\\.",
+     'r31 anchor-jsonl: a glob anchor (dvm/*_test.go) is read as the file _test.go'),
+    ('tool', "r'IMPLEMENTED|answered|retired|REPORT-ONLY|MITIGATED|REJECTED|SHIPPED|ACCEPTED)(?![\\w-])', re.I)",
+     "r'IMPLEMENTED|answered|retired)(?![\\w-])', re.I)", 'r31 ledger-open: a REPORT-ONLY / MITIGATED item is a proposal'),
+    ('tool', "ROW_RX = re.compile(r'\\b(BD?\\d{1,3}[a-z]?)\\b')", "ROW_RX = re.compile(r'\\b(BD?\\d{1,3})\\b')",
+     'r31 ledger-open: a lettered sub-row id is no row'),
     ('coh', "        if a.get('since') in _order and c.rcur.get('id') in _order and _order.index(c.rcur['id']) < _order.index(a['since']):",
      "        if False:", 'B275: coherence expects a scorecard for an area that has not opened'),
 ]

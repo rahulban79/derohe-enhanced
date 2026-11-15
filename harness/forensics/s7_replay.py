@@ -10,7 +10,7 @@ never writes the G28 record (harness/runtime/forensics_replay.json): G28 keeps j
 a FULL S7 run must reproduce their report byte for byte (a third, independent byte-exact replay).
 Exit 0 = PASS (full, report equal to the recorded one; or partial and labelled) · 5 = FAIL.
 """
-import argparse, hashlib, json, os, sys
+import argparse, hashlib, json, os, subprocess, sys, tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -34,6 +34,37 @@ def label(rep, rsha, recorded, missing):
     return (f"PARTIAL ({', '.join('no ' + m for m in missing) or 'inputs present, re-derivation skipped'} on this machine): "
             f"{rep.get('rederive', {}).get('rederived', 0)} files re-derived, {len(rep.get('rederive', {}).get('hash_checked_only', []))} "
             'hash-checked only; G28 still rests on the two recorded full runs')
+
+
+PIN_DRIFT = ('content pins: pinned file changed', 'mode partial: content pins differ')  # the drift and its consequence
+
+
+def use_pinned_snapshot(sealed, rep):
+    """r31 (B326): a SEALED newest version whose only failures are content-pin drifts (a later round changed a pinned
+    decoder input, e.g. the R31 logging-only blockchain.go edits) is replayed by its pinned source: a pinsnap snapshot
+    (rft §6 step 3a: "a sealed version whose pinned bytes moved on is verified by pinsnap"), never re-pinned. An OPEN
+    version, any other failure, or a run already inside a snapshot keeps the strict verdict. Pure."""
+    reasons = rep.get('fail_reasons') or []
+    return (bool(sealed) and rep.get('result') != 'PASS' and bool(reasons) and all(r.startswith(PIN_DRIFT) for r in reasons)
+            and any(r.startswith(PIN_DRIFT[0]) for r in reasons)
+            and os.environ.get('S7_REPLAY_PINNED') != '1')
+
+
+def replay_in_snapshot(man, root=ROOT):
+    """build the pinned-source snapshot (pinsnap.snapshot: every pin resolved to its exact bytes from git, pins.check
+    re-run inside) and run THIS step inside it; returns (out dict or None, problem or None)"""
+    import pinsnap
+    with tempfile.TemporaryDirectory(prefix='s7pin-') as td:
+        s, f = pinsnap.snapshot(man.get('content_pins'), Path(td) / 'src', root)
+        if f:
+            return None, f'pinned snapshot failed: {f[:3]}'
+        o = Path(td) / 'out.json'
+        p = subprocess.run([sys.executable, '-I', str(Path(td) / 'src/harness/forensics/s7_replay.py'), '--out', str(o)],
+                           cwd=str(Path(td) / 'src'), capture_output=True, text=True,
+                           env=dict(os.environ, S7_REPLAY_PINNED='1'), timeout=3600)
+        if not o.exists():
+            return None, f'snapshot replay wrote no record (rc {p.returncode})'
+        return dict(json.loads(o.read_text()), snapshot={k: s.get(k) for k in ('pinned_files', 'from_worktree', 'snapshot_check')}), None
 
 
 def main(argv=None):
@@ -85,6 +116,13 @@ def main(argv=None):
     ok = rep['result'] == 'PASS' and (mode != 'full' or rsha in recorded)
     out = {'dataset': ds.name, 'manifest_sha256': rep['manifest_sha256'], 'mode': mode, 'result': 'PASS' if ok else 'FAIL',
            'report_sha256': rsha, 'label': label(rep, rsha, recorded, missing), 'fail_reasons': rep.get('fail_reasons', [])}
+    if use_pinned_snapshot(led['versions'][-1].get('sealed'), rep):
+        snap, prob = replay_in_snapshot(man)
+        if prob:
+            out['fail_reasons'] = out['fail_reasons'] + [prob]
+        else:
+            ok = snap.get('result') == 'PASS'
+            out = dict(snap, label=f"SEALED, pinned source: {snap.get('label')}", pin_drift=rep.get('fail_reasons', []))
     Path(a.out).write_text(json.dumps(out, indent=1, sort_keys=True) + '\n')
     print(('PASS ' if ok else 'FAIL ') + out['label'])
     return 0 if ok else 5

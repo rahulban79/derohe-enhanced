@@ -45,6 +45,8 @@ type PeerInfo struct {
 	ShortAnswers        uint64        `json:"short_answers"`    // sync replies with fewer blocks than asked
 	SyncFailures        int32         `json:"sync_failures"`    // consecutive failed syncs (B47)
 	SyncHoldSeconds     int64         `json:"sync_hold_seconds"`
+	FutureBlocks        uint64        `json:"future_blocks"`      // r31 (B269 b): its blocks refused as stamped in the future
+	FutureSkewMaxMs     int64         `json:"future_skew_max_ms"` // r31 (B269 b): the largest skew of those, ms
 }
 
 // trim64 bounds peer-supplied strings (the handshake already caps them at 128 bytes).
@@ -95,6 +97,8 @@ func peer_info_of(c *Connection, now time.Time) PeerInfo {
 		ShortAnswers:        c.obs.short_answers.Load(),
 		SyncFailures:        c.obs.sync_strikes.Load(),
 		SyncHoldSeconds:     hold,
+		FutureBlocks:        c.obs.future_blocks.Load(),
+		FutureSkewMaxMs:     c.obs.future_skew_max.Load(),
 	}
 }
 

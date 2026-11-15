@@ -127,6 +127,12 @@ func DecodeTx(b []byte) (tx *transaction.Transaction, err error) {
 	if err = tx.Deserialize(b); err != nil {
 		return nil, err
 	}
+	// r31 (B281 fuzz-coverage, FuzzR31DecodeTx): the proof decoders return a nil error on a short read, so a truncated
+	// body decodes and its proof is incomplete (Serialize then panics or writes fewer bytes). A body that does not
+	// re-serialise to its own length is refused here; the recover above turns a panic into the error.
+	if n := len(tx.Serialize()); n != len(b) {
+		return nil, fmt.Errorf("tx does not decode: %d bytes re-serialise to %d (truncated proof)", len(b), n)
+	}
 	return tx, nil
 }
 

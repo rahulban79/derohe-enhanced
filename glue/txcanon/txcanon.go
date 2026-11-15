@@ -23,7 +23,7 @@
 // transaction relayed by a stock node is already in Serialize form (p2p/rpc_object_request.go), so honest traffic
 // always takes the fast path (one Serialize and a byte compare).
 //
-// Residual hazard (r22 merge, C1 review), not covered here: blockchain.go:911 stores tx.Serialize() bytes for every tx
+// Residual hazard (r22 merge, C1 review), not covered here: blockchain.go:916 stores tx.Serialize() bytes for every tx
 // of an accepted block, including blocks mined by OTHERS. If another miner ever included an x >= P tx, this node's own
 // tx store would hold undecodable bytes for it. This package only protects our mempool and our block templates; the
 // fix is upstream (reject x >= P and flag bytes > 1 in Decompress, with coordinated activation). Also unverified: that

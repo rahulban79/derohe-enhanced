@@ -9,7 +9,7 @@
 
 // Package emission is an independent, read-only auditor of what each block did to the plaintext side of the DERO
 // money supply (Round 23). It never takes part in consensus: it reads a block, the balance state its execution
-// started from (the snapshot of Tips[0], blockchain.go:958) and the state it produced, and checks that the
+// started from (the snapshot of Tips[0], blockchain.go:963) and the state it produced, and checks that the
 // difference is exactly what the block's public data and the emission formula allow.
 //
 // What is checkable. Every change the protocol makes to an account is a homomorphic addition of a PUBLIC delta:

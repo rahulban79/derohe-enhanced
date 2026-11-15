@@ -118,7 +118,11 @@ func TestR30PECPUTimeReal(t *testing.T) {
 	t1, p1, _ := pe_cpu_time()
 	r1 := process_cpu_time()
 	dt, dr := t1-t0, r1-r0
-	if dt < 150*time.Millisecond || p1 < p0 || p1-p0 > dt || p1 > t1 {
+	// r31 (B324): total and P are each converted from mach ticks and floored, so the P delta may exceed the total delta by
+	// a nanosecond (seen at nice 20: P 200.035417ms vs total 200.035416ms); 1 µs of slack still catches every units error
+	// (raw ticks read as ns are x41.7 off, gm-r30-b27-pe-raw-ticks)
+	const slack = time.Microsecond
+	if dt < 150*time.Millisecond || p1 < p0 || p1-p0 > dt+slack || p1 > t1+slack {
 		t.Fatalf("pe total %v (P %v) for a 200 ms CPU burn (getrusage %v)", dt, p1-p0, dr)
 	}
 	if d := dt - dr; d > dr/5 || -d > dr/5 {

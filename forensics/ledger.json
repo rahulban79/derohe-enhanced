@@ -31,7 +31,7 @@
   },
   {
    "manifest_sha256": "195b12475cc1eb663c92fe393d8570b259948bc8b408a8a28bc6fa1af5eeb484",
-   "sealed": false,
+   "sealed": true,
    "supersedes": [
     "r28d"
    ],

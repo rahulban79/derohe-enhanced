@@ -28,7 +28,9 @@ DRY-RUN by default (nothing is written, not even inside a tree's .git); --apply 
                 proved worthless, verdict DELETE-HOLLOW, when ALL hold: H1 no .git/HEAD; H2 every non-directory entry
                 of the tree is a regular file under .git/objects, .git/refs or .git/logs (a work-tree file, a symlink or
                 any other .git file — index, packed-refs, config — is KEEP); under objects only loose objects
-                (xx/38hex), pack-<hex>.{pack,idx,rev,bitmap,keep,mtimes,promisor} with each .pack beside its .idx, and
+                (xx/38hex), pack-<hex>.{pack,idx,rev,bitmap,keep,mtimes,promisor} with each .pack beside its .idx (r31
+                B245: an .idx WITHOUT its .pack holds no object data and is PROOF-ONLY: H3 must still prove every object
+                it lists present in a reference, else KEEP, the index being the only list of the lost pack's objects), and
                 objects/info/{alternates,packs,commit-graph,commit-graphs/*} (an unknown object-store file such as
                 tmp_obj_* or tmp_pack_* is KEEP); H3 every loose object and every object listed in every .idx is present
                 in the reference (`git cat-file --batch-check` there; one missing object is KEEP); C1 and C2 as above.
@@ -181,6 +183,7 @@ def hollow_proof(tree, reference):
     if miss:
         return f'H3 {len(miss)} loose object(s) the reference lacks, e.g. {miss[0]}', 0
     for i in idxs:
+        orphan = not i.with_suffix('.pack').exists()   # r31 (B245): proof-only, never skipped (see H2 in the docstring)
         key = (hashlib.sha1(i.read_bytes()).hexdigest(), tuple(map(str, refs_of(reference))))   # a proof is per reference set
         oids = idx_oids(refs_of(reference)[0], i)
         if oids is None:
@@ -192,7 +195,8 @@ def hollow_proof(tree, reference):
         if miss is None:
             return f'H3 the reference check failed ({i.name})', 0
         if miss:
-            return f'H3 {len(miss)} object(s) the reference lacks (pack {i.name}), e.g. {miss[0]}', 0
+            return (f'H3 {len(miss)} object(s) the reference lacks (' + ('orphan index, its .pack is gone: the index is the only '
+                    'list of them' if orphan else 'pack') + f' {i.name}), e.g. {miss[0]}', 0)
         _IDX_OK[key] = True
     return None, n
 

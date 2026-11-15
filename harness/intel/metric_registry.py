@@ -27,6 +27,11 @@ check  K1 every scrape family is registered · K2 every entry has a valid name/t
        Exit 0 ok · 3 a check failed · 2 bad usage/input. Nothing is fetched: give the scrape as a file.
        r30 (rft §7 B152): K6 (with --scrape) a source-declared family absent from the scrape is a problem unless it is
        on the LAZY_BY_DESIGN allow-list; K7 an allow-list entry that is not a registered vmhistogram is stale.
+       r31 d4 (rft §7 B285): K8 an entry's optional 'not_read' note (a source-declared family no intel tool reads,
+       said on purpose) is one line '<category>: <reason>' with a category of NOT_READ_CATEGORIES and a reason of at
+       least 20 characters; 'superseded' names the registered family that carries the signal, 'test-pinned' names
+       the Go test (TestX or x_test.go). detectors.py signal-coverage honours a valid note and reports a note on a
+       family a tool does read as stale. build keeps every note across rebuilds.
 A scrape carries peer addresses in labels: keep it in a scratch directory, never commit it (rft §5 privacy).
 """
 import argparse, fnmatch, json, re, sys
@@ -46,7 +51,7 @@ TYPES = ('counter', 'gauge', 'histogram', 'vmhistogram', 'summary', 'untyped')
 LABEL_KEY = re.compile(r'(?:^|,)\s*([a-zA-Z_][a-zA-Z0-9_]*)="')
 SAMPLE = re.compile(r'^([a-zA-Z_:][a-zA-Z0-9_:]*)(\{([^}]*)\})?\s+(\S+)')
 UPSTREAM = ('go_', 'process_', 'KCP_', 'flag', 'vm_')       # families named by vendored code: reported, never renamed
-# r30 (rft §7 B152, audit b152-residual-histograms-unlisted): the 12 source-declared VictoriaMetrics histograms whose
+# r30 (rft §7 B152, audit b152-residual-histograms-unlisted): the 12 (r31: 15, + the 3 sc_* of B288) source-declared VictoriaMetrics histograms whose
 # EVENT can be missing on a healthy node (no miner on getwork, none of our miniblocks acked, no transaction seen): a
 # vmhistogram writes no line before its first sample, so these are absent from /metrics until their event happens.
 # Pre-registering one exports nothing, so their absence is by design; the r29 fix pre-registered the 8 lazy COUNTER
@@ -58,6 +63,7 @@ LAZY_BY_DESIGN = (
     'transaction_payloads_histogram_short', 'transaction_propagation_duration_histogram_seconds',
     'transaction_ring_histogram_short', 'transaction_size_histogram_bytes',
     'tx_propagation_duration_histogram_seconds',                                     # a transaction seen
+    'sc_exec_seconds', 'sc_gas_compute_used', 'sc_gas_storage_used',                  # r31 B288: an SC tx executed
 )
 
 
@@ -69,6 +75,32 @@ def absent_families(reg, scrape_text):
            and not e['name'].startswith(UPSTREAM)]
     miss = sorted(n for n in src if n not in live)
     return [n for n in miss if n not in LAZY_BY_DESIGN], [n for n in miss if n in LAZY_BY_DESIGN]
+# r31 d4 (rft §7 B285): why a source-declared family is read by no intel tool, said on purpose (K8; detectors.py)
+NOT_READ_CATEGORIES = {
+    'diagnostic': 'an operator drill-down or dashboard series: no harness decision depends on it',
+    'superseded': 'the same signal is carried by another registered family that a tool reads (named in the reason)',
+    'upstream': 'an upstream DERO family kept for existing dashboards; no tool of this harness judges it',
+    'test-pinned': 'an internal mechanism counter whose behaviour a Go test pins (named in the reason)',
+}
+NOT_READ_RX = re.compile(r'^([a-z-]+): (\S.{18,}\S)$')
+TEST_NAME_RX = re.compile(r'\bTest\w+|\b\w+_test\.go\b')
+
+
+def not_read_problem(note, name, names):
+    """None when a family's 'not_read' note is valid, else the problem (K8). `names`: the registered family names. Pure."""
+    m = NOT_READ_RX.match(str(note or ''))
+    if not m or '\n' in str(note):
+        return f'{name}: not_read {note!r} is not one line "<category>: <reason of 20+ chars>"'
+    cat, why = m.group(1), m.group(2)
+    if cat not in NOT_READ_CATEGORIES:
+        return f'{name}: not_read category {cat!r} is not one of {sorted(NOT_READ_CATEGORIES)}'
+    if cat == 'superseded' and not any(t != name and t in names for t in re.findall(r'[a-zA-Z_:][a-zA-Z0-9_:]*', why)):
+        return f'{name}: not_read superseded names no other registered family'
+    if cat == 'test-pinned' and not TEST_NAME_RX.search(why):
+        return f'{name}: not_read test-pinned names no Go test'
+    return None
+
+
 UNITS = (('_seconds', 'seconds'), ('_bytes', 'bytes'), ('_ms', 'milliseconds'), ('_us', 'microseconds'),
          ('_ratio', 'ratio'), ('_percent', 'percent'), ('_blocks', 'blocks'), ('_timestamp', 'seconds'))
 NON_BASE = {'milliseconds', 'microseconds', 'percent'}  # Prometheus base units are seconds/bytes/ratio: K3 lists these
@@ -231,6 +263,7 @@ def build(root, scrape_text, old=None):
     src = mine_source(root)
     live = parse_scrape(scrape_text) if scrape_text else {}
     keep = {e['name']: e for e in (old or {}).get('families', []) if e.get('help_source') == 'hand'}
+    notes = {e['name']: e['not_read'] for e in (old or {}).get('families', []) if e.get('not_read')}   # r31 d4 (K8)
     fams = []
     for name in sorted(set(src) | set(live)):
         if name in src:
@@ -250,6 +283,8 @@ def build(root, scrape_text, old=None):
         e['unit'] = unit_of(name)
         e['area'] = (area_of(e['source'], areas) if e['source'] not in ('dynamic', 'vendored') else None) or area_by_prefix(name)
         e['in_scrape'] = name in live
+        if name in notes:
+            e['not_read'] = notes[name]
         fams.append(e)
     return {'_doc': 'generated by harness/intel/metric_registry.py build; embedded by metrics/registry_r28.go (HELP/TYPE '
                     'on /metrics). Edit a help by hand with help_source "hand"; everything else is regenerated.',
@@ -284,6 +319,13 @@ def check(reg, root=ROOT, scrape_text=None, docs=False):
     for n in LAZY_BY_DESIGN:                                                   # r30 (B152)
         if (names.get(n) or {}).get('type') != 'vmhistogram':
             probs.append(('K7', f'LAZY_BY_DESIGN entry {n} is not a registered vmhistogram (stale allow-list)'))
+    for n, e in names.items():                                                 # r31 d4 (B285)
+        if 'not_read' in e:
+            pr = not_read_problem(e['not_read'], n, names)
+            if pr:
+                probs.append(('K8', pr))
+            elif e.get('source') in ('vendored', None):
+                probs.append(('K8', f'{n}: not_read on a vendored family (signal-coverage skips those anyway)'))
     src = mine_source(root)
     for n, e in names.items():
         s = e.get('source', '')

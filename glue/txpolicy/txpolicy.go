@@ -468,7 +468,7 @@ func KnownInvalid(raw []byte) error {
 // Admit runs add(tx) under the r24 policy (see the package comment). raw is the exact byte string received.
 func Admit(raw []byte, tx *transaction.Transaction, add func(*transaction.Transaction) error) error {
 	if !p.attached() || tx.IsRegistration() || tx.IsCoinbase() || tx.IsPremine() {
-		return add(tx)
+		return count_pool_refusal(add(tx)) // r31 d4 (B285): Add_TX_To_Pool's refusals by reason (pool_refused_r31.go)
 	}
 	key := crypto.Keccak256(raw)
 	if err, ok := p.known_invalid(key); ok {
@@ -494,7 +494,7 @@ func Admit(raw []byte, tx *transaction.Transaction, add func(*transaction.Transa
 		close(f.done)
 	}()
 
-	err = add(tx)
+	err = count_pool_refusal(add(tx)) // r31 d4 (B285)
 	f.err = err
 	if err != nil {
 		if proof_failure.MatchString(err.Error()) {

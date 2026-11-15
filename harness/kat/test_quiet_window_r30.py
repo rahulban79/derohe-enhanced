@@ -23,6 +23,8 @@ B26 effective-hashrate read of metrics_intel.
   QW13 B256 a full-box step under steady foreign load: DONE with both censuses when the load held, REFUSED (exit 5, no
             DONE status) when it moved; its bench record says quiet false, bound lower, with the foreign cores
   QW14 B257 an exit 5 writes the REFUSED marker (step and why); the next run removes it when it starts
+  QW15 B268 (r31) QW11 on a plan without --log fails with the usage error in its detail and writes nothing to stderr
+            (S7 recorded argparse's usage text as this KAT's last line, so tooling_intel lost its mutation counts)
   SP1 B239  shm preflight: a geometry larger than available - margin is REFUSED (exit 7), one that fits is OK
   SP2 B239  the preflight's sizes are the Go golden file's (cmd/dero-miner/gsplit/testdata/shm_layout_r30.json) and its
             formula reproduces every golden size
@@ -38,7 +40,8 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 HARNESS = ROOT / 'harness'
-PATHS = {'qw': 'harness/pipeline/quiet_window.py', 'ri': 'harness/intel/resource_intel.py', 'mi': 'harness/intel/metrics_intel.py'}
+PATHS = {'qw': 'harness/pipeline/quiet_window.py', 'ri': 'harness/intel/resource_intel.py', 'mi': 'harness/intel/metrics_intel.py',
+         'self': 'harness/kat/test_quiet_window_r30.py'}   # r31 (B268): QW15 runs this file's QW11 (or its mutant)
 
 
 def load(over, key):
@@ -257,11 +260,31 @@ def kat_qw11(over):
     line = m.plan_text().split('liveness: ', 1)[1].splitlines()[0]
     argv = shlex.split(line.replace('<file holding "cd <repo> && nice -n 15 python3 -I harness/pipeline/quiet_window.py run">', 'CMDFILE'))
     i = argv.index('harness/kit/stallwatch.py')
+    err = io.StringIO()
     try:
-        a = sw.parse(argv[i + 1:])
+        with contextlib.redirect_stderr(err):       # r31 (B268): argparse's usage text stays out of S7's 'last' line
+            a = sw.parse(argv[i + 1:])
     except SystemExit as e:
-        return False, f'stallwatch.parse exits {e.code} on the plan line: {line}'
+        return False, f'stallwatch.parse exits {e.code} on the plan line: {line} ({err.getvalue().strip().splitlines()[-1:] or ""})'
     return (a.log and a.done.endswith('r30_qw/DONE') and a.stop == [m.QW + '/REFUSED'] and a.match == 'quiet_window.py run'), vars(a)
+
+
+def kat_qw15(over):
+    """B268: QW11 on a plan without --log (the B255 mutant) fails with stallwatch's usage error in its detail and writes
+    nothing to stderr (S7 recorded the usage text as the KAT's last line, so tooling_intel lost its mutation counts).
+    QW11 is taken from this file or its mutant (over['self'])."""
+    me = load(over, 'self')
+    src = (ROOT / PATHS['qw']).read_text(encoding='utf-8')
+    find = " --stall-s 900 --max-restarts 1 --log harness/runtime/r30_qw/stallwatch.log')"
+    with tempfile.TemporaryDirectory(prefix='qw15-') as d:
+        mut = Path(d) / 'quiet_window.py'
+        mut.write_text(src.replace(find, " --stall-s 900 --max-restarts 1')", 1), encoding='utf-8')
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            ok, det = me.kat_qw11({'qw': mut})
+    leaked = err.getvalue().strip()
+    good = src.count(find) == 1 and not ok and '--log' in str(det) and not leaked
+    return good, f'QW11 on the B255 mutant: ok={ok}, stderr {leaked[-120:]!r}, detail {str(det)[-160:]}'
 
 
 def kat_qw12(over):
@@ -320,9 +343,9 @@ def kat_qw14(over):
 
 
 KATS = [('QW1', kat_qw1), ('QW2', kat_qw2), ('QW3', kat_qw3), ('QW4', kat_qw4), ('QW5', kat_qw5), ('QW6', kat_qw6),
-        ('QW11', kat_qw11), ('QW12', kat_qw12), ('QW13', kat_qw13), ('QW14', kat_qw14),
+        ('QW11', kat_qw11), ('QW15', kat_qw15), ('QW12', kat_qw12), ('QW13', kat_qw13), ('QW14', kat_qw14),
         ('QW7', kat_qw7), ('QW8', kat_qw8), ('QW9', kat_qw9), ('QW10', kat_qw10), ('SP1', kat_sp1), ('SP2', kat_sp2), ('SP3', kat_sp3), ('HS1', kat_hs1)]
-OWNERS = {'B236': ['QW1', 'QW2', 'QW3', 'QW4', 'QW5', 'QW6', 'QW9', 'QW13', 'QW14'], 'B239': ['QW7', 'SP1', 'SP2', 'SP3'], 'B25': ['QW8'], 'B3': ['QW10'], 'B26': ['HS1'], 'B255': ['QW11'], 'B256': ['QW12', 'QW13'], 'B257': ['QW14']}
+OWNERS = {'B236': ['QW1', 'QW2', 'QW3', 'QW4', 'QW5', 'QW6', 'QW9', 'QW13', 'QW14'], 'B239': ['QW7', 'SP1', 'SP2', 'SP3'], 'B25': ['QW8'], 'B3': ['QW10'], 'B26': ['HS1'], 'B255': ['QW11'], 'B256': ['QW12', 'QW13'], 'B257': ['QW14'], 'B268': ['QW15']}
 MUTATIONS = [
     ('qw', "    if gm is not None and gm > 0:", "    if False:", 'B236: a connected getwork miner does not refuse the run'),
     ('qw', "        live = sorted({n for n in names if n in LIVE_NAMES})", "        live = []",
@@ -371,6 +394,8 @@ MUTATIONS = [
     ('mi', "            'hashrate_sampled': None if m0 is None else rate(m0, m1, HS_KEY if",
      "            'hashrate_sampled': None if m0 is None else rate(m0, m1, 'dero_miner_hashes_total' if",
      'B26: the sampled hashrate counts never-hashed stale_sha_skipped texts'),
+    ('self', "        with contextlib.redirect_stderr(err):       # r31 (B268): argparse's usage text stays out of S7's 'last' line\n            a = sw.parse(argv[i + 1:])",
+     "        if True:\n            a = sw.parse(argv[i + 1:])", 'B268: QW11 lets stallwatch\'s usage text reach stderr'),
 ]
 
 

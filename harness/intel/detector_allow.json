@@ -1,0 +1,47 @@
+{
+ "_doc": "r31 dimension 0 (rft §7 B282): harness/intel/detectors.py accepts a finding only through an entry here: {detector, file, kind, quote, reason} (the finding's quote must contain `quote`). An entry with no reason, or one that matches no finding any more, is an allow problem (detectors.py exits 5, S7 fails), so the list cannot rot (as harness/pipeline/liveness_allow.json).",
+ "allow": [
+  {
+   "detector": "signal-coverage",
+   "file": "blockchain/blockchain.go",
+   "kind": "event-no-counter",
+   "quote": "logger.Error(fmt.Errorf(\"coinbase tx cannot appear in mempool\"), \"tx_rejected\"",
+   "reason": "r31 d4 (B285): unreachable and counted by the caller. Add_TX_To_Pool first refuses every type but BURN/NORMAL/SC (blockchain.go `switch tx.TransactionType` -> \"such transaction type cannot appear in mempool\"), so a COINBASE tx never reaches this line; every Add_TX_To_Pool refusal is counted by tx_pool_refused_total{reason} at the admission wrapper (glue/txpolicy/pool_refused_r31.go, TestR31PoolRefusalReasonsCoverAddTXToPool). A counter in blockchain/ is not a logger statement: consensus-guard residue (S1)."
+  },
+  {
+   "detector": "signal-coverage",
+   "file": "blockchain/blockchain.go",
+   "kind": "event-no-counter",
+   "quote": "logger.Error(fmt.Errorf(\"Huge TX\"), \"TX rejected\"",
+   "reason": "r31 d4 (B285): counted by the caller: tx_pool_refused_total{reason=\"oversize\"} at the one admission wrapper both callers use (p2p relay and RPC SendRawTransaction -> txcanon.Admit -> txpolicy.Admit -> add = Add_TX_To_Pool; glue/txpolicy/pool_refused_r31.go, TestR31PoolRefusedCountedByReason, gm-r31-d4-pool-reason-oversize). A counter in blockchain/ is consensus-guard residue (S1: harness/consensus_guard.py drops only logger statements)."
+  },
+  {
+   "detector": "signal-coverage",
+   "file": "blockchain/miniblocks_consensus.go",
+   "kind": "event-no-counter",
+   "quote": "logger.V(1).Error(err, \"Invalid miner address\")",
+   "reason": "r31 d4 (B285): counted by the caller: the p2p path refuses through refuse_miniblock (p2p/rpc_notifications.go InsertMiniBlock -> p2p_miniblock_refused_total{reason}, consensus_obs_r25.go); the getwork path checks IsAddressHashValid before InsertMiniBlock (blockchain/miner_block.go 'unregistered miner') and never reaches this line. A counter in blockchain/ is consensus-guard residue (S1)."
+  },
+  {
+   "detector": "error-paths",
+   "file": "cmd/derod/config_env_r29.go",
+   "kind": "discarded-error",
+   "quote": "ov, _ := consensus_setting_overrides(config.Settings)",
+   "reason": "R31 d7: a failed check refuses to start earlier (consensus_env_check_failed, :24-30) and this path exits 1 unconditionally (:42); the error would only shorten the list of names printed"
+  },
+  {
+   "detector": "error-paths",
+   "file": "cmd/derod/main.go",
+   "kind": "discarded-error",
+   "quote": "header, _ := derodrpc.GetBlockHeader(chain, hash)",
+   "reason": "R31 d7: print_block loaded the block at :874 just before; GetBlockHeader's only error is that same load (cmd/derod/rpc/blockheader.go:30-32) and header_miners returns one entry per miniblock"
+  },
+  {
+   "detector": "error-paths",
+   "file": "cmd/derod/main.go",
+   "kind": "discarded-error",
+   "quote": "rpcserver, _ := derodrpc.RPCServer_Start(params)",
+   "reason": "R31 d7: RPCServer_Start's only return is `return &r, nil` (cmd/derod/rpc/websocket_server.go:195)"
+  }
+ ]
+}

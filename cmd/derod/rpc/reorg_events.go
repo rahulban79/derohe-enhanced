@@ -259,9 +259,12 @@ func (r *reorg_tracker) enable_persist(path string) error {
 	r.Lock()
 	defer r.Unlock()
 	life := &Reorg_Lifetime{LastForkTopo: -1}
+	var aside error // r31 (error-paths): a failed keep-aside was dropped, and the next save overwrote the corrupt record
 	if raw, err := os.ReadFile(path); err == nil {
 		if json.Unmarshal(raw, life) != nil || life.Since == "" {
-			_ = os.Rename(path, path+".corrupt")
+			if err := os.Rename(path, path+".corrupt"); err != nil {
+				aside = fmt.Errorf("corrupt reorg record not kept aside: %w", err)
+			}
 			life = &Reorg_Lifetime{LastForkTopo: -1}
 		}
 	}
@@ -271,7 +274,10 @@ func (r *reorg_tracker) enable_persist(path string) error {
 	life.Starts++
 	life.File = filepath.Base(path)
 	r.life, r.path = life, path
-	return r.save_locked()
+	if err := r.save_locked(); err != nil {
+		return err
+	}
+	return aside // persistence stays on; the caller logs it (RPCServer_Start "reorg monitor record")
 }
 
 // flush saves the lifetime record now (r25, CO24-C6): at shutdown, so up to REORG_SAVE_EVERY-1 observations since the

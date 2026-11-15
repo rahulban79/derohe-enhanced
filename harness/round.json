@@ -1,6 +1,6 @@
 {
  "_doc": "r23c round registry: the one place a round's ids live (read by harness/pipeline/fix_build_verify.py and harness/pipeline/benchlock.py, checked by harness/kat/test_round_registry_r23c.py). The literal string 'pending' means not known yet: never replace it with a guess. Protocol: artifacts/dero-rft.md and harness/README.md.",
- "current": "r30",
+ "current": "r31",
  "upstream_base": "bf274e5",
  "benchlock": "~/derohe-persist/bench.lock",
  "rounds": [
@@ -202,6 +202,26 @@
   },
   {
    "id": "r31",
+   "status": "measured",
+   "version_suffix": "22102026.r31",
+   "new_tests_base": "cdbc0bb2",
+   "merge_commit": "4225affb",
+   "head_after": "8aad2599",
+   "pipeline_full": "pipeline_20261113T215409",
+   "go_mutations": "1761/1761",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "4c61ab6c",
+    "target": "pending"
+   },
+   "tracks": {
+    "miner": "paused",
+    "node": "active"
+   },
+   "evidence": "R31 opened 2026-11-13 by Part A (rft §6 steps 0-3a) from cdbc0bb2 (R30 measured, post-close records and the r31 github_sync base 4c61ab6c); tracks miner paused / node active (the user, 2026-11-12 §2.25: \"pause mining enhancements for round 31, so i will not be running miner for round 31\"; 2026-11-13: keep it off for all of R31 (miner track paused); rft §0.3, §7 B277); derod r30 restarted by the user 2026-11-13 07:40:54 PST (3.6.0-153.DEROHE.STARGATE+22102026.r30); Part A: live start read on r30 (booked to r30, harness/runtime/r31_start_20261113.txt); forensics v5 (r30) sealed at §6 step 3a (§0.12 D-19); r30 ledger closed with frozen inputs (artifacts/src/frozen/r30 from 4c61ab6c) · closed loop 2026-11-14 (status stays in-progress until the user installs and restarts, §0.1 step 3): Part B d1-d7 merged (r31-merge ff 4225affb; 7 verifiers 0 REFUTED, 4 bugs fixed at the merge), closed loop run 9 pipeline_20261113T215409 PASS (S1-S7; KATs 35/35, harness mutations 34/34, gates 31/34 + 3 PAUSED miner; go mutations 1761/1761; race 27 packages 0 races; shadow 120/120 per node, 0 mismatches); binaries +22102026.r31 staged in bin/.staging, NOT installed (derod a9d683a4…, dero-miner 10ac4cf4…, dero-wallet-cli 75e53651…); runs 1-8 failed on B321-B328, each fixed · installed 2026-11-14 01:39:46 by atomic rename (commit 3f9e2fb7; derod a9d683a4…, dero-miner 10ac4cf4…); derod restarted by the user 2026-11-14 17:24:03 (pid 82607) · MEASURED live 2026-11-14: harness/runtime/r31_live_window_20261114.txt (62 samples 17:25:45 -> 18:26:45, 0 restarts, synced 62/62, 0 ERROR, emission OK, B61/B141/B152 hold, pending events no event; miner off, track paused)"
+  },
+  {
+   "id": "r32",
    "status": "planned",
    "version_suffix": "pending",
    "new_tests_base": "pending",

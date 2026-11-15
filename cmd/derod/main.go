@@ -49,6 +49,7 @@ import "github.com/deroproject/derohe/metrics"
 import "github.com/deroproject/derohe/p2p"
 import "github.com/deroproject/derohe/glue/txpolicy"
 import "github.com/deroproject/derohe/globals"
+import "github.com/deroproject/derohe/glue/dvmobs"
 import "github.com/deroproject/derohe/block"
 import "github.com/deroproject/derohe/transaction"
 import "github.com/deroproject/derohe/config"
@@ -329,7 +330,12 @@ func main() {
 		params["--integrator-address"] = globals.Arguments["--integrator-address"]
 	}
 
+	// r31 (dero-rft §7 B288, D-21): the chain's "CORE" logger is derived from globals.Logger inside Blockchain_Start; the
+	// wrapper feeds its dvm lines to the sc_* /metrics families (glue/dvmobs) and prints exactly what it printed before
+	core_logger := globals.Logger
+	globals.Logger = dvmobs.Wrap(core_logger, nil)
 	chain, err := blockchain.Blockchain_Start(params)
+	globals.Logger = core_logger // every other package keeps the plain logger
 	if err != nil {
 		logger.Error(err, "Error starting blockchain")
 		return

@@ -21,8 +21,10 @@ func main() {
 	oneway := flag.Duration("oneway", 50*time.Millisecond, "")
 	loss := flag.Float64("loss", 0, "")
 	flag.Parse()
-	la, _ := net.ResolveUDPAddr("udp", *listen)
-	ua, _ := net.ResolveUDPAddr("udp", *upstream)
+	la, ua, err := resolve_pair(*listen, *upstream)
+	if err != nil {
+		panic(err)
+	}
 	ln, err := net.ListenUDP("udp", la)
 	if err != nil {
 		panic(err)
@@ -97,4 +99,19 @@ func main() {
 		}
 	}
 	fmt.Printf("fwd %d back %d dropped %d\n", fwd, back, dropped)
+}
+
+// resolve_pair resolves -listen and -upstream. r31 (detector error-paths DF-error-paths-c2012f4b07 / -c0c880f6d6): the
+// errors were discarded, so a malformed -listen made ListenUDP bind a random port and a malformed -upstream left
+// every forward to a nil address, both silently.
+func resolve_pair(listen, upstream string) (*net.UDPAddr, *net.UDPAddr, error) {
+	la, err := net.ResolveUDPAddr("udp", listen)
+	if err != nil {
+		return nil, nil, fmt.Errorf("-listen %q: %w", listen, err)
+	}
+	ua, err := net.ResolveUDPAddr("udp", upstream)
+	if err != nil {
+		return nil, nil, fmt.Errorf("-upstream %q: %w", upstream, err)
+	}
+	return la, ua, nil
 }

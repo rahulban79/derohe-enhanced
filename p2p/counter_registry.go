@@ -66,6 +66,7 @@ var p2p_counters = []string{
 	"p2p_sync_strike_decays_total",     // r27 (B99 observability)
 	"p2p_sync_served_forgiven_total",   // r27 (B99 observability)
 	"p2p_bans_loaded_total",            // r27 (bans reloaded at start)
+	"p2p_future_blocks_total",          // r31 (B269 b, future_skew_r31.go)
 }
 
 func init() {

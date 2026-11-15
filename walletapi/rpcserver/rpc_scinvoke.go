@@ -21,9 +21,23 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/deroproject/derohe/config"
 	"github.com/deroproject/derohe/cryptography/crypto"
 	"github.com/deroproject/derohe/rpc"
 )
+
+// SCINVOKE_MAX_SCDATA (r31, dero-rft §7 B287 finding DF-dvm-builtins-5503b8f444, wallet RPC only): the SC arguments of
+// one scinvoke may not encode to more than a whole transaction may (config.STARGATE_HE_MAX_TX_SIZE; the chain refuses a
+// larger tx, blockchain.go "TX rejected Size"). Before r31 such a request was refused only after the ring members were
+// fetched and the proofs built. Arguments that do not encode are left to the transfer path, as before.
+const SCINVOKE_MAX_SCDATA = config.STARGATE_HE_MAX_TX_SIZE
+
+func scinvoke_scdata_budget(args rpc.Arguments) error {
+	if b, err := args.MarshalBinary(); err == nil && uint64(len(b)) > SCINVOKE_MAX_SCDATA {
+		return fmt.Errorf("sc_rpc encodes to %d bytes, more than a transaction may carry (%d)", len(b), SCINVOKE_MAX_SCDATA)
+	}
+	return nil
+}
 
 // SC_Invoke_Fees_Params is scinvoke's request: the rpc package's params plus the optional "fees" (atomic units; 0 keeps
 // the automatic fee). Kept in this package so the rpc package (consensus-guarded) is unchanged.
@@ -38,6 +52,10 @@ func ScInvoke(ctx context.Context, p SC_Invoke_Fees_Params) (result rpc.Transfer
 			err = fmt.Errorf("panic occured. stack trace %s", debug.Stack())
 		}
 	}()
+
+	if err = scinvoke_scdata_budget(p.SC_RPC); err != nil { // r31: SCINVOKE_MAX_SCDATA, before any ring or proof work
+		return result, err
+	}
 
 	w := FromContext(ctx)
 	if !w.wallet.GetMode() { // if wallet is in online mode, use the fees, provided by the daemon, else we need to use what is provided by the user

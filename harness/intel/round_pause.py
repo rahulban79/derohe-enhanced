@@ -31,8 +31,15 @@ of it, and the comparison that makes the resume exact.
   check   (S7 step) the DUE ledger's schema and every HANDOFF.md of the round (handoff.py); exit 4 on a malformed
           DUE item; a HANDOFF problem is reported (WARN), not failed.
   due-done ID --evidence TEXT   mark one due item done (the ledger keeps who/when/evidence).
+  due-push                      (r31 B270) the user-action items due NOW and not pushed yet, in due order, each with its
+                                exact push text; exit 5 when there is one to push (loud), 0 when none. The coordinator
+                                sends each text as a push notification, then records it:
+  due-pushed ID                 records pushed_at (the first push time is kept; a later due-push never re-pushes).
+                                `check` prints a WARN line for every due user action not pushed yet.
   DUE item: {id, what, status pending|done|skipped, due (ISO with zone) | after [ids] | when (an event condition),
-             cmd (exact command), then_tell_user (the message after it), owner, evidence + done_at once done}.
+             cmd (exact command), then_tell_user (the message after it), owner, evidence + done_at once done,
+             user_action (bool), push (bool), pushed_at}. A pending user action (user_action: true, a then_tell_user
+             text, or owner 'user') must carry then_tell_user AND push: true (check exit 4 otherwise).
   keep NAME                     the detached loop keeper (checkpoint | backup); idempotent by pidfile + process scan.
   ingest-snaps --src F --dst G  merge a detached loop's 24 h snapshot file into the repo copy by time, deduplicated;
                                 refused while a pipeline RUNS (exit 3: the repo copy is a tracked file).
@@ -47,7 +54,8 @@ of it, and the comparison that makes the resume exact.
   nice -n 15 python3 -I harness/intel/round_pause.py status --round r30
   --dry-run: report only — nothing launched, no checkpoint/backup run, no persist sync; PAUSE.json and saved work go
   to --out (default: not written at all). Paths overridable for the KAT: ROUND_CKPT_REPO/OUT/PROJ/SCRATCH/PUB/PERSIST.
-Exit 0 · 2 bad arguments / no PAUSE record · 4 check found a malformed DUE item. KAT harness/kat/test_round_pause_r30.py.
+Exit 0 · 2 bad arguments / no PAUSE record · 4 check found a malformed DUE item · 5 due-push: user actions to push.
+KAT harness/kat/test_round_pause_r30.py, harness/kat/test_due_push_r31.py (B270).
 """
 if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):
     print(__doc__)
@@ -710,7 +718,8 @@ def resume(round_id, dry=False, out=None, restore=False):
     for i in over + ready:
         plan.append(f"due {i['id']} ({i.get('due') or 'after ' + ','.join(i.get('after') or [])}): {i.get('what')}"
                     + (f" · run `{i['cmd'] if isinstance(i.get('cmd'), str) else ' '.join(i.get('cmd') or [])}`" if i.get('cmd') else '')
-                    + (f" · then tell the user: \"{i['then_tell_user']}\"" if i.get('then_tell_user') else ''))
+                    + (f" · then tell the user: \"{i['then_tell_user']}\"" if i.get('then_tell_user') else '')
+                    + (' · PUSH NOT SENT: run round_pause.py due-push' if is_user_action(i) and not i.get('pushed_at') else ''))
     done_list += [f"due {i['id']} done" for i in (led or {}).get('items', []) if i.get('status') == 'done']
     ev_out = []
     pv = pipeline_state(REPO, rows, det_now).get('verdict')
@@ -827,6 +836,12 @@ def check_due(ledger):
                 probs.append(f"{i.get('id')}: after names unknown item {a!r}")
         if i.get('status') == 'done' and not i.get('evidence'):
             probs.append(f"{i.get('id')}: done without evidence")
+        if is_user_action(i) and i.get('status') == 'pending':
+            # r31 B270: a user action reaches the user only by a push at the moment it falls due (R30 lost 6.5 h)
+            if not (isinstance(i.get('then_tell_user'), str) and i['then_tell_user'].strip()):
+                probs.append(f"{i.get('id')}: a user action without its then_tell_user text")
+            if i.get('push') is not True:
+                probs.append(f"{i.get('id')}: a user action without push: true (B270: it must be pushed when it falls due)")
     if len(set(ids)) != len(ids):
         probs.append('duplicate item ids')
     for e in ledger.get('evidence') or []:
@@ -835,6 +850,41 @@ def check_due(ledger):
         elif e.get('kind') == 'snaps' and not e.get('gap_s'):
             probs.append(f"evidence {e['id']}: kind snaps without its gap rule gap_s")
     return probs
+
+
+def is_user_action(i):
+    """r31 B270: a DUE item the USER must act on (derod restart, miner start/stop, install, GitHub push): it says
+    user_action: true, carries a then_tell_user text, or its owner is the user. Pure."""
+    return (i.get('user_action') is True or bool(i.get('then_tell_user'))
+            or str(i.get('owner') or '').strip().lower() == 'user')
+
+
+def push_text(round_id, i):
+    """the exact push notification text of one user-action DUE item. Pure."""
+    return f"[{round_id} {i.get('id')}] {str(i.get('then_tell_user') or i.get('what') or '').strip()}"
+
+
+def due_push_view(ledger, now=None):
+    """r31 B270: the user-action items that are due NOW (overdue by time, or ready: every 'after' item done) and not
+    pushed yet (no pushed_at), in due order (timed first by time, then the ready ones in ledger order). A 'when'-gated
+    item is never due by itself (round_checkpoint.due_view). Pure."""
+    over, ready, _ = RC.due_view(ledger, now)
+    return [i for i in over + ready if is_user_action(i) and not i.get('pushed_at')]
+
+
+def due_pushed(round_id, item_id, out=None, t=None):
+    """record that the coordinator pushed one user-action item (pushed_at); refused (False) for an unknown id, an item
+    that is not a user action, or one already pushed (the first push time is kept: never re-pushed)."""
+    p = Path(out or OUT) / f'{round_id}_DUE.json'
+    led = json.loads(p.read_text())
+    hit = [i for i in led['items'] if i.get('id') == item_id]
+    if not hit or not is_user_action(hit[0]) or hit[0].get('pushed_at'):
+        return False
+    hit[0]['pushed_at'] = now_iso(t)
+    tmp = p.with_name(p.name + '.tmp')
+    tmp.write_text(json.dumps(led, indent=1) + '\n')
+    os.replace(tmp, p)
+    return True
 
 
 def check(round_id, out=None):
@@ -863,7 +913,7 @@ def due_done(round_id, item_id, evidence, out=None):
 def main(argv):
     import argparse
     ap = argparse.ArgumentParser(prog='round_pause.py')
-    ap.add_argument('cmd', choices=['pause', 'resume', 'status', 'check', 'due-done', 'keep', 'ingest-snaps'])
+    ap.add_argument('cmd', choices=['pause', 'resume', 'status', 'check', 'due-done', 'due-push', 'due-pushed', 'keep', 'ingest-snaps'])
     ap.add_argument('--src')
     ap.add_argument('--dst')
     ap.add_argument('arg', nargs='?')
@@ -899,7 +949,26 @@ def main(argv):
         print(f"DUE {rid}: {'absent' if not have else ('ok' if not probs else 'PROBLEM')}" + ''.join(f'\n  - {x}' for x in probs))
         for h, ok, pr in hand:
             print(f"HANDOFF {'ok  ' if ok else 'WARN'} {h}" + ''.join(f'\n  - {x}' for x in pr))
+        for i in due_push_view(RC.load_due(rid, a.out)) if have else []:
+            print(f"WARN due {i['id']}: a user action is due and NOT pushed: run round_pause.py due-push, push the text, "
+                  f"then round_pause.py due-pushed {i['id']}")
         return 4 if probs else 0
+    if a.cmd == 'due-push':
+        led = RC.load_due(rid, a.out)
+        todo = due_push_view(led)
+        if not todo:
+            print(f'due-push {rid}: nothing to push')
+            return 0
+        print(f'due-push {rid}: {len(todo)} user action(s) due and NOT pushed — push each text now, then record it:')
+        for i in todo:
+            print(f"PUSH {i['id']} (due {i.get('due') or 'after ' + ','.join(i.get('after') or [])}): {push_text(rid, i)}")
+            print(f"  then: python3 -I harness/intel/round_pause.py due-pushed {i['id']} --round {rid}"
+                  + (f' --out {a.out}' if a.out else ''))
+        return 5
+    if a.cmd == 'due-pushed':
+        ok = due_pushed(rid, a.arg, a.out)
+        print(f"due {a.arg}: {'pushed_at recorded' if ok else 'not found, not a user action, or already pushed'}")
+        return 0 if ok else 2
     if a.cmd == 'ingest-snaps':
         if not a.src or not a.dst:
             print('ingest-snaps needs --src and --dst')

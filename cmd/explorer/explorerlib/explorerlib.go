@@ -425,7 +425,11 @@ func load_block_from_rpc(info *block_info, block_hash string, recursive bool) (e
 		info.Miners = bresult.Block_Header.Miners[:len(bresult.Block_Header.Miners)-1]
 	}
 
-	block_bin, _ = hex.DecodeString(bresult.Blob)
+	// r31 (detector error-paths DF-error-paths-ac4ee4d2a0): a blob that is not hex was decoded to nothing and shown
+	// as an empty block; it is an error now
+	if block_bin, err = decode_hex_blob("block", bresult.Blob); err != nil {
+		return err
+	}
 
 	//log.Infof("block %+v bresult %+v ", bl, bresult)
 
@@ -601,7 +605,10 @@ func load_tx_from_rpc(info *txinfo, txhash string) (err error) {
 
 	info.Hex = tx_result.Txs_as_hex[0]
 
-	tx_bin, _ := hex.DecodeString(tx_result.Txs_as_hex[0])
+	tx_bin, err := decode_hex_blob("tx", tx_result.Txs_as_hex[0]) // r31 (DF-error-paths-19659e4167): was discarded
+	if err != nil {
+		return err
+	}
 	tx.Deserialize(tx_bin)
 
 	// fill as much info required from headers
@@ -1060,4 +1067,14 @@ func (b BytesViewer) String() string {
 		result = append(result, " |\n"...)
 	}
 	return *(*string)(unsafe.Pointer(&result))
+}
+
+// decode_hex_blob decodes a hex blob the daemon returned; a blob that is not hex is an error naming what it was
+// (r31, detector error-paths: the explorer discarded the error and rendered an empty block or transaction).
+func decode_hex_blob(what, s string) ([]byte, error) {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("%s blob from the daemon is not hex: %w", what, err)
+	}
+	return b, nil
 }

@@ -182,7 +182,10 @@ func TestClockOffsetPublishIsAtomic(t *testing.T) {
 	// writes overlap whatever the scheduler does; a fixed 2000 reads could finish before the writer started, and
 	// then -race had nothing to see (gm-r20-clock-atomic-read was MISSED once in the merge run).
 	deadline := time.Now().Add(10 * time.Second)
-	for i := 0; i < 2000 || atomic.LoadInt64(&writes) < 2000; i++ {
+	// r31 closed loop (B328): run 8 MISSED gm-r20-clock-atomic-read once (1,760/1,761) on a loaded box: -race keeps a
+	// bounded access history, so 2,000 overlapping writes can slip past it; 20,000 make a miss far less likely (the
+	// mutated plain read races every write) at a cost of milliseconds
+	for i := 0; i < 20000 || atomic.LoadInt64(&writes) < 20000; i++ {
 		globals.Time()
 		globals.GetOffsetNTP()
 		globals.GetOffsetP2P()

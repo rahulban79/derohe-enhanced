@@ -10,7 +10,7 @@
 // Package txprecheck is a node-local mempool-admission policy (Round 23): it refuses, before any state is read, a
 // transfer that consensus is certain to refuse for its structure.
 //
-// Why: blockchain.Add_TX_To_Pool runs Verify_Transaction_NonCoinbase_CheckNonce_Tips (blockchain.go:1344: a block
+// Why: blockchain.Add_TX_To_Pool runs Verify_Transaction_NonCoinbase_CheckNonce_Tips (blockchain.go:1349: a block
 // file directory scan for tx.BLID, a balance snapshot load per tip and graviton lookups per ring member) BEFORE
 // verify_Transaction_NonCoinbase_internal reaches its pure structural checks (transaction_verify.go:225-319). A
 // relayed transaction with, say, a duplicated ring member or no DERO payload therefore costs state reads before it
