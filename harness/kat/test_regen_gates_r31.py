@@ -56,7 +56,7 @@ def kat_rg1(over):
         r, ps = forge(d)
         g = m.gate_plan(r, ps, Path(d) / 'out')
         names = [x[0] for x in g]
-        if names != ['G30 forensics frontend', 'FE8 forensics frontend KAT', 'pdfscan', 'pubscrub dry run', 'coherence']:
+        if names != ['G30 forensics frontend', 'FE8 forensics frontend KAT', 'pdfscan', 'pubscrub dry run', 'doc currency', 'coherence']:
             bad.append(f'gates {names}')
         G = {x[0]: x for x in g}
         a = lambda n: ' '.join(str(v) for v in (G.get(n, (0, None))[1] or []))
@@ -150,6 +150,7 @@ MUTATIONS = [   # (file key, find, replace, why — the first two words name the
     ('rg', "         ('FE8 forensics frontend KAT', [PY, '-I', 'harness/kat/test_forensics_frontend2_r26.py'], None, {}),\n", "",
      'B271 plan: the FE8 KAT is not run'),
     ('rg', "    g.append(('coherence', [PY, '-I', 'harness/intel/coherence.py'], None, {}))\n", "", 'B271 plan: coherence is not run'),
+    ('rg', "    g.append(('doc currency', [PY, '-I', 'harness/intel/doc_currency.py'], None, {}))   # r31 (B332): round summaries reviewed\n", "", 'B271 plan: doc currency is not run'),
     ('rg', "[PY, '-I', 'harness/kit/pdfscan.py'] + pdfs if pdfs else None,", "None,", 'B271 plan: a PDF present is never scanned'),
     ('rg', "    if not pubscrub.is_file():", "    if False:", 'B271 plan: a missing pubscrub is not a SKIP'),
     ('rg', "        g.append(('pubscrub dry run', [PY, '-I', '-B', str(pubscrub)", "        g.append(('pubscrub dry run', [PY, '-I', str(pubscrub)",

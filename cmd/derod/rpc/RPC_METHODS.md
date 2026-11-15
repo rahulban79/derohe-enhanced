@@ -170,6 +170,18 @@ The other `panic(err)` sites in these handlers are store or start-up invariants 
 r25 B40) now accepts `application/json; charset=utf-8` and answers a wrong method or media type with a JSON-RPC
 -32600 body (405 / 415), as derod's has since r24.
 
+Changes r29–r31 (same compat rule: additive fields, typed refusals; no consensus effect):
+
+| Call | Before | From |
+|---|---|---|
+| A body the jhttp bridge itself cannot serve (r29 B175) | a bare HTTP 500 text | a JSON-RPC error body, counted in `rpc_error_responses_total{code}` |
+| DERO.Subscribe (r31 B280) | any number of event names | at most 16 names per call (`MAX_SUBSCRIBE_EVENTS`; the server knows 4); a longer list is -32602 before any lookup and counted in `rpc_param_bound_refused_total` |
+| DERO.GetPeerInfo (r31 B269) | — | per peer `future_blocks` (its blocks refused as stamped in the future) and `future_skew_max_ms`; node-wide `p2p_future_blocks_total` and `p2p_future_block_skew_seconds` on /metrics, registered at start |
+| wallet `scinvoke` (walletapi/rpcserver, r31) | an oversized SC argument set was refused only after the ring and proof work | refused first when it would not fit a transaction (`SCINVOKE_MAX_SCDATA` = the chain's `STARGATE_HE_MAX_TX_SIZE`) |
+| /metrics (r31) | — | the `sc_*` smart-contract families (install, invoke, revert by reason, out-of-gas, recovered panics; exec time and gas histograms) and `tx_pool_refused_total{reason}`, registered in `metrics/metric_registry.json` |
+
+<!-- doc-current-through: r31 -->
+
 Example:
 
 ```

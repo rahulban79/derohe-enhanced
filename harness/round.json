@@ -212,7 +212,7 @@
    "new_rpc_methods": {},
    "github_sync": {
     "base": "4c61ab6c",
-    "target": "pending"
+    "target": "e3c9669c"
    },
    "tracks": {
     "miner": "paused",
@@ -231,7 +231,7 @@
    "go_mutations": "pending",
    "new_rpc_methods": {},
    "github_sync": {
-    "base": "pending",
+    "base": "e3c9669c",
     "target": "pending"
    },
    "tracks": {

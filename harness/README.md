@@ -320,3 +320,41 @@ python3 -I kat/test_privkit_r24.py                 # PK1..PK4 + 11 mutations (ps
 python3 -I kat/test_area_intel_r24.py              # AI10: detector feeds become area proposals
 python3 -I kat/test_coherence_r24.py               # CO16: the observatory facts
 ```
+
+## Long-job liveness (r29, rft §5, gate G33)
+
+`kit/stallwatch.py` watches one long resumable job: liveness is WORK (a growing file or a changing counter), never a
+refreshed heartbeat; a stalled job is diagnosed (`sample` leaf frames) and relaunched from its checkpoint, at most N an
+hour, then STUCK; a `--stop` marker ends it on purpose. `kit/hangkit.py` (`within` for hang KATs, `run_bounded` for
+commands in their own process group) and `kit/coproc.py` (line co-processes without the write-all-then-read deadlock)
+are the building blocks; `pipeline/liveness_lint.py` (G33) fails the two hang shapes statically.
+
+## Rounds that pause, decide and measure (r30)
+
+`intel/round_pause.py pause|resume|check|due-done|due-push|due-pushed` records what a stopped session loses (agents,
+clone trees, detached jobs, the DUE ledger `round_state/<round>_DUE.json`) and resumes by comparing the live state with
+the record; a user action due carries `then_tell_user` and `push: true` (r31 B270). `kit/handoff.py check` validates an
+agent's HANDOFF.md. `intel/coherence_audit.py` lists every new file of the round and fails a §0.12 decision row without a
+resolving anchor. Miner measurement: `pipeline/quiet_window.py` (benches only on a quiet box), `intel/hashrate_objective.py`
+(G34), `intel/payout_ledger.py`, `intel/levers_read.py` (a lever change read against the run before it).
+
+## Area detectors and the closed loop (r31)
+
+`intel/detectors.py --all` runs seven static detectors (budget-census, fuzz-coverage, error-paths, crypto-input,
+value-paths, signal-coverage, dvm-builtins) and writes `runtime/detector_<name>.json` with a fingerprint over the files it
+read; `intel/area_intel.py` lands each finding as one anchored `detector-<name>` proposal of its area and flags a stale or
+missing record; allow-list `intel/detector_allow.json` (a reason per entry). S7 runs the detectors before `area_intel
+--live`; `pipeline/regen_round.py` re-runs them when stale, runs the page gates (G30, FE8, pdfscan, a pubscrub dry run,
+coherence) and exits 5 when the feed is stale. `fix_build_verify.py --stage-cache` reuses an identical S1/S2 PASS (opt-in);
+`kit/katmut.py` scopes a KAT's mutations by traced or declared reach with a canary; `forensics/s7_replay.py` replays a
+sealed newest dataset through its pinned source (`forensics/pinsnap.py`); `intel/crypto_census.py` pins every decoder.
+
+```
+python3 -I kat/test_detectors_r31.py          # the 7 detectors + the area_intel source
+python3 -I kat/test_katmut_scope_r31.py       # mutation scoping
+python3 -I kat/test_s7_replay_sealed_r31.py   # the sealed-dataset replay path
+python3 -I kat/test_doc_currency_r31.py       # the docs below name the newest measured round
+```
+
+<!-- doc-current-through: r31 -->
+

@@ -197,6 +197,7 @@ def gate_plan(root=ROOT, pubscrub=None, out_dir=None):
         # read-only: -B (no __pycache__ beside the tool), every output into a scratch out dir, the repo's pdfscan
         g.append(('pubscrub dry run', [PY, '-I', '-B', str(pubscrub), str(out_dir or '<scratch out dir>')] + pages, None,
                   {'DERO_PDFSCAN': str(root / 'harness/kit/pdfscan.py')}))
+    g.append(('doc currency', [PY, '-I', 'harness/intel/doc_currency.py'], None, {}))   # r31 (B332): round summaries reviewed
     g.append(('coherence', [PY, '-I', 'harness/intel/coherence.py'], None, {}))
     return g
 
