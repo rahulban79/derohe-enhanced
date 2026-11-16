@@ -29,7 +29,8 @@ import gtlib  # noqa: E402
 from gtlib import arg_s, arg_u, banguard, rpc_call  # noqa: E402
 
 ROOT = gtlib.ROOT
-CONTRACTS = {'attest': 'gt_attest.bas', 'service': 'gt_service.bas', 'prize': 'gt_prize.bas'}
+CONTRACTS = {'attest': 'gt_attest.bas', 'service': 'gt_service.bas', 'prize': 'gt_prize.bas', 'audit': 'gt_audit.bas'}   # r32a: + audit
+AUDIT_VERDICT_KEYS = ('bounty', 'cin', 'n', 'st', 'nw', 'disp', 'refund', 'share', 'rem', 'forf')   # gt_audit.bas key map
 CONFIRM_DEPTH = 3     # blocks below the tip before a tx counts as final (r32 run 8: a tx seen mined was reorged away)
 LOST_S = 60           # a tx neither in a valid block nor in the pool for this long is lost and is resent
 SEND_TRIES = 3
@@ -58,14 +59,54 @@ def tx_state(tx, height, depth=CONFIRM_DEPTH):
 
 
 ENTER_MARGIN = 4      # blocks before the commit window closes: later than this, the round is skipped, not entered
+WINDOW_CALLS = 4      # a commit / reveal window holds this many confirmed calls (r32a sim pre-flight: a fixed 20 blocks
+#                       closed before one confirmed call landed on a chain with ~0.7 s blocks; mainnet ~7 blocks per call)
+
+
+STORAGE_GAS_FREE = 150   # below this a size-based fee already covers the storage gas (measured fees 226-417 on mainnet)
+STORAGE_FEE_FLOOR = 600  # above every measured size-based fee (<= 417), so a set fee never undercuts the pool minimum
+
+
+def storage_fee(gasstorage):
+    """r32a sim pre-flight: the DVM's storage-gas limit IS the tx fee (blockchain/transaction_execute.go:395 passes
+    tx.Fees() as gasstorage_incoming; dvm/sc.go:244-250, capped at config.MAX_STORAGE_GAS_ATOMIC_UNITS 20,000), and the
+    wallet sizes the fee by tx size, so gt_audit Settle (a small tx with many STOREs) paid 235 and reverted with
+    'Insufficient Storage Gas'. The fee is set to the estimate + 30 % + 100 (floor STORAGE_FEE_FLOOR, cap 20,000). Pure."""
+    return min(20000, max(STORAGE_FEE_FLOOR, int(gasstorage) * 13 // 10 + 100))
+
+
+def windows_for(bpc, base=20, calls=WINDOW_CALLS):
+    """(window blocks, enter margin) from the measured blocks per confirmed call. Pure."""
+    import math as _m
+    w = max(base, _m.ceil(calls * max(1.0, bpc)))
+    return w, max(ENTER_MARGIN, _m.ceil(bpc) + 2)
+
+
+def sc_str_eq(v, s):
+    """r32a sim pre-flight: DERO.GetSC returns every String variable hex-encoded (fmt.Sprintf("%x", []byte(v)),
+    cmd/derod/rpc/rpc_dero_getsc.go:138), so a stored commit reads back as the hex of its ASCII bytes. Pure."""
+    return isinstance(v, str) and v == s.encode().hex()
 
 
 def entry_index(stringkeys, r, commit):
     """the index j the prize contract gave this wallet's entry in round r, found by its own commit (h<r>_<j>); None
     when the Enter was rejected. Parallel Enters land in any order, so j is read back, never assumed."""
     for k, v in (stringkeys or {}).items():
-        if k.startswith(f'h{r}_') and v == commit:
+        if k.startswith(f'h{r}_') and sc_str_eq(v, commit):
             return int(k.split('_', 1)[1])
+    return None
+
+
+def entry_index_audit(stringkeys, a, commit):
+    """the entrant index j gt_audit gave a commit in round a: the key whose value is that commit, named
+    a<a>_<j>_c or a<a>_c<j> (both layouts accepted until the contract's key map is pinned). Pure."""
+    import re as _re
+    for k, v in (stringkeys or {}).items():
+        if not sc_str_eq(v, commit):
+            continue
+        m = _re.match(rf'^a{a}_(\d+)_c$', k) or _re.match(rf'^a{a}_c(\d+)$', k)
+        if m:
+            return int(m.group(1))
     return None
 
 
@@ -99,6 +140,8 @@ class Cycle:
             self.P['attest']['bond'] = self.plan.get('bond', self.P['attest']['bond'])
             self.P['prize']['rbond'] = self.plan.get('rbond', self.P['prize']['rbond'])
             self.P['prize']['boost'] = self.plan.get('boost', self.P['prize']['boost'])
+        if self.plan.get('abond'):                      # r32a: the audit bond is frozen for the whole ladder
+            self.P['audit']['bond'] = self.plan['abond']
         if a.fast or a.plan:     # D-GT-8: a planned pilot uses short windows (a round ~15 min instead of ~1 h on mainnet)
             self.P['attest'].update(window=20, commitw=10, revealw=10)
             self.P['service'].update(epoch=40)
@@ -165,7 +208,8 @@ class Cycle:
                         raise
                     time.sleep(3)
             try:
-                self.wait_tx(txid)
+                tx = self.wait_tx(txid)
+                self.last_bh = int((tx or {}).get('block_height', 0) or 0)   # the inclusion height, kept on the call record
                 return txid
             except TxLost as e:
                 self.ev('tx_lost', who=n, what=what, txid=txid, attempt=k + 1, error=str(e))
@@ -183,15 +227,32 @@ class Cycle:
             p['transfers'].append({'scid': '0' * 64, 'burn': int(dero), 'destination': self.other(n)})
         if asset:
             p['transfers'].append({'scid': asset[0], 'burn': int(asset[1])})
+        est = self.gas_estimate(n, scid, p)
+        if est and est.get('gasstorage', 0) > STORAGE_GAS_FREE:
+            p['fees'] = storage_fee(est['gasstorage'])
         b0 = self.balance(n)
         txid = self.send(n, p, f'{key}.{entry}')
         self.wait_height(self.height() + 2)
         b1 = self.balance(n)
         rec = {'who': n, 'sc': key, 'entry': entry, 'deposit': dero, 'balance_delta': b1 - b0, 'txid_prefix': txid[:12],
+               'bh': getattr(self, 'last_bh', None), 'gas_est': est, 'fees_set': p.get('fees'),
                'fee': self.fee_of(n, txid)}   # the fee from the wallet's own transfer entry: valid while mining continues
         self.fees.append(rec)
         self.ev('sc_call', txid=txid, **rec)   # the full txid stays in the local event log only
         return txid
+
+    def gas_estimate(self, n, scid, p):
+        """DERO.GetGasEstimate for one SC call as signer n (read-only; the daemon runs it on a state snapshot). The
+        handler runs SC_RPC as given, so the SC_ACTION / SC_ID arguments the wallet would add are added here
+        (rpc/rpc_sc.go: SC_CALL = 0). None when the estimate fails (logged; the call goes ahead unchanged)."""
+        q = {'sc_rpc': [{'name': 'SC_ACTION', 'datatype': 'U', 'value': 0}, {'name': 'SC_ID', 'datatype': 'H', 'value': scid}]
+                       + list(p['sc_rpc']), 'transfers': p['transfers'], 'signer': self.addr[n]}
+        try:
+            r = self.daemon('DERO.GetGasEstimate', q)
+            return {'gascompute': int(r.get('gascompute', 0)), 'gasstorage': int(r.get('gasstorage', 0))}
+        except RuntimeError as e:
+            self.ev('gas_estimate_failed', who=n, error=str(e)[:200])
+            return None
 
     def fee_of(self, n, txid):
         """the fee the wallet recorded for its own tx (GetTransferbyTXID entry.fees); None when not found yet."""
@@ -232,7 +293,9 @@ class Cycle:
                 continue
             code = (ROOT / 'gametheory/contracts' / f).read_text()
             b0 = self.balance(m)
+            h_send = self.height()
             txid = self.send(m, {'sc': base64.b64encode(code.encode()).decode(), 'ringsize': 2, 'transfers': []}, f'{key}.install')
+            self.run.state.setdefault('bpc_samples', []).append(self.height() - h_send)   # blocks per confirmed call
             self.wait_height(self.height() + 2)
             self.run.state['scids'][key] = txid
             self.run.save()
@@ -240,7 +303,18 @@ class Cycle:
                    'txid_prefix': txid[:12], 'fee': self.fee_of(m, txid)}
             self.fees.append(rec)
             self.ev('installed', contract=f, **{k: v for k, v in rec.items() if k != 'who'})
-        a, s, z = self.P['attest'], self.P['service'], self.P['prize']
+        smp = self.run.state.get('bpc_samples') or []
+        if smp and 'windows' not in self.run.state:     # sized once, before the parameters are frozen for the ladder
+            bpc = sorted(smp)[len(smp) // 2]
+            w, mg = windows_for(bpc)
+            self.run.state['windows'] = {'bpc': bpc, 'window': w, 'margin': mg}
+            self.run.save()
+            self.ev('windows_sized', bpc=bpc, window=w, margin=mg)
+        ws = self.run.state.get('windows')
+        if ws:
+            self.P['prize'].update(commitw=ws['window'], revealw=ws['window'])
+            self.P['audit'].update(commitw=ws['window'], revealw=ws['window'])
+        a, s, z, u = self.P['attest'], self.P['service'], self.P['prize'], self.P['audit']
         todo = {k: setup_needed(self.vars(k)[0]) for k in CONTRACTS}     # a re-run skips contracts already frozen
         self.ev('setup_plan', todo=todo)
         if todo['attest']:
@@ -249,6 +323,8 @@ class Cycle:
             self.call(m, 'service', 'SetParams', [arg_u(k, s[k]) for k in ('fee', 'rho', 'boost', 'epoch', 'minmat')])
         if todo['prize']:
             self.call(m, 'prize', 'SetParams', [arg_u(k, z[k]) for k in ('rbond', 'commitw', 'revealw', 'maxn', 'boost', 'minmat')])
+        if todo['audit']:
+            self.call(m, 'audit', 'SetParams', [arg_u(k, u[k]) for k in ('bond', 'commitw', 'revealw', 'maxn')])
         mat = self.run.state['scids']['attest']
         if todo['service']:
             self.call(m, 'service', 'SetMAT', [arg_s('scidhex', mat)])
@@ -267,6 +343,112 @@ class Cycle:
             ms = self.daemon('DERO.GetBlock', {'height': h})['block_header'].get('miners', [])
             k += sum(1 for x in (ms[:-1] if len(ms) == 10 else ms) if x == address)
         return k
+
+    def mined_counts(self, lo, hi):
+        """normal miniblocks per address over [lo, hi], one scan shared by every claimer (r32a: N wallets)."""
+        out = {}
+        for h in range(lo, hi + 1):
+            ms = self.daemon('DERO.GetBlock', {'height': h})['block_header'].get('miners', [])
+            for x in (ms[:-1] if len(ms) == 10 else ms):
+                out[x] = out.get(x, 0) + 1
+        return out
+
+    def claims(self):
+        """r32a: every wallet claims the miniblocks IT mined (the linear same-address incentive, research §Q1: a bonus per
+        accepted miniblock is split-invariant). Claims are sent one by one (each verified by claim_index); a wallet's
+        span starts after its previous claim (the contract refuses `from <= lc`); the next wallet finalizes each claim
+        after the window, all finalizers in parallel."""
+        a = self.P['attest']
+        h = self.height()
+        hi = h - 3
+        last = self.run.state.setdefault('claim_upto', {})
+        lo_all = max(2, h - min(990, a.get('maxspan', 1000) - 10))
+        counts = self.mined_counts(max(lo_all, min([int(last.get(n, 0)) + 1 for n in self.names] + [hi])), hi)
+        made = []
+        for n in self.names:
+            lo = max(lo_all, int(last.get(n, 0)) + 1)
+            if lo > hi:
+                continue
+            k = min(counts.get(self.addr[n], 0) if lo <= hi else 0, (hi - lo + 1) * a['maxmb'], self.plan.get('k', 10**9))
+            if k == 0:
+                self.ev('claim_skip', who=n, reason='no miniblocks of this wallet in its span')
+                continue
+            nc0 = int(self.vars('attest')[0].get('nc', 0))
+            self.call(n, 'attest', 'Claim', [arg_u('from', lo), arg_u('upto', hi), arg_u('k', k)], dero=k * a['bond'])
+            v, _ = self.vars('attest')
+            i = claim_index(nc0, v.get('nc', 0))
+            last[n] = hi
+            self.run.save()
+            made.append((n, i, k, int(v.get(f'c{i}h', h))))
+        if not made:
+            return []
+        self.wait_height(max(x[3] for x in made) + a['window'] + 1)
+        nxt = {n: self.names[(j + 1) % len(self.names)] for j, n in enumerate(self.names)}
+        by = {}
+        for n, i, _k, _h in made:
+            by.setdefault(nxt[n], []).append(i)
+        self.par([lambda f=f, L=L: [self.call(f, 'attest', 'Finalize', [arg_u('i', i)]) for i in L] for f, L in by.items()])
+        v, _ = self.vars('attest')
+        mat = self.run.state['scids']['attest']
+        return [{'who': n, 'k': k, 'status': int(v.get(f'c{i}s', -1)), 'mat': self.balance(n, mat)} for n, i, k, _h in made]
+
+    def audit_round(self, task, bounty, span=30):
+        """r32a: one gt_audit bounty round over a settled range. The sponsor (names[0]) commits its answer hidden; every
+        other wallet computes the answer itself (harness/gametheory/audit_tasks.py, read-only) and commits it bound to its
+        own address; reveals after the commit window; Settle; pull withdrawals. Records the contract's verdict."""
+        import importlib.util as _iu
+        spec = _iu.spec_from_file_location('audit_tasks', ROOT / 'harness/gametheory/audit_tasks.py')
+        AT = _iu.module_from_spec(spec)
+        spec.loader.exec_module(AT)
+        u = self.P['audit']
+        tip = self.height()
+        hi = tip - AT.SETTLE - 1
+        lo = hi - span + 1
+        sp = self.names[0]
+        rpc = AT.RI.Rpc(url=f"http://{self.net['daemon']}/json_rpc")        # the cycle's own network, read-only
+        floor = AT.RI.PRUNED_FLOOR if self.a.network == 'mainnet' else 0
+        ans_s, why = AT.compute(task, lo, hi, rpc=rpc, floor=floor)
+        if why:
+            raise RuntimeError(f'audit task {task}: {why}')
+        com = {}
+        for n in self.names[1:]:          # every auditor re-derives the answer itself, BEFORE the Post: Enter follows at once
+            mine, why = AT.compute(task, lo, hi, rpc=rpc, floor=floor)
+            if why:
+                raise RuntimeError(f'audit task {task} for {n}: {why}')
+            salt = gtlib.new_password()
+            com[n] = (mine['answer'], salt, gtlib.audit_commit(mine['answer'], salt, self.addr[n]))
+        salt_s = gtlib.new_password()
+        na0 = int(self.vars('audit')[0].get('na', 0))
+        self.call(sp, 'audit', 'Post', [arg_u('task', task), arg_u('from', lo), arg_u('upto', hi),
+                                        arg_s('commit', gtlib.audit_sponsor_commit(ans_s['answer'], salt_s))], dero=bounty)
+        v, _ = self.vars('audit')
+        if int(v.get('na', 0)) != na0 + 1:
+            raise RuntimeError(f'postcondition: audit Post reverted (na {na0} -> {v.get("na")})')
+        ar = na0
+        self.par([lambda n=n: self.call(n, 'audit', 'Enter', [arg_u('a', ar), arg_s('commit', com[n][2])], dero=u['bond'])
+                  for n in com])
+        v, _ = self.vars('audit')
+        idx = {n: entry_index_audit(v, ar, com[n][2]) for n in com}
+        if None in idx.values():
+            self.ev('audit_enter_rejected', round=ar, missing=[n for n in idx if idx[n] is None])
+        start = int(v[f'a{ar}_start'])                  # gt_audit key map: p+start = the Post height
+        self.wait_height(start + u['commitw'] + 1)
+        self.call(sp, 'audit', 'RevealSponsor', [arg_u('a', ar), arg_s('answer', ans_s['answer']), arg_s('salt', salt_s)])
+        self.par([lambda n=n: self.call(n, 'audit', 'Reveal', [arg_u('a', ar), arg_u('j', idx[n]), arg_s('answer', com[n][0]),
+                                                                arg_s('salt', com[n][1])]) for n in com if idx[n] is not None])
+        v, _ = self.vars('audit')
+        arev = {n: int(v.get(f'a{ar}_{idx[n]}_v', 0)) for n in com if idx[n] is not None}
+        if not all(arev.values()) or f'a{ar}_sa' not in v:
+            self.ev('audit_reveal_rejected', round=ar, revealed=arev, sponsor_revealed=f'a{ar}_sa' in v, start=start,
+                    commitw=u['commitw'], revealw=u['revealw'], height=self.height())
+        self.wait_height(start + u['commitw'] + u['revealw'] + 1)
+        self.call(sp, 'audit', 'Settle', [arg_u('a', ar)])
+        self.par([lambda n=n: self.call(n, 'audit', 'Withdraw', [arg_u('a', ar), arg_u('j', idx[n])]) for n in com if idx[n] is not None])
+        v, _ = self.vars('audit')
+        return {'audit_round': ar, 'task': task, 'name': ans_s['name'], 'from': lo, 'upto': hi, 'bounty': bounty,
+                'auditors': len(com), 'entered': sum(1 for x in idx.values() if x is not None),
+                'summary': ans_s['summary'],
+                'verdict': {k: v.get(f'a{ar}_{k}') for k in AUDIT_VERDICT_KEYS}}   # outcome keys only: no signer bytes
 
     def m1_claim(self):
         m, a = self.names[0], self.P['attest']
@@ -308,7 +490,8 @@ class Cycle:
         z = self.P['prize']
         v, _ = self.vars('prize')
         r, rs = int(v.get('rd', 0)), int(v.get('rs', 0))
-        if self.height() > rs + z['commitw'] - ENTER_MARGIN:
+        margin = (self.run.state.get('windows') or {}).get('margin', ENTER_MARGIN)
+        if self.height() > rs + z['commitw'] - margin:
             self.wait_height(rs + z['commitw'] + z['revealw'] + 1)
             self.call(self.names[0], 'prize', 'Draw')
             v, _ = self.vars('prize')
@@ -331,11 +514,17 @@ class Cycle:
         self.wait_height(rs + z['commitw'] + 1)
         self.par([lambda n=n: self.call(n, 'prize', 'Reveal', [arg_u('j', idx[n]), arg_u('num', com[n][0]), arg_s('salt', com[n][1])])
                   for n in self.names if idx[n] is not None])
+        v, _ = self.vars('prize')
+        revealed = {n: int(v.get(f'v{r}_{idx[n]}', 0)) for n in self.names if idx[n] is not None}
+        if not all(revealed.values()):                  # r32a pre-flight: rounds drew no winner; say which reveal failed
+            self.ev('reveal_rejected', round=r, revealed=revealed, rs=rs, commitw=z['commitw'], revealw=z['revealw'],
+                    height=self.height())
         self.wait_height(rs + z['commitw'] + z['revealw'] + 1)
         self.call(self.names[0], 'prize', 'Draw')
         self.pending_w += [(n, r, idx[n]) for n in self.names if idx[n] is not None]
         v, _ = self.vars('prize')
         return {'round': r, 'entrants': entrants, 'entries': {str(j): n for n, j in idx.items() if j is not None},
+                'revealed': sum(revealed.values()),
                 'winner_index': int(v.get(f'win{r}', -1)), 'paid': int(v.get(f'paid{r}', 0)),
                 'drawn': int(v.get(f'drawn{r}', 0))}
 
@@ -416,16 +605,25 @@ def main(argv):
             # the start threshold is the plan's (1 DERO each by default), else the sizing targets
             need = int((json.loads(Path(a.plan).read_text()).get('threshold_atomic') if a.plan else 0) or 0)
             sz = json.loads((ROOT / 'harness/runtime/gt_sizing_last.json').read_text())
-            short = {n: start[n] for n in c.names if start[n] < (need or int(sz['targets_atomic'].get(n, 0)))}
+            needs = (json.loads(Path(a.plan).read_text()).get('needs_atomic') or {}) if a.plan else {}   # r32a: per wallet
+            short = {n: start[n] for n in c.names
+                     if start[n] < int(needs.get(n) or need or int(sz['targets_atomic'].get(n, 0)))}
             if short:
                 c.ev('cycle_wait', reason='below the sizing target (D-GT-7)', short={k: f'{v / 1e5:.5f}' for k, v in short.items()})
                 return 7
         c.deploy()
-        res = {'m1': c.m1_claim(), 'm3_rounds': []}
+        ladder = 'audits' in c.plan                      # r32a: a ladder step (N wallets, every wallet claims, audit rounds)
+        if ladder:
+            cl = c.claims()
+            res = {'claims': cl, 'm1': next((x for x in cl if x['who'] == c.names[0]), None), 'm3_rounds': [], 'audits': []}
+        else:
+            res = {'m1': c.m1_claim(), 'm3_rounds': []}
         for _ in range(int(c.plan.get('rounds', 1))):
             res['m3_rounds'].append(c.m3_round())
         res['m3'] = res['m3_rounds'][-1]
         c.flush_withdraws()
+        for t in range(int(c.plan.get('audits', 0))):
+            res['audits'].append(c.audit_round(1 + t % 2, int(c.plan['bounty'])))   # task 1 headers, 2 emission, ...
         if a.with_m2:
             res['m2'] = c.m2_epoch()
         c.record(start, res)

@@ -151,13 +151,13 @@ def st_debug(p):
     gas = RUNTIME / 'gt_gas_census.json'
     if gas.exists():
         gas.unlink()
-    rc1, o1 = sh(['go', 'test', '-p', '1', './dvm', '-run', 'R32GT', '-count=1', '-v'], env={'GT_GAS_OUT': str(gas)})
+    rc1, o1 = sh(['go', 'test', '-p', '1', './dvm', '-run', 'R32GT|R32aAudit', '-count=1', '-v'], env={'GT_GAS_OUT': str(gas)})   # r32a: + M4
     rc2, o2 = sh(['go', 'test', '-p', '1', './cmd/simulator', '-run', 'R32', '-count=1'])
     passed = re.findall(r'^--- PASS: (TestR32\w+)', o1, re.M)
     failed = re.findall(r'^--- FAIL: (TestR32\w+)', o1 + o2, re.M)
     logs = re.findall(r'r32_gametheory_test.go:\d+: (.+)', o1)
     g = json.loads(gas.read_text()) if gas.exists() else {}
-    ok = bool(rc1 == 0 and rc2 == 0 and len(passed) >= 9 and not failed and g)
+    ok = bool(rc1 == 0 and rc2 == 0 and len(passed) >= 15 and not failed and g)   # r32a: 9 R32GT + 6 R32aAudit
     p.event('debug', 'PASS' if ok else 'FAIL', go_dvm_rc=rc1, go_sim_rc=rc2, passed=len(passed), failed=failed,
             gas_entries=len(g))
     return ok, {'passed': passed, 'failed': failed, 'logs': logs, 'gas': g, 'tail': (o1 + o2)[-600:] if not ok else ''}
@@ -224,9 +224,10 @@ def st_playbook(p, sim, run_id):
     recs = sorted((ROOT / 'harness/runtime').glob('gt_cycle_mainnet_*.json'))   # r32 run 9: the chain audit G36 requires
     rc_a = sh([sys.executable, '-I', 'harness/gametheory/cycle_audit.py', '--record', str(recs[-1].relative_to(ROOT)), '--write'],
               timeout=300)[0] if recs else 0
+    rc_r, _ = sh([sys.executable, '-I', 'harness/gametheory/recipe_lint.py'], timeout=30)   # r32a: live DONE recipes (2 = none yet)
     rc_g, _ = sh([sys.executable, '-I', 'playbooks/gt_cycle.py', '--network', 'mainnet'], timeout=60)  # 5 = refused w/o confirm   # read-only; the page's record is written on purpose (--write)
-    ok = rc == 5 and ua >= 6 and rc_e == 5 and rc_t == 0 and rc_c in (0, 2) and rc_a == 0 and rc_g == 5   # 5 = the mainnet plan stops at every user step
-    info = {'mainnet_dry_rc': rc, 'user_actions': ua, 'earn_plan_rc': rc_e, 'time_to_coins_rc': rc_t, 'earn_record_rc': rc_c, 'cycle_audit_rc': rc_a, 'cycle_gate_rc': rc_g}
+    ok = rc == 5 and ua >= 6 and rc_e == 5 and rc_t == 0 and rc_c in (0, 2) and rc_a == 0 and rc_r in (0, 2) and rc_g == 5   # 5 = the mainnet plan stops at every user step
+    info = {'mainnet_dry_rc': rc, 'user_actions': ua, 'earn_plan_rc': rc_e, 'time_to_coins_rc': rc_t, 'earn_record_rc': rc_c, 'cycle_audit_rc': rc_a, 'recipe_lint_rc': rc_r, 'cycle_gate_rc': rc_g}
     if sim:
         rc2, out2 = sh([sys.executable, '-I', 'playbooks/gt_playbook.py', 'all', '--network', 'sim', '--run-id', f'{run_id}-sim',
                         '--mine-seconds', '45'], timeout=3600)

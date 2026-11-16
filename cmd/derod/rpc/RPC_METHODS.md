@@ -180,7 +180,9 @@ Changes r29–r31 (same compat rule: additive fields, typed refusals; no consens
 | wallet `scinvoke` (walletapi/rpcserver, r31) | an oversized SC argument set was refused only after the ring and proof work | refused first when it would not fit a transaction (`SCINVOKE_MAX_SCDATA` = the chain's `STARGATE_HE_MAX_TX_SIZE`) |
 | /metrics (r31) | — | the `sc_*` smart-contract families (install, invoke, revert by reason, out-of-gas, recovered panics; exec time and gas histograms) and `tx_pool_refused_total{reason}`, registered in `metrics/metric_registry.json` |
 
-<!-- doc-current-through: r31 -->
+Round 32 (2026-11-15): no derod or wallet RPC change (the Go diff of R32 touches only `cmd/gt-wallet`, a `cmd/simulator` flag and tests). `cmd/gt-wallet serve` runs the stock wallet RPC server on loopback for the game-theory playbooks. Two facts the playbooks depend on, read from the code: `DERO.GetSC` returns String variables hex-encoded (`rpc_dero_getsc.go:138`), and `DERO.GetGasEstimate` runs `sc_rpc` as given (`rpc_dero_estimategas.go:78`), so a caller adds the `SC_ACTION` / `SC_ID` arguments the wallet would add.
+
+<!-- doc-current-through: r32 -->
 
 Example:
 

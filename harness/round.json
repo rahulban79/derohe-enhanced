@@ -1,6 +1,6 @@
 {
  "_doc": "r23c round registry: the one place a round's ids live (read by harness/pipeline/fix_build_verify.py and harness/pipeline/benchlock.py, checked by harness/kat/test_round_registry_r23c.py). The literal string 'pending' means not known yet: never replace it with a guess. Protocol: artifacts/dero-rft.md and harness/README.md.",
- "current": "r32",
+ "current": "r32a",
  "upstream_base": "bf274e5",
  "benchlock": "~/derohe-persist/bench.lock",
  "rounds": [
@@ -222,23 +222,43 @@
   },
   {
    "id": "r32",
+   "status": "measured",
+   "version_suffix": "22102026.r31",
+   "new_tests_base": "5f69b055",
+   "merge_commit": "d20e95f0",
+   "head_after": "d20e95f0",
+   "pipeline_full": "pipeline_20261115T141331",
+   "go_mutations": "1761/1761",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "a1be4255",
+    "target": "21d558ee"
+   },
+   "tracks": {
+    "miner": "paused",
+    "node": "active"
+   },
+   "evidence": "R32 opened 2026-11-15 by the R32 coordinator from 5f69b055 (R31 closed): DELEGATED to the child rft artifacts/dero-game-theory-rft.md (the user, 2026-11-15: park the broad and miner tracks; 100 % DVM / smart contracts / game theory; parent rft §0.12 D-37); tracks miner paused / node active (derod r31 unchanged, no node work); area gametheory opens since r32; gate G35 | mainnet cycle settled 2026-11-15 10:26:53 (G36 PASS, project-only pipeline_20261115T124651 PASS; public b302bf1 pushed 14:02:36); the full pipeline (go mutations, race, shadow) runs before R32 is marked measured. | MEASURED: full pipeline_20261115T141331 PASS (go mutations 1761/1761, race 27 packages 0 races, shadow 119/119 per node, 0 treehash mismatches, project KATs 35/35, harness KAT mutations 34 of 34, gates 33/36 + 3 PAUSED); the node build stays r31 (version_suffix 22102026.r31): R32 changed no derod code path (Go diff 5f69b055..: cmd/gt-wallet, cmd/simulator flag, tests)."
+  },
+  {
+   "id": "r32a",
    "status": "in-progress",
    "version_suffix": "pending",
-   "new_tests_base": "5f69b055",
+   "new_tests_base": "d20e95f0",
    "merge_commit": "pending",
    "head_after": "pending",
    "pipeline_full": "pending",
    "go_mutations": "pending",
    "new_rpc_methods": {},
    "github_sync": {
-    "base": "a1be4255",
+    "base": "21d558ee",
     "target": "pending"
    },
    "tracks": {
     "miner": "paused",
     "node": "active"
    },
-   "evidence": "R32 opened 2026-11-15 by the R32 coordinator from 5f69b055 (R31 closed): DELEGATED to the child rft artifacts/dero-game-theory-rft.md (the user, 2026-11-15: park the broad and miner tracks; 100 % DVM / smart contracts / game theory; parent rft §0.12 D-37); tracks miner paused / node active (derod r31 unchanged, no node work); area gametheory opens since r32; gate G35"
+   "evidence": "R32a opened 2026-11-15 by the main session from d20e95f0 (R32 measured; the user: \"for continuing on the current R32 enhancements path (name it R32-a)\"): the second mainnet cycle with a third wallet, grown to 5 wallets; primary objectives: miners paid to mine along with the games (network hashrate), and the security concerns of prior rounds addressed where a game with mining can (detection: gt_audit M4); child rft D-GT-11..16. The pipeline-owned gt miner (new gt wallets only) runs; the user's own miner stays off."
   },
   {
    "id": "r33",

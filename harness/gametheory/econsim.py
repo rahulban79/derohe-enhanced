@@ -160,6 +160,31 @@ def m3_withholding(p, prize, n_revealed, block_reward_forgone, uses_random=False
     return {'revealer_safe': prize <= rev, 'miner_safe': miner_safe, 'max_safe_prize': cap}
 
 
+# ---------------------------------------------------------------- M4: the audit bounty (gt_audit.bas, r32a)
+def m4_auditor_ev(bounty, n_winners, fee_cost, bond, honest=True):
+    """An honest auditor (it re-derives the deterministic answer) splits the bounty with the other winners and gets its
+    bond back; a lazy guess of a 64-hex digest or a copied commit (bound to the copier's own address, Reveal refuses it)
+    never matches, so it forfeits the bond. Research §Q3: the bounty must beat the auditor's own fees (verifier's
+    dilemma) — the hidden sponsor answer removes the free ride of copying it."""
+    if not honest:
+        return -bond - fee_cost
+    return round(bounty / max(1, n_winners) - fee_cost, 2)
+
+
+def m4_majority_override(n_revealed, colluders):
+    """gt_audit Settle: a STRICT majority of revealed auditors that agree on one answer other than the sponsor's wins and
+    sets disputed=1. Colluders override an honest sponsor iff colluders > n_revealed / 2 — collusion is NOT prevented,
+    only made public (the stated limit, child rft)."""
+    return colluders * 2 > n_revealed
+
+
+def ledger_m4(rounds=6):
+    """gt_audit payouts by source: a winner gets its own bond back, a share of the sponsor's bounty and of the carry
+    (earlier rounds' forfeits); nothing is paid from a later participant's deposit."""
+    return [{'t': r, 'payee': f'a{r}', 'source': s} for r in range(rounds)
+            for s in ('own_bond', 'sponsor', 'carry_earlier_round')]
+
+
 # ---------------------------------------------------------------- HR: hashrate under free entry
 def hashrate_gain(block_reward, sc_incentive_per_block):
     """Free entry: miners enter until revenue per hash = cost per hash, so total hashrate H is proportional to the
@@ -170,7 +195,9 @@ def hashrate_gain(block_reward, sc_incentive_per_block):
 
 # ---------------------------------------------------------------- PONZI: the stop-inflow test
 SOURCES_OK = {'own_principal', 'own_bond', 'counterparty_bond_same_dispute', 'slash_same_dispute', 'sponsor',
-              'fees_same_epoch', 'forfeit_same_round', 'token_issuance'}
+              'fees_same_epoch', 'forfeit_same_round', 'token_issuance',
+              'carry_earlier_round'}   # r32a gt_audit: forfeits of an EARLIER round join a later bounty (a rollover, funded
+#                                       by the past, never by a later participant's deposit)
 
 
 def ledger_m1(rounds=20, seed=32):
@@ -279,14 +306,24 @@ def analyse(seed=32, params=None):
     checks.append(('M3 v1 (RANDOM in the pick) would let the Draw integrator re-roll a prize above one share (3,075)',
                    not res['m3_withholding']['v1_random']['miner_safe']))
 
+    # M4 (r32a): the audit bounty — honest auditing pays, guessing and copying lose the bond, collusion is the stated limit
+    fee3 = 3 * 300
+    res['m4'] = {'honest_ev': m4_auditor_ev(6000, 2, fee3, 600), 'lazy_ev': m4_auditor_ev(6000, 2, fee3, 600, honest=False),
+                 'below_bound_ev': m4_auditor_ev(1500, 2, fee3, 600)}
+    checks.append(('M4 an honest auditor gains when bounty / winners exceeds its fees (6000/2 > 900)', res['m4']['honest_ev'] > 0))
+    checks.append(('M4 a bounty below the fee bound does not pay an honest auditor (1500/2 < 900)', res['m4']['below_bound_ev'] < 0))
+    checks.append(('M4 a lazy guess or a copied commit loses its bond', res['m4']['lazy_ev'] < 0))
+    checks.append(('M4 colluders override the sponsor only as a strict majority (3 of 5 yes, 2 of 4 no) - not prevented',
+                   m4_majority_override(5, 3) and not m4_majority_override(4, 2)))
+
     # HR: hashrate gain = real incentive / block reward
     res['hr'] = {'gain_1pct_needs_per_block': round(0.01 * 61500), 'gain_if_100_atomic_per_block': hashrate_gain(61500, 100)}
 
     # PONZI
     pz = {'M1': stop_inflow_check(ledger_m1(seed=seed)), 'M2': stop_inflow_check(ledger_m2()),
-          'M3': stop_inflow_check(ledger_m3()), 'M-NOGO-1': stop_inflow_check(ledger_nogo_pyramid())}
+          'M3': stop_inflow_check(ledger_m3()), 'M4': stop_inflow_check(ledger_m4()), 'M-NOGO-1': stop_inflow_check(ledger_nogo_pyramid())}
     res['ponzi'] = pz
-    checks.append(('PONZI M1/M2/M3 pass the stop-inflow test', not any(pz[k]['ponzi_shaped'] for k in ('M1', 'M2', 'M3'))))
+    checks.append(('PONZI M1/M2/M3/M4 pass the stop-inflow test', not any(pz[k]['ponzi_shaped'] for k in ('M1', 'M2', 'M3', 'M4'))))
     checks.append(('PONZI the planted pyramid M-NOGO-1 is flagged', pz['M-NOGO-1']['ponzi_shaped']))
     res['checks'] = [{'check': c, 'ok': bool(ok)} for c, ok in checks]
     res['ok'] = all(ok for _, ok in checks)

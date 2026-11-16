@@ -5,6 +5,23 @@
 An enhanced build of the DERO HE daemon (`derod`), miner (`dero-miner`) and wallet CLI. Every change is
 non-consensus: it runs on the current mainnet with no fork. Highlights:
 
+Round 32 (smart contracts on the unchanged `+22102026.r31` node build) adds (miner track paused):
+
+- **Game-theory contracts:** three DVM-BASIC contracts for miners: an attestation of mined miniblocks with a bond, a
+  challenge window and a token reward; a notary service with a same-address boost; a commit-reveal prize round with
+  sponsor funding and a token-holder boost. Each has DVM tests; none changes consensus.
+- **Block reward, read from the code:** what a contract can and cannot do for a miner (it cannot raise the reward or
+  see which address mined), the per-miniblock split and the integrator's final share, pinned by tests.
+- **Pipeline and playbooks:** a zero-touch pipeline (research, DVM census, lint, tests, economic model, playbook,
+  report) and Python playbooks that run without an LLM: create wallets, mine to them, deploy the contracts, play.
+- **Measured on mainnet:** two new wallets earned their coins by mining, then ran a full cycle: three contracts
+  deployed, an attestation claim finalized, five prize rounds. A chain audit re-derives each round's entrants from the
+  contract and takes the mining out of the payoffs, which sum to minus the fees (a closed game only redistributes).
+- **Hardening from that run:** a transaction counts only in a valid block three deep, setup steps are verified by their
+  on-chain effect, retries are bounded, and both players enter at the start of the commit window.
+
+The game-theory page, its PDF and the game-theory record are in [`harness/`](harness/).
+
 Round 31 (`+22102026.r31`) adds (node-only: the miner track was paused for this round):
 
 - **Detectors:** seven static area detectors (RPC and P2P budgets, decoder fuzz coverage, discarded errors, crypto input

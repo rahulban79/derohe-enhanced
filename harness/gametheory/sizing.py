@@ -189,3 +189,91 @@ def plan_two_wallet(fee_call, fee_install, budget_each, rounds=None, rbond=1000,
         if r and r['viable']:
             return {'viable': False, 'reason': f'no plan passes at {budget_each} atomic each', 'min_budget_each_atomic': b}
     return {'viable': False, 'reason': 'no plan passes up to 50x the budget', 'min_budget_each_atomic': None}
+
+
+# ---------------------------------------------------------------- R32a: the N-wallet ladder (3 -> 5 wallets)
+# The user (2026-11-15): "run the second mainnet cycle with a third wallet - and increment this game until it reaches 5
+# wallets". Roles: names[0] sponsor + claimer (mined, MAT-boosted), names[1] finalizer, every wallet a prize player, every
+# wallet but the sponsor an auditor in the gt_audit bounty rounds. One deployment serves the whole ladder (maxn >= 5), so
+# the install fees are paid once (ladder_setup) and each step pays only its rounds.
+# (f) research (scratchpad r32a/research_web.md §Q2, RANDAO last-revealer): a player who sees it would lose can withhold
+#     its reveal and change the draw; it forfeits its reveal bond, so the bond must be at least the prize it can swing.
+# (g) research §Q3 (Truebit verifier's dilemma, Chainlink alert bounty): an audit bounty must pay an honest auditor more
+#     than its own fees, or rational auditors stop auditing.
+AUDIT_CALLS_SPONSOR = 3      # Post, RevealSponsor, Settle
+AUDIT_CALLS_AUDITOR = 3      # Enter, Reveal, Withdraw
+
+
+def ladder_setup(fee_call, fee_install, contracts=4):
+    """the one-off cost of the ladder: installs + SetParams/SetMAT/Freeze + one claim and finalize. Pure."""
+    calls = (contracts) + 2 + contracts + 2             # SetParams per contract, SetMAT x2, Freeze per contract, Claim+Finalize
+    return contracts * fee_install + calls * fee_call
+
+
+def viability_n(plan, n, fee_call, fee_install, budgets, ponzi_shaped=False, amortise_steps=3, deployed=False):
+    """the seven R32a checks for an n-wallet step. plan: principal, rbond, sponsor, rounds, boost, bond, k, bounty,
+    abond, audits. budgets: {wallet: atomic}. The setup is amortised over the ladder's steps. Pure."""
+    p, rb, S, R, boost = plan['principal'], plan['rbond'], plan['sponsor'], plan['rounds'], plan['boost']
+    B, ab, A = plan['bounty'], plan['abond'], plan['audits']
+    names = sorted(budgets, key=lambda w: int(w[1:]) if w[1:].isdigit() else w)[:n]
+    setup = ladder_setup(fee_call, fee_install) / amortise_steps
+    fees = {w: R * (5 if i == 0 else 3) * fee_call + A * (AUDIT_CALLS_SPONSOR if i == 0 else AUDIT_CALLS_AUDITOR) * fee_call
+            for i, w in enumerate(names)}
+    fees[names[0]] += setup
+    wts = {w: (p * (100 + boost) // 100 if i == 0 else p) for i, w in enumerate(names)}
+    W = sum(wts.values())
+    prize_ev = {w: R * S * wts[w] / W for w in names}
+    audit_ev = {w: (0 if i == 0 else A * B / (n - 1)) for i, w in enumerate(names)}
+    net = {w: prize_ev[w] + audit_ev[w] - fees[w] - (R * S + A * B if i == 0 else 0) for i, w in enumerate(names)}
+    stake = {w: p + rb + (0 if i == 0 else ab) for i, w in enumerate(names)}
+    # the budget check pays the WHOLE one-off setup in the step that deploys (deployed=False); the EV amortises it
+    extra = 0 if deployed else ladder_setup(fee_call, fee_install) - setup
+    spend = {w: fees[w] + stake[w] + (R * S + A * B + plan['k'] * plan['bond'] + extra if i == 0 else 0) for i, w in enumerate(names)}
+    per_round_frac = max((fees[w] - (setup if i == 0 else 0)) / max(1, R) / stake[w] for i, w in enumerate(names))
+    boost_gain = S * (wts[names[0]] / W - p / (p * n))
+    checks = {
+        'a_fees_bounded': per_round_frac <= FEE_FRACTION_MAX,
+        'b_participants_gain': all(net[w] >= 0 for w in names[1:]),
+        'c_same_address_incentive': boost_gain > 0,
+        'd_no_ponzi': not ponzi_shaped,
+        'e_budget': all(spend[w] <= budgets[w] * (1 - SAFETY) for w in names),
+        'f_withhold_deterred': rb * max(n - 1, 1) >= S,     # econsim.m3_withholding revealer bound (one source)
+        'g_audit_pays': n < 2 or B / (n - 1) >= AUDIT_CALLS_AUDITOR * fee_call,
+    }
+    return {'ok': all(checks.values()), 'checks': checks, 'wallets': names, 'fee_fraction_per_round': round(per_round_frac, 4),
+            'setup_amortised_atomic': round(setup), 'fees_atomic': {w: round(v) for w, v in fees.items()},
+            'net_atomic': {w: round(v, 1) for w, v in net.items()}, 'spend_atomic': {w: round(v) for w, v in spend.items()},
+            'boost_gain_atomic': round(boost_gain, 1),
+            'sponsor_price_per_call_atomic': round((R * S + A * B) / max(1, sum(fees.values()) / fee_call), 1)}
+
+
+def plan_n_wallet(n, fee_call, fee_install, budgets, rounds=5, audits=2, boost=100, bond=615, k=10, amortise_steps=3,
+                  deployed=False):
+    """the cheapest viable plan for an n-wallet step on a grid, or the refusal naming the binding checks. rbond is set to
+    max(1000, sponsor) so (f) holds by construction; the auditor bond is the smallest that makes a lazy wrong answer cost
+    more than one Enter fee. Deterministic."""
+    grid_p = [int(x * 1000) for x in (5, 10, 20, 30, 40, 50, 75, 100)]
+    abond = 2 * fee_call
+    best, last = None, None
+    for p in grid_p:
+        for S in range(1000, p + 1, 1000):
+            for B in range(1000, 20001, 1000):
+                plan = {'principal': p, 'rbond': max(1000, S), 'sponsor': S, 'rounds': rounds, 'boost': boost, 'bond': bond,
+                        'k': k, 'bounty': B, 'abond': abond, 'audits': audits}
+                v = viability_n(plan, n, fee_call, fee_install, budgets, amortise_steps=amortise_steps, deployed=deployed)
+                last = v
+                if v['ok']:
+                    cost = sum(v['fees_atomic'].values()) + rounds * S + audits * B
+                    if best is None or cost < best[0]:
+                        best = (cost, plan, v)
+                    break
+    if best:
+        return {'viable': True, 'n': n, 'plan': best[1], 'viability': best[2]}
+    failing = sorted(k2 for k2, ok in (last or {}).get('checks', {}).items() if not ok)
+    out = {'viable': False, 'n': n, 'reason': f'no plan on the grid passes for {n} wallets', 'failing_last': failing}
+    if budgets and min(budgets.values()) < 10 ** 9:
+        big = plan_n_wallet(n, fee_call, fee_install, {w: 10 ** 9 for w in budgets}, rounds, audits, boost, bond, k, amortise_steps,
+                            deployed)
+        if big['viable']:      # D-GT-7: the balance each wallet must reach for the cheapest plan (the earn targets)
+            out['needs_atomic'] = {w: int(-(-v // (1 - SAFETY))) for w, v in big['viability']['spend_atomic'].items()}
+    return out

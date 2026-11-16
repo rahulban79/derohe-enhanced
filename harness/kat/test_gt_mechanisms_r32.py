@@ -44,7 +44,8 @@ PATHS = {'ban': 'harness/gametheory/banguard.py', 'econ': 'harness/gametheory/ec
          'gate': 'harness/gametheory/gt_gate.py', 'ttc': 'harness/gametheory/time_to_coins.py',
          'earnrec': 'harness/gametheory/cycle_from_earn.py', 'page': 'artifacts/src/gen_gametheory.py',
          'earn': 'playbooks/gt_earn.py', 'trig': 'playbooks/gt_trigger.py',
-         'pipe': 'harness/gametheory/gt_pipeline.py', 'lib': 'playbooks/gtlib.py', 'cycle': 'playbooks/gt_cycle.py', 'audit': 'harness/gametheory/cycle_audit.py'}
+         'pipe': 'harness/gametheory/gt_pipeline.py', 'lib': 'playbooks/gtlib.py', 'cycle': 'playbooks/gt_cycle.py', 'audit': 'harness/gametheory/cycle_audit.py',
+         'rlint': 'harness/gametheory/recipe_lint.py', 'atask': 'harness/gametheory/audit_tasks.py', 'ladder': 'playbooks/gt_ladder.py'}
 COPY_DIRS = ['harness/gametheory', 'playbooks', 'gametheory', 'harness/kit']
 FAKE = 'deto1qy' + 'q' * 58 + 'fake'
 OTHER = 'deto1qy' + 'z' * 58 + 'okok'
@@ -507,7 +508,8 @@ def kat_gt16(over):
             spec = importlib.util.spec_from_file_location(f'gt32_cycle_{uuid.uuid4().hex[:6]}', root / PATHS['cycle'])
             cy = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(cy)
-            v = {'h5_0': 'b' * 64, 'h5_1': 'a' * 64, 'h4_0': 'a' * 64, 'n5': 2}
+            hx = lambda x: x.encode().hex()   # DERO.GetSC hex-encodes String values (cmd/derod/rpc/rpc_dero_getsc.go:138)
+            v = {'h5_0': hx('b' * 64), 'h5_1': hx('a' * 64), 'h4_0': hx('a' * 64), 'n5': 2}
             ei = (cy.entry_index(v, 5, 'a' * 64), cy.entry_index(v, 5, 'b' * 64), cy.entry_index(v, 5, 'c' * 64))
             solo = [{'drawn': 1, 'winner_index': 0, 'entrants': 1}] * 3
             duo = solo + [{'drawn': 1, 'winner_index': 1, 'entrants': 2}]
@@ -563,16 +565,194 @@ def kat_gt17(over):
     return ok, au['genuine_rounds'], au['net_game_payoff_atomic'], au['sum_check'], (g_none, g_ok, g_solo, g_other)
 
 
+def _with_env(fn):
+    """run fn(d) with the forged ban list and temp GT dirs (the playbook modules import gtlib)."""
+    with tempfile.TemporaryDirectory() as d:
+        keep = {k: os.environ.get(k) for k in ('GT_HOME', 'GT_WALLETS', 'GT_BANNED_FILE')}
+        os.environ.update(GT_HOME=str(Path(d) / 'home'), GT_WALLETS=str(Path(d) / 'w'), GT_BANNED_FILE=str(forged_ban(d)))
+        try:
+            return fn(d)
+        finally:
+            for k2, v in keep.items():
+                if v is None:
+                    os.environ.pop(k2, None)
+                else:
+                    os.environ[k2] = v
+
+
+def _mod(root, key):
+    for sub in ('playbooks', 'harness/gametheory'):
+        if str(root / sub) not in sys.path:
+            sys.path.insert(0, str(root / sub))
+    spec = importlib.util.spec_from_file_location(f'gt32_{key}_{uuid.uuid4().hex[:6]}', root / PATHS[key])
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def kat_gt18(over):
+    """r32a (2026-11-15 14:28): a SIGTERM to gt_earn left its detached miner mining; stop_miners stops every recorded
+    mainnet-miner-* of the run (but the one to keep), and the earn command lines the ladder writes pass recipe_lint,
+    which flags the old `; touch earn.DONE` recipe."""
+    root = Path(over.get('root') or ROOT)
+
+    def body(d):
+        e = _mod(root, 'earn')
+        R = _mod(root, 'rlint')
+        L = _mod(root, 'ladder')
+
+        class FakeRun:
+            def __init__(self):
+                self.state = {'procs': {'mainnet-miner-m1': {}, 'mainnet-miner-m2': {}, 'cycle-wallet-m1': {}}}
+                self.stopped = []
+        fr = FakeRun()
+        real = e.gtlib.stop_proc
+
+        def fake_stop(run, name, wait_s=15):
+            run.stopped.append(name)
+            run.state['procs'].pop(name, None)
+            return True
+        e.gtlib.stop_proc = fake_stop
+        try:
+            a = e.stop_miners(fr, keep='mainnet-miner-m2')
+            b = e.stop_miners(fr)
+        finally:
+            e.gtlib.stop_proc = real
+        bad = R.problems('cd x && python3 run.py >> log 2>&1; touch /p/earn.DONE')
+        good = R.problems(L.earn_cmd(['m1', 'm2', 'm3'], Path('/p')))
+        return a, b, fr.stopped, bad, good
+    a, b, stopped, bad, good = _with_env(body)
+    ok = (a == ['mainnet-miner-m1'] and b == ['mainnet-miner-m2'] and 'cycle-wallet-m1' not in stopped
+          and len(bad) == 1 and good == [])
+    return ok, a, b, stopped, bad, good
+
+
+def kat_gt19(over):
+    """r32a sizing for 3-5 wallets: (f) the reveal bond deters withholding (econsim m3_withholding bound), (g) the audit
+    bounty pays an honest auditor more than its fees, the deploying step pays the whole setup, and a refusal names the
+    balance each wallet needs (D-GT-7)."""
+    S = load(over, 'size')
+    base = {'principal': 20000, 'rbond': 1000, 'sponsor': 1000, 'rounds': 5, 'boost': 100, 'bond': 615, 'k': 10,
+            'bounty': 6000, 'abond': 600, 'audits': 2}
+    big = {f'm{i}': 10 ** 7 for i in range(1, 6)}
+    v_ok = S.viability_n(base, 3, 300, 11000, big)
+    v_f = S.viability_n(dict(base, sponsor=5000, rbond=1000), 3, 300, 11000, big)['checks']['f_withhold_deterred']
+    v_g = S.viability_n(dict(base, bounty=1000), 3, 300, 11000, big)['checks']['g_audit_pays']
+    s_dep = S.viability_n(base, 3, 300, 11000, big)['spend_atomic']['m1']
+    s_red = S.viability_n(base, 3, 300, 11000, big, deployed=True)['spend_atomic']['m1']
+    ref = S.plan_n_wallet(5, 300, 11000, {f'm{i}': 30000 for i in range(1, 6)})
+    pl = S.plan_n_wallet(3, 300, 11000, {'m1': 140000, 'm2': 150000, 'm3': 100000})
+    ok = (v_ok['ok'] and not v_f and not v_g and s_dep > s_red and not ref['viable']
+          and set(ref.get('needs_atomic') or {}) == {f'm{i}' for i in range(1, 6)}
+          and pl['viable'] and pl['plan']['rbond'] * 2 >= pl['plan']['sponsor'])
+    return ok, v_ok['ok'], v_f, v_g, (s_dep, s_red), ref.get('needs_atomic'), pl.get('plan')
+
+
+def kat_gt20(over):
+    """r32a audit tasks: deterministic answers (same input, same 64-hex), a changed miner key changes the answer, the
+    emission check flags a header reward that differs from the code formula, and an unsettled / pruned / too-long range
+    is refused before any read."""
+    root = Path(over.get('root') or ROOT)
+    A = _mod(root, 'atask')
+    blocks = [{'height': 7900000 + i, 'hash': f'{i:064x}', 'topoheight': 7900000 + i, 'miners': ['k1', 'k2'], 'reward': 30750}
+              for i in range(5)]
+    h1, h2 = A.headers_answer(blocks), A.headers_answer([dict(b) for b in blocks])
+    tampered = [dict(b) for b in blocks]
+    tampered[2] = dict(tampered[2], miners=['k1', 'k3'])
+    c = A.RI.constants(ROOT)[0]          # the Go anchors live in the real tree (mutation copies hold only the Python dirs)
+    e_ok = A.emission_answer(blocks, c)
+    bad = [dict(b) for b in blocks]
+    bad[1] = dict(bad[1], reward=30751)
+    e_bad = A.emission_answer(bad, c)
+    ref = (A.refuse(7900000, 7900010, 7900020), A.refuse(7900000, 7900010, 7900040), A.refuse(100, 200, 7900040),
+           A.refuse(7900000, 7900200, 7900400))
+    ok = (h1 == h2 and len(h1) == 64 and h1 == h1.lower() and A.headers_answer(tampered) != h1
+          and e_ok[1]['mismatches'] == 0 and e_bad[1]['mismatches'] == 1 and e_bad[0] != e_ok[0]
+          and ref[0] is not None and ref[1] is None and ref[2] is not None and ref[3] is not None)
+    return ok, e_ok[1], e_bad[1], ref
+
+
+def kat_gt21(over):
+    """r32a gt_audit commits: the playbook's formulas reproduce the Go DVM test's worked example byte for byte
+    (gametheory/contracts/gt_audit_commit.md), and the entry index is read back by the wallet's own commit."""
+    g = load(over, 'lib')
+    root = Path(over.get('root') or ROOT)
+    cy = _with_env(lambda d: _mod(root, 'cycle'))
+    sp = g.audit_sponsor_commit('d1g3st', 'pepper')
+    au = g.audit_commit('d1g3st', 's-A', 'dero1qytvxapwej9x08rsk7eclpaxxw4l9uwnmuhl6l7axqxvhrgt6g8lgqqtjgzva')  # the test key "A"
+    v = {'a3_0_c': ('x' * 64).encode().hex(), 'a3_1_c': au.encode().hex(), 'a2_1_c': sp.encode().hex(), 'a3_2_c': au}  # raw: no match
+    ei = (cy.entry_index_audit(v, 3, au), cy.entry_index_audit(v, 3, sp), cy.entry_index_audit(v, 2, sp))
+    ok = (sp == 'aea6b74b942b1ff10ca57a7e19746ec646a5052fb09e8b6682315fb3a8723d0c'
+          and au == '4aa77e10e03cd9cff6ac6eeb9e6aef400f2709dc0211e97aa5590a4528df4ae3' and ei == (1, None, 1))
+    return ok, sp[:12], au[:12], ei
+
+
+def kat_gt22(over):
+    """r32a sim pre-flight (2026-11-15 15:17-15:20): (1) DERO.GetSC returns String variables hex-encoded, so the entry
+    lookups compare the hex of the commit (a raw comparison never matched: the prize rounds and both audit rounds lost
+    their reveals); (2) the commit/reveal windows are sized from the measured blocks per confirmed call (a fixed 20
+    blocks closed before one confirmed call landed on a fast chain)."""
+    root = Path(over.get('root') or ROOT)
+    cy = _with_env(lambda d: _mod(root, 'cycle'))
+    eq = (cy.sc_str_eq('ab'.encode().hex(), 'ab'), cy.sc_str_eq('ab', 'ab'), cy.sc_str_eq(5, 'ab'))
+    w = (cy.windows_for(7), cy.windows_for(30), cy.windows_for(0.5))
+    ok = eq == (True, False, False) and w[0] == (28, 9) and w[1] == (120, 32) and w[2] == (20, 4)
+    return ok, eq, w
+
+
+def kat_gt23(over):
+    """r32a sim pre-flight (15:56:59, gt-simulator log 'error executing sc ... Insufficient Storage Gas'): the DVM's
+    storage-gas limit is the tx fee (transaction_execute.go:395, dvm/sc.go:244-250, cap 20,000) and gt_audit Settle paid
+    a size-based 235; storage_fee pays the estimate + 30 % + 100, never below 600 (above every measured size-based fee)
+    and never above the 20,000 cap."""
+    root = Path(over.get('root') or ROOT)
+    cy = _with_env(lambda d: _mod(root, 'cycle'))
+    f = (cy.storage_fee(235), cy.storage_fee(3000), cy.storage_fee(50000))
+    ok = f == (600, 4000, 20000) and cy.STORAGE_GAS_FREE < 235
+    return ok, f
+
+
+def kat_gt24(over):
+    """r32a: the ladder sizes with what its cycle code really pays: a measured R32 maximum (417 per call, 12,571 per
+    install) is raised to the storage-fee floor (600) and the gt_audit install (14,805, sim pre-flight); a higher
+    measurement is kept."""
+    root = Path(over.get('root') or ROOT)
+    L = _with_env(lambda d: _mod(root, 'ladder'))
+    a = L.ladder_fees((417, 12571, 'r32'))[:2]
+    b = L.ladder_fees((900, 20000, 'x'))[:2]
+    ok = a == (600, 14805) and b == (900, 20000)
+    return ok, a, b
+
+
 KATS = [('GT1', kat_gt1), ('GT2', kat_gt2), ('GT3', kat_gt3), ('GT4', kat_gt4), ('GT5', kat_gt5), ('GT6', kat_gt6),
         ('GT7', kat_gt7), ('GT8', kat_gt8), ('GT9', kat_gt9), ('GT10', kat_gt10), ('GT11', kat_gt11), ('GT12', kat_gt12),
-        ('GT13', kat_gt13), ('GT14', kat_gt14), ('GT15', kat_gt15), ('GT16', kat_gt16), ('GT17', kat_gt17)]
+        ('GT13', kat_gt13), ('GT14', kat_gt14), ('GT15', kat_gt15), ('GT16', kat_gt16), ('GT17', kat_gt17), ('GT18', kat_gt18), ('GT19', kat_gt19),
+        ('GT20', kat_gt20), ('GT21', kat_gt21), ('GT22', kat_gt22), ('GT23', kat_gt23), ('GT24', kat_gt24)]
 
 OWNERS = {'r32 ban': ['GT1', 'GT2', 'GT7'], 'r32 econ': ['GT3'], 'r32 ponzi': ['GT4'], 'r32 lint': ['GT5'],
-          'r32 discovery': ['GT6'], 'r32 playbook': ['GT7'], 'r32 sizing': ['GT8'], 'r32 cycle': ['GT9'], 'r32 earnrun': ['GT10'], 'r32 earnbug2': ['GT11'], 'r32 viability': ['GT12'], 'r32 liverec': ['GT13'], 'r32 slicepick': ['GT14'], 'r32 txfinal': ['GT15'], 'r32 claimpost': ['GT15'], 'r32 uint': ['GT15'], 'r32 setupskip': ['GT15'], 'r32 giveup': ['GT15'], 'r32 entryidx': ['GT16'], 'r32 settled2': ['GT16'], 'r32 audit': ['GT17'], 'r32 g36audit': ['GT17']}
+          'r32 discovery': ['GT6'], 'r32 playbook': ['GT7'], 'r32 sizing': ['GT8'], 'r32 cycle': ['GT9'], 'r32 earnrun': ['GT10'], 'r32 earnbug2': ['GT11'], 'r32 viability': ['GT12'], 'r32 liverec': ['GT13'], 'r32 slicepick': ['GT14'], 'r32 txfinal': ['GT15'], 'r32 claimpost': ['GT15'], 'r32 uint': ['GT15'], 'r32 setupskip': ['GT15'], 'r32 giveup': ['GT15'], 'r32 entryidx': ['GT16'], 'r32 settled2': ['GT16'], 'r32 audit': ['GT17'], 'r32 g36audit': ['GT17'], 'r32a miners': ['GT18'], 'r32a recipe': ['GT18'], 'r32a withhold': ['GT19'],
+          'r32a auditpay': ['GT19'], 'r32a setup': ['GT19'], 'r32a needs': ['GT19'], 'r32a digest': ['GT20'], 'r32a emission': ['GT20'],
+          'r32a settle': ['GT20'], 'r32a commit': ['GT21'], 'r32a aindex': ['GT21'],
+          'r32a hexstr': ['GT16', 'GT21', 'GT22'], 'r32a windows': ['GT22'], 'r32a storagegas': ['GT23'], 'r32a ladderfees': ['GT24']}
 MUTATIONS = [
+    ('ladder', '    return max(int(fc), cy.STORAGE_FEE_FLOOR), max(int(fi), GT_AUDIT_INSTALL_FEE),', '    return int(fc), int(fi),', 'r32a ladderfees: the ladder sizes with the old R32 per-call fee'),
+    ('cycle', '    return min(20000, max(STORAGE_FEE_FLOOR, int(gasstorage) * 13 // 10 + 100))', '    return STORAGE_FEE_FLOOR', 'r32a storagegas: the fee ignores the estimated storage gas'),
+    ('cycle', '    return isinstance(v, str) and v == s.encode().hex()', '    return isinstance(v, str) and v == s', 'r32a hexstr: a GetSC string is compared raw (never matches the chain)'),
+    ('cycle', '    w = max(base, _m.ceil(calls * max(1.0, bpc)))', '    w = base', 'r32a windows: the commit window ignores the measured call latency'),
+    ('earn', "        if name.startswith('mainnet-miner-') and name != keep and gtlib.stop_proc(run, name):", "        if name.startswith('mainnet-miner-x') and gtlib.stop_proc(run, name):", 'r32a miners: a SIGTERM leaves the recorded miners mining'),
+    ('rlint', "            if not before.endswith('&&'):", '            if False:', 'r32a recipe: a `; touch DONE` recipe passes the lint'),
+    ('size', "        'f_withhold_deterred': rb * max(n - 1, 1) >= S,", "        'f_withhold_deterred': True,", 'r32a withhold: a prize above the reveal-bond bound passes'),
+    ('size', "        'g_audit_pays': n < 2 or B / (n - 1) >= AUDIT_CALLS_AUDITOR * fee_call,", "        'g_audit_pays': True,", 'r32a auditpay: an audit bounty below the auditor fees passes'),
+    ('size', '    extra = 0 if deployed else ladder_setup(fee_call, fee_install) - setup', '    extra = 0', 'r32a setup: the deploying step budgets only an amortised setup'),
+    ('size', "            out['needs_atomic'] = {w: int(-(-v // (1 - SAFETY))) for w, v in big['viability']['spend_atomic'].items()}", '            pass', 'r32a needs: a refused step names no balance to earn'),
+    ('atask', '    lines = [f"{b[\'height\']}:{b[\'hash\']}:{b[\'topoheight\']}:{hashlib.sha256(\'|\'.join(b.get(\'miners\') or []).encode()).hexdigest()}"', '    lines = [f"{b[\'height\']}:{b[\'hash\']}:{b[\'topoheight\']}"', 'r32a digest: the header answer ignores the miner keys'),
+    ('atask', "        ok = int(b['reward']) == want", '        ok = True', 'r32a emission: a wrong header reward is not flagged'),
+    ('atask', '    if hi > tip - SETTLE:', '    if False:', 'r32a settle: an unsettled range is audited'),
+    ('lib', "    return hashlib.sha256(f'{answer}:{salt}:{mainnet_form(address)}'.encode()).hexdigest()", "    return hashlib.sha256(f'{answer}:{salt}'.encode()).hexdigest()", 'r32a commit: the auditor commit is not bound to its address'),
+    ('cycle', '        if not sc_str_eq(v, commit):', '        if False:', 'r32a aindex: an audit entry index is taken from any commit'),
     ('audit', "    net = {w: rec['payoff_atomic'][w] - mined[w] for w in rec['wallets']} if mined else None", "    net = {w: rec['payoff_atomic'][w] for w in rec['wallets']} if mined else None", 'r32 audit: mining credits counted as game payoff'),
     ('gate', "        if au.get('record') != ev or not au.get('game_settled') or not (au.get('sum_check') or {}).get('ok'):", '        if False:', 'r32 g36audit: G36 passes on the record without its chain audit'),
-    ('cycle', "        if k.startswith(f'h{r}_') and v == commit:", "        if k.startswith(f'h{r}_'):", 'r32 entryidx: the entry index is assumed, not read back by commit'),
+    ('cycle', "        if k.startswith(f'h{r}_') and sc_str_eq(v, commit):", "        if k.startswith(f'h{r}_'):", 'r32 entryidx: the entry index is assumed, not read back by commit'),
     ('cycle', " and int(x.get('entrants', 0)) >= players for x in rounds)", ' for x in rounds)', 'r32 settled2: a one-entrant round counts as a settled game'),
     ('cycle', "    if tx.get('valid_block') and bh > 0:", '    if bh > 0:', 'r32 txfinal: a tx seen in an orphaned block counts as mined'),
     ('cycle', '    if int(nc_after) != int(nc_before) + 1:', '    if False:', 'r32 claimpost: a reverted Claim drives Finalize(i=-1)'),

@@ -2683,3 +2683,42 @@ mutations by declared reach with a canary (B272-W1, D-32).
 
 **50.4 Measured.** On the restarted r31 derod: 62/62 samples synced, 0 ERROR, emission OK, invariants hold; the new event
 families are registered from start and still await their first event (pending-event, §13 R31).
+
+## 51. ★ Round 32: game-theoretic smart contracts for miners, measured on mainnet (smart contracts on the unchanged +22102026.r31 node, 2026-11-15)
+
+> Filled from the R32 records: the child rft (`artifacts/dero-game-theory-rft.md`, lessons 0–20, §13), the mainnet cycle
+> record (`harness/runtime/gt_cycle_mainnet_20261115T102653.json`) and its chain audit (`harness/runtime/gt_cycle_audit_mainnet.json`),
+> the game-theory pipeline records (`harness/loop/runs/gt_pipeline_*.jsonl`) and the project pipeline records
+> (`pipeline_20261115T114035`, `pipeline_20261115T124651`).
+
+**51.1 What a contract can do for a miner.** The block reward is `CalcBlockReward(height)` in consensus code and is split
+per miniblock; the final miniblock's share and the leftover go to the integrator that built the template (pinned by
+`blockchain/r32_reward_split_test.go`). No DVM builtin exposes the miner or the integrator, so a contract cannot raise
+the reward or pay a miner by itself: a miner is counted OFF-chain from the public block headers and proves it on-chain.
+
+**51.2 Three contracts** (`gametheory/contracts/*.bas`, DVM tests `dvm/r32_gametheory_test.go`): `gt_attest` (a claim of
+k miniblocks mined in a height span, bonded, open to a challenge for a window, finalized into the contract's MAT token),
+`gt_service` (a notary fee with a same-address boost for MAT holders) and `gt_prize` (commit-reveal prize rounds funded
+by a sponsor, the weight boosted for MAT holders). Every parameter is frozen before anyone joins (`Freeze`).
+
+**51.3 Pipeline and playbooks.** `harness/gametheory/gt_pipeline.py` runs research → DVM census → lint → DVM tests →
+econsim → playbook → report without an LLM; `playbooks/` (gtlib, gt_earn, gt_trigger, gt_cycle) create wallets, mine to
+them (`cmd/gt-wallet` registers with the registration PoW and serves the stock wallet RPC on loopback), size the stakes
+(`harness/gametheory/sizing.py`, a viability gate) and play. A sha256 ban guard (`harness/gametheory/banguard.py`) keeps
+the operator's own address out of every wallet, miner and record. The private simulator chain is pre-flight only.
+
+**51.4 Measured on mainnet.** Two new wallets earned their coins by mining (~9.9 DERO/day measured), then one full cycle
+settled: three contracts deployed, an attestation claim of 10 miniblocks finalized (1,000 MAT), five prize rounds (51 SC
+calls, fees 14,321 atomic). The chain audit (`harness/gametheory/cycle_audit.py`) reads each round's entrants from the
+contract: rounds 1–2 genuine, 3–5 solo (the second Enter missed the commit window). Net of the mining credited in the
+window the payoffs sum to −14,297 atomic against −14,321 of fees: a closed game only redistributes. G36 requires that audit.
+
+**51.5 Hardening from the run.** A transaction is final only in a valid main-chain block three deep (a Freeze seen mined
+was orphaned); setup is verified by its on-chain effect; Uint64 arguments are range-checked; the trigger's retries are
+bounded with a stop file; every player's Enter goes first and in parallel; the earn rotation mines the wallet furthest
+below its target (child rft lessons 15–20, KATs GT14–GT17).
+
+**51.6 Not shown.** Any change in network hashrate: two wallets of one operator can only redistribute; that needs outside
+miners (R32-a objective).
+
+<!-- doc-current-through: r32 -->

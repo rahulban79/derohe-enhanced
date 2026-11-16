@@ -139,6 +139,11 @@ def kat_hs1(over):
     cur, n, nxt = open_round(over)
     cases = [(dict(drop_area=cur), f'areas: {cur} missing'), (dict(drop_ledger=n), f'ledger: {n} missing'),
              (dict(current='r27', areas_upto='r26'), 'areas: r27 missing')]
+    # r32a: while a SUB-round is current (r32a), its parent (r32) is measured and non-current, so dropping 32 is also
+    # caught by the measured-rounds loop and the current-round check had no case of its own (mutation B149 MISSED).
+    # Pin it with the parent as the current round: the loop skips the current round, only the current check fires.
+    if re.fullmatch(r'r\d+[a-z]', str(cur)):
+        cases.append((dict(drop_ledger=n, current=f'r{n}'), f'ledger: {n} missing from'))
     if nxt:
         cases.insert(2, (dict(drop_order=nxt), f'evolution: next planned {nxt} missing'))
     else:

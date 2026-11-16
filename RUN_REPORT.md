@@ -1861,3 +1861,34 @@ the R31 event families are registered at 0 and their events did not occur in the
 
 **Open after Round 31**: dataset v6 (B311, B312), B110, B213, B319, B298, B299, B301, B302, B303, B314, B320, B330, the
 pending live events B269e/B304/B305, the STEP_BUDGETS re-derive (D-36), the HF4 watch, the held miner rows (rft §7, §8 R32 carry).
+
+## Round 32 (2026-11-15) — the game-theory round: smart contracts for miners on the unchanged r31 node, measured by one full mainnet cycle
+
+**Why.** The user parked the broad and miner tracks and asked for a round "100 % DVM and smart-contract enhancements":
+game-theory contracts that give miners more reward and tokens for using the same address, run by no-LLM playbooks on
+real mainnet wallets ("i need a working real solution and not just simulation", D-GT-5), the operator's own address
+never used (D-GT-2, sha256 ban guard). Delegated to the child rft `artifacts/dero-game-theory-rft.md` (D-37); base
+5f69b055; registry `r32`, tracks miner `paused`, node `active` (derod r31 unchanged).
+
+**Built.** Three DVM-BASIC contracts with DVM tests (attestation with bond and challenge → MAT token; notary with a
+same-address boost; commit-reveal prize rounds with a sponsor and a MAT boost), the block-reward split pinned by tests,
+a zero-touch game-theory pipeline (G35), `cmd/gt-wallet` (create, register with the registration PoW, serve the stock
+wallet RPC on loopback, fail-closed ban guard), and playbooks for earning, triggering and playing.
+
+**Mainnet.** m1 and m2 were registered (PoW 10.2 M and 33.1 M tries) and mined by a pipeline-owned miner rotating
+between them. The trigger's viability gate sized the game at 1 DERO each (D-GT-8) and fired at 08:37. The first attempt
+deployed the three contracts, then failed when a Freeze tx it had seen mined was orphaned (lesson 16); the bounded rerun
+settled at 10:26:53: claim k=10 finalized, five prize rounds, 51 SC calls, fees 14,321 atomic. The chain audit found
+rounds 1–2 genuine (m2 won both) and 3–5 solo (lesson 18); net payoffs m1 −17,564 / m2 +3,267, sum −14,297 against −14,321 of fees
+(24 atomic apart: the earn ticks bound the window). G36 PASS with the audit.
+
+**Closed loop.** Project-only pipeline runs 4, 5, 6 and 8 each failed on one defect, each fixed with a test before the next
+run (page re-render, live records written only on --write, budgets only by stepbudget --derive, the audit's lazy imports);
+run 7 failed only G36, correctly, before the game had run;
+runs 9 `pipeline_20261115T114035` and 10 `pipeline_20261115T124651` PASS: KATs 35/35, harness mutations 34/34, gates 33/36
++ 3 PAUSED (miner). The public copy b302bf1 was pushed by the user.
+
+**Open after Round 32**: GT-B11 (measured hashrate below the plan), a second cycle with every round genuine, the MAT
+boost read in a two-player round, any network-hashrate effect (needs outside miners), child rft §8 (R32-a).
+
+<!-- doc-current-through: r32 -->

@@ -40,15 +40,16 @@ def P(over):
 
 def extract(over):
     t = ast.parse(P(over).read_text(encoding='utf-8'))
-    body = [n for n in t.body if (isinstance(n, ast.FunctionDef) and n.name == 'readme_round_problem') or
+    body = [n for n in t.body if (isinstance(n, ast.FunctionDef) and n.name in ('readme_round_problem', 'registry_round')) or
             (isinstance(n, ast.Assign) and any(getattr(x, 'id', '') == 'README_ROUND_RX' for x in n.targets))]
-    ns = {'re': re}
+    import json
+    ns = {'re': re, 'json': json}
     exec(compile(ast.Module(body=body, type_ignores=[]), str(P(over)), 'exec'), ns)   # noqa: S102 — the user's own tool
-    return ns['readme_round_problem']
+    return ns['readme_round_problem'], ns.get('registry_round')
 
 
 def kat_sr1(over):
-    f = extract(over)
+    f = extract(over)[0]
     v31, v28d = '3.6.0-153.DEROHE.STARGATE+22102026.r31', '3.6.0-153.DEROHE.STARGATE+22102026.r28d'
     ok31 = 'x\n\nRound 31 (`+22102026.r31`) adds (node-only):\n\nRound 30 (`+22102026.r30`) adds:\n'
     old = 'x\n\nRound 28 (`+22102026.r28`) adds:\n\nRound 27 (`+22102026.r27`) adds:\n'
@@ -72,9 +73,30 @@ def kat_sr2(over):
     return not miss, miss
 
 
-KATS = [('SR1', kat_sr1), ('SR2', kat_sr2)]
-OWNERS = {'r31 sync-readme': [k for k, _ in KATS]}
+def kat_sr3(over):
+    """r32a (the user 2026-11-15: the README did not get the Round 32 updates): R32 measured a smart-contract round on
+    the unchanged r31 node build, so the version-derived round (31) matched the Round 31 paragraph and the check
+    passed. The round now comes from the TARGET registry's newest measured round."""
+    f, reg = extract(over)
+    import json
+    v31 = '3.6.0-153.DEROHE.STARGATE+22102026.r31'
+    r31_on_top = 'Round 31 (`+22102026.r31`) adds (node-only):\n'
+    r32_on_top = 'Round 32 (smart contracts on the unchanged `+22102026.r31` node build) adds:\n\n' + r31_on_top
+    regtxt = json.dumps({'rounds': [{'id': 'r31', 'status': 'measured'}, {'id': 'r32', 'status': 'measured'},
+                                    {'id': 'r32a', 'status': 'in-progress'}]})
+    rid = reg(regtxt) if reg else None
+    r = (rid, f(r31_on_top, v31, rid), f(r32_on_top, v31, rid), f(r31_on_top, v31, None), reg('not json') if reg else 'x')
+    good = r[0] == '32' and r[1] is not None and '32' in r[1] and r[2] is None and r[3] is None and r[4] is None
+    return bool(good), r
+
+
+KATS = [('SR1', kat_sr1), ('SR2', kat_sr2), ('SR3', kat_sr3)]
+OWNERS = {'r31 sync-readme': [k for k, _ in KATS], 'r32a sync-readme': ['SR3']}
 MUTATIONS = [
+    ('tool', "    want = round_id or (m.group(1) if m else None)", "    want = m.group(1) if m else None",
+     'r32a sync-readme: the round is read from the build version, not the registry'),
+    ('tool', "    ids = [r['id'] for r in json.loads(reg_text or '').get('rounds', []) if r.get('status') == 'measured']",
+     "    ids = [r['id'] for r in json.loads(reg_text or '').get('rounds', [])]", 'r32a sync-readme: an in-progress round counts as synced'),
     ('tool', "    if first.group(1) != want:", "    if False:", 'r31 sync-readme: an older round on top passes'),
     ('tool', "    if first is None:\n        return 'README has no \"Round N adds\" paragraph'\n", "    if first is None:\n        return None\n",
      'r31 sync-readme: a README without a round paragraph passes'),

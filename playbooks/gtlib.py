@@ -48,6 +48,56 @@ _GEN = HERE / 'params_r32.json'
 if _GEN.exists():
     for _net, _p in json.loads(_GEN.read_text()).get('params', {}).items():
         PARAMS[_net] = {k: {kk: vv for kk, vv in v.items()} for k, v in _p.items() if k in ('attest', 'service', 'prize')}
+# r32a: the gt_audit bounty game (gametheory/contracts/gt_audit.bas). The auditor bond is frozen at SetParams for the whole
+# ladder; sizing.plan_n_wallet sizes it at 2 calls' fees (a lazy wrong answer costs more than one Enter).
+for _net in PARAMS:
+    PARAMS[_net].setdefault('audit', {'bond': 600, 'commitw': 20, 'revealw': 20, 'maxn': 8})
+
+
+def audit_sponsor_commit(answer, salt):
+    """gt_audit Post: HEX(SHA256(answer + ":" + salt)) — the sponsor's hidden answer. Pure."""
+    return hashlib.sha256(f'{answer}:{salt}'.encode()).hexdigest()
+
+
+_B32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'
+
+
+def _b32_polymod(values):
+    g = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
+    chk = 1
+    for v in values:
+        b = chk >> 25
+        chk = (chk & 0x1ffffff) << 5 ^ v
+        for i in range(5):
+            chk ^= g[i] if (b >> i) & 1 else 0
+    return chk
+
+
+def _b32_hrp(h):
+    return [ord(x) >> 5 for x in h] + [0] + [ord(x) & 31 for x in h]
+
+
+def mainnet_form(address):
+    """the dero1... form of a DERO address (BIP-173 bech32: same data, hrp 'dero', checksum recomputed). Why: gt_audit
+    binds a commit to ADDRESS_STRING(SIGNER()), which always encodes the MAINNET form (dvm/dvm_functions.go:358 ->
+    rpc.NewAddressFromKeys, Mainnet: true, rpc/address.go:196-198); on a sim/testnet chain a wallet reports deto1...,
+    so the r32a sim pre-flight's auditors bound the wrong string and every reveal failed. Raises on a bad checksum. Pure."""
+    a = address.strip().lower()
+    hrp, _, rest = a.rpartition('1')
+    data = [_B32.index(c) for c in rest]
+    if _b32_polymod(_b32_hrp(hrp) + data) != 1:
+        raise ValueError('bad bech32 checksum')
+    if hrp == 'dero':
+        return a
+    payload = data[:-6]
+    pm = _b32_polymod(_b32_hrp('dero') + payload + [0] * 6) ^ 1
+    return 'dero1' + ''.join(_B32[c] for c in payload + [(pm >> 5 * (5 - i)) & 31 for i in range(6)])
+
+
+def audit_commit(answer, salt, address):
+    """gt_audit Enter: HEX(SHA256(answer + ":" + salt + ":" + ADDRESS_STRING(SIGNER()))) — bound to the auditor's own
+    address, so a copied commit cannot be revealed by another wallet. Pure."""
+    return hashlib.sha256(f'{answer}:{salt}:{mainnet_form(address)}'.encode()).hexdigest()
 
 
 def now():

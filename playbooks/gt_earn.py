@@ -36,9 +36,24 @@ ROOT = gtlib.ROOT
 # group), (2) 'already registered' counts as success, (3) the PoW counter is mirrored into events.jsonl (pow_tick every
 # 30 s), so the default work file shows the grind's progress.
 CHILD = {'p': None}
+# r32a (main session 2026-11-15 14:28): a SIGTERM to gt_earn raised SystemExit past rotate(), whose miner (a detached
+# nohup child recorded in state.json) kept mining; a relaunch would keep it (start_proc is idempotent per NAME) and start
+# a second miner for another wallet. Now the handler and rotate() stop every recorded miner (stop_miners).
+RUN = {'run': None}
+
+
+def stop_miners(run, keep=None):
+    """stop every recorded mainnet-miner-* process of this run except `keep`; returns the names stopped"""
+    out = []
+    for name in sorted((run.state.get('procs') or {})):
+        if name.startswith('mainnet-miner-') and name != keep and gtlib.stop_proc(run, name):
+            out.append(name)
+    return out
 
 
 def _term(signum, frame):
+    if RUN['run'] is not None:
+        stop_miners(RUN['run'])
     p = CHILD['p']
     if p is not None and p.poll() is None:
         try:
@@ -111,6 +126,7 @@ def rotate(a, run, names, addrs, wdir, gw):
     while time.time() < t_end:
         n = pick_next(names, bals, int(a.target_dero * 100000), i)
         i += 1
+        stop_miners(run, keep=f'mainnet-miner-{n}')    # one pipeline-owned miner at a time
         gtlib.start_proc(run, f'mainnet-miner-{n}', [str(gtlib.BIN / 'gt-dero-miner'), f'--wallet-address={addrs[n]}',
                                                      f"--daemon-rpc-address={gtlib.NETWORKS['mainnet']['getwork']}",
                                                      f'--mining-threads={a.threads}', f'--cpu-max={a.cpu_max}', '--node-rpc-address=off'])
@@ -188,6 +204,7 @@ def main(argv):
             raise RuntimeError(r.stderr.strip()[-300:])
         return json.loads(r.stdout.strip().splitlines()[-1])
 
+    RUN['run'] = run
     signal.signal(signal.SIGTERM, _term)
     signal.signal(signal.SIGINT, _term)
     names = [x for x in a.wallet.split(',') if x]

@@ -356,5 +356,20 @@ python3 -I kat/test_s7_replay_sealed_r31.py   # the sealed-dataset replay path
 python3 -I kat/test_doc_currency_r31.py       # the docs below name the newest measured round
 ```
 
-<!-- doc-current-through: r31 -->
+## Game theory: contracts, pipeline, playbooks and the mainnet cycle (r32)
+
+`gametheory/gt_pipeline.py` runs the seven game-theory stages without an LLM and writes `runtime/gt_pipeline_last.json`
+(G35); `gametheory/econsim.py` models each mechanism's payoffs, `gametheory/sizing.py` sizes the wallets and the stakes
+behind a viability gate, `gametheory/time_to_coins.py` estimates the mining time to a target, `gametheory/reward_intel.py`
+reads the block-reward split, `gametheory/banguard.py` refuses the operator's own address (sha256 list) in any wallet,
+miner or record. On mainnet, `gametheory/cycle_from_earn.py --write` snapshots the earn log, `gametheory/cycle_audit.py
+--write` re-derives a cycle record's entrants from the contract and its payoffs net of mining, and `gametheory/gt_gate.py`
+passes G36 only with that audit. The playbooks (`../playbooks/`: gt_earn, gt_trigger, gt_cycle, gtlib) run the cycle.
+
+```
+python3 -I kat/test_gt_mechanisms_r32.py      # contracts, playbooks, the mainnet-run lessons GT1-GT17
+python3 -I kat/test_gt_reward_r32.py          # the block-reward split read from the code
+```
+
+<!-- doc-current-through: r32 -->
 

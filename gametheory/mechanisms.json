@@ -6,10 +6,28 @@
    "name": "Miner-attested token (MAT): optimistic bonded claim, challenge, commit-reveal jurors",
    "status": "GO",
    "contract": "gt_attest.bas",
-   "entrypoints": ["Initialize", "SetParams", "Freeze", "Claim", "Challenge", "Stake", "Unstake", "CommitVote", "RevealVote", "Finalize", "ClaimJuror"],
+   "entrypoints": [
+    "Initialize",
+    "SetParams",
+    "Freeze",
+    "Claim",
+    "Challenge",
+    "Stake",
+    "Unstake",
+    "CommitVote",
+    "RevealVote",
+    "Finalize",
+    "ClaimJuror"
+   ],
    "equilibrium": "Truthful claiming is the attractor iff bond > (1-c) * reward * v / c per miniblock, c = P(challenge) * P(jury correct) (econsim m1_critical_bond, replicator). Jurors: coherent voting earns a share of the loser's bond plus slashed stakes; incoherent or unrevealed jurors lose ceil(slash %) of their stake (Schelling point).",
    "sustainability": "MAT is issued, not bought: its value is what fee payers and sponsors in M2/M3 pay for the boost. Bonds and slashes are zero-sum inside one dispute. Needs at least one honest verifier-challenger and juror participation (no reveal = claim upheld).",
-   "attacks": ["sybil: a miner may split into many addresses; claims are per address and per height range, so splitting gains nothing", "collusion / P+epsilon bribe of jurors (econsim m1_bribe_cost); mitigation: commit-reveal, slashing, stake caps; residual risk stated", "griefing: a challenger loses its bond to an upheld honest claim", "front-running: votes are committed as sha256(i:vote:salt); claims and challenges are public by design", "gas DoS: no loops; every entrypoint O(1)"],
+   "attacks": [
+    "sybil: a miner may split into many addresses; claims are per address and per height range, so splitting gains nothing",
+    "collusion / P+epsilon bribe of jurors (econsim m1_bribe_cost); mitigation: commit-reveal, slashing, stake caps; residual risk stated",
+    "griefing: a challenger loses its bond to an upheld honest claim",
+    "front-running: votes are committed as sha256(i:vote:salt); claims and challenges are public by design",
+    "gas DoS: no loops; every entrypoint O(1)"
+   ],
    "observable": "the claim is checked OFF-chain against public block headers (DERO.GetBlock miners list); the DVM cannot read it"
   },
   {
@@ -17,20 +35,79 @@
    "name": "Useful service (notary) with a bounded fee rebate and a MAT boost",
    "status": "GO",
    "contract": "gt_service.bas",
-   "entrypoints": ["Initialize", "SetParams", "SetMAT", "Freeze", "Notarize", "Sponsor", "StakeMAT", "UnstakeMAT", "ClaimRebate", "WithdrawTreasury"],
+   "entrypoints": [
+    "Initialize",
+    "SetParams",
+    "SetMAT",
+    "Freeze",
+    "Notarize",
+    "Sponsor",
+    "StakeMAT",
+    "UnstakeMAT",
+    "ClaimRebate",
+    "WithdrawTreasury"
+   ],
    "equilibrium": "No profitable wash trading iff rho * (100 + boost) <= 10000 (enforced in SetParams; econsim m2_wash_profitable grid). A sponsor subsidy S is a Tullock contest: equilibrium fee spend X* = S (n-1) / (n (1-rho)); the subsidy is dissipated, a fraction (n-1)/n going to the treasury as fees.",
    "sustainability": "Rebates come only from the same epoch's fees and sponsor funds; pools close at the epoch end. A sponsor buys activity, not organic demand: subsidised activity must be reported as subsidised (NO-GO N3).",
-   "attacks": ["wash trading (bounded as above)", "MAT recycling across addresses: locked until the epoch end", "first-writer-wins front-running of a document digest: the digest is public once sent"]
+   "attacks": [
+    "wash trading (bounded as above)",
+    "MAT recycling across addresses: locked until the epoch end",
+    "first-writer-wins front-running of a document digest: the digest is public once sent"
+   ]
   },
   {
    "id": "M3",
    "name": "No-loss prize pool with a commit-reveal draw and a MAT boost",
    "status": "GO",
    "contract": "gt_prize.bas",
-   "entrypoints": ["Initialize", "SetParams", "SetMAT", "Freeze", "StakeMAT", "UnstakeMAT", "Fund", "Enter", "Reveal", "Draw", "Withdraw"],
+   "entrypoints": [
+    "Initialize",
+    "SetParams",
+    "SetMAT",
+    "Freeze",
+    "StakeMAT",
+    "UnstakeMAT",
+    "Fund",
+    "Enter",
+    "Reveal",
+    "Draw",
+    "Withdraw"
+   ],
    "equilibrium": "Entry EV = prize * w / W - fees >= 0 (principal is returned); the MAT boost doubles a miner's weight. Withholding is unprofitable while prize <= rbond * (n_revealed - 1) (last revealer). v2 (D-GT-10) draws from the revealed seed only: v1 mixed RANDOM (keyed by the block id), which let the Draw block's integrator withhold the block to re-roll at the cost of one integrator share (3,075 atomic on mainnet today); econsim m3_withholding.",
    "sustainability": "Prizes are sponsor funds plus reveal bonds forfeited in the same round; never another participant's principal.",
-   "attacks": ["last-revealer withholding (bond-bounded)", "v1 only: integrator block withholding to re-roll RANDOM (removed in v2)", "reveal censorship: an integrator can leave a reveal tx out of its block, but the reveal window spans many blocks and integrators (12 distinct integrators in 60 live blocks, reward_analysis)", "gas DoS: maxn <= 64 entries per round, the v2 Draw loop measured at 1,774,800 compute gas for 32 entries of the 10,000,000 limit"]
+   "attacks": [
+    "last-revealer withholding (bond-bounded)",
+    "v1 only: integrator block withholding to re-roll RANDOM (removed in v2)",
+    "reveal censorship: an integrator can leave a reveal tx out of its block, but the reveal window spans many blocks and integrators (12 distinct integrators in 60 live blocks, reward_analysis)",
+    "gas DoS: maxn <= 64 entries per round, the v2 Draw loop measured at 1,774,800 compute gas for 32 entries of the 10,000,000 limit"
+   ]
+  },
+  {
+   "id": "M4",
+   "name": "Audit bounty: paid independent detection over public chain data (headers, emission)",
+   "status": "GO",
+   "contract": "gt_audit.bas",
+   "entrypoints": [
+    "Initialize",
+    "SetParams",
+    "Freeze",
+    "Post",
+    "Enter",
+    "RevealSponsor",
+    "Reveal",
+    "Settle",
+    "Withdraw"
+   ],
+   "equilibrium": "Honest auditing pays iff bounty / winners > the auditor's fees (econsim m4_auditor_ev); a lazy guess or a copied commit forfeits the bond (the commit is bound to ADDRESS_STRING(SIGNER())); a strict majority against the sponsor wins and sets disputed=1 (the detection signal). NOT prevented: collusion, bribery, Sybil auditors.",
+   "research": "scratchpad r32a research_web.md Q3-Q4 (Truebit verifier's dilemma, Chainlink alert bounty, supply turnstiles); security_inventory.md groups 1-2 (detection only: a contract cannot verify consensus or see value an unsound proof created)",
+   "sustainability": "Bounties are the sponsor's own funds per round plus bonds forfeited by wrong or missing answers (a rollover, 'carry', funded by earlier rounds); never another participant's bond or a later deposit (econsim ledger_m4, stop-inflow PASS). An honest auditor gains iff bounty / winners exceeds its own fees (econsim M4 checks).",
+   "attacks": [
+    "Copying a commit: refused, the commit is bound to ADDRESS_STRING(SIGNER()) and Reveal recomputes it (DVM test CopyAttack).",
+    "Lazy guessing: a 64-hex digest cannot be guessed; a wrong answer forfeits the bond (WrongAnswerCarry).",
+    "Sponsor withholding or a wrong sponsor answer: a strict majority of revealed auditors wins and sets disputed=1, public (MajorityDispute, SponsorNoReveal).",
+    "NOT prevented: collusion or bribery among auditors, Sybil auditors (including the sponsor under another address); the majority is only as independent as the auditors.",
+    "Storage gas: Settle writes many keys; the cycle pays the estimated storage gas as the fee (child rft lesson 24)."
+   ]
   },
   {
    "id": "N1",
@@ -67,6 +144,18 @@
    "name": "Quadratic funding without sybil resistance",
    "status": "NO-GO",
    "reason": "DERO accounts are anonymous and cheap to register; QF's identity assumption fails (dossier implication 9)."
+  },
+  {
+   "id": "N7",
+   "name": "Orphan-insurance contract (pay miners for orphaned miniblocks)",
+   "status": "NO-GO",
+   "reason": "Research Q5 (gametheory/research/r32a_research_web.md): Ethereum's uncle rewards lowered the selfish-mining profit threshold from 0.25 to about 0.185; paying for orphans subsidises withholding, the attack it would seem to insure against."
+  },
+  {
+   "id": "N8",
+   "name": "Superlinear loyalty / streak bonuses, or a stipend per identity",
+   "status": "NO-GO",
+   "reason": "Research Q1 (pool-payout game theory): consensus already pays linearly per accepted miniblock; a superlinear or streak bonus rewards consolidation, and a per-identity stipend rewards Sybil identities. The R32a claim is linear per accepted miniblock (D-GT-13)."
   }
  ]
 }
