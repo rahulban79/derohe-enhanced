@@ -371,5 +371,7 @@ python3 -I kat/test_gt_mechanisms_r32.py      # contracts, playbooks, the mainne
 python3 -I kat/test_gt_reward_r32.py          # the block-reward split read from the code
 ```
 
+`intel/readme_build.py --write | --check` (r32a, B333) generates the public README's "Build and run this build" section from the tree (version, Go, the pipeline's build commands, every binary's own `--help`, the Mainnet ports); the regen page gate `readme build` runs `--check` and the sync refuses a stale section. KAT `kat/test_readme_build_r32a.py`.
+
 <!-- doc-current-through: r32 -->
 

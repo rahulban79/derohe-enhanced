@@ -47,9 +47,11 @@ def names_for(n):
 
 
 def earn_cmd(names, mdir):
-    """the earn command line for these wallets (DONE only on success, recipe_lint). Pure."""
+    """the earn command line for these wallets (DONE only on success, recipe_lint). --rebuild: gtlib.stale_bins compares
+    file times, and a source file the pipeline only touched (cmd/dero-miner/hsreport_r30.go at 16:17, content as committed)
+    made the relaunched earn refuse every minute (r32a 2026-11-15 23:10). Pure."""
     return (f"cd {ROOT} && nice -n 15 python3 -I playbooks/gt_earn.py --wallet {','.join(names)} --mainnet-confirm "
-            f"--threads 8 --cpu-max 80 --target-dero {EARN_TARGET_DERO} --max-hours 48 >> {mdir}/earn.log 2>&1 "
+            f"--threads 8 --cpu-max 80 --target-dero {EARN_TARGET_DERO} --max-hours 48 --rebuild >> {mdir}/earn.log 2>&1 "
             f"&& touch {mdir}/earn.DONE")
 
 
@@ -179,7 +181,14 @@ def main(argv):
                 return 4
             continue
         new = sorted(set((ROOT / 'harness/runtime').glob('gt_cycle_mainnet_*.json')) - before)
-        if new:
+        if new:   # r32a step 3: the audit needs an earn tick AFTER the record (it bounds the mining window); wait <= 10 min
+            meas = json.loads(new[-1].read_text()).get('measured_at', '')
+            ef = gtlib.GT_HOME / 'runs' / EARN_RUN / 'events.jsonl'
+            for _ in range(60):
+                if ef.exists() and any(json.loads(x).get('kind') == 'earn_tick' and json.loads(x).get('ts', '') >= meas
+                                       for x in ef.read_text().splitlines()[-50:] if x.strip()):
+                    break
+                time.sleep(10)
             au = subprocess.run([sys.executable, '-I', str(ROOT / 'harness/gametheory/cycle_audit.py'), '--record',
                                  str(new[-1].relative_to(ROOT)), '--run', RUN_ID], cwd=ROOT, capture_output=True, text=True)
             (run.dir / f'audit_n{n}.json').write_text(au.stdout)

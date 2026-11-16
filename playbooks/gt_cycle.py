@@ -549,6 +549,7 @@ class Cycle:
         end = {n: self.balance(n) for n in self.names}
         mat = self.run.state['scids'].get('attest')
         out = {'network': self.a.network, 'measured_at': gtlib.now(), 'run': self.a.run_id, 'fast': self.a.fast,
+               'start_height': getattr(self, 'start_height', None), 'end_height': self.height(),   # r32a: the audit's window
                'wallets': self.names, 'start_dero': {n: f'{v / 1e5:.5f}' for n, v in start.items()},
                'end_dero': {n: f'{v / 1e5:.5f}' for n, v in end.items()},
                'payoff_atomic': {n: end[n] - start[n] for n in self.names},
@@ -598,6 +599,7 @@ def main(argv):
     gtlib.ensure_bins(c.run, ['gt-wallet'], rebuild=a.rebuild)
     try:
         c.serve()
+        c.start_height = c.height()                       # r32a: the chain audit counts mining from here
         start = {n: c.balance(n) for n in c.names}
         c.ev('cycle_start', start_dero={n: f'{v / 1e5:.5f}' for n, v in start.items()})
         if a.network == 'mainnet':

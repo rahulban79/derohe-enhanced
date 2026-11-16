@@ -724,17 +724,71 @@ def kat_gt24(over):
     return ok, a, b
 
 
+def kat_gt25(over):
+    """r32a ladder step 3 (2026-11-16 01:16): the chain audit's mining window (a) crossed an earn relaunch (23:09), so
+    the cumulative counters fell and one subtraction went wrong, and (b) ran 3 s after the record, before any earn tick
+    past it (no window: None). mined_window sums consecutive ticks, counts a fall as a relaunch (that tick from 0) and
+    says how many; with no tick after the end it returns None (the ladder now waits for one)."""
+    with tempfile.TemporaryDirectory() as d:
+        keep = {k: os.environ.get(k) for k in ('GT_HOME', 'GT_WALLETS', 'GT_BANNED_FILE')}
+        os.environ.update(GT_HOME=str(Path(d) / 'home'), GT_WALLETS=str(Path(d) / 'w'), GT_BANNED_FILE=str(forged_ban(d)))
+        try:
+            A = load(over, 'audit')
+            t = lambda hh, v: {'kind': 'earn_tick', 'ts': f'2026-11-16T{hh}-08:00', 'height': int(hh[:2]) * 100 + int(hh[3:5]),
+                               'chain_credited': v}
+            rows = [t('00:00:00', {'m1': 100}), t('00:10:00', {'m1': 300}), t('00:20:00', {'m1': 50}), t('00:30:00', {'m1': 150})]
+            got = A.mined_window(rows, '2026-11-16T00:00:00-08:00', '2026-11-16T00:30:00-08:00')
+            late = A.mined_window(rows, '2026-11-16T00:00:00-08:00', '2026-11-16T00:31:00-08:00')
+        finally:
+            for k2, v in keep.items():
+                if v is None:
+                    os.environ.pop(k2, None)
+                else:
+                    os.environ[k2] = v
+    ok = got[0] == {'m1': 350} and got[1][2] == 1 and late == (None, None)
+    return ok, got, late
+
+
+def kat_gt26(over):
+    """r32a ladder step 3: the chain audit counts mining from the block headers (chain_mined: a wallet's normal
+    miniblocks at reward // 10; the final share of a 10-miniblock block is the integrator's), so an earn relaunch cannot
+    hide shares (the counter window missed two of m1's, 6,150 atomic); the cycle record's start/end heights bound it."""
+    with tempfile.TemporaryDirectory() as d:
+        keep = {k: os.environ.get(k) for k in ('GT_HOME', 'GT_WALLETS', 'GT_BANNED_FILE')}
+        os.environ.update(GT_HOME=str(Path(d) / 'home'), GT_WALLETS=str(Path(d) / 'w'), GT_BANNED_FILE=str(forged_ban(d)))
+        try:
+            A = load(over, 'audit')
+            blocks = {100: ['a1'] * 9 + ['a1'], 101: ['a2', 'x', 'a1'], 102: ['x'] * 10}
+
+            def rpc(m, p):
+                return {'block_header': {'miners': blocks[p['height']], 'reward': 30750}}
+            got = A.chain_mined(rpc, 100, 102, {'m1': 'a1', 'm2': 'a2'})
+            rec = {'_path': 'r.json', 'measured_at': '2026-11-16T01:00:00-08:00', 'wallets': ['m1', 'm2'], 'start_height': 100,
+                   'end_height': 102, 'results': {'m3_rounds': []}, 'payoff_atomic': {'m1': 0, 'm2': 0}, 'fees_total_atomic': 0}
+            au = A.audit(rec, [{'kind': 'cycle_start', 'ts': '2026-11-16T00:00:00-08:00'}], [], {}, chain=lambda lo, hi: A.chain_mined(rpc, lo, hi, {'m1': 'a1', 'm2': 'a2'}))
+        finally:
+            for k2, v in keep.items():
+                if v is None:
+                    os.environ.pop(k2, None)
+                else:
+                    os.environ[k2] = v
+    ok = got == {'m1': 10 * 3075, 'm2': 3075} and au['mined_source'] == 'chain' and au['window_heights'][:2] == (100, 102)
+    return ok, got, au['mined_source'], au['window_heights']
+
+
 KATS = [('GT1', kat_gt1), ('GT2', kat_gt2), ('GT3', kat_gt3), ('GT4', kat_gt4), ('GT5', kat_gt5), ('GT6', kat_gt6),
         ('GT7', kat_gt7), ('GT8', kat_gt8), ('GT9', kat_gt9), ('GT10', kat_gt10), ('GT11', kat_gt11), ('GT12', kat_gt12),
         ('GT13', kat_gt13), ('GT14', kat_gt14), ('GT15', kat_gt15), ('GT16', kat_gt16), ('GT17', kat_gt17), ('GT18', kat_gt18), ('GT19', kat_gt19),
-        ('GT20', kat_gt20), ('GT21', kat_gt21), ('GT22', kat_gt22), ('GT23', kat_gt23), ('GT24', kat_gt24)]
+        ('GT20', kat_gt20), ('GT21', kat_gt21), ('GT22', kat_gt22), ('GT23', kat_gt23), ('GT24', kat_gt24), ('GT25', kat_gt25), ('GT26', kat_gt26)]
 
 OWNERS = {'r32 ban': ['GT1', 'GT2', 'GT7'], 'r32 econ': ['GT3'], 'r32 ponzi': ['GT4'], 'r32 lint': ['GT5'],
           'r32 discovery': ['GT6'], 'r32 playbook': ['GT7'], 'r32 sizing': ['GT8'], 'r32 cycle': ['GT9'], 'r32 earnrun': ['GT10'], 'r32 earnbug2': ['GT11'], 'r32 viability': ['GT12'], 'r32 liverec': ['GT13'], 'r32 slicepick': ['GT14'], 'r32 txfinal': ['GT15'], 'r32 claimpost': ['GT15'], 'r32 uint': ['GT15'], 'r32 setupskip': ['GT15'], 'r32 giveup': ['GT15'], 'r32 entryidx': ['GT16'], 'r32 settled2': ['GT16'], 'r32 audit': ['GT17'], 'r32 g36audit': ['GT17'], 'r32a miners': ['GT18'], 'r32a recipe': ['GT18'], 'r32a withhold': ['GT19'],
           'r32a auditpay': ['GT19'], 'r32a setup': ['GT19'], 'r32a needs': ['GT19'], 'r32a digest': ['GT20'], 'r32a emission': ['GT20'],
           'r32a settle': ['GT20'], 'r32a commit': ['GT21'], 'r32a aindex': ['GT21'],
-          'r32a hexstr': ['GT16', 'GT21', 'GT22'], 'r32a windows': ['GT22'], 'r32a storagegas': ['GT23'], 'r32a ladderfees': ['GT24']}
+          'r32a hexstr': ['GT16', 'GT21', 'GT22'], 'r32a windows': ['GT22'], 'r32a storagegas': ['GT23'], 'r32a ladderfees': ['GT24'], 'r32a relaunch': ['GT25'], 'r32a chainmined': ['GT26']}
 MUTATIONS = [
+    ('audit', '        for m in (ms[:-1] if len(ms) == 10 else ms):\n            if m in by_addr:', '        for m in ms:\n            if m in by_addr:', 'r32a chainmined: the integrator final share is counted as mined'),
+    ('audit', "        reset = any(int(q['chain_credited'].get(w, 0)) < int(p['chain_credited'].get(w, 0)) for w in p['chain_credited'])", '        reset = False', 'r32a relaunch: a relaunched earn counter is subtracted as if continuous'),
     ('ladder', '    return max(int(fc), cy.STORAGE_FEE_FLOOR), max(int(fi), GT_AUDIT_INSTALL_FEE),', '    return int(fc), int(fi),', 'r32a ladderfees: the ladder sizes with the old R32 per-call fee'),
     ('cycle', '    return min(20000, max(STORAGE_FEE_FLOOR, int(gasstorage) * 13 // 10 + 100))', '    return STORAGE_FEE_FLOOR', 'r32a storagegas: the fee ignores the estimated storage gas'),
     ('cycle', '    return isinstance(v, str) and v == s.encode().hex()', '    return isinstance(v, str) and v == s', 'r32a hexstr: a GetSC string is compared raw (never matches the chain)'),
@@ -750,7 +804,7 @@ MUTATIONS = [
     ('atask', '    if hi > tip - SETTLE:', '    if False:', 'r32a settle: an unsettled range is audited'),
     ('lib', "    return hashlib.sha256(f'{answer}:{salt}:{mainnet_form(address)}'.encode()).hexdigest()", "    return hashlib.sha256(f'{answer}:{salt}'.encode()).hexdigest()", 'r32a commit: the auditor commit is not bound to its address'),
     ('cycle', '        if not sc_str_eq(v, commit):', '        if False:', 'r32a aindex: an audit entry index is taken from any commit'),
-    ('audit', "    net = {w: rec['payoff_atomic'][w] - mined[w] for w in rec['wallets']} if mined else None", "    net = {w: rec['payoff_atomic'][w] for w in rec['wallets']} if mined else None", 'r32 audit: mining credits counted as game payoff'),
+    ('audit', "    net = {w: rec['payoff_atomic'][w] - mined.get(w, 0) for w in rec['wallets']} if mined is not None else None", "    net = {w: rec['payoff_atomic'][w] for w in rec['wallets']} if mined is not None else None", 'r32 audit: mining credits counted as game payoff'),
     ('gate', "        if au.get('record') != ev or not au.get('game_settled') or not (au.get('sum_check') or {}).get('ok'):", '        if False:', 'r32 g36audit: G36 passes on the record without its chain audit'),
     ('cycle', "        if k.startswith(f'h{r}_') and sc_str_eq(v, commit):", "        if k.startswith(f'h{r}_'):", 'r32 entryidx: the entry index is assumed, not read back by commit'),
     ('cycle', " and int(x.get('entrants', 0)) >= players for x in rounds)", ' for x in rounds)', 'r32 settled2: a one-entrant round counts as a settled game'),

@@ -11466,7 +11466,8 @@
     "harness/kat/test_soundpage_r31.py",
     "harness/kat/test_print_copy_r31.py",
     "harness/kat/test_sync_readme_r31.py",
-    "harness/kat/test_doc_currency_r31.py"
+    "harness/kat/test_doc_currency_r31.py",
+    "harness/kat/test_readme_build_r32a.py"
    ],
    "gates": [
     "G1",

@@ -252,7 +252,7 @@
    "new_rpc_methods": {},
    "github_sync": {
     "base": "21d558ee",
-    "target": "pending"
+    "target": "348826b6"
    },
    "tracks": {
     "miner": "paused",

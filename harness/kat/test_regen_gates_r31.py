@@ -56,7 +56,7 @@ def kat_rg1(over):
         r, ps = forge(d)
         g = m.gate_plan(r, ps, Path(d) / 'out')
         names = [x[0] for x in g]
-        if names != ['G30 forensics frontend', 'FE8 forensics frontend KAT', 'pdfscan', 'pubscrub dry run', 'doc currency', 'coherence']:
+        if names != ['G30 forensics frontend', 'FE8 forensics frontend KAT', 'pdfscan', 'pubscrub dry run', 'doc currency', 'readme build', 'coherence']:
             bad.append(f'gates {names}')
         G = {x[0]: x for x in g}
         a = lambda n: ' '.join(str(v) for v in (G.get(n, (0, None))[1] or []))

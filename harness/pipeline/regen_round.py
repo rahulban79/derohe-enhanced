@@ -198,6 +198,7 @@ def gate_plan(root=ROOT, pubscrub=None, out_dir=None):
         g.append(('pubscrub dry run', [PY, '-I', '-B', str(pubscrub), str(out_dir or '<scratch out dir>')] + pages, None,
                   {'DERO_PDFSCAN': str(root / 'harness/kit/pdfscan.py')}))
     g.append(('doc currency', [PY, '-I', 'harness/intel/doc_currency.py'], None, {}))   # r31 (B332): round summaries reviewed
+    g.append(('readme build', [PY, '-I', 'harness/intel/readme_build.py', '--check'], None, {}))   # r32a: build/run section current
     g.append(('coherence', [PY, '-I', 'harness/intel/coherence.py'], None, {}))
     return g
 
