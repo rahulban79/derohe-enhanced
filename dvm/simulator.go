@@ -175,7 +175,8 @@ func (s *Simulator) common(w_sc_tree, w_sc_data_tree *Tree_Wrapper, scid crypto.
 	}
 
 	gascompute, gasstorage, err = Execute_sc_function(w_sc_tree, w_sc_data_tree, scid, bl_height, bl_topoheight, uint64(time.Now().Unix()), blid, scid, sc, entrypoint, 1, 0, signer, incoming_values, SCDATA, fees, simulator)
-	fmt.Printf("sc execution error %s\n", err)
+	// r32a: an unconditional "sc execution error %!s(<nil>)" line after every simulated call was removed; the error
+	// is returned to the caller (DERO.GetGasEstimate answers it to the client)
 
 	// we must commit all the changes
 	// check whether we are not overflowing/underflowing, means SC is not over sending

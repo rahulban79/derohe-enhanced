@@ -19,7 +19,7 @@ memory or temp dirs; the committed checks read this tree's records and the close
   LP6 B229   observatory gaps skip implemented proposals from r30; a closed page (last None / < 30) keeps them.
   LP7 B226   G22 number backing: a stale record value FAILs, an unshown value FAILs; a digit unit with no number
              backing FAILs unless it names its as_of_round or soundpage generates it.
-  LP8 B225   guard_classes counts 1 logging-only, 1 build-metadata, 6 constructs, 1 helper on the committed guard
+  LP8 B225   guard_classes counts 1 logging-only, 1 build-metadata, 8 constructs (r32a D-41: +2 DVM print), 1 helper on the committed guard
              record; gen_blocks: no 'carried forward', G13 = len(files), every number entry re-checks.
   LP9 B227   current_ledger_page: dataset r28d with pages r28, r29 gives dero-r1-r29.html; dead_hrefs finds a missing
              page; a PAUSED gate is never FAIL and counts apart; press_kpis / matrix_caption from the track.
@@ -326,7 +326,7 @@ def lp8(base):
     S = load(base, 'harness/soundness.py', 'snd')
     g = json.loads((ROOT / 'harness/loop/CONSENSUS_GUARD.json').read_text())
     gc = SP.guard_classes(g)
-    if gc != {'logging-only': 1, 'build-metadata': 1, 'constructs': 6, 'helper': 1}:
+    if gc != {'logging-only': 1, 'build-metadata': 1, 'constructs': 8, 'helper': 1}:   # r32a D-41: + the two DVM print constructs
         f.append(f'LP8 guard_classes {gc}')
     blocks = SP.gen_blocks(ROOT)
     names = [b[0] for b in blocks]

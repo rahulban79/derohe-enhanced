@@ -1573,7 +1573,8 @@ for _pkg, _pat in {
                   '|TestR32GTAttestNoJurorsUpholds|TestR32GTAttestGuards|TestR32GTServiceRebate|TestR32GTPrizeRound'
                   '|TestR32GTPrizeFairnessAndBoost|TestR32GTGasBound'
                   '|TestR32aAuditHonestRound|TestR32aAuditCopyAttack|TestR32aAuditWrongAnswerCarry'   # r32a gt_audit (M4)
-                  '|TestR32aAuditMajorityDispute|TestR32aAuditSponsorNoReveal|TestR32aAuditGuards',
+                  '|TestR32aAuditMajorityDispute|TestR32aAuditSponsorNoReveal|TestR32aAuditGuards'
+                  '|TestR32aSimulatorQuietWithoutDebug',   # r32a D-41: the gas-estimate simulator prints nothing without --debug
         './blockchain/': 'TestR32_RewardConstants|TestR32_CalcBlockReward|TestR32_CalcSupply|TestR32_SplitNoFees|TestR32_SplitFeesLeftoverToIntegrator|TestR32_IntegratorAlsoMines|TestR32_SplitPreHF2Era|TestR32_FeeFloor|TestR32_DifficultyLiveTriple',
         './cmd/simulator/': 'TestR32SimulatorGetworkRefusal',
         './cmd/gt-wallet/': 'TestR32GTWalletDaemonGuard|TestR32GTWalletFileGuard|TestR32GTWalletBanGuard|TestR32GTWalletIsRegistered',

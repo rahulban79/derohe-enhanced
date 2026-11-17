@@ -102,16 +102,33 @@ def register_wallet(run, name, argv, env, progress, tick_s=30):
     return {'outcome': kind, 'detail': rec}
 
 
-def pick_next(names, bals, target, i):
+def pick_next(names, bals, target, i, targets=None):
     """r32 run-7 lesson: the next slice goes to the wallet furthest below target (the last measured balances); a wallet
     already at target never gets a slice (round-robin wasted a 20-min slice on m1 at 1.199 while m2 sat at 0.95).
-    With no balance known yet it is plain round-robin."""
-    below = [n for n in names if bals.get(n) is not None and bals[n] < target]
+    With no balance known yet it is plain round-robin. r32a (2026-11-16 05:05): `targets` = the next ladder step's need
+    per wallet (gt_ladder writes earn_targets.json); the wallet furthest below ITS need goes first (step 5 waited on the
+    sponsor m1 while the poorest-first rotation mined m5, already above its need); when every wallet meets its need the
+    global target applies again (poorest first)."""
     unknown = [n for n in names if bals.get(n) is None]
-    if below and not unknown:
-        return min(below, key=lambda n: (bals[n], names.index(n)))
+    for tier in ((targets or {}), {}):
+        t = {n: int(tier.get(n, target)) for n in names}
+        below = [n for n in names if bals.get(n) is not None and bals[n] < t[n]]
+        if tier and not below:
+            continue
+        if below and not unknown:
+            return max(below, key=lambda n: (t[n] - bals[n], -names.index(n)))
+        break
     pool = unknown or names
     return pool[i % len(pool)]
+
+
+def read_targets():
+    """{wallet: atomic} from <GT_HOME>/mainnet/earn_targets.json (written by gt_ladder), or {}."""
+    p = gtlib.GT_HOME / 'mainnet' / 'earn_targets.json'
+    try:
+        return {k: int(v) for k, v in json.loads(p.read_text()).get('targets_atomic', {}).items()}
+    except (OSError, ValueError, AttributeError):
+        return {}
 
 
 def rotate(a, run, names, addrs, wdir, gw):
@@ -124,7 +141,7 @@ def rotate(a, run, names, addrs, wdir, gw):
     i = 0
     bals = {}
     while time.time() < t_end:
-        n = pick_next(names, bals, int(a.target_dero * 100000), i)
+        n = pick_next(names, bals, int(a.target_dero * 100000), i, read_targets())
         i += 1
         stop_miners(run, keep=f'mainnet-miner-{n}')    # one pipeline-owned miner at a time
         gtlib.start_proc(run, f'mainnet-miner-{n}', [str(gtlib.BIN / 'gt-dero-miner'), f'--wallet-address={addrs[n]}',

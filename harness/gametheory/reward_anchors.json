@@ -334,7 +334,7 @@
    "what": "DVM compute gas limit is fixed per call",
    "formula": "GasComputeLimit = 10,000,000",
    "file": "dvm/sc.go",
-   "line": 238,
+   "line": 241,
    "quote": "state.GasComputeLimit = int64(10000000)"
   },
   {
@@ -342,7 +342,7 @@
    "what": "DVM storage gas limit = min(tx fee, MAX_STORAGE_GAS_ATOMIC_UNITS)",
    "formula": "GasStoreLimit = min(Fees(), 20000)",
    "file": "dvm/sc.go",
-   "line": 246,
+   "line": 249,
    "quote": "gasstorage_incoming = config.MAX_STORAGE_GAS_ATOMIC_UNITS"
   },
   {

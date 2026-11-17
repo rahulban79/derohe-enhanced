@@ -35,7 +35,8 @@ def load(over):
 
 def registry(cur, add=None):
     reg = copy.deepcopy(json.loads((ROOT / 'harness/round.json').read_text()))
-    reg['rounds'] = [r for r in reg['rounds'] if r.get('id') not in ('r31', 'r32')]
+    ids = [r.get('id') for r in reg['rounds']]
+    reg['rounds'] = reg['rounds'][:ids.index('r30') + 1]   # r32a: every round after r30 goes (a later measured round broke SP1/SP2)
     for r in reg['rounds']:
         if r.get('id') == 'r30':
             r['status'] = 'measured'

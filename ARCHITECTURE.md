@@ -2721,4 +2721,37 @@ below its target (child rft lessons 15–20, KATs GT14–GT17).
 **51.6 Not shown.** Any change in network hashrate: two wallets of one operator can only redistribute; that needs outside
 miners (R32-a objective).
 
-<!-- doc-current-through: r32 -->
+## 52. ★ Round 32a: one mainnet game grown from 3 to 5 wallets, paid detection, chain-audited economics (+22102026.r32a, 2026-11-16)
+
+> Filled from the R32a records: the child rft (`artifacts/dero-game-theory-rft.md`, decisions D-GT-11..16, lessons 15–33,
+> §13), the research dossier (`gametheory/research/r32a_*.md`), the ladder records (`harness/runtime/gt_cycle_mainnet_20261116T*.json`)
+> and their chain audits, and the pipeline records (`pipeline_20261116T155640`, `pipeline_20261116T210447`).
+
+**52.1 The ladder.** `playbooks/gt_ladder.py` deploys the four contracts once and plays one measured step per wallet
+count (3, 4, 5). Each step claims, plays five commit-reveal prize rounds and two audit rounds, then audits itself against
+the chain. Mining never stops: the earn job mines toward the next step's needs (`earn_targets.json`), poorest first
+once every need is met. Sizing (`harness/gametheory/sizing.plan_n_wallet`) refuses a plan whose reveal bond does not
+deter withholding or whose audit bounty does not pay an honest auditor's fees, and names the balance each wallet needs.
+
+**52.2 Paid detection.** `gametheory/contracts/gt_audit.bas` (M4) pays independent nodes to re-derive public chain facts
+(`harness/gametheory/audit_tasks.py`: block headers; each block's reward against the code formula). The sponsor's answer
+is a hidden commit; each auditor's commit is bound to `ADDRESS_STRING(SIGNER())`; a strict majority against the sponsor
+wins and sets `disputed=1`, which is public. Collusion, bribery and Sybil auditors are not prevented, and the contract
+says so. It is detection, not prevention: a contract cannot check consensus or see value an unsound proof created.
+
+**52.3 Chain-audited economics.** `harness/gametheory/cycle_audit.py` re-derives each round's entrants from the
+contracts and each wallet's mining from the block headers over the cycle's own start/end heights, paid by the
+consensus split (base reward plus the block's fees, divided by the miniblocks). G36 accepts a cycle only with that audit
+of the same record. For all three ladder steps the net payoffs sum to exactly minus the fees.
+
+**52.4 Node.** The DVM gas-estimate simulator no longer traces without `--debug` (an absent flag is stored as false by
+docopt) and no longer prints a nil error after each call; printing only, under the exact consensus-guard constructs
+`dvm-sim-trace-needs-debug` and `dvm-sim-nil-error-print-removed` (GC8–GC11), Go test `TestR32aSimulatorQuietWithoutDebug`,
+Go mutation `gm-r32a-dvm-sim-trace-always`.
+
+**52.5 Measured.** Prize rounds 15/15 with every wallet entering and revealing; audit rounds 6/6 settled with every
+auditor matching; emission audits 0 mismatches. Full pipeline S1–S6 PASS (go mutations 1,762/1,762, race 27/0, shadow
+119/119), installed 18:41:52, the user restarted derod 21:03:32 on +22102026.r32a; at 21:04:32 the tip block was 10 s old
+with 33 peers.
+
+<!-- doc-current-through: r32a -->

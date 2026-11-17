@@ -1891,4 +1891,51 @@ runs 9 `pipeline_20261115T114035` and 10 `pipeline_20261115T124651` PASS: KATs 3
 **Open after Round 32**: GT-B11 (measured hashrate below the plan), a second cycle with every round genuine, the MAT
 boost read in a two-player round, any network-hashrate effect (needs outside miners), child rft §8 (R32-a).
 
-<!-- doc-current-through: r32 -->
+## Round 32a (2026-11-15/16) — the ladder round: one mainnet game grown from 3 to 5 wallets, an audit bounty, chain-audited economics; installed as +22102026.r32a and measured live
+
+**Why.** The user (2026-11-15) asked to continue the R32 path as "R32-a": run the second mainnet cycle with a third
+wallet and grow it to 5 wallets, with two primary objectives — miners paid to mine along with the games (network
+hashrate), and the security concerns of earlier rounds addressed wherever a game run with mining can. Base d20e95f0;
+registry `r32a`, tracks miner `paused` (the user's own miner off; only the pipeline-owned game miner mined, to the new
+wallets), node `active`. Child rft decisions D-GT-11..16, parent D-40/D-41.
+
+**Research and design.** Two researchers: the web (pool-payout game theory, commit-reveal withholding, verification
+games and their failure modes, supply turnstiles) and the project's own ~80 security concerns, each marked whether a
+game can help. A contract cannot touch consensus, the decoders or P2P; it CAN pay for detection. Built: `gt_audit.bas`
+(M4: the sponsor's answer hidden, each auditor's commit bound to its own address, a strict-majority dispute signal,
+pull withdrawals), `audit_tasks.py` (deterministic answers over a settled height range: block headers, and each
+block's reward against the code formula), every wallet claiming the miniblocks it mined (a flat rate per miniblock),
+N-wallet sizing with two new checks (the reveal bond deters withholding; an audit bounty pays an honest auditor's fees),
+`gt_ladder.py` (one deployment, one measured step per wallet count, mining continuous), NO-GO N7 (orphan insurance) and
+N8 (streak bonuses, per-identity stipends).
+
+**Pre-flight.** Four private-chain runs found four defects before any DERO was spent: GetSC returns String variables
+hex-encoded, ADDRESS_STRING is always the mainnet form, commit windows must be sized from measured call latency, and
+the DVM's storage-gas limit is the transaction fee (gt_audit Settle reverted). Each was fixed with a KAT.
+
+**Mainnet.** Step 3 (3 wallets) settled 01:16, step 4 (4) 05:03, step 5 (5) 09:04 on 2026-11-16: 15 of 15 prize rounds
+with every wallet entering and revealing, 6 of 6 audit rounds settled with every auditor matching the sponsor's hidden
+answer and no dispute, 0 reward mismatches in three emission audits, fees 85,608 / 46,144 / 56,252 atomic. The chain
+audit takes mining out by the consensus split (base reward plus the block's fees, from the block headers): every
+step's net payoffs sum to exactly minus its fees. One transaction was lost and resent; the user's derod restart in
+the middle of step 5 cost nothing.
+
+**Node.** The user saw "sc execution error %!s(<nil>)" and every interpreted DVM line on the console: the gas-estimate
+simulator traced whenever `--debug` was declared (docopt stores an absent flag as false) and printed a nil error after
+every call. Fixed as printing only under two exact consensus-guard constructs (D-41), plus one estimate per contract
+entrypoint per step. Version +22102026.r32a.
+
+**Closed loop.** Every failure became a test or a harness fix before the next run (child rft lessons 15–33): the README
+round and build-section checks, the sub-round lists, the chain audit (record run, block-header mining, fee-inclusive
+split), the earn job (rebuild on relaunch, stop its miners, mine toward the next step's needs), anchors moved by a
+consensus-package edit, an INVALID Go mutation read as caught. Full pipeline `pipeline_20261116T155640` S1-S6 PASS
+(go mutations 1,762/1,762, race 27 packages 0 races, shadow 119/119 per node), installed 18:41:52; the user restarted
+derod 21:03:32 on the r32a build; closing project-only run on the running build.
+
+**Measured.** At 21:04:32: version +22102026.r32a, tip block 10 s old, 33 peers.
+
+**Open after Round 32a**: any network-hashrate effect (two to five wallets of one operator only redistribute; it needs
+outside miners), auditor collusion and Sybil resistance (not prevented, stated), the earn job's own credit counter
+(reward // 10, display only), GT-B11 (measured hashrate below the plan), a content-hash staleness check for gt binaries.
+
+<!-- doc-current-through: r32a -->

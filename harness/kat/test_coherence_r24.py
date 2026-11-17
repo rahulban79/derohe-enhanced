@@ -250,7 +250,27 @@ CASES = [  # (id, [(planted change, expected check)])
               (lambda r: sub(r, 'artifacts/dero-r1-r24.html', 'Chain consensus_capture_20261103T050817Z.txt', 'Chain consensus_capture_20261103T044707Z.txt'), 'observatory'),
               (lambda r: sub(r, 'artifacts/dero-r1-r24.html', 'OBSERVED 3 · ANOMALY 2', 'OBSERVED 4 · ANOMALY 2'), 'observatory'),
               (lambda r: sub(r, '.skills/dero-miner-tuning/SKILL.md', 'consensus_capture_20261103T050817Z.txt` first', 'consensus_capture_20261103T999999Z.txt` first'), 'observatory')]),
+    # r32a: a DELEGATED round (registry delegated_page) has its page in the child track: a missing page, or one that does
+    # not name the round, drifts as 'pages' (the ledger generator writes no dero-r1-r<N>.html for it)
+    ('CO18', [(lambda r: jedit(r, 'harness/round.json', _delegate('artifacts/dero-child.html')), 'pages'),
+              (lambda r: (sub_new(r, 'artifacts/dero-child.html', '<h1>no round here</h1>'), append(r, 'artifacts/dero-rft.md', ' dero-child.html'),
+                          jedit(r, 'harness/round.json', _delegate('artifacts/dero-child.html'))), 'pages')]),
 ]
+
+
+def _delegate(page):
+    def f(d):
+        next(x for x in d['rounds'] if x['id'] == d['current'])['delegated_page'] = page
+    return f
+
+
+def sub_new(root, rel, text):
+    (Path(root) / rel).write_text(text)
+
+
+def append(root, rel, text):
+    p = Path(root) / rel
+    p.write_text(p.read_text() + text)
 
 
 def kats(mod, base, only=None):
@@ -320,6 +340,10 @@ MUTATIONS = [  # (KAT expected to catch it, old, new, what)
     ('CO14', "    if missing:\n        c.drift('srcarch'", "    if False:\n        c.drift('srcarch'", 'missing round commits are not reported'),
     ('CO14', "        if any(h.startswith(x) or x.startswith(h) for x in have):", "        if True:", 'every round commit counts as present'),
     ('CO1', "        real = [f for f in fs if not is_generated(f)]", "        real = fs", 'generated-only commits count as missing (control)'),
+    ('CO18', "        self.delegated = bool(self.rcur.get('delegated_page'))", "        self.delegated = False",
+     'r32a: a delegated round is held to a dero-r1-r<N>.html it never gets (its child page is not checked)'),
+    ('CO18', "            if f'Round {c.label}' not in c.text(c.ledger):", "            if False:",
+     'r32a: a delegated page that does not name the round passes'),
     ('CO15', "            c.drift('pages', c.ledger, None, f'the ledger page of round {c.cur} ({c.status})', 'missing', 'harness/round.json current')",
      "            pass", 'a missing ledger page is not reported'),
     ('CO16', "                    c.drift('observatory', f, ln, f'{name} in harness/runtime', 'missing (dangling capture id)', 'harness/runtime/')",

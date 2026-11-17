@@ -67,6 +67,18 @@ STORAGE_GAS_FREE = 150   # below this a size-based fee already covers the storag
 STORAGE_FEE_FLOOR = 600  # above every measured size-based fee (<= 417), so a set fee never undercuts the pool minimum
 
 
+def cached_estimate(cache, k, fetch):
+    """r32a D-41: the gas estimate of (contract, entrypoint) is fetched once per cycle and reused (each
+    DERO.GetGasEstimate ran the DVM simulator, which printed every interpreted line on the derod console: 102 estimates
+    in ladder step 3). A failed fetch (None) is not cached, so the next call asks again. Pure apart from fetch."""
+    if k in cache:
+        return cache[k]
+    v = fetch()
+    if v is not None:
+        cache[k] = v
+    return v
+
+
 def storage_fee(gasstorage):
     """r32a sim pre-flight: the DVM's storage-gas limit IS the tx fee (blockchain/transaction_execute.go:395 passes
     tx.Fees() as gasstorage_incoming; dvm/sc.go:244-250, capped at config.MAX_STORAGE_GAS_ATOMIC_UNITS 20,000), and the
@@ -133,6 +145,7 @@ class Cycle:
         self.port = {n: self.net['wallet_base'] + 50 + i for i, n in enumerate(self.names)}
         self.addr, self.fees, self.t0 = {}, [], time.time()
         self.pending_w = []      # (wallet, round, j) withdrawals deferred past the next round's entries
+        self.gas_cache = {}      # r32a D-41: one DERO.GetGasEstimate per (contract, entrypoint) per cycle
         P = gtlib.PARAMS[a.network]
         self.P = {k: dict(v) for k, v in P.items()}
         self.plan = json.loads(Path(a.plan).read_text()).get('plan', {}) if a.plan else {}
@@ -227,7 +240,7 @@ class Cycle:
             p['transfers'].append({'scid': '0' * 64, 'burn': int(dero), 'destination': self.other(n)})
         if asset:
             p['transfers'].append({'scid': asset[0], 'burn': int(asset[1])})
-        est = self.gas_estimate(n, scid, p)
+        est = cached_estimate(self.gas_cache, (key, entry), lambda: self.gas_estimate(n, scid, p))
         if est and est.get('gasstorage', 0) > STORAGE_GAS_FREE:
             p['fees'] = storage_fee(est['gasstorage'])
         b0 = self.balance(n)

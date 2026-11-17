@@ -68,6 +68,25 @@ ALLOWED = {
                'is unchanged (ASSIGNED: the new fields are set only in blockchain/mempool/)',
         'assigned': {'MilliFEEperBYTE': 'blockchain/mempool/', 'MilliFeesPerByte': 'blockchain/mempool/'},
     },
+    # r32a (the user 2026-11-16: "lot of smart contract execution errors" on the derod console; decision D-41): the DVM
+    # gas-estimate simulator printed every interpreted line and a nil "sc execution error" for every estimate. Printing
+    # only: `State.Trace` is written only in dvm/sc.go and read only by the fmt.Printf in dvm/dvm.go (grep, r32a
+    # rec/r32a_dvm_trace_reach.txt), and dvm/simulator.go's only non-test user is the DERO.GetGasEstimate handler
+    # (cmd/derod/rpc/rpc_dero_estimategas.go); no block or tx validity check reaches either. Exact lines, one file each.
+    'dvm-sim-trace-needs-debug': {
+        'files': ['dvm/sc.go'],
+        'lines': ['if dbg, isBool := globals.Arguments["--debug"].(bool); isBool && dbg && simulator {'],
+        'minus': ['if _, ok = globals.Arguments["--debug"]; ok && globals.Arguments["--debug"] != nil && simulator {'],
+        'why': 'docopt stores an absent --debug as false and `!= nil` was always true; the condition only sets State.Trace, '
+               'which only a fmt.Printf in dvm.go reads',
+    },
+    'dvm-sim-nil-error-print-removed': {
+        'files': ['dvm/simulator.go'],
+        'lines': [],
+        'minus': ['fmt.Printf("sc execution error %s\\n", err)'],
+        'why': 'a console print removed from the simulator (its only non-test user is the gas-estimate RPC, which returns '
+               'the same error to its client); nothing else in the function changes',
+    },
     'rpc-money-copy-128bit': {
         'files': ['rpc/wallet_rpc.go'],
         'lines': ['hard_coded_decimals := new(big.Float).SetPrec(128).SetInt64(100000)',

@@ -182,7 +182,9 @@ Changes r29–r31 (same compat rule: additive fields, typed refusals; no consens
 
 Round 32 (2026-11-15): no derod or wallet RPC change (the Go diff of R32 touches only `cmd/gt-wallet`, a `cmd/simulator` flag and tests). `cmd/gt-wallet serve` runs the stock wallet RPC server on loopback for the game-theory playbooks. Two facts the playbooks depend on, read from the code: `DERO.GetSC` returns String variables hex-encoded (`rpc_dero_getsc.go:138`), and `DERO.GetGasEstimate` runs `sc_rpc` as given (`rpc_dero_estimategas.go:78`), so a caller adds the `SC_ACTION` / `SC_ID` arguments the wallet would add.
 
-<!-- doc-current-through: r32 -->
+Round 32a (2026-11-16, node build +22102026.r32a): DERO.GetGasEstimate no longer prints to the derod console. The DVM simulator it runs traced every interpreted line whenever `--debug` was declared (docopt stores an absent flag as false; `dvm/sc.go`) and printed `sc execution error %!s(<nil>)` after every call (`dvm/simulator.go`); the trace now needs `--debug` true and the nil print is gone. The answer itself is unchanged (gascompute, gasstorage, status).
+
+<!-- doc-current-through: r32a -->
 
 Example:
 

@@ -373,5 +373,20 @@ python3 -I kat/test_gt_reward_r32.py          # the block-reward split read from
 
 `intel/readme_build.py --write | --check` (r32a, B333) generates the public README's "Build and run this build" section from the tree (version, Go, the pipeline's build commands, every binary's own `--help`, the Mainnet ports); the regen page gate `readme build` runs `--check` and the sync refuses a stale section. KAT `kat/test_readme_build_r32a.py`.
 
-<!-- doc-current-through: r32 -->
+## The game-theory ladder and paid detection (r32a)
+
+`../playbooks/gt_ladder.py --mainnet-confirm` grows the mainnet game from 3 to 5 wallets (one deployment, one measured
+step per wallet count, mining continuous; it writes the next step's needs to `<GT_HOME>/mainnet/earn_targets.json`).
+`gametheory/audit_tasks.py --task 1|2 --from H --upto H2` computes the deterministic answer of an audit round (block
+headers; rewards against the code formula), read-only, never below the pruned floor or inside the settle depth.
+`gametheory/cycle_audit.py --record <cycle record> [--write]` re-derives a cycle from the contracts and the block headers
+(entrants, mining by the consensus split, net payoffs = −fees); G36 needs it. `gametheory/recipe_lint.py` refuses a live
+command file that marks DONE after a failure. `gametheory/sizing.plan_n_wallet` sizes an N-wallet step.
+
+```
+python3 -I kat/test_gt_mechanisms_r32.py      # GT1-GT28: contracts, playbooks, the ladder, the audits, every lesson
+python3 -I kat/test_guard_constructs_r29.py   # GC1-GC11: incl. the two DVM print constructs (r32a)
+```
+
+<!-- doc-current-through: r32a -->
 

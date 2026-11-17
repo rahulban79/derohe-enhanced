@@ -238,17 +238,18 @@
     "miner": "paused",
     "node": "active"
    },
-   "evidence": "R32 opened 2026-11-15 by the R32 coordinator from 5f69b055 (R31 closed): DELEGATED to the child rft artifacts/dero-game-theory-rft.md (the user, 2026-11-15: park the broad and miner tracks; 100 % DVM / smart contracts / game theory; parent rft §0.12 D-37); tracks miner paused / node active (derod r31 unchanged, no node work); area gametheory opens since r32; gate G35 | mainnet cycle settled 2026-11-15 10:26:53 (G36 PASS, project-only pipeline_20261115T124651 PASS; public b302bf1 pushed 14:02:36); the full pipeline (go mutations, race, shadow) runs before R32 is marked measured. | MEASURED: full pipeline_20261115T141331 PASS (go mutations 1761/1761, race 27 packages 0 races, shadow 119/119 per node, 0 treehash mismatches, project KATs 35/35, harness KAT mutations 34 of 34, gates 33/36 + 3 PAUSED); the node build stays r31 (version_suffix 22102026.r31): R32 changed no derod code path (Go diff 5f69b055..: cmd/gt-wallet, cmd/simulator flag, tests)."
+   "evidence": "R32 opened 2026-11-15 by the R32 coordinator from 5f69b055 (R31 closed): DELEGATED to the child rft artifacts/dero-game-theory-rft.md (the user, 2026-11-15: park the broad and miner tracks; 100 % DVM / smart contracts / game theory; parent rft §0.12 D-37); tracks miner paused / node active (derod r31 unchanged, no node work); area gametheory opens since r32; gate G35 | mainnet cycle settled 2026-11-15 10:26:53 (G36 PASS, project-only pipeline_20261115T124651 PASS; public b302bf1 pushed 14:02:36); the full pipeline (go mutations, race, shadow) runs before R32 is marked measured. | MEASURED: full pipeline_20261115T141331 PASS (go mutations 1761/1761, race 27 packages 0 races, shadow 119/119 per node, 0 treehash mismatches, project KATs 35/35, harness KAT mutations 34 of 34, gates 33/36 + 3 PAUSED); the node build stays r31 (version_suffix 22102026.r31): R32 changed no derod code path (Go diff 5f69b055..: cmd/gt-wallet, cmd/simulator flag, tests).",
+   "delegated_page": "artifacts/dero-enhanced-game-theory.html"
   },
   {
    "id": "r32a",
-   "status": "in-progress",
-   "version_suffix": "pending",
+   "status": "measured",
+   "version_suffix": "22102026.r32a",
    "new_tests_base": "d20e95f0",
-   "merge_commit": "pending",
-   "head_after": "pending",
-   "pipeline_full": "pending",
-   "go_mutations": "pending",
+   "merge_commit": "2a90db4b",
+   "head_after": "2a90db4b",
+   "pipeline_full": "pipeline_20261116T155640",
+   "go_mutations": "1762/1762",
    "new_rpc_methods": {},
    "github_sync": {
     "base": "21d558ee",
@@ -258,7 +259,9 @@
     "miner": "paused",
     "node": "active"
    },
-   "evidence": "R32a opened 2026-11-15 by the main session from d20e95f0 (R32 measured; the user: \"for continuing on the current R32 enhancements path (name it R32-a)\"): the second mainnet cycle with a third wallet, grown to 5 wallets; primary objectives: miners paid to mine along with the games (network hashrate), and the security concerns of prior rounds addressed where a game with mining can (detection: gt_audit M4); child rft D-GT-11..16. The pipeline-owned gt miner (new gt wallets only) runs; the user's own miner stays off."
+   "evidence": "R32a opened 2026-11-15 by the main session from d20e95f0 (R32 measured; the user: \"for continuing on the current R32 enhancements path (name it R32-a)\"): the second mainnet cycle with a third wallet, grown to 5 wallets; primary objectives: miners paid to mine along with the games (network hashrate), and the security concerns of prior rounds addressed where a game with mining can (detection: gt_audit M4); child rft D-GT-11..16. The pipeline-owned gt miner (new gt wallets only) runs; the user's own miner stays off. | MEASURED 2026-11-16: the mainnet ladder settled steps 3, 4, 5 (3 to 5 wallets; 15/15 prize rounds genuine, 6/6 audit rounds settled, every chain-audit sum = -fees exactly); full pipeline_20261116T155640 S1-S6 PASS (go mutations 1762/1762, race 27 packages 0 races, shadow 119/119 per node), installed 18:41:52 as +22102026.r32a; the user restarted derod 21:03:32 on it; 21:04:32 tip block 10 s old, 33 peers. The DVM gas-estimate console fix (B334/D-41) and the README build section (B333/D-40) are in this build.",
+   "delegated_page": "artifacts/dero-enhanced-game-theory.html",
+   "pipeline_project": "pipeline_20261116T234648"
   },
   {
    "id": "r33",

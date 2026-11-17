@@ -199,7 +199,10 @@ func Execute_sc_function(w_sc_tree *Tree_Wrapper, data_tree *Tree_Wrapper, scid 
 	tx_store.SCID = scid
 	tx_store.State = state
 
-	if _, ok = globals.Arguments["--debug"]; ok && globals.Arguments["--debug"] != nil && simulator {
+	// r32a: docopt stores every declared option, so an absent --debug is present with the value false and the old
+	// test (`!= nil`) turned the trace on for every simulator run (DERO.GetGasEstimate printed each interpreted line
+	// to the console). The trace now needs --debug to be true. Printing only; no execution path changes.
+	if dbg, isBool := globals.Arguments["--debug"].(bool); isBool && dbg && simulator {
 		state.Trace = true // enable tracing for dvm simulator
 	}
 

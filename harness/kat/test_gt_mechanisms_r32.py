@@ -759,9 +759,12 @@ def kat_gt26(over):
         try:
             A = load(over, 'audit')
             blocks = {100: ['a1'] * 9 + ['a1'], 101: ['a2', 'x', 'a1'], 102: ['x'] * 10}
+            fee = {100: 0, 101: 4200, 102: 0}                # r32a step 5: a block's tx fees join the split
 
             def rpc(m, p):
-                return {'block_header': {'miners': blocks[p['height']], 'reward': 30750}}
+                if m == 'DERO.GetBlockHeadersRange':
+                    return {'headers': [{'topoheight': t, 'fees': fee[t]} for t in range(p['start_topoheight'], p['end_topoheight'] + 1)]}
+                return {'block_header': {'miners': blocks[p['height']], 'reward': 30750, 'topoheight': p['height']}}
             got = A.chain_mined(rpc, 100, 102, {'m1': 'a1', 'm2': 'a2'})
             rec = {'_path': 'r.json', 'measured_at': '2026-11-16T01:00:00-08:00', 'wallets': ['m1', 'm2'], 'start_height': 100,
                    'end_height': 102, 'results': {'m3_rounds': []}, 'payoff_atomic': {'m1': 0, 'm2': 0}, 'fees_total_atomic': 0}
@@ -772,21 +775,64 @@ def kat_gt26(over):
                     os.environ.pop(k2, None)
                 else:
                     os.environ[k2] = v
-    ok = got == {'m1': 10 * 3075, 'm2': 3075} and au['mined_source'] == 'chain' and au['window_heights'][:2] == (100, 102)
+    ok = got == {'m1': 9 * 3075 + 11650, 'm2': 11650} and au['mined_source'] == 'chain' and au['window_heights'][:2] == (100, 102)   # 101: (30750+4200)//3
     return ok, got, au['mined_source'], au['window_heights']
+
+
+def kat_gt27(over):
+    """r32a D-41 (the user 2026-11-16: the derod console showed DVM traces and nil "sc execution error" lines): the cycle
+    fetches one gas estimate per (contract, entrypoint) and reuses it; a failed fetch is not cached."""
+    root = Path(over.get('root') or ROOT)
+    cy = _with_env(lambda d: _mod(root, 'cycle'))
+    calls = []
+
+    def fetch(v):
+        def f():
+            calls.append(v)
+            return v
+        return f
+    c = {}
+    a = [cy.cached_estimate(c, ('prize', 'Enter'), fetch({'gasstorage': 271})) for _ in range(4)]
+    b = cy.cached_estimate(c, ('prize', 'Reveal'), fetch(None))
+    b2 = cy.cached_estimate(c, ('prize', 'Reveal'), fetch({'gasstorage': 164}))
+    ok = a == [{'gasstorage': 271}] * 4 and b is None and b2 == {'gasstorage': 164} and len(calls) == 3
+    return ok, len(calls), b2
+
+
+def kat_gt28(over):
+    """r32a (2026-11-16 05:05): ladder step 5 waited on the sponsor m1 (1.64 of 1.99 DERO) while the poorest-first
+    rotation mined m5 (1.20, above its 0.77 need). With the step's needs as targets the wallet furthest below ITS need
+    goes first; when every wallet meets its need the global target applies again (poorest first)."""
+    root = Path(over.get('root') or ROOT)
+
+    def body(d):
+        e = _mod(root, 'earn')
+        names = ['m1', 'm2', 'm3', 'm4', 'm5']
+        bals = {'m1': 164169, 'm2': 233238, 'm3': 236834, 'm4': 137133, 'm5': 119973}
+        need = {'m1': 198520, 'm2': 77067, 'm3': 77067, 'm4': 77067, 'm5': 77067}
+        a = e.pick_next(names, bals, 5000000, 0, need)
+        b = e.pick_next(names, dict(bals, m1=200000), 5000000, 0, need)      # every need met: poorest first again
+        c = e.pick_next(names, bals, 5000000, 0, None)                         # no targets file: poorest first
+        return a, b, c
+    a, b, c = _with_env(body)
+    ok = a == 'm1' and b == 'm5' and c == 'm5'
+    return ok, a, b, c
 
 
 KATS = [('GT1', kat_gt1), ('GT2', kat_gt2), ('GT3', kat_gt3), ('GT4', kat_gt4), ('GT5', kat_gt5), ('GT6', kat_gt6),
         ('GT7', kat_gt7), ('GT8', kat_gt8), ('GT9', kat_gt9), ('GT10', kat_gt10), ('GT11', kat_gt11), ('GT12', kat_gt12),
         ('GT13', kat_gt13), ('GT14', kat_gt14), ('GT15', kat_gt15), ('GT16', kat_gt16), ('GT17', kat_gt17), ('GT18', kat_gt18), ('GT19', kat_gt19),
-        ('GT20', kat_gt20), ('GT21', kat_gt21), ('GT22', kat_gt22), ('GT23', kat_gt23), ('GT24', kat_gt24), ('GT25', kat_gt25), ('GT26', kat_gt26)]
+        ('GT20', kat_gt20), ('GT21', kat_gt21), ('GT22', kat_gt22), ('GT23', kat_gt23), ('GT24', kat_gt24), ('GT25', kat_gt25), ('GT26', kat_gt26), ('GT27', kat_gt27), ('GT28', kat_gt28)]
 
 OWNERS = {'r32 ban': ['GT1', 'GT2', 'GT7'], 'r32 econ': ['GT3'], 'r32 ponzi': ['GT4'], 'r32 lint': ['GT5'],
-          'r32 discovery': ['GT6'], 'r32 playbook': ['GT7'], 'r32 sizing': ['GT8'], 'r32 cycle': ['GT9'], 'r32 earnrun': ['GT10'], 'r32 earnbug2': ['GT11'], 'r32 viability': ['GT12'], 'r32 liverec': ['GT13'], 'r32 slicepick': ['GT14'], 'r32 txfinal': ['GT15'], 'r32 claimpost': ['GT15'], 'r32 uint': ['GT15'], 'r32 setupskip': ['GT15'], 'r32 giveup': ['GT15'], 'r32 entryidx': ['GT16'], 'r32 settled2': ['GT16'], 'r32 audit': ['GT17'], 'r32 g36audit': ['GT17'], 'r32a miners': ['GT18'], 'r32a recipe': ['GT18'], 'r32a withhold': ['GT19'],
+          'r32 discovery': ['GT6'], 'r32 playbook': ['GT7'], 'r32 sizing': ['GT8'], 'r32 cycle': ['GT9'], 'r32 earnrun': ['GT10'], 'r32 earnbug2': ['GT11'], 'r32 viability': ['GT12'], 'r32 liverec': ['GT13'], 'r32 slicepick': ['GT14', 'GT28'], 'r32 txfinal': ['GT15'], 'r32 claimpost': ['GT15'], 'r32 uint': ['GT15'], 'r32 setupskip': ['GT15'], 'r32 giveup': ['GT15'], 'r32 entryidx': ['GT16'], 'r32 settled2': ['GT16'], 'r32 audit': ['GT17'], 'r32 g36audit': ['GT17'], 'r32a miners': ['GT18'], 'r32a recipe': ['GT18'], 'r32a withhold': ['GT19'],
           'r32a auditpay': ['GT19'], 'r32a setup': ['GT19'], 'r32a needs': ['GT19'], 'r32a digest': ['GT20'], 'r32a emission': ['GT20'],
           'r32a settle': ['GT20'], 'r32a commit': ['GT21'], 'r32a aindex': ['GT21'],
-          'r32a hexstr': ['GT16', 'GT21', 'GT22'], 'r32a windows': ['GT22'], 'r32a storagegas': ['GT23'], 'r32a ladderfees': ['GT24'], 'r32a relaunch': ['GT25'], 'r32a chainmined': ['GT26']}
+          'r32a hexstr': ['GT16', 'GT21', 'GT22'], 'r32a windows': ['GT22'], 'r32a storagegas': ['GT23'], 'r32a ladderfees': ['GT24'], 'r32a relaunch': ['GT25'], 'r32a chainmined': ['GT26'], 'r32a gascache': ['GT27'], 'r32a needfirst': ['GT28']}
 MUTATIONS = [
+    ('audit', "        share = (int(bh.get('reward', 0)) + fees.get(int(bh.get('topoheight', -1)), 0)) // len(ms)", "        share = int(bh.get('reward', 0)) // 10", 'r32a chainmined: the block fees are left out of the share'),
+    ('earn', '    for tier in ((targets or {}), {}):', '    for tier in ({}, {}):', 'r32a needfirst: the step needs are ignored by the rotation'),
+    ('cycle', '    if k in cache:\n        return cache[k]', '    if False:\n        return cache[k]', 'r32a gascache: every call asks the node for a new gas estimate'),
     ('audit', '        for m in (ms[:-1] if len(ms) == 10 else ms):\n            if m in by_addr:', '        for m in ms:\n            if m in by_addr:', 'r32a chainmined: the integrator final share is counted as mined'),
     ('audit', "        reset = any(int(q['chain_credited'].get(w, 0)) < int(p['chain_credited'].get(w, 0)) for w in p['chain_credited'])", '        reset = False', 'r32a relaunch: a relaunched earn counter is subtracted as if continuous'),
     ('ladder', '    return max(int(fc), cy.STORAGE_FEE_FLOOR), max(int(fi), GT_AUDIT_INSTALL_FEE),', '    return int(fc), int(fi),', 'r32a ladderfees: the ladder sizes with the old R32 per-call fee'),
@@ -813,7 +859,7 @@ MUTATIONS = [
     ('lib', '    if not 0 <= v < 1 << 64:', '    if False:', 'r32 uint: a negative Uint64 argument reaches the wallet'),
     ('cycle', "    return int((stringkeys or {}).get('frozen', 0) or 0) == 0", '    return True', 'r32 setupskip: a frozen contract re-takes setup calls'),
     ('trig', '    return fails >= cap', '    return False', 'r32 giveup: a failing cycle is retried without bound'),
-    ('earn', "        return min(below, key=lambda n: (bals[n], names.index(n)))", "        pass", 'r32 slicepick: a wallet at target still gets mining slices'),
+    ('earn', "            return max(below, key=lambda n: (t[n] - bals[n], -names.index(n)))", "            return min(below, key=lambda n: (t[n] - bals[n], -names.index(n)))", 'r32 slicepick: the least needy wallet gets the slice'),
     ('earnrec', "    if not a.write:\n        print(", "    if False:\n        print(", 'r32 liverec: the live trigger rewrites the tracked records'),
     ('size', "        'a_fees_bounded': fee_frac <= FEE_FRACTION_MAX,", "        'a_fees_bounded': True,", 'r32 viability: fees are never bounded'),
     ('size', "        'b_participants_gain': ev['m2'] >= 0 and S * w1 / W - per_round['m1'] >= 0,", "        'b_participants_gain': True,",

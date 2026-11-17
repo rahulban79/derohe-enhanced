@@ -258,6 +258,11 @@ class Ctx:
         self.status = self.rcur.get('status')
         self.done = self.status in DONE
         self.ledger = f'artifacts/dero-r1-r{re.match(r"\d+", self.label).group(0)}.html'
+        # r32a: a DELEGATED round (rft §0.12 D-37) has its page in the child track; the ledger generator writes no
+        # dero-r1-r<N>.html for it (gen_ledger docstring), so the registry names the page that stands in for it
+        self.delegated = bool(self.rcur.get('delegated_page'))
+        if self.delegated:
+            self.ledger = self.rcur['delegated_page']
         self._pipes = {}
 
     def rel(self, p):
@@ -762,6 +767,10 @@ def check_pages(c, index=True):
         c.fact()
         if not (c.root / c.ledger).exists():
             c.drift('pages', c.ledger, None, f'the ledger page of round {c.cur} ({c.status})', 'missing', 'harness/round.json current')
+        elif c.delegated:              # r32a: the child page must name the round; its structure is the child's own
+            c.fact()
+            if f'Round {c.label}' not in c.text(c.ledger):
+                c.drift('pages', c.ledger, None, f'the delegated page names Round {c.label}', 'not named', 'harness/round.json delegated_page')
         else:
             lt = c.text(c.ledger)
             a = lt.find(f'id="r{c.label}"')
@@ -1020,6 +1029,8 @@ def check_forensics(c):
         p = c.root / rel
         if not p.exists():
             continue
+        if rel == c.ledger and getattr(c, 'delegated', False):
+            continue                    # r32a: a delegated round's page is the child's; the forensics block is the ledger's
         txt = p.read_text()
         c.fact()
         if b not in txt:

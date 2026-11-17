@@ -14097,6 +14097,14 @@
    "test": "TestR31ExplorerDecodeHexBlob",
    "find": "\tb, err := hex.DecodeString(s)\n\tif err != nil {",
    "replace": "\tb, err := hex.DecodeString(s)\n\tif err != nil && false {"
+  },
+  {
+   "id": "gm-r32a-dvm-sim-trace-always",
+   "file": "dvm/sc.go",
+   "find": "if dbg, isBool := globals.Arguments[\"--debug\"].(bool); isBool && dbg && simulator {",
+   "replace": "if _, isBool := globals.Arguments[\"--debug\"].(bool); isBool && simulator { // r32a mutated: the old bug, trace whenever --debug is present",
+   "test": "TestR32aSimulatorQuietWithoutDebug",
+   "pkg": "./dvm/"
   }
  ]
 }

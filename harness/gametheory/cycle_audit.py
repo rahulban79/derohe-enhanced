@@ -62,18 +62,32 @@ def mined_window(earn_rows, t_start, t_end):
 
 
 def chain_mined(rpc_fn, lo, hi, addrs):
-    """normal miniblocks per wallet over heights [lo, hi] read from the block headers (DERO.GetBlock miners; the final
-    share of a 10-miniblock block is the integrator's), at reward // 10 each — the same rule the earn job uses, but
-    independent of its counters (r32a step 3: an earn relaunch hid two shares from the counter-based window). Addresses
-    stay in memory. Pure apart from rpc_fn."""
+    """mining credited per wallet over heights [lo, hi] from the chain, by the consensus split: each normal miniblock
+    is paid full_reward // len(miniblocks) with full_reward = base reward + the block's tx fees (process_miner_
+    transaction; reward_intel.split RW13-RW18); the final share of a 10-miniblock block is the integrator's. r32a step 5:
+    reward // 10 missed the fees of the blocks that carried our own SC calls (m1: 420 atomic over the window). The
+    miners come from DERO.GetBlock, the fees from DERO.GetBlockHeadersRange (by topoheight, <= 100 per call).
+    Addresses stay in memory. Pure apart from rpc_fn."""
     by_addr = {a: w for w, a in addrs.items()}
     out = {w: 0 for w in addrs}
-    for h in range(lo, hi + 1):
-        bh = rpc_fn('DERO.GetBlock', {'height': h})['block_header']
+    blocks = [rpc_fn('DERO.GetBlock', {'height': h})['block_header'] for h in range(lo, hi + 1)]
+    fees = {}
+    topos = sorted(int(b.get('topoheight', 0)) for b in blocks)
+    i = 0
+    while i < len(topos):
+        s, e = topos[i], min(topos[i] + 99, topos[-1])
+        for hd in rpc_fn('DERO.GetBlockHeadersRange', {'start_topoheight': s, 'end_topoheight': e}).get('headers') or []:
+            fees[int(hd.get('topoheight', -1))] = int(hd.get('fees') or 0)
+        while i < len(topos) and topos[i] <= e:
+            i += 1
+    for bh in blocks:
         ms = bh.get('miners') or []
+        if not ms:
+            continue
+        share = (int(bh.get('reward', 0)) + fees.get(int(bh.get('topoheight', -1)), 0)) // len(ms)
         for m in (ms[:-1] if len(ms) == 10 else ms):
             if m in by_addr:
-                out[by_addr[m]] += int(bh.get('reward', 0)) // 10
+                out[by_addr[m]] += share
     return out
 
 
@@ -146,6 +160,8 @@ def main(argv):
     print(text)
     if a.write:
         OUT.write_text(text + '\n')
+        # r32a: one audit per record as well, so the page can show every ladder step (the file above is the newest)
+        (ROOT / 'harness/runtime' / ('gt_cycle_audit_' + Path(rec['_path']).stem.replace('gt_cycle_', '') + '.json')).write_text(text + '\n')
     return 0
 
 

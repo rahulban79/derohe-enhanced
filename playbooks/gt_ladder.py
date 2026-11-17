@@ -161,6 +161,9 @@ def main(argv):
                       failing=plan.get('failing_last'))
             if ready:
                 break
+            if plan.get('needs_atomic') or plan.get('viable') is False:   # r32a: the earn rotation mines toward this step's needs
+                nd = plan.get('needs_atomic') or {}
+                (gtlib.GT_HOME / 'mainnet' / 'earn_targets.json').write_text(json.dumps({'step': n, 'targets_atomic': nd}) + '\n')
             time.sleep(a.poll)
         pf = run.dir / f'plan_n{n}.json'
         pf.write_text(json.dumps(plan, indent=1, sort_keys=True) + '\n')

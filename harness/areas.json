@@ -4837,14 +4837,14 @@
   },
   {
    "id": "r32a",
-   "pipeline_full": "pending",
-   "pipeline_project": "pending",
+   "pipeline_full": "pipeline_20261116T155640",
+   "pipeline_project": "pipeline_20261116T234648",
    "anchor": {
     "file": "harness/round.json",
     "quote": "\"evidence\": \"R32a opened 2026-11-15 by the main session from d20e95f0",
     "line": 261
    },
-   "pinned_why": "r32a (the user's R32-a path, child rft D-GT-11..16): opened 2026-11-15 from d20e95f0; pipeline records pending",
+   "pinned_why": "r32a (the user's R32-a path, child rft D-GT-11..16): measured 2026-11-16 (full pipeline_20261116T155640, installed +22102026.r32a, live 21:04:32)",
    "ownership": {
     "harness": {
      "code_paths": [
