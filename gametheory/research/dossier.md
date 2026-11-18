@@ -131,3 +131,42 @@ Every DERO protocol claim below is a *doc claim*. Anything about consensus, rewa
 
 ## Fetch failures (kept honest)
 wiki.dero.io (Stargate community whitepaper PDF, AstroBWT, HE Features): connection refused or timeout. forum.dero.io: connection refused. DERO Medium posts: HTTP 403. The kryptoid Medium post: 403. CoinClear: DNS failure. kleros.io long whitepaper: "Not found". Community node page: TLS error, so only the search snippet was used. The Myerson DOI page: 403 (read via a course mirror). The Zether full PDF: 403, so only the abstract was used. The Chen et al. WWW 2018 page redirected and was not fetched; it is used only via search text and is not in sources.json as evidence.
+
+---
+
+## R33 (2026-11-17): block proofs, pool mathematics, forensics and security limits
+
+This section is appended; nothing above was changed. The map of every R33 objective to its research, rules, rft rows,
+CONFIRMED and open items is `r33_index.md`.
+
+| file | topic | key results |
+|---|---|---|
+| `r33_research_web.md` | collusion/Sybil, deflation, reward sharing, stake, peer attacks, supply | rules 1–14 ("check, don't vote"; linear weights; burn ≠ miner pay) |
+| `r33_code_capabilities.md` | DVM surface and hard limits | §0 builtins and limits; §7 hard limits (partly superseded by GT-B24, see `r33_index.md` corrections) |
+| `r33_outreach.md` | outside participation, beacon | OR-1..OR-10, pull-only |
+| `r33_block_proofs.md` | relays/light clients vs. the DERO anchor model | same-chain anchoring needs no PoW check (EIP-2935 class); tips back-walk; integrator key at bytes 18..50; attacks A1–A9 (tag-0 squatting, misparse, late claim) |
+| `r33_pool_math.md` | M5 payout math | split-neutral weight theorem; cap bypass Δ = P(min(x,kc) − min(x,c)) − (k−1)e; stake bound 3−2√2; proof ≈ 62–65 % of a miniblock reward at small φ; variance table |
+| `r33_forensics_and_security.md` | what verified facts detect | concentration thresholds (t = 0.40, n ≥ 360); timestamp rules (+50 ms, > parent, no peer time); selfish-mining signatures; honest limits |
+
+**Source counts for the R33 additions** (the three new files; earlier R33 counts are in `r33_research_web.md` and
+`r33_outreach.md`):
+
+| label | count | items |
+|---|---|---|
+| doc | 7 | BTC Relay README; Summa relays README; Rainbow Bridge README; Aurora bridge intro; Altair light-client spec; EIP-2935; EIP-4788 |
+| paper | 13 | Bitcoin whitepaper; Testimonium (arXiv 2002.12837); NiPoPoW (ePrint 2017/963, abstract-only); FlyClient (S&P 2020 full text + ePrint 2019/226 abstract); Horizon (arXiv 2101.06000, abstract-only, unused); Rosenfeld (1112.4980); Eyal Miner's Dilemma (1411.7099); Eyal–Sirer (1311.0243); Sapirshtein et al. (1507.06183); Gencer et al. (1801.03998); Douceur Sybil (abstract-only) |
+| steer | 1 (+ snippets) | timejacking blog. Search snippets (Rainbow optimistic watchdogs, the JaxNet critique of FlyClient, Schrijvers et al.) were not fetched and are not used as evidence |
+| FAILED | 8 | NEAR bridge blog (redirect); Infura Rainbow fraud-proof post (redirect); Schrijvers et al. PDF (HTTP 406); NiPoPoW and FlyClient ePrint PDFs (bot-check pages); Nakamoto coefficient ×2 (no content / 404); plus 2 wrong arXiv IDs recorded as mis-IDs |
+| local-code | ~40 anchors | `block/`, `blockchain/`, `config/`, `dvm/`, `p2p/`, `globals/`, `transaction/`, `cmd/dero-miner/`, `gametheory/contracts/` (each with file:line in the files) |
+| data | 1 | `dvm/testdata/r33_mainnet_blocks.json` (4 real mainnet blocks, read locally) |
+
+The paper row lists 11 works. The count of 13 also includes the second FlyClient copy (the ePrint abstract) and the
+ePrint abstract of NiPoPoW, each counted as a separate fetch.
+
+**The R33 findings that change the design** (details in the files):
+1. Tag `00000000` is the stock Flags value (40/40 vector miniblocks), so `Register` must refuse it.
+2. One anchor per epoch is enough: the tip of h is the id of h − 1.
+3. The structure check accepts a wrong parse (m = 7) of a real block, so m must be 10.
+4. A late Claim after Rollover can pay twice.
+5. The per-identity cap is Sybil-bypassable at 0.01 DERO.
+6. pfee 100 is far below the ≈ 1,735–3,000 atomic proof fee.

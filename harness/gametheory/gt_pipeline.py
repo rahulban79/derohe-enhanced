@@ -111,9 +111,26 @@ def lint_contract(text, entrypoints):
             issues.append(f'missing entrypoint {e}')
     if re.search(r'UPDATE_SC_CODE', text, re.I):
         issues.append('UPDATE_SC_CODE present (rules not immutable)')
-    if 'Freeze' not in funcs:
+    setters = [f for f in ('SetParams', 'SetMAT', 'SetFees') if f in funcs]
+    if setters and 'Freeze' not in funcs:                     # r33: Freeze is required where the owner can set rules
         issues.append('no Freeze()')
-    for f in ('SetParams', 'SetMAT'):
+    # r33 audit regressions, machine-checked (GT-A01/A12, lessons 34-35)
+    init = text.split('Function Initialize(', 1)[1].split('End Function', 1)[0] if 'Function Initialize(' in text else ''
+    first = next((l.strip() for l in init.splitlines()[1:] if l.strip()), '')
+    if not re.match(r'^\d+\s+IF EXISTS\("owner"\) == 1 THEN GOTO \d+$', first):
+        issues.append('GT-A01: Initialize does not start with the run-once guard')
+    if 'IS_ADDRESS_VALID(SIGNER()) == 0 THEN GOTO' not in init:
+        issues.append('GT-A12: Initialize does not refuse an anonymous owner')
+    code = re.sub(r'/\*.*?\*/', '', text, flags=re.S)        # checks on code, not on the explanatory comments
+    code = re.sub(r'//[^\n]*', '', code)
+    if re.search(r'ADDRESS_RAW\(SIGNER\(\)\)', code):
+        issues.append('lesson 34: ADDRESS_RAW(SIGNER()) is the empty string')
+    for i, line in enumerate(text.splitlines(), 1):
+        if re.search(r'\bTHEN\b(?!\s+GOTO\b)', line):
+            issues.append(f'line {i}: IF ... THEN without GOTO (lesson 35)')
+        if 'SEND_DERO_TO_ADDRESS' in line and ('"burned"' in line or 'LOAD("owner")' in line and 'gt_pool' in text[:200]):
+            issues.append(f'line {i}: a SEND reads the burn or pays the owner')
+    for f in setters:
         if f in funcs:
             body = text.split(f'Function {f}(', 1)[1].split('End Function', 1)[0]
             if 'LOAD("frozen") != 0 THEN GOTO 900' not in body or 'LOAD("owner") != SIGNER()' not in body:
@@ -151,13 +168,13 @@ def st_debug(p):
     gas = RUNTIME / 'gt_gas_census.json'
     if gas.exists():
         gas.unlink()
-    rc1, o1 = sh(['go', 'test', '-p', '1', './dvm', '-run', 'R32GT|R32aAudit', '-count=1', '-v'], env={'GT_GAS_OUT': str(gas)})   # r32a: + M4
+    rc1, o1 = sh(['go', 'test', '-p', '1', './dvm', '-run', 'R32GT|R32aAudit|R33', '-count=1', '-v'], env={'GT_GAS_OUT': str(gas)})   # r32a: + M4
     rc2, o2 = sh(['go', 'test', '-p', '1', './cmd/simulator', '-run', 'R32', '-count=1'])
-    passed = re.findall(r'^--- PASS: (TestR32\w+)', o1, re.M)
-    failed = re.findall(r'^--- FAIL: (TestR32\w+)', o1 + o2, re.M)
+    passed = re.findall(r'^--- PASS: (TestR3[23]\w+)', o1, re.M)
+    failed = re.findall(r'^--- FAIL: (TestR3[23]\w+)', o1 + o2, re.M)
     logs = re.findall(r'r32_gametheory_test.go:\d+: (.+)', o1)
     g = json.loads(gas.read_text()) if gas.exists() else {}
-    ok = bool(rc1 == 0 and rc2 == 0 and len(passed) >= 15 and not failed and g)   # r32a: 9 R32GT + 6 R32aAudit
+    ok = bool(rc1 == 0 and rc2 == 0 and len(passed) >= 15 and sum(x.startswith('TestR33') for x in passed) >= 30 and not failed and g)   # r32a: 9 R32GT + 6 R32aAudit
     p.event('debug', 'PASS' if ok else 'FAIL', go_dvm_rc=rc1, go_sim_rc=rc2, passed=len(passed), failed=failed,
             gas_entries=len(g))
     return ok, {'passed': passed, 'failed': failed, 'logs': logs, 'gas': g, 'tail': (o1 + o2)[-600:] if not ok else ''}

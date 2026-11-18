@@ -166,8 +166,10 @@ func (w *gtWorld) tokenIs(asset crypto.Hash, name string, v uint64) {
 	}
 }
 
-func gtCommitVote(i, vote uint64, salt string) string {
-	h := sha256.Sum256([]byte(strconv.FormatUint(i, 10) + ":" + strconv.FormatUint(vote, 10) + ":" + salt))
+// gtCommitVote is the gt_attest juror commit. R33 GT-A08: the commit is bound to the juror's
+// ADDRESS_STRING(SIGNER()) (addr, see gtAuditAddr), so a copied commit cannot be revealed by another juror.
+func gtCommitVote(i, vote uint64, salt, addr string) string {
+	h := sha256.Sum256([]byte(strconv.FormatUint(i, 10) + ":" + strconv.FormatUint(vote, 10) + ":" + salt + ":" + addr))
 	return hex.EncodeToString(h[:])
 }
 
@@ -255,20 +257,24 @@ func TestR32GTAttestFalseClaimRejected(t *testing.T) {
 	w.must(scid, "Challenge", "chal", b, nil, gtU("i", 0))
 	votes := map[string]uint64{"j1": 0, "j2": 0, "j3": 1}
 	for j, v := range votes {
-		w.must(scid, "CommitVote", j, 0, nil, gtU("i", 0), gtS("h", gtCommitVote(0, v, "salt-"+j)))
+		w.must(scid, "CommitVote", j, 0, nil, gtU("i", 0), gtS("h", gtCommitVote(0, v, "salt-"+j, w.gtAuditAddr(j))))
 	}
-	w.mustFail(scid, "CommitVote", "miner", 0, nil, "a party cannot vote", gtU("i", 0), gtS("h", gtCommitVote(0, 1, "x")))
+	w.mustFail(scid, "CommitVote", "miner", 0, nil, "a party cannot vote", gtU("i", 0), gtS("h", gtCommitVote(0, 1, "x", w.gtAuditAddr("miner"))))
 	w.mustFail(scid, "Unstake", "j1", 0, nil, "pending vote", gtU("amount", 1))
 	w.mustFail(scid, "RevealVote", "j1", 0, nil, "commit phase", gtU("i", 0), gtU("vote", 0), gtS("salt", "salt-j1"))
-	w.at(221)
+	// R33 GT-A07: challenges stay open until claim height + window (220), so the commit phase now ends at 220 + 10
+	// and the reveal phase at 240 (it was anchored at the single challenge's height before)
+	w.at(230)
+	w.mustFail(scid, "RevealVote", "j1", 0, nil, "commit phase (R33 A07 windows)", gtU("i", 0), gtU("vote", 0), gtS("salt", "salt-j1"))
+	w.at(231)
 	w.mustFail(scid, "RevealVote", "j1", 0, nil, "wrong salt", gtU("i", 0), gtU("vote", 0), gtS("salt", "nope"))
 	w.mustFail(scid, "RevealVote", "j1", 0, nil, "flipped vote", gtU("i", 0), gtU("vote", 1), gtS("salt", "salt-j1"))
 	for j, v := range votes {
 		w.must(scid, "RevealVote", j, 0, nil, gtU("i", 0), gtU("vote", v), gtS("salt", "salt-"+j))
 	}
-	w.at(230)
+	w.at(240)
 	w.mustFail(scid, "Finalize", "other", 0, nil, "reveal phase open", gtU("i", 0))
-	w.at(231)
+	w.at(241)
 	w.must(scid, "Finalize", "other", 0, nil, gtU("i", 0))
 	if w.readU(scid, "c0s") != 3 {
 		t.Fatalf("status %d, want 3 (rejected)", w.readU(scid, "c0s"))
@@ -307,6 +313,10 @@ func TestR32GTAttestFalseClaimRejected(t *testing.T) {
 	if in-out > 2 { // rounding dust only: ceil(slash) - floor-shares
 		t.Fatalf("dust %d too large", in-out)
 	}
+	// R33 GT-A13: the last juror's claim swept the dust to the treasury, so every atomic unit is accounted for
+	if got := w.readU(scid, "treasury"); got != in-out {
+		t.Fatalf("treasury %d, want the dust %d", got, in-out)
+	}
 }
 
 func TestR32GTAttestHonestChallengedUpheld(t *testing.T) {
@@ -320,13 +330,13 @@ func TestR32GTAttestHonestChallengedUpheld(t *testing.T) {
 	w.must(scid, "Claim", "miner", b, nil, gtU("from", 195), gtU("upto", 199), gtU("k", 2))
 	w.must(scid, "Challenge", "chal", b, nil, gtU("i", 0))
 	for _, j := range []string{"j1", "j2"} {
-		w.must(scid, "CommitVote", j, 0, nil, gtU("i", 0), gtS("h", gtCommitVote(0, 1, "s"+j)))
+		w.must(scid, "CommitVote", j, 0, nil, gtU("i", 0), gtS("h", gtCommitVote(0, 1, "s"+j, w.gtAuditAddr(j))))
 	}
-	w.at(211)
+	w.at(231) // R33 GT-A07: the reveal phase is (200+20+10, 200+20+10+10]
 	for _, j := range []string{"j1", "j2"} {
 		w.must(scid, "RevealVote", j, 0, nil, gtU("i", 0), gtU("vote", 1), gtS("salt", "s"+j))
 	}
-	w.at(221)
+	w.at(241)
 	w.must(scid, "Finalize", "other", 0, nil, gtU("i", 0))
 	half := b / 2
 	w.deroIs("miner", b+half)
@@ -339,10 +349,16 @@ func TestR32GTAttestHonestChallengedUpheld(t *testing.T) {
 	if got := w.held(scid, crypto.ZEROHASH); got != 400000 { // the two stakes remain
 		t.Fatalf("SC holds %d, want the stakes 400000", got)
 	}
+	for _, j := range []string{"j1", "j2"} { // R33 GT-A02: the escrow went back to the free stake
+		if got := w.readU(scid, "st"+string(w.addr[j].Compressed())); got != 200000 {
+			t.Fatalf("%s free stake %d, want 200000", j, got)
+		}
+	}
 }
 
-// no juror reveals: the challenge fails by default (presumption of honesty); the challenger's whole bond goes to
-// the miner and the unrevealed jurors are slashed (D-GT: juror participation is a sustainability condition)
+// no juror reveals. R32 upheld the claim by default (miner got 2b and minted). R33 GT-A07 changes this on purpose: an
+// unresolved dispute (yes == no, here 0 : 0) never mints, both bonds are refunded, and the unrevealed juror is still
+// slashed; with no coherent juror to pay, R33 GT-A13 sends the slash to the treasury (it was orphaned before).
 func TestR32GTAttestNoJurorsUpholds(t *testing.T) {
 	w, scid := gtAttestReady(t)
 	defer w.dumpGas()
@@ -351,14 +367,21 @@ func TestR32GTAttestNoJurorsUpholds(t *testing.T) {
 	b := gtBond
 	w.must(scid, "Claim", "miner", b, nil, gtU("from", 199), gtU("upto", 199), gtU("k", 1))
 	w.must(scid, "Challenge", "chal", b, nil, gtU("i", 0))
-	w.must(scid, "CommitVote", "j1", 0, nil, gtU("i", 0), gtS("h", gtCommitVote(0, 0, "q")))
-	w.at(221)
+	w.must(scid, "CommitVote", "j1", 0, nil, gtU("i", 0), gtS("h", gtCommitVote(0, 0, "q", w.gtAuditAddr("j1"))))
+	w.at(241)
 	w.must(scid, "Finalize", "other", 0, nil, gtU("i", 0))
-	w.deroIs("miner", 2*b)
-	w.tokenIs(scid, "miner", 100)
+	if w.readU(scid, "c0s") != 4 {
+		t.Fatalf("status %d, want 4 (undecided, refunded)", w.readU(scid, "c0s"))
+	}
+	w.deroIs("miner", b)
+	w.deroIs("chal", b)
+	w.tokenIs(scid, "miner", 0)
 	w.must(scid, "ClaimJuror", "j1", 0, nil, gtU("i", 0))
 	if got := w.readU(scid, "st"+string(w.addr["j1"].Compressed())); got != 90000 {
 		t.Fatalf("unrevealed juror stake %d, want 90000", got)
+	}
+	if w.readU(scid, "treasury") != 10000 || w.held(scid, crypto.ZEROHASH) != 100000 {
+		t.Fatalf("treasury %d held %d, want 10000 and 100000", w.readU(scid, "treasury"), w.held(scid, crypto.ZEROHASH))
 	}
 }
 
@@ -443,6 +466,10 @@ func TestR32GTServiceRebate(t *testing.T) {
 	}
 }
 
+// gtPrizeFee is the gt_prize default entry fee (R33 GT-A06): non-refundable, paid to the treasury by every Enter
+// (deposit = principal + rbond + fee).
+const gtPrizeFee = uint64(1000)
+
 func gtPrizeReady(t *testing.T, names ...string) (*gtWorld, crypto.Hash, crypto.Hash) {
 	w := gtNew(t, append([]string{"owner", "miner", "sponsor"}, names...)...)
 	w.at(100)
@@ -462,7 +489,7 @@ func TestR32GTPrizeRound(t *testing.T) {
 	order := []string{"a", "b", "c", "d"}
 	w.must(pz, "Fund", "sponsor", 7000, nil)
 	for i, n := range order {
-		w.must(pz, "Enter", n, dep[n]+rb, nil, gtS("commit", gtCommitNum(uint64(1000+i), "salt"+n)))
+		w.must(pz, "Enter", n, dep[n]+rb+gtPrizeFee, nil, gtS("commit", gtCommitNum(uint64(1000+i), "salt"+n)))
 	}
 	w.mustFail(pz, "Enter", "a", 1+rb, nil, "one entry per round", gtS("commit", gtCommitNum(1, "x")))
 	w.mustFail(pz, "Reveal", "a", 0, nil, "commit phase", gtU("j", 0), gtU("num", 1000), gtS("salt", "salta"))
@@ -479,8 +506,8 @@ func TestR32GTPrizeRound(t *testing.T) {
 	if win > 2 {
 		t.Fatalf("winner %d is not a revealed entry", win)
 	}
-	prize := uint64(7000) + rb // sponsor + d's forfeited reveal bond
-	if w.readU(pz, "paid0") != prize || w.readU(pz, "forf0") != rb {
+	prize := uint64(7000) // R33 GT-A05: sponsor funds only; d's forfeited reveal bond goes to the treasury
+	if w.readU(pz, "paid0") != prize || w.readU(pz, "forf0") != rb || w.readU(pz, "treasury") != rb+4*gtPrizeFee {
 		t.Fatalf("paid %d forf %d", w.readU(pz, "paid0"), w.readU(pz, "forf0"))
 	}
 	for i, n := range order {
@@ -497,8 +524,12 @@ func TestR32GTPrizeRound(t *testing.T) {
 		}
 		w.deroIs(n, want)
 	}
+	if got := w.held(pz, crypto.ZEROHASH); got != rb+4*gtPrizeFee { // R33 GT-A05/A06: forfeit + entry fees
+		t.Fatalf("prize SC holds %d after all withdrawals, want the treasury %d", got, rb+4*gtPrizeFee)
+	}
+	w.must(pz, "WithdrawTreasury", "owner", 0, nil, gtU("amount", rb+4*gtPrizeFee))
 	if got := w.held(pz, crypto.ZEROHASH); got != 0 {
-		t.Fatalf("prize SC holds %d after all withdrawals, want 0", got)
+		t.Fatalf("prize SC holds %d after the treasury withdrawal, want 0", got)
 	}
 	if w.readU(pz, "rd") != 1 {
 		t.Fatalf("round %d, want 1", w.readU(pz, "rd"))
@@ -528,8 +559,8 @@ func TestR32GTPrizeFairnessAndBoost(t *testing.T) {
 	const N = 400
 	for r := uint64(1); r <= N; r++ {
 		w.at(h)
-		w.must(pz, "Enter", "a", 30000+rb, nil, gtS("commit", gtCommitNum(na[r], "a")))
-		w.must(pz, "Enter", "b", 15000+rb, nil, gtS("commit", gtCommitNum(nb[r], "b")))
+		w.must(pz, "Enter", "a", 30000+rb+gtPrizeFee, nil, gtS("commit", gtCommitNum(na[r], "a")))
+		w.must(pz, "Enter", "b", 15000+rb+gtPrizeFee, nil, gtS("commit", gtCommitNum(nb[r], "b")))
 		w.at(h + 11)
 		w.must(pz, "Reveal", "a", 0, nil, gtU("j", 0), gtU("num", na[r]), gtS("salt", "a"))
 		w.must(pz, "Reveal", "b", 0, nil, gtU("j", 1), gtU("num", nb[r]), gtS("salt", "b"))
@@ -552,8 +583,8 @@ func TestR32GTPrizeFairnessAndBoost(t *testing.T) {
 	wins = 0
 	for r := uint64(N + 1); r <= 2*N; r++ {
 		w.at(h)
-		w.must(pz, "Enter", "a", 30000+rb, nil, gtS("commit", gtCommitNum(na[r], "a")))
-		w.must(pz, "Enter", "b", 15000+rb, nil, gtS("commit", gtCommitNum(nb[r], "b")))
+		w.must(pz, "Enter", "a", 30000+rb+gtPrizeFee, nil, gtS("commit", gtCommitNum(na[r], "a")))
+		w.must(pz, "Enter", "b", 15000+rb+gtPrizeFee, nil, gtS("commit", gtCommitNum(nb[r], "b")))
 		w.at(h + 11)
 		w.must(pz, "Reveal", "a", 0, nil, gtU("j", 0), gtU("num", na[r]), gtS("salt", "a"))
 		w.must(pz, "Reveal", "b", 0, nil, gtU("j", 1), gtU("num", nb[r]), gtS("salt", "b"))
@@ -571,8 +602,8 @@ func TestR32GTPrizeFairnessAndBoost(t *testing.T) {
 	if f < 1.0/3-0.118 || f > 1.0/3+0.118 {
 		t.Fatalf("unboosted share %.3f outside 0.333 +- 0.118 (5 sigma)", f)
 	}
-	if got := w.held(pz, crypto.ZEROHASH); got != 0 {
-		t.Fatalf("prize SC holds %d, want 0", got)
+	if got, fees := w.held(pz, crypto.ZEROHASH), uint64(2*2*N)*gtPrizeFee; got != fees || w.readU(pz, "treasury") != fees {
+		t.Fatalf("prize SC holds %d, want only the treasury of entry fees %d (R33 GT-A06)", got, fees)
 	}
 	w.tokenIs(mat, "b", 200) // 100 minted + 100 returned by UnstakeMAT (the simulator never debits the deposit)
 }
@@ -588,9 +619,9 @@ func TestR32GTGasBound(t *testing.T) {
 	defer w.dumpGas()
 	rb := uint64(10000)
 	for i, n := range names {
-		w.must(pz, "Enter", n, 1000+rb, nil, gtS("commit", gtCommitNum(uint64(i), n)))
+		w.must(pz, "Enter", n, 1000+rb+gtPrizeFee, nil, gtS("commit", gtCommitNum(uint64(i), n)))
 	}
-	w.mustFail(pz, "Enter", "owner", 1000+rb, nil, "maxn reached", gtS("commit", gtCommitNum(1, "o")))
+	w.mustFail(pz, "Enter", "owner", 1000+rb+gtPrizeFee, nil, "maxn reached", gtS("commit", gtCommitNum(1, "o")))
 	w.at(111)
 	for i, n := range names {
 		w.must(pz, "Reveal", n, 0, nil, gtU("j", uint64(i)), gtU("num", uint64(i)), gtS("salt", n))

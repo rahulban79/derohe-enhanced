@@ -1938,4 +1938,25 @@ derod 21:03:32 on the r32a build; closing project-only run on the running build.
 outside miners), auditor collusion and Sybil resistance (not prevented, stated), the earn job's own credit counter
 (reward // 10, display only), GT-B11 (measured hashrate below the plan), a content-hash staleness check for gt binaries.
 
-<!-- doc-current-through: r32a -->
+
+## Round 33 (2026-11-17) — delegated: a verified mining pool, a security audit of every contract, R32/R32a objectives closed
+
+**Why.** The user asked for fixes to the R32a security limits (collusion, Sybil auditors), deflation, chain forensics,
+reward sharing for many miners, stake weighting without plutocracy, peer-attack protection and outside participation,
+every open R32/R32a objective taken through R33, all contracts security audited, and a contracts tutorial; R33 lives
+only in the child rft (D-GT-18).
+
+**Built.** gt_pool (verified mining by in-contract block proofs and miner tags), gt_beacon, `--game-tag` in the miner,
+fixes for 17 audit and 5 invariant findings, the pool playbook with follow-mode proving and continuous epochs, an
+independent pool auditor, a census tool, the gas census, audit task 3, the contracts README tutorial.
+
+**Measured.** Mainnet: five pool epochs (19,790–19,798), each passing the independent chain audit; 41,000 atomic
+burned; the largest miner 18.7 % of 918 verified miniblocks (23 KeyHashes, no alarm); members' verified share =
+hashrate prediction (z = +0.01); the stake boost measured in epoch 19,798 (weight 200 per credit, the claim held at
+the 30 % cap); the fixed gt_audit v2 settled a turnstile round with 4 matching auditors (chain audit sum = −fees).
+Private chain: six strategies (spoofed work goes to the tag owner, untagged earns nothing, stake boost 2×), the dispute
+drill, the turnstile audit round. Three harness defects found and fixed in flight (lessons 37–39). Full pipeline
+pipeline_20261118T025648: every Go stage PASS (go mutations 1763/1763, race 27/0, shadow 240 treehashes 0 mismatches);
+its one project failure was a page made stale by a mid-run epoch, closed by a project-only run (D-GT-32).
+
+<!-- doc-current-through: r33 -->

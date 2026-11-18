@@ -709,6 +709,32 @@ def _row_logs(r, st):
     return [str(f) if Path(str(f)).is_absolute() else str(ROOT / str(f)) for f in (r.get('logs') or [r.get('log')]) if f]
 
 
+def _snapshot(r):
+    """the row's miner_intel snapshot, read by its repo-relative path in THIS checkout (r33: the absolute path pointed
+    every clone back at the build checkout)"""
+    ev = r['evidence'][0]
+    p = ROOT / ev['file'] if ev.get('file') else Path(ev['abs'])
+    return json.loads(p.read_text())
+
+
+def _raw_lines(r, st, order_old_first):
+    """the raw miner-log lines DK31/DK33 re-read: the live log chain when this checkout has it, else the snapshot's
+    raw_excerpt (r33; the same lines miner_intel kept, read again by the checks' own regexes). (lines, source)."""
+    files = []
+    for f in _row_logs(r, st):
+        base = re.sub(r'\.\d+$', '', str(f))
+        files += ([f'{base}.{i}' for i in range(9, 0, -1)] + [base]) if order_old_first else ([base] + [f'{base}.{i}' for i in range(1, 10)])
+    live = [f for f in dict.fromkeys(files) if Path(f).exists()]
+    if live:
+        lines = []
+        for f in live:
+            with open(f, errors='replace') as fh:
+                lines += fh.readlines()
+        return lines, 'live log'
+    ex = _snapshot(r).get('raw_excerpt')
+    return (list(ex or []), 'snapshot raw_excerpt') if ex is not None else ([], 'no log in this checkout and no raw_excerpt in the snapshot')
+
+
 def dk31(d, V, H, st):
     """miner_intel parses JSON records and skips its warm-up samples; this re-reads the raw log TEXT with a regex over
     the same [start, end] window and the same warm-up rule. Two readers, one mean (0.5 %), or the row is not measured."""
@@ -716,28 +742,22 @@ def dk31(d, V, H, st):
     if not rows:
         return False, 'no miner-run rows on the page'
     r = rows[-1]
-    snap = json.loads(Path(r['evidence'][0]['abs']).read_text())
+    snap = _snapshot(r)
     run = next((x for x in snap['runs'] if x['start'] == r['start']), None)
     if not run:
         return False, 'the row\u2019s run is not in its snapshot'
     rx = re.compile(r'"T":"([^"]+)".*"M":"TOTAL hashrate","H/s":"(\d+(?:\.\d+)?)"')
     vals = []
-    # every file of the chain, plus each one's rotated siblings: the run may have moved from <log> to <log>.1
-    files = []
-    for f in _row_logs(r, st):
-        base = re.sub(r'\.\d+$', '', str(f))
-        files += [base] + [f'{base}.{i}' for i in range(1, 10)]
-    for f in dict.fromkeys(files):
-        if not Path(f).exists():
-            continue
-        with open(f, errors='replace') as fh:
-            for l in fh:
-                m = rx.search(l)
-                if m and run['start'] <= m.group(1) <= run['end']:
-                    vals.append(float(m.group(2)))
+    # every file of the chain, plus each one's rotated siblings (the run may have moved from <log> to <log>.1), or the
+    # snapshot's raw excerpt where this checkout has no log (r33)
+    lines, src = _raw_lines(r, st, order_old_first=False)
+    for l in lines:
+        m = rx.search(l)
+        if m and run['start'] <= m.group(1) <= run['end']:
+            vals.append(float(m.group(2)))
     vals = vals[2:]                                   # miner_intel WARMUP_SAMPLES, restated
     if len(vals) < 3:
-        return False, f'only {len(vals)} TOTAL samples in the window'
+        return False, f'only {len(vals)} TOTAL samples in the window ({src})'
     mean = sum(vals) / len(vals)
     ok = abs(mean - r['mean_hs']) <= 0.005 * mean and len(vals) == r['samples']
     return ok, (f"page {r['mean_hs']} H/s over {r['samples']} samples vs raw-text {mean:.1f} over {len(vals)} "
@@ -771,25 +791,19 @@ def dk33(d, V, H, st):
     r = rows[-1]
     rx = re.compile(r'"T":"([^"]+)".*"M":"GPU split".*"cpu_idle_tries":(\d+),"feeder_ring_full_ms":(\d+)'
                     r'(?:,"feeder_cpu_backlog_ms":(\d+))?')
-    pts, files = [], []
-    for f in _row_logs(r, st):
-        base = re.sub(r'\.\d+$', '', str(f))
-        files += [f'{base}.{i}' for i in range(9, 0, -1)] + [base]
-    for f in dict.fromkeys(files):
-        if not Path(f).exists():
-            continue
-        with open(f, errors='replace') as fh:
-            for l in fh:
-                m = rx.search(l)
-                if m and r['start'] <= m.group(1) <= (r.get('end') or '~'):
-                    t = _dt.datetime.strptime(m.group(1), '%Y-%m-%dT%H:%M:%S.%f%z').timestamp()
-                    pts.append((t, int(m.group(2)), int(m.group(3)), None if m.group(4) is None else int(m.group(4))))
+    pts = []
+    lines, src = _raw_lines(r, st, order_old_first=True)      # r33: the live log, else the snapshot's raw excerpt
+    for l in lines:
+        m = rx.search(l)
+        if m and r['start'] <= m.group(1) <= (r.get('end') or '~'):
+            t = _dt.datetime.strptime(m.group(1), '%Y-%m-%dT%H:%M:%S.%f%z').timestamp()
+            pts.append((t, int(m.group(2)), int(m.group(3)), None if m.group(4) is None else int(m.group(4))))
     pts.sort()
     w = [(b[0] - a[0], b[1], b[2], b[3]) for a, b in zip(pts, pts[1:]) if b[0] > a[0]]
     # r32: a short miner run (2026-11-14 23:25-23:28, one window) is still recomputed independently from the raw text;
     # only a run with NO complete window cannot be checked
     if len(w) < 1:
-        return False, f'only {len(w)} split windows in the raw log for {r["start"]}'
+        return False, f'only {len(w)} split windows in the raw log for {r["start"]} ({src})'
     T = sum(x[0] for x in w)
     bl = [x for x in w if x[3] is not None]
     backlog = round(sum(x[3] for x in bl) / (sum(x[0] for x in bl) * 1000), 3) if bl else None

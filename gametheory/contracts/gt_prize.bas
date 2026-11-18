@@ -1,17 +1,27 @@
-/* gt_prize.bas -- R32 mechanism M3 "no-loss prize pool with commit-reveal draw + miner boost", DVM-BASIC.
-   Round r: Enter(commit) during the commit phase with a deposit = principal + reveal bond; commit =
+/* gt_prize.bas -- R32 mechanism M3 "no-loss prize pool with commit-reveal draw + miner boost", DVM-BASIC. R33: audit fixes.
+   Round r: Enter(commit) during the commit phase with a deposit = principal + reveal bond + entry fee; commit =
    HEX(SHA256(ITOA(n) + ":" + salt)). Reveal(j, n, salt) in the reveal phase adds n to the round seed.
    Draw() after the reveal phase picks one revealed entry with probability weight / total weight, where
    weight = principal, or principal * (100 + boost) / 100 while the entrant keeps >= minmat MAT staked.
    pick = seed % tw: one honest uniform n makes the seed uniform. v2 (R32 closed loop, D-GT-10): RANDOM is NOT
    used: it is keyed by the block id, so the integrator of the Draw block could withhold that block to re-roll
-   the draw (cost: one integrator share, 3,075 atomic on mainnet today); without it the only bias left is the
-   last revealer's reveal-or-forfeit option, bounded by rbond. The prize = sponsor funds + reveal bonds forfeited by non-revealers
-   of the same round. Principal is always returned (Withdraw after the draw): no participant loses
-   principal, and no payout comes from a later participant's deposit.
-   Gas bound: at most maxn entries per round (the draw loop is O(n)).
+   the draw (cost: one integrator share, 3,075 atomic on mainnet today); the only bias left is the
+   last revealer's reveal-or-forfeit option.
+   R33 A05: the prize = sponsor funds (Fund) only. A reveal bond forfeited by a non-revealer goes to the
+   treasury (owner-withdrawable, WithdrawTreasury), never into the prize the withholder could win, so
+   withholding costs the full bond and the withholder's own chance.
+   R33 A06: every entry pays a non-refundable entry fee (fee, owner-set by SetFees before Freeze, <= 10^12) to
+   the treasury, and the principal must be >= minp; filling maxn slots with Sybils costs maxn * fee.
+   Principal is always returned (Withdraw after the draw), plus the reveal bond if revealed: no participant
+   loses principal, and no payout comes from a later participant's deposit.
+   R33 A01/A12: Initialize runs once and never for an anonymous signer. R33 A13: an entrypoint that expects no
+   DERO refuses a deposit. R33 A15: rbond, fee, minp <= 10^12, boost <= 1000, windows <= 10^6.
+   Gas bound: at most maxn (<= 64) entries per round (the draw loop is O(n)).
 */
 Function Initialize() Uint64
+5 IF EXISTS("owner") == 1 THEN GOTO 900
+6 IF IS_ADDRESS_VALID(SIGNER()) == 0 THEN GOTO 900
+7 IF DEROVALUE() != 0 THEN GOTO 900
 10 STORE("owner", SIGNER())
 20 STORE("rbond", 10000)
 30 STORE("commitw", 10)
@@ -27,13 +37,19 @@ Function Initialize() Uint64
 130 STORE("prize0", 0)
 140 STORE("tw0", 0)
 150 STORE("sd0", 0)
+152 STORE("fee", 1000)
+154 STORE("minp", 1000)
+156 STORE("treasury", 0)
 160 RETURN 0
+900 RETURN 1
 End Function
 
 Function SetParams(rbond Uint64, commitw Uint64, revealw Uint64, maxn Uint64, boost Uint64, minmat Uint64) Uint64
 10 IF LOAD("owner") != SIGNER() THEN GOTO 900
 20 IF LOAD("frozen") != 0 THEN GOTO 900
+25 IF DEROVALUE() != 0 THEN GOTO 900
 30 IF commitw == 0 || revealw == 0 || maxn == 0 || maxn > 64 THEN GOTO 900
+35 IF rbond > 1000000000000 || commitw > 1000000 || revealw > 1000000 || boost > 1000 THEN GOTO 900
 40 STORE("rbond", rbond)
 50 STORE("commitw", commitw)
 60 STORE("revealw", revealw)
@@ -44,9 +60,21 @@ Function SetParams(rbond Uint64, commitw Uint64, revealw Uint64, maxn Uint64, bo
 900 RETURN 1
 End Function
 
+Function SetFees(fee Uint64, minp Uint64) Uint64
+10 IF LOAD("owner") != SIGNER() THEN GOTO 900
+20 IF LOAD("frozen") != 0 THEN GOTO 900
+25 IF DEROVALUE() != 0 THEN GOTO 900
+30 IF minp == 0 || minp > 1000000000000 || fee > 1000000000000 THEN GOTO 900
+40 STORE("fee", fee)
+50 STORE("minp", minp)
+60 RETURN 0
+900 RETURN 1
+End Function
+
 Function SetMAT(scidhex String) Uint64
 10 IF LOAD("owner") != SIGNER() THEN GOTO 900
 20 IF LOAD("frozen") != 0 THEN GOTO 900
+25 IF DEROVALUE() != 0 THEN GOTO 900
 30 IF STRLEN(scidhex) != 64 THEN GOTO 900
 40 STORE("mat", HEXDECODE(scidhex))
 50 RETURN 0
@@ -55,6 +83,8 @@ End Function
 
 Function Freeze() Uint64
 10 IF LOAD("owner") != SIGNER() THEN GOTO 900
+15 IF DEROVALUE() != 0 THEN GOTO 900
+17 IF LOAD("frozen") != 0 THEN GOTO 900
 20 STORE("frozen", 1)
 30 STORE("rs", BLOCK_HEIGHT())
 40 RETURN 0
@@ -63,6 +93,7 @@ End Function
 
 Function StakeMAT() Uint64
 10 DIM v, s as Uint64
+15 IF DEROVALUE() != 0 THEN GOTO 900
 20 IF STRLEN(LOAD("mat")) != 32 THEN GOTO 900
 30 IF IS_ADDRESS_VALID(SIGNER()) == 0 THEN GOTO 900
 40 LET v = ASSETVALUE(LOAD("mat"))
@@ -77,6 +108,7 @@ Function StakeMAT() Uint64
 End Function
 
 Function UnstakeMAT(amount Uint64) Uint64
+5 IF DEROVALUE() != 0 THEN GOTO 900
 10 IF EXISTS("ms" + SIGNER()) == 0 THEN GOTO 900
 20 IF LOAD("rd") <= LOAD("ml" + SIGNER()) THEN GOTO 900
 30 IF amount == 0 || amount > LOAD("ms" + SIGNER()) THEN GOTO 900
@@ -102,10 +134,10 @@ Function Enter(commit String) Uint64
 60 IF BLOCK_HEIGHT() > LOAD("rs") + LOAD("commitw") THEN GOTO 900
 70 LET n = LOAD("n" + ITOA(r))
 80 IF n >= LOAD("maxn") THEN GOTO 900
-90 IF DEROVALUE() <= LOAD("rbond") THEN GOTO 900
+90 IF DEROVALUE() < LOAD("rbond") + LOAD("fee") + LOAD("minp") THEN GOTO 900
 100 IF EXISTS("in" + ITOA(r) + SIGNER()) == 1 THEN GOTO 900
 110 IF STRLEN(commit) != 64 THEN GOTO 900
-120 LET a = DEROVALUE() - LOAD("rbond")
+120 LET a = DEROVALUE() - LOAD("rbond") - LOAD("fee")
 130 LET w = a
 140 IF EXISTS("ms" + SIGNER()) == 0 THEN GOTO 180
 150 IF LOAD("ms" + SIGNER()) < LOAD("minmat") THEN GOTO 180
@@ -120,6 +152,7 @@ Function Enter(commit String) Uint64
 240 STORE("x" + q, 0)
 250 STORE("in" + ITOA(r) + SIGNER(), n)
 260 STORE("n" + ITOA(r), n + 1)
+265 STORE("treasury", LOAD("treasury") + LOAD("fee"))
 270 RETURN 0
 900 RETURN 1
 End Function
@@ -127,6 +160,7 @@ End Function
 Function Reveal(j Uint64, num Uint64, salt String) Uint64
 10 DIM r, t as Uint64
 20 DIM q as String
+25 IF DEROVALUE() != 0 THEN GOTO 900
 30 LET r = LOAD("rd")
 40 LET t = LOAD("rs") + LOAD("commitw")
 50 IF BLOCK_HEIGHT() <= t THEN GOTO 900
@@ -146,6 +180,7 @@ End Function
 Function Draw() Uint64
 10 DIM r, n, j, tw, pick, acc, prize, forf as Uint64
 20 DIM q as String
+25 IF DEROVALUE() != 0 THEN GOTO 900
 30 LET r = LOAD("rd")
 40 IF LOAD("frozen") == 0 THEN GOTO 900
 50 IF BLOCK_HEIGHT() <= LOAD("rs") + LOAD("commitw") + LOAD("revealw") THEN GOTO 900
@@ -159,7 +194,7 @@ Function Draw() Uint64
 130 LET forf = forf + LOAD("rbond")
 140 LET j = j + 1
 145 GOTO 110
-150 LET prize = prize + forf
+150 STORE("treasury", LOAD("treasury") + forf)
 160 STORE("forf" + ITOA(r), forf)
 170 IF tw == 0 THEN GOTO 400
 180 LET pick = LOAD("sd" + ITOA(r)) % tw
@@ -190,6 +225,7 @@ End Function
 Function Withdraw(r Uint64, j Uint64) Uint64
 10 DIM q as String
 20 DIM amt as Uint64
+25 IF DEROVALUE() != 0 THEN GOTO 900
 30 IF EXISTS("drawn" + ITOA(r)) == 0 THEN GOTO 900
 40 LET q = ITOA(r) + "_" + ITOA(j)
 50 IF EXISTS("p" + q) == 0 THEN GOTO 900
@@ -201,5 +237,15 @@ Function Withdraw(r Uint64, j Uint64) Uint64
 110 STORE("x" + q, 1)
 120 SEND_DERO_TO_ADDRESS(SIGNER(), amt)
 130 RETURN 0
+900 RETURN 1
+End Function
+
+Function WithdrawTreasury(amount Uint64) Uint64
+10 IF LOAD("owner") != SIGNER() THEN GOTO 900
+15 IF DEROVALUE() != 0 THEN GOTO 900
+20 IF amount == 0 || amount > LOAD("treasury") THEN GOTO 900
+30 STORE("treasury", LOAD("treasury") - amount)
+40 SEND_DERO_TO_ADDRESS(SIGNER(), amount)
+50 RETURN 0
 900 RETURN 1
 End Function

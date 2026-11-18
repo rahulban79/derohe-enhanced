@@ -144,6 +144,7 @@ class Cycle:
         self.names = a.wallets.split(',')
         self.port = {n: self.net['wallet_base'] + 50 + i for i, n in enumerate(self.names)}
         self.addr, self.fees, self.t0 = {}, [], time.time()
+        self._unresolved = []   # r33: calls whose fee the wallet had not indexed yet (resolve_fees)
         self.pending_w = []      # (wallet, round, j) withdrawals deferred past the next round's entries
         self.gas_cache = {}      # r32a D-41: one DERO.GetGasEstimate per (contract, entrypoint) per cycle
         P = gtlib.PARAMS[a.network]
@@ -250,6 +251,11 @@ class Cycle:
         rec = {'who': n, 'sc': key, 'entry': entry, 'deposit': dero, 'balance_delta': b1 - b0, 'txid_prefix': txid[:12],
                'bh': getattr(self, 'last_bh', None), 'gas_est': est, 'fees_set': p.get('fees'),
                'fee': self.fee_of(n, txid)}   # the fee from the wallet's own transfer entry: valid while mining continues
+        if rec['fee'] is None:
+            # r33 3c: the wallet had not indexed m1's Settle within 40 s, so the fee was None and fees_total_atomic missed
+            # 600 (the chain-audit sum was off by exactly that). Resolve again at record time; a fee set explicitly in
+            # the tx is the tx's fee, so it is the fallback (fee_source says which)
+            self._unresolved.append((rec, n, txid))
         self.fees.append(rec)
         self.ev('sc_call', txid=txid, **rec)   # the full txid stays in the local event log only
         return txid
@@ -314,6 +320,8 @@ class Cycle:
             self.run.save()
             rec = {'who': m, 'sc': key, 'entry': 'install', 'deposit': 0, 'balance_delta': self.balance(m) - b0, 'code_bytes': len(code),
                    'txid_prefix': txid[:12], 'fee': self.fee_of(m, txid)}
+            if rec['fee'] is None:
+                self._unresolved.append((rec, m, txid))   # r33: resolved again at record time
             self.fees.append(rec)
             self.ev('installed', contract=f, **{k: v for k, v in rec.items() if k != 'who'})
         smp = self.run.state.get('bpc_samples') or []
@@ -330,18 +338,19 @@ class Cycle:
         a, s, z, u = self.P['attest'], self.P['service'], self.P['prize'], self.P['audit']
         todo = {k: setup_needed(self.vars(k)[0]) for k in CONTRACTS}     # a re-run skips contracts already frozen
         self.ev('setup_plan', todo=todo)
-        if todo['attest']:
+        if todo.get('attest'):
             self.call(m, 'attest', 'SetParams', [arg_u(k, a[k]) for k in ('bond', 'reward', 'window', 'commitw', 'revealw', 'maxmb', 'slash', 'minstake')])
-        if todo['service']:
+        if todo.get('service'):
             self.call(m, 'service', 'SetParams', [arg_u(k, s[k]) for k in ('fee', 'rho', 'boost', 'epoch', 'minmat')])
-        if todo['prize']:
+        if todo.get('prize'):
             self.call(m, 'prize', 'SetParams', [arg_u(k, z[k]) for k in ('rbond', 'commitw', 'revealw', 'maxn', 'boost', 'minmat')])
-        if todo['audit']:
+            self.call(m, 'prize', 'SetFees', [arg_u(k, z[k]) for k in ('fee', 'minp')])      # R33 GT-A06
+        if todo.get('audit'):
             self.call(m, 'audit', 'SetParams', [arg_u(k, u[k]) for k in ('bond', 'commitw', 'revealw', 'maxn')])
-        mat = self.run.state['scids']['attest']
-        if todo['service']:
+        mat = self.run.state['scids'].get('attest')
+        if todo.get('service'):
             self.call(m, 'service', 'SetMAT', [arg_s('scidhex', mat)])
-        if todo['prize']:
+        if todo.get('prize'):
             self.call(m, 'prize', 'SetMAT', [arg_s('scidhex', mat)])
         for k in CONTRACTS:
             if todo[k]:
@@ -405,7 +414,7 @@ class Cycle:
         mat = self.run.state['scids']['attest']
         return [{'who': n, 'k': k, 'status': int(v.get(f'c{i}s', -1)), 'mat': self.balance(n, mat)} for n, i, k, _h in made]
 
-    def audit_round(self, task, bounty, span=30):
+    def audit_round(self, task, bounty, span=30, wrong=False):
         """r32a: one gt_audit bounty round over a settled range. The sponsor (names[0]) commits its answer hidden; every
         other wallet computes the answer itself (harness/gametheory/audit_tasks.py, read-only) and commits it bound to its
         own address; reveals after the commit window; Settle; pull withdrawals. Records the contract's verdict."""
@@ -420,17 +429,24 @@ class Cycle:
         sp = self.names[0]
         rpc = AT.RI.Rpc(url=f"http://{self.net['daemon']}/json_rpc")        # the cycle's own network, read-only
         floor = AT.RI.PRUNED_FLOOR if self.a.network == 'mainnet' else 0
-        ans_s, why = AT.compute(task, lo, hi, rpc=rpc, floor=floor)
+        kw = {}
+        if task == 3:          # r33 W15 (GT-B15): the turnstile over this cycle's own contracts at a settled topoheight
+            topo = int(self.daemon('DERO.GetInfo')['topoheight']) - AT.SETTLE - 5
+            kw = {'scids': sorted(self.run.state['scids'].values()), 'topo': topo}
+            lo = hi = topo
+        ans_s, why = AT.compute(task, lo, hi, rpc=rpc, floor=floor, **kw)
         if why:
             raise RuntimeError(f'audit task {task}: {why}')
         com = {}
         for n in self.names[1:]:          # every auditor re-derives the answer itself, BEFORE the Post: Enter follows at once
-            mine, why = AT.compute(task, lo, hi, rpc=rpc, floor=floor)
+            mine, why = AT.compute(task, lo, hi, rpc=rpc, floor=floor, **kw)
             if why:
                 raise RuntimeError(f'audit task {task} for {n}: {why}')
             salt = gtlib.new_password()
             com[n] = (mine['answer'], salt, gtlib.audit_commit(mine['answer'], salt, self.addr[n]))
         salt_s = gtlib.new_password()
+        if wrong:                       # r33 W16 (GT-B16) dispute drill: the sponsor commits and reveals a WRONG answer
+            ans_s = dict(ans_s, answer=ans_s['answer'] + ':planted-wrong')
         na0 = int(self.vars('audit')[0].get('na', 0))
         self.call(sp, 'audit', 'Post', [arg_u('task', task), arg_u('from', lo), arg_u('upto', hi),
                                         arg_s('commit', gtlib.audit_sponsor_commit(ans_s['answer'], salt_s))], dero=bounty)
@@ -458,7 +474,10 @@ class Cycle:
         self.call(sp, 'audit', 'Settle', [arg_u('a', ar)])
         self.par([lambda n=n: self.call(n, 'audit', 'Withdraw', [arg_u('a', ar), arg_u('j', idx[n])]) for n in com if idx[n] is not None])
         v, _ = self.vars('audit')
-        return {'audit_round': ar, 'task': task, 'name': ans_s['name'], 'from': lo, 'upto': hi, 'bounty': bounty,
+        if int(v.get(f'a{ar}_disp', 0)) == 1:      # r33 GT-A04: a disputed round returns the bounty to the sponsor
+            self.call(sp, 'audit', 'Reclaim', [arg_u('a', ar)])
+            v, _ = self.vars('audit')
+        return {'audit_round': ar, 'task': task, 'planted_wrong': wrong, 'reclaimed': int(v.get(f'a{ar}_sbx', 0)), 'name': ans_s['name'], 'from': lo, 'upto': hi, 'bounty': bounty,
                 'auditors': len(com), 'entered': sum(1 for x in idx.values() if x is not None),
                 'summary': ans_s['summary'],
                 'verdict': {k: v.get(f'a{ar}_{k}') for k in AUDIT_VERDICT_KEYS}}   # outcome keys only: no signer bytes
@@ -514,7 +533,7 @@ class Cycle:
         for n in self.names:
             num, salt = int.from_bytes(os.urandom(7), 'big'), gtlib.new_password()
             com[n] = (num, salt, gtlib.commit_num(num, salt))
-        self.par([lambda n=n: self.call(n, 'prize', 'Enter', [arg_s('commit', com[n][2])], dero=principal + z['rbond'])
+        self.par([lambda n=n: self.call(n, 'prize', 'Enter', [arg_s('commit', com[n][2])], dero=principal + z['rbond'] + z['fee'])   # R33 GT-A06: + entry fee
                   for n in self.names])
         v, _ = self.vars('prize')
         idx = {n: entry_index(v, r, com[n][2]) for n in self.names}
@@ -558,7 +577,19 @@ class Cycle:
         v, _ = self.vars('service')
         return {'epochs': sorted({e, e2}), 'docs': int(v.get('ndocs', 0)), 'treasury': int(v.get('treasury', 0))}
 
+    def resolve_fees(self):
+        """r33: every call whose wallet entry was not indexed in time gets its fee from a second lookup, else from the
+        fee the tx set explicitly; `fee_source` records which (a call with neither stays None and is counted)."""
+        for rec, n, txid in self._unresolved:
+            f = self.fee_of(n, txid)
+            if f is not None:
+                rec['fee'], rec['fee_source'] = f, 'wallet entry (late)'
+            elif rec.get('fees_set') is not None:
+                rec['fee'], rec['fee_source'] = int(rec['fees_set']), 'fees set in the tx'
+        self._unresolved = [u for u in self._unresolved if u[0]['fee'] is None]
+
     def record(self, start, res):
+        self.resolve_fees()
         end = {n: self.balance(n) for n in self.names}
         mat = self.run.state['scids'].get('attest')
         out = {'network': self.a.network, 'measured_at': gtlib.now(), 'run': self.a.run_id, 'fast': self.a.fast,
@@ -569,6 +600,7 @@ class Cycle:
                'mat': {n: self.balance(n, mat) for n in self.names} if mat else {},
                'calls': self.fees, 'results': res, 'wall_s': round(time.time() - self.t0, 1),
                'fees_total_atomic': sum(int(c.get('fee') or 0) for c in self.fees),
+               'fees_unresolved': sum(c.get('fee') is None for c in self.fees),   # r33: 0 = the total is complete
                'sc_balances_atomic': {k: self.vars(k)[1] for k in self.run.state['scids']},
                'plan': self.plan,
                'params': self.P}
@@ -604,10 +636,18 @@ def main(argv):
     ap.add_argument('--rebuild', action='store_true', help='rebuild a gt-* binary older than its Go sources (else refuse)')
     ap.add_argument('--plan', default=None, help='a sizing plan JSON (harness/runtime/gt_plan_mainnet.json, D-GT-8)')
     ap.add_argument('--with-m2', action='store_true', help='also run the M2 notary epoch (not in the D-GT-8 plan)')
+    ap.add_argument('--contracts', default=None, help='r33 3c: deploy and play only these contracts (e.g. audit)')
+    ap.add_argument('--audit-tasks', default=None, help='r33 W15: the audit task per round, e.g. 1,3 (default 1,2)')
+    ap.add_argument('--wrong-audit', type=int, default=-1, help='r33 W16: index of the audit round whose sponsor answer is planted wrong (sim drill)')
     a = ap.parse_args(argv)
     if a.network == 'mainnet' and not a.mainnet_confirm:
         print('mainnet needs --mainnet-confirm (D-GT-4); nothing done')
         return 5
+    if a.contracts:
+        keep = set(a.contracts.split(','))
+        for k in list(CONTRACTS):
+            if k not in keep:
+                del CONTRACTS[k]
     c = Cycle(a)
     gtlib.ensure_bins(c.run, ['gt-wallet'], rebuild=a.rebuild)
     try:
@@ -628,17 +668,20 @@ def main(argv):
                 return 7
         c.deploy()
         ladder = 'audits' in c.plan                      # r32a: a ladder step (N wallets, every wallet claims, audit rounds)
-        if ladder:
+        if 'attest' not in CONTRACTS:                    # r33 3c: an audit-only run (no M1 claims, no prize rounds)
+            res = {'claims': [], 'm1': None, 'm3_rounds': [], 'audits': []}
+        elif ladder:
             cl = c.claims()
             res = {'claims': cl, 'm1': next((x for x in cl if x['who'] == c.names[0]), None), 'm3_rounds': [], 'audits': []}
         else:
             res = {'m1': c.m1_claim(), 'm3_rounds': []}
-        for _ in range(int(c.plan.get('rounds', 1))):
+        for _ in range(int(c.plan.get('rounds', 1)) if 'prize' in CONTRACTS else 0):
             res['m3_rounds'].append(c.m3_round())
-        res['m3'] = res['m3_rounds'][-1]
+        res['m3'] = res['m3_rounds'][-1] if res['m3_rounds'] else None
         c.flush_withdraws()
         for t in range(int(c.plan.get('audits', 0))):
-            res['audits'].append(c.audit_round(1 + t % 2, int(c.plan['bounty'])))   # task 1 headers, 2 emission, ...
+            tasks = [int(x) for x in a.audit_tasks.split(',')] if a.audit_tasks else [1, 2]
+            res['audits'].append(c.audit_round(tasks[t % len(tasks)], int(c.plan['bounty']), wrong=(t == a.wrong_audit)))   # r33 W15/W16
         if a.with_m2:
             res['m2'] = c.m2_epoch()
         c.record(start, res)

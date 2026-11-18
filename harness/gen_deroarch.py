@@ -21,6 +21,16 @@ else, >= 12 characters). Where the anchor points decides what the row can prove:
 
 A row whose declared class its anchors cannot prove is re-derived from its first anchor and the page says so.
 A row with no resolvable anchor is never drawn: it goes to loop/REJECTED.json and the page's quarantine.
+
+r33 OVERHAUL (the way artifacts/dero-enhanced-game-theory.html was rebuilt). The page is grouped into six parts
+(PARTS: orientation, the source tree, the running node, findings and audits, observatories, the harness) under a
+sticky contents column; sections render into their own buffers and are numbered in contents order. New: plain-language
+orientation sections (start, tour, lifecycle, glossary) and a harness section, generated SVG diagrams (the tree in
+layers, the execution paths in order, the build pipeline), chartkit charts with a <title>, a <desc> naming every value
+and a data table (kitgate G13), design tokens with a light and a dark theme and a theme button, citations named from
+the repository root, and the privacy pass pub() (no local path, address, LAN address or machine name; page_lint makes
+the build exit 3 if one survives). The records and section ids coherence binds to are unchanged.
+KAT harness/kat/test_src_arch_page_r33.py (SA0-SA8, 14 mutations).
 """
 import collections, datetime, functools, hashlib, html, json, math, os, re, subprocess, sys
 from pathlib import Path
@@ -47,6 +57,7 @@ import areakit                   # noqa: E402  (r24: the per-area scorecard bloc
 import consensuskit              # noqa: E402  (r24: the chain-consensus observatory block)
 import peerkit                   # noqa: E402  (r24 consensus-network: the network-peer observatory block)
 import privkit                   # noqa: E402  (r24: peer addresses pseudonymised; masked anchor matching)
+import chartkit as chk           # noqa: E402  (r33: accessible charts, each with its text alternative)
 from prep_corpus import class_of, MEMORY, SRC_PKGS   # noqa: E402
 
 RAW_KEYS = ['inventory', 'consts', 'flows', 'findings', 'forensics', 'press', 'logbridge', 'localdiff',
@@ -286,7 +297,9 @@ def cites_fn(o):
         return []
     out = []
     for e in o.get('evidence') or []:
-        out.append(ak.cite_file(e['abs'], e.get('line'), e.get('quote', ''), cls=e.get('kind') or 'SRC',
+        # r33: the citation names the file from the repository root ('/' + path, as the game-theory page does): no
+        # absolute local path reaches the page; the quote is scrubbed of home/datadir paths by pub() at the end
+        out.append(ak.cite_file('/' + rel(e['abs']).lstrip('/'), e.get('line'), e.get('quote', ''), cls=e.get('kind') or 'SRC',
                                 label=f"{rel(e['abs'])}:{e.get('line')}"))
     return out
 
@@ -325,8 +338,8 @@ def proof(row, n=3):
     evs = row.get('evidence') or []
     bits = []
     for e in evs[:n]:
-        bits.append(f'<a class="pf" href="vscode://file/{E(e["abs"])}:{e.get("line")}" title="{E(e.get("quote", "")[:220])}">'
-                    f'{E(rel(e["abs"]))}:{e.get("line")}</a>')
+        # r33: a file:line label (repo-relative), not an editor link: the row's class tag opens the same citation
+        bits.append(f'<span class="pf" title="{E(e.get("quote", "")[:220])}">{E(rel(e["abs"]))}:{e.get("line")}</span>')
     if len(evs) > n:
         bits.append(f'<span class="mut">+{len(evs) - n} more</span>')
     return ' '.join(bits)
@@ -395,13 +408,24 @@ def flow_spec(cid, title, hops):
     return {'id': f'flow-{cid}', 'kind': 'sequence', 'lanes': lanes, 'nodes': nodes, 'edges': edges}
 
 
-def pkg_spec(pkgs, deps):
-    """The first-party import graph. Lanes are the architectural tiers the imports themselves imply."""
-    TIER = {'cmd': 'binaries', 'p2p': 'network', 'blockchain': 'consensus', 'dvm': 'consensus', 'block': 'consensus',
+# the architectural tier of each first-party package (r33: shared by the import graph and the layered overview)
+PKG_TIER = {'cmd': 'binaries', 'tools': 'binaries', 'p2p': 'network', 'blockchain': 'consensus', 'dvm': 'consensus', 'block': 'consensus',
             'walletapi': 'wallet', 'rpc': 'wire', 'transaction': 'wire', 'proof': 'wire',
             'cryptography': 'primitives', 'astrobwt': 'primitives', 'pow': 'primitives',
             'config': 'foundation', 'globals': 'foundation', 'metrics': 'foundation', 'glue': 'foundation',
             'errormsg': 'foundation', 'premine': 'foundation'}
+TIERS = [('binaries', 'Programs you run', 'the executables: the daemon, the wallet, the miner, the explorer, the simulator and tools'),
+         ('network', 'Talking to peers', 'how a node finds peers and exchanges blocks and transactions with them'),
+         ('wallet', 'The wallet', 'keys, encrypted balances and building transfers on the user side'),
+         ('consensus', 'Consensus and execution', 'what makes a block valid, how the chain grows, and the smart-contract VM'),
+         ('wire', 'Wire formats and the API', 'the objects that travel: transactions, proofs and the JSON-RPC types'),
+         ('primitives', 'Cryptography and proof of work', 'the maths the rules rest on: pairing curves, range proofs, AstroBWT'),
+         ('foundation', 'Shared foundation', 'configuration, process-wide state, metrics and the glue between layers')]
+
+
+def pkg_spec(pkgs, deps):
+    """The first-party import graph. Lanes are the architectural tiers the imports themselves imply."""
+    TIER = PKG_TIER
     keep = {p['pkg'] for p in pkgs}
     nodes = [{'id': p['pkg'], 'label': p['pkg'], 'sub': f"{p['loc']:,} lines · {p['files']} files",
               'lane': TIER.get(p['pkg'], 'foundation'), '_row': p} for p in pkgs]
@@ -1119,137 +1143,182 @@ def evo_section(by, A, H):
 
 
 # ───────────────────────────── the page ─────────────────────────────
+# ───────────────────────────── r33: theme tokens, layout, privacy ─────────────────────────────
+# The page is rebuilt (r33) the way artifacts/dero-enhanced-game-theory.html was: design tokens with a light and a dark
+# theme (prefers-color-scheme, overridden by the theme button: :root[data-theme]), a sticky table of contents grouped
+# into parts, plain-language orientation sections over the deep technical reference, generated inline SVG diagrams and
+# chartkit charts (each with a <title>, a <desc> naming every value and a data table), evidence tags that open the exact
+# file:line citations, and no local path, address, LAN address or machine name (pub()). KAT harness/kat/test_src_arch_page_r33.py.
+LIGHT = {'bg': '#f3f5f7', 'surface': '#ffffff', 'surface-2': '#eef2f5', 'fg': '#131a21', 'muted': '#55636f', 'line': '#d3dbe2',
+         'rule': '#e1e7ec', 'accent': '#0b6e75', 'accent-soft': '#dcefee', 'accent2': '#9a5a18', 'series-1': '#2a78d6',
+         'series-2': '#8a96a3', 'alert': '#b3412f', 'ok': '#15703f', 'warn': '#9a6212', 'gap': '#ab2f27', 'l4': '#245f99',
+         'queued': '#6b5bbf', 'flow': '#b0661a', 'code-bg': '#f2f4f6',
+         'shadow': '0 1px 2px rgba(20,30,40,.06),0 6px 22px rgba(20,30,40,.06)'}
+DARK = {'bg': '#0e1216', 'surface': '#161c22', 'surface-2': '#1c242b', 'fg': '#e4ecf2', 'muted': '#97a6b3', 'line': '#2c3843',
+        'rule': '#243039', 'accent': '#4fc3cc', 'accent-soft': '#12343a', 'accent2': '#d79a52', 'series-1': '#3987e5',
+        'series-2': '#6b7884', 'alert': '#ef8a78', 'ok': '#4bbd7e', 'warn': '#d7a04a', 'gap': '#e87a6f', 'l4': '#6aa6e0',
+        'queued': '#a292ec', 'flow': '#e9a25a', 'code-bg': '#12171b',
+        'shadow': '0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.35)'}
+# the names the kit modules (assetkit, connectorkit, diagramkit, areakit, consensuskit, peerkit) and the older sections
+# read: each is an alias of a theme token, so both themes reach every block without a second palette
+ALIASES = ('--panel:var(--surface);--panel2:var(--surface-2);--ink:var(--fg);--mut:var(--muted);--cluster:var(--accent);'
+           '--host:var(--accent);--ak-accent:var(--accent);--ak-alert:var(--gap);--ak-line:var(--line);--ak-panel:var(--surface);'
+           '--ak-panel2:var(--surface-2);--ak-ink:var(--fg);--ak-muted:var(--muted);--ak-src:var(--ok);--ak-harness:var(--accent2);'
+           '--ak-plan:var(--l4);--ak-gk:var(--queued);--sans:var(--body)')
+
+
+def theme_css():
+    v = lambda d: ';'.join(f'--{k}:{x}' for k, x in d.items())
+    return (f':root{{{v(LIGHT)};{ALIASES};color-scheme:light;'
+            '--body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;'
+            '--mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;--radius:10px}'
+            f'@media (prefers-color-scheme: dark){{:root:not([data-theme="light"]){{{v(DARK)};color-scheme:dark}}}}'
+            f':root[data-theme="dark"]{{{v(DARK)};color-scheme:dark}}')
+
+
 CSS = r'''
-:root{
-  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
-  --bg:#eef1f4; --panel:#ffffff; --panel2:#f5f7f9; --ink:#131a21; --mut:#5d6b78; --line:#cdd6de;
-  --cluster:#0c6a73; --l4:#245f99; --ok:#15703f; --warn:#9a6212; --gap:#ab2f27; --queued:#6b5bbf; --host:#0c6a73;
-  --ak-accent:#0c6a73; --ak-alert:#ab2f27; --ak-line:#cdd6de; --ak-panel:#ffffff; --ak-panel2:#f5f7f9;
-  --ak-ink:#131a21; --ak-muted:#5d6b78;
-  --rule:#dde4ea; --accent:#0c6a73; --accent2:#9a5a18;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0e1216; --panel:#161c22; --panel2:#1b232a; --ink:#e4ecf2; --mut:#93a3b1; --line:#2c3843;
-  --cluster:#3fb0ab; --l4:#6aa6e0; --ok:#4bbd7e; --warn:#d7a04a; --gap:#e87a6f; --queued:#a292ec; --host:#3fb0ab;
-  --ak-accent:#3fb0ab; --ak-alert:#e87a6f; --ak-line:#2c3843; --ak-panel:#161c22; --ak-panel2:#1b232a;
-  --ak-ink:#e4ecf2; --ak-muted:#93a3b1; --rule:#263039; --accent:#3fb0ab; --accent2:#d79a52;
-}}
-:root[data-theme="dark"]{
-  --bg:#0e1216; --panel:#161c22; --panel2:#1b232a; --ink:#e4ecf2; --mut:#93a3b1; --line:#2c3843;
-  --cluster:#3fb0ab; --l4:#6aa6e0; --ok:#4bbd7e; --warn:#d7a04a; --gap:#e87a6f; --queued:#a292ec; --host:#3fb0ab;
-  --ak-accent:#3fb0ab; --ak-alert:#e87a6f; --ak-line:#2c3843; --ak-panel:#161c22; --ak-panel2:#1b232a;
-  --ak-ink:#e4ecf2; --ak-muted:#93a3b1; --rule:#263039; --accent:#3fb0ab; --accent2:#d79a52;
-}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);
-     -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-.wrap{max-width:1180px;margin:0 auto;padding:0 16px 96px}
-a{color:var(--accent)}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--accent);text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
 code,.mono{font-family:var(--mono)}
 h1,h2,h3{text-wrap:balance;margin:0}
-/* ── masthead: a status strip, because the subject is an instrument that is running right now ── */
-header.mast{border-bottom:1px solid var(--rule);background:
-  linear-gradient(180deg,color-mix(in srgb,var(--accent) 7%,var(--bg)) 0%,var(--bg) 100%)}
-.mast .wrap{padding-top:34px;padding-bottom:22px}
-.eyebrow{font:600 10.5px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
-h1{font-size:clamp(28px,4.4vw,46px);line-height:1.04;letter-spacing:-.025em;font-weight:760}
-h1 .dim{color:var(--mut);font-weight:420}
-.sub{margin:12px 0 0;max-width:68ch;color:var(--mut);font-size:15.5px}
-.tickers{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
-.tick{display:flex;align-items:baseline;gap:7px;background:var(--panel);border:1px solid var(--line);
-      border-radius:7px;padding:5px 10px;font-size:12px}
+.skip{position:absolute;left:-999px;top:8px;background:var(--surface);padding:8px 12px;border:1px solid var(--line);z-index:99}.skip:focus{left:8px}
+/* ── layout: a sticky contents column beside the page ── */
+.layout{display:grid;grid-template-columns:236px minmax(0,1fr);gap:40px;max-width:1360px;margin:0 auto;padding:0 26px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:28px 0;font-size:13px}
+.toct{font:700 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 10px 10px}
+nav.toc ol,#tocd ol{list-style:none;margin:0;padding:0}
+nav.toc li.part,#tocd li.part{font:700 10.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:14px 0 4px 10px}
+nav.toc a,#tocd a{display:flex;gap:9px;align-items:baseline;padding:4px 10px;border-radius:7px;color:var(--fg);text-decoration:none;line-height:1.3}
+nav.toc a:hover,#tocd a:hover{background:var(--surface-2)}nav.toc a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.sn{font:700 11px/1 var(--mono);color:var(--muted);min-width:1.6em}
+#tocd{display:none;margin:10px 14px 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px}
+#tocd summary{cursor:pointer;font-weight:600}
+main{min-width:0;padding:28px 0 80px}
+/* ── hero ── */
+.hero{display:grid;gap:10px;padding:6px 0 4px}
+.kicker{font:600 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}.kick2{color:var(--muted);text-transform:none;letter-spacing:0}
+h1{font-size:clamp(28px,4.2vw,44px);line-height:1.06;letter-spacing:-.025em;font-weight:760;max-width:26ch}
+h1 .dim{color:var(--muted);font-weight:420}
+.lede{color:var(--muted);max-width:76ch;margin:8px 0 16px}
+.hero .lede{font-size:17px;margin:0}
+.hero-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+.btn{display:inline-flex;align-items:center;gap:6px;font:600 13.5px/1 var(--body);padding:10px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);text-decoration:none;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}.btn:hover{filter:brightness(1.08)}
+.sub{margin:10px 0 0;max-width:80ch;color:var(--muted);font-size:14px}
+.tickers{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tick{display:flex;align-items:baseline;gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:5px 10px;font-size:12px}
 .tick b{font:700 13px/1 var(--mono);font-variant-numeric:tabular-nums}
-.tick span{color:var(--mut);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase}
-.tick.live b{color:var(--ok)} .tick.warnt b{color:var(--warn)}
-/* ── nav ── */
-nav.toc{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 88%,transparent);
-        backdrop-filter:blur(9px);border-bottom:1px solid var(--rule)}
-nav.toc .wrap{display:flex;gap:2px;overflow-x:auto;padding-top:7px;padding-bottom:7px;scrollbar-width:thin}
-nav.toc a{color:var(--mut);text-decoration:none;font:600 11.5px/1 var(--sans);letter-spacing:.02em;
-          padding:6px 9px;border-radius:6px;white-space:nowrap}
-nav.toc a:hover{color:var(--ink);background:var(--panel2)}
+.tick span{color:var(--muted);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase}
+.tick.live b{color:var(--ok)}
 /* ── sections ── */
-section{padding-top:46px;scroll-margin-top:52px}
-h2{font-size:23px;letter-spacing:-.015em;font-weight:720;display:flex;align-items:baseline;gap:10px}
-h2 .num{font:700 11px/1 var(--mono);color:var(--accent);letter-spacing:.1em}
-h3{font-size:15.5px;font-weight:700;margin:26px 0 8px;letter-spacing:-.005em}
-.lede{color:var(--mut);max-width:74ch;margin:9px 0 18px}
-.note{background:var(--panel2);border-left:3px solid var(--line);padding:10px 13px;border-radius:0 7px 7px 0;
-      margin:14px 0;font-size:13.5px;color:var(--mut);max-width:88ch}
+section{scroll-margin-top:14px;margin-top:50px}
+h2{font-size:clamp(21px,2.4vw,25px);letter-spacing:-.012em;font-weight:720;display:flex;align-items:baseline;gap:12px;
+   border-bottom:1px solid var(--line);padding-bottom:8px;margin:0 0 4px}
+h2 .sn{font-size:12.5px;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:4px 7px;min-width:auto}
+h3{font-size:17px;font-weight:700;margin:28px 0 8px;letter-spacing:-.005em}
+h4{font-size:14.5px;font-weight:700;margin:0 0 6px}
+.partbanner{margin:64px 0 -26px;font:700 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.prose p,.prose li{max-width:78ch}
+.note{background:var(--surface-2);border-left:3px solid var(--line);padding:10px 13px;border-radius:0 7px 7px 0;margin:14px 0;font-size:13.5px;color:var(--muted);max-width:90ch}
 .note.warn{border-left-color:var(--warn)} .note.bad{border-left-color:var(--gap)} .note.good{border-left-color:var(--ok)}
-.note b{color:var(--ink)}
+.note b{color:var(--fg)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px;align-items:start}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px;align-items:start}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px;align-items:start}
+.charts figure.chart{margin:0}
+.lg{font:700 10px var(--mono);padding:0 4px;border:1px dotted currentColor;border-radius:3px}.lg-SRC{color:var(--ok)}.lg-EXT{color:var(--l4)}.lg-HARNESS{color:var(--accent2)}.lg-GK{color:var(--queued)}.lg-PLAN{color:var(--muted)}
 /* ── kpis ── */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:10px;margin:18px 0}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;box-shadow:var(--shadow)}
 .kv{font:700 21px/1.1 var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.kl{color:var(--mut);font-size:11.5px;margin-top:5px;line-height:1.35}
+.kl{color:var(--muted);font-size:11.5px;margin-top:5px;line-height:1.35}
 /* ── tables ── */
-.tw{overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:var(--panel);margin:12px 0}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th{text-align:left;font:700 10.5px/1.3 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--mut);
-   padding:9px 11px;border-bottom:1px solid var(--line);background:var(--panel2);position:sticky;top:0;z-index:1}
+.tw,.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin:12px 0;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th{text-align:left;font:700 10.5px/1.3 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:9px 11px;border-bottom:1px solid var(--line);background:var(--surface-2);position:sticky;top:0;z-index:1}
 td{padding:8px 11px;border-bottom:1px solid var(--rule);vertical-align:top}
 tbody tr:last-child td{border-bottom:0}
-tbody tr:hover{background:var(--panel2)}
+tbody tr:hover{background:var(--surface-2)}
 td .mono,td code{font-size:12px}
+td code{word-break:break-word}
 .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .tf{display:flex;align-items:center;gap:9px;margin:14px 0 0}
-.tf input{flex:0 1 300px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel);
-          color:var(--ink);font:13px var(--sans)}
-.tfn{color:var(--mut);font-size:11.5px}
-a.pf{font-family:var(--mono);font-size:11.5px;color:var(--mut);text-decoration:none;border-bottom:1px dotted var(--line);
-     white-space:nowrap}
-@media (max-width:600px){a.pf{white-space:normal;overflow-wrap:anywhere}}
-a.pf:hover{color:var(--accent);border-bottom-color:var(--accent)}
-.mut{color:var(--mut)}
-.chip{display:inline-block;font:700 9.6px/1.5 var(--mono);letter-spacing:.05em;text-transform:uppercase;
-      padding:1px 6px;border-radius:9px;color:var(--c);border:1px solid var(--c);background:color-mix(in srgb,var(--c) 11%,transparent);
-      white-space:nowrap;margin-right:4px}
+.tf input{flex:0 1 300px;min-width:0;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--fg);font:13px var(--body)}
+.tfn{color:var(--muted);font-size:11.5px}
+.pf{font-family:var(--mono);font-size:11.5px;color:var(--muted);border-bottom:1px dotted var(--line);white-space:nowrap;cursor:help}
+@media (max-width:600px){.pf{white-space:normal;overflow-wrap:anywhere}}
+.mut{color:var(--muted)}
+.chip{display:inline-block;font:700 9.6px/1.5 var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:9px;color:var(--c);
+      border:1px solid var(--c);background:color-mix(in srgb,var(--c) 11%,transparent);white-space:nowrap;margin-right:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.chips a{font:600 12.5px var(--mono);padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);text-decoration:none}
 /* ── cards ── */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:13px;margin:16px 0}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 15px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:13px;margin:16px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);min-width:0}
 .card.defect{border-left:3px solid var(--gap)} .card.fix{border-left:3px solid var(--ok)}
 .card.operational{border-left:3px solid var(--warn)} .card.analysis{border-left:3px solid var(--l4)}
-.card.reporting{border-left:3px solid var(--mut)}
-.card h4{margin:0 0 7px;font-size:14.5px;font-weight:710;letter-spacing:-.005em}
-.card p{margin:7px 0;font-size:13.2px;color:var(--ink)}
+.card.reporting{border-left:3px solid var(--muted)} .card.lead{border-top:3px solid var(--accent)}
+.card h3{margin-top:2px;font-size:16px}
+.card h4{margin:0 0 7px;font-size:14.5px;font-weight:710}
+.card p{margin:7px 0;font-size:13.5px}
+.card ul{padding-left:20px;margin:6px 0}.card li{margin:4px 0;font-size:13.5px}
 .card code{overflow-wrap:anywhere}
-.card .meta{margin-top:10px;padding-top:9px;border-top:1px solid var(--rule);font-size:12px;color:var(--mut)}
-.card .meta b{color:var(--ink);font-weight:650}
+.card .meta{margin-top:10px;padding-top:9px;border-top:1px solid var(--rule);font-size:12px;color:var(--muted)}
+.card .meta b{color:var(--fg);font-weight:650}
+.tier{border-left:4px solid var(--accent)}
+.pkgl{list-style:none;padding:0;margin:8px 0 0}.pkgl li{padding:7px 0;border-top:1px solid var(--rule)}.pkgl li:first-child{border-top:0}
+.pkgl .m{display:block;font:400 11.5px var(--mono);color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0;font-size:13px}.legend span{display:inline-flex;gap:6px;align-items:baseline}
 /* ── figures ── */
-figure{margin:18px 0}
-.figbox{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
-figcaption{color:var(--mut);font-size:12.5px;margin-top:8px;max-width:84ch}
+figure{margin:18px 0;min-width:0}
+.figbox,.scrollx{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px;-webkit-overflow-scrolling:touch}
+figcaption{color:var(--muted);font-size:12.5px;margin-top:8px;max-width:86ch}
 svg{display:block;max-width:100%;height:auto}
+svg.dg{width:100%;min-width:760px;color:var(--fg)}
+svg.dg .box{fill:var(--surface);stroke:var(--line);stroke-width:1.3}
+svg.dg .boxa{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.4}
+svg.dg .band{fill:var(--surface-2);stroke:none}
+svg.dg .ln{stroke:var(--accent);stroke-width:1.7;fill:none}
+svg.dg .ln.m{stroke:var(--flow)} svg.dg .ln.r{stroke:var(--series-2);stroke-width:1.5}
+svg.dg .nb circle{fill:var(--accent)} svg.dg .nb text{font:700 10px var(--mono);fill:var(--surface);text-anchor:middle;dominant-baseline:central}
+svg.dg a{cursor:pointer}svg.dg a:hover .box,svg.dg a:focus .box{stroke:var(--accent)}
 /* ── index ── */
-#sx-q{width:100%;max-width:520px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);
-      color:var(--ink);font:14px var(--sans)}
+#sx-q{width:100%;max-width:520px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font:14px var(--body)}
 #sx-facets{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0}
-.sx-f{font:600 11px/1 var(--sans);padding:5px 9px;border:1px solid var(--line);border-radius:14px;background:var(--panel);
-      color:var(--mut);cursor:pointer}
-.sx-f.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.sx-f{font:600 11px/1 var(--body);padding:5px 9px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--muted);cursor:pointer}
+.sx-f.on{background:var(--accent);border-color:var(--accent);color:var(--surface)}
 #sx-res{margin-top:12px;display:grid;gap:7px}
-.sx-hit{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13px}
+.sx-hit{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13px}
 .sx-hit a{font-weight:650;text-decoration:none}
-.sx-hit .w{color:var(--mut);font-size:11.5px;display:block;margin-top:3px}
-details{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 14px;margin:12px 0}
+.sx-hit .w{color:var(--muted);font-size:11.5px;display:block;margin-top:3px;overflow-wrap:anywhere}
+details{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:11px 14px;margin:12px 0}
 summary{cursor:pointer;font-weight:650;font-size:13.5px}
-footer{margin-top:62px;padding-top:20px;border-top:1px solid var(--rule);color:var(--mut);font-size:12.5px}
-@media (max-width:620px){.wrap{padding:0 16px 70px}h1{font-size:27px}.kpis{grid-template-columns:repeat(auto-fit,minmax(124px,1fr))}}
-@media print{nav.toc{display:none}}
+figure.chart details.chart-data{border:0;padding:0;background:none;margin:4px 0 0}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:400 12px/1.6 var(--mono);max-width:100%}
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--rule);color:var(--muted);font-size:12.5px;max-width:96ch}
 /* ── r23c: evolved strips and churn bars ── */
-.evo{background:var(--panel2);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;
-     padding:7px 11px;margin:10px 0 14px;font-size:12.5px}
+.evo{background:var(--surface-2);border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:7px 11px;margin:10px 0 14px;font-size:12.5px}
 .evo summary{font-weight:600;font-size:12.5px}
 .evo ul{margin:8px 0 2px;padding-left:18px}.evo li{margin:3px 0;overflow-wrap:anywhere}
 .evo-h{font:700 10px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-right:4px}
-a.evo-c{display:inline-block;font:700 10px/1.5 var(--mono);padding:0 6px;margin:1px 2px;border-radius:9px;border:1px solid var(--accent);
-        color:var(--accent);text-decoration:none;background:color-mix(in srgb,var(--accent) 10%,transparent)}
+a.evo-c{display:inline-block;font:700 10px/1.5 var(--mono);padding:0 6px;margin:1px 2px;border-radius:9px;border:1px solid var(--accent);color:var(--accent);text-decoration:none;background:color-mix(in srgb,var(--accent) 10%,transparent)}
 svg.evo-wide{min-width:860px}
 .evo-bar{display:block;height:5px;width:var(--w);min-width:2px;border-radius:3px;background:var(--accent);opacity:.7;margin-bottom:3px}
+/* in chart data tables a class tag is a coloured dot (it keeps its class name as its accessible label) */
+figure.chart td .ct{font-size:0;width:8px;height:8px;padding:0;border-radius:50%;border:0;background:currentColor;margin-left:6px;vertical-align:1px;line-height:0}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none !important;animation:none !important}}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr);gap:0;padding:0 14px}nav.toc{display:none}#tocd{display:block}main{padding-top:16px}h1{max-width:none}section{margin-top:36px}.partbanner{margin:48px 0 -18px}.kpis{grid-template-columns:repeat(auto-fit,minmax(124px,1fr))}}
+@media print{nav.toc,#tocd,.skip,#themebtn{display:none}.layout{display:block}}
 '''
+
+THEME_JS = r'''(function(){var r=document.documentElement,b=document.getElementById('themebtn'),k='sa-theme',m=['auto','light','dark'],v='auto';
+function set(x){v=x;if(x==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',x);if(b){b.textContent='Theme: '+x;b.setAttribute('aria-label','Colour theme: '+x+' (click to change)');}}
+v=r.getAttribute('data-theme')||'auto';try{v=localStorage.getItem(k)||v;}catch(e){}set(m.indexOf(v)<0?'auto':v);
+if(b)b.addEventListener('click',function(){var n=m[(m.indexOf(v)+1)%3];try{localStorage.setItem(k,n);}catch(e){}set(n);});
+var links=[].slice.call(document.querySelectorAll('nav.toc a'));if('IntersectionObserver' in window&&links.length){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id);});}});},{rootMargin:'-20% 0px -70% 0px'});
+[].forEach.call(document.querySelectorAll('main>section[id]'),function(s){io.observe(s);});}})();'''
 
 JS = r'''
 (function(){
@@ -1286,6 +1355,326 @@ JS = r'''
 })();
 '''
 
+# r33: the page's privacy pass. Every display string (a quote in a tooltip or a citation, a claim, a log line) is
+# scrubbed of what names this box: a home, datadir, repository or scratch path, the agent tool's directories, a DERO
+# address, an e-mail, a LAN address and the machine's model names. The anchors themselves are untouched (they live in
+# harness/model/verified.json and are re-read from disk by G1/G2); the page shows the placeholder instead.
+PUB_RULES = [
+    (re.compile(r'(?:/Users|/home)/[A-Za-z0-9._-]+/derohe-Release1\d\d\b'), '[repo]'),
+    (re.compile(r'(?:/Users|/home)/[A-Za-z0-9._-]+/dero-data\b'), '[datadir]'),
+    (re.compile(r'(?:/Users|/home)/[A-Za-z0-9._-]+/\.claude/[^\s"\'<>&,;)]*'), '[tool-dir]'),
+    (re.compile(r'(?:/Users|/home)/[A-Za-z0-9._-]+'), '[home]'),
+    (re.compile(r'/private/(?:tmp|var)/[^\s"\'<>&,;)]*'), '[scratch]'),
+    (re.compile(r'~/dero-data\b'), '[datadir]'),
+    (re.compile(r'~/derohe-Release1\d\d\b'), '[repo]'),
+    (re.compile(r'(?:~/)?\.claude/[^\s"\'<>&,;)]*'), '[tool-dir]'),
+    (re.compile(r'(?<![\w/.~-])~/(?=[A-Za-z0-9._-])'), '[home]/'),
+    (re.compile(r'-Users-[A-Za-z0-9]+-[\w-]*'), '[project]'),
+    (re.compile(r'\b(?:dero|deto)(?:1|i)[0-9a-z]{4,}\b'), '[address]'),   # a full address or a quoted prefix of one
+    (re.compile(r'(?i)(?<![\w.+-])[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\b'), '[e-mail]'),
+    (re.compile(r'(?<![\d.])(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7]))(?:\.\d{1,3}){2}(?![\d\w]|\.\d)'), '[lan-ip]'),
+    (re.compile(r'(?i)\bMac[- ]?Studio\b'), 'host'),
+    (re.compile(r'(?i)\bMacBook(?:[- ](?:Pro|Air))?\b'), 'laptop'),
+    (re.compile(r'(?i)\bM[1-9][- ]?(?:Ultra|Max|Pro)\b'), 'host'),
+]
+# r33: the node and user names come from outside the repo (privkit.private_terms), never as literals in this file
+import privkit as _pk     # noqa: E402
+PUB_RULES += _pk.private_terms()
+
+
+def pub(h):
+    """the page with every PUB_RULES match replaced by its placeholder. Pure."""
+    for rx, rep in PUB_RULES:
+        h = rx.sub(rep, h)
+    return h
+
+
+def privacy_problems(h, allowed_ips=None):
+    """[why] for every private value left on the page (KAT SA5 and the build's page_lint). Pure but for the IP allow-list."""
+    out = []
+    for rx, rep in PUB_RULES:
+        n = len(rx.findall(h))
+        if n:
+            out.append(f'{n} match(es) of the rule for {rep}')
+    leaks = privkit.page_ip_leaks(h, allowed_ips if allowed_ips is not None else ())
+    if leaks:
+        out.append(f'{len(leaks)} non-reserved IPv4 literal(s) that no tracked .go file holds')
+    return out
+
+
+@functools.lru_cache(maxsize=1)
+def _code_ips():
+    return frozenset(privkit.code_literal_ips(ROOT))
+
+
+def page_lint(h):
+    """r33: what the build refuses beside svg_lint: a private value (pub() missed it) or a chart without its text
+    alternative (chartkit.audit, kitgate G13)."""
+    bad = [f'privacy: {p}' for p in privacy_problems(h, _code_ips())]
+    ca = chk.audit(h)
+    bad += [f'chart {c}: {why}' for c, why in ca['bad']]
+    return bad
+
+
+def current_round(root=None):
+    """('r33', 'Round 33') from harness/round.json 'current'; ('', '') when unreadable."""
+    try:
+        cur = str(json.loads(((root or ROOT) / 'harness' / 'round.json').read_text()).get('current') or '')
+    except (OSError, ValueError, AttributeError):
+        return '', ''
+    m = re.fullmatch(r'r(\d+)([a-z]?)', cur)
+    return cur, (f'Round {m.group(1)}{m.group(2)}' if m else cur)
+
+
+# ───────────────────────────── r33: page parts, chart and diagram helpers ─────────────────────────────
+PARTS = [('Orientation', [('start', 'Start here'), ('tour', 'The tree in layers'), ('lifecycle', 'How the parts work together'),
+                          ('glossary', 'Glossary')]),
+         ('The source tree', [('map', 'Package map'), ('consensus', 'Consensus rules'), ('flows', 'Execution paths'),
+                              ('deps', 'Vendored code'), ('local', 'Local changes'), ('evolution', 'Evolution')]),
+         ('The running node', [('live', 'Live node'), ('intel', 'Node intelligence'), ('bridge', 'Log bridge'),
+                               ('triage', 'Console errors')]),
+         ('Findings and audits', [('findings', 'Findings'), ('coverage', 'Coverage and risk'), ('press', 'Disclosure audit')]),
+         ('Observatories', [('areas', 'Areas'), ('chainobs', 'Chain observatory'), ('peers', 'Network peers')]),
+         ('The harness', [('harness', 'How this page is built'), ('method', 'Re-run and extend'), ('quarantine', 'Quarantine'),
+                          ('index', 'Index')])]
+SECTION_IDS = [i for _, s in PARTS for i, _ in s]
+# the chains of the flows section in the order a transfer meets them (r33 lifecycle diagram); the rest are miner internals
+LIFE = ['startup', 'p2pconn', 'wallet', 'mining', 'minipow', 'ingest', 'txverify', 'scexec']
+DEFS = ('<defs><marker id="sa-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
+        '<path d="M0,0 L10,5 L0,10 z" fill="currentColor" opacity=".6"/></marker></defs>')
+
+
+def rows_cl(rows, why):
+    """one class tag for an asset drawn from many rows: the classes their anchors carry, with every row's citations
+    (capped at 60, each class keeping at least one)."""
+    xs = [c for r in rows if isinstance(r, dict) for c in cites_fn(r)]
+    if not xs:
+        return ak.fixed('HARNESS', why, [])
+    kinds = sorted({c['c'] for c in xs}, key=lambda k: KIND_ORDER.index(k) if k in KIND_ORDER else 9)
+    keep = []
+    for k in kinds:
+        keep.append(next(c for c in xs if c['c'] == k))
+    for c in xs:
+        if len(keep) >= 60:
+            break
+        if c not in keep:
+            keep.append(c)
+    return kinds, 'der', f'derived from the {len(rows)} row(s) it draws ({why})', keep
+
+
+def chart_pill(rows, why, W=720):
+    """the evidence pill of a chart (top-right of its plot area)."""
+    return ak.svg_ctag(W - 4, 9, rows_cl(rows, why))[0]
+
+
+def cell_tagger(rows):
+    return lambda i: ak.ctag(cls_of(rows[i])) if i < len(rows) and isinstance(rows[i], dict) else ''
+
+
+def hbar(cid, title, desc, rows, cats, vals, unit='', note='', W=720, label_w=190, **kw):
+    """chartkit.hbar_chart tagged by the rows it draws (one pill on the plot, a dot per data-table cell)."""
+    return chk.hbar_chart(cid, title, desc, cats, vals, unit=unit, note=note, W=W, label_w=label_w,
+                          pill_svg=chart_pill(rows, title, W), cell_tag=cell_tagger(rows), **kw)
+
+
+def vbar(cid, title, desc, rows, cats, vals, unit='', note='', W=340, H=210, tag_rows_=None):
+    tr = tag_rows_ if tag_rows_ is not None else [[r] for r in rows]
+    return chk.bar_chart(cid, title, desc, cats, vals, unit=unit, note=note, W=W, H=H,
+                         pill_svg=chart_pill(rows, title, W), cell_tag=(lambda i: ak.ctag(rows_cl(tr[i], title)) if i < len(tr) and tr[i] else ''))
+
+
+def shortlab(s, n=26):
+    """a category label that fits a chart's label column, never cut mid-word with a lost sentence: the chart's <desc>
+    and data table carry the full name."""
+    s = str(s)
+    return s if len(s) <= n else s[:n - 1].rstrip() + '.'
+
+
+def first_num(v):
+    """the number a declaring expression states: the literal inside a conversion (uint64(18) -> 18), else the last one."""
+    s = str(v or '')
+    m = re.search(r'\(\s*(\d[\d_]*)\s*\)', s) or ([*re.finditer(r'(?<![\w.])(\d[\d_]*)(?![\w.])', s)] or [None])[-1]
+    return m.group(1).replace('_', '') if m else '?'
+
+
+def tier_diagram(pkgs, deps):
+    """r33: the tree in layers. One band per tier (PKG_TIER), a box per package with its measured size (its own
+    class tag), and on the right one bracket per pair of tiers that import each other, its tooltip the import-line
+    count: relations, not an execution order (connectorkit plays them top to bottom)."""
+    by_t = collections.OrderedDict((t[0], []) for t in TIERS)
+    for p in pkgs:
+        by_t.setdefault(PKG_TIER.get(p['pkg'], 'foundation'), []).append(p)
+    W, top, bh, gap, LW, RW = 1100, 14, 66, 24, 236, 196
+    bands = [t for t in by_t if by_t[t]]
+    H = top + len(bands) * (bh + gap) - gap + 14
+    ty = {t: top + i * (bh + gap) for i, t in enumerate(bands)}
+    name = {t[0]: t[1] for t in TIERS}
+    tot = collections.Counter()
+    for d in deps:
+        a, b = PKG_TIER.get(d['from'], 'foundation'), PKG_TIER.get(d['to'], 'foundation')
+        if a != b and a in ty and b in ty:
+            tot[(a, b)] += d['count']
+    edges = sorted(tot.items(), key=lambda kv: (abs(bands.index(kv[0][1]) - bands.index(kv[0][0])), bands.index(kv[0][0])))
+    desc = (f'{len(bands)} layers of the first-party tree, top to bottom: ' + '; '.join(
+        f"{name.get(t, t)}: " + ', '.join(f"{p['pkg']} ({p['loc']:,} lines)" for p in by_t[t]) for t in bands)
+        + '. Import relations between layers (import lines): ' + '; '.join(f'{name.get(a, a)} imports {name.get(b, b)}: {n}' for (a, b), n in edges) + '.')
+    o = [f'<svg class="dg" viewBox="0 0 {W} {H}" role="img" aria-labelledby="tier-t tier-d" data-cxkind="relations" '
+         f'data-cxwhy="import relations between layers, not an execution order"><title id="tier-t">The DERO HE tree in {len(bands)} layers</title>'
+         f'<desc id="tier-d">{E(desc)}</desc>{DEFS}']
+    for t in bands:
+        y = ty[t]
+        o.append(f'<rect class="band notag" x="0" y="{y}" width="{W - RW + 6}" height="{bh}" rx="9"/>')
+        o.append(dk.text(12, y + 26, tk.fit(name.get(t, t), LW - 18, 12.5, True), 12.5, weight='700'))
+        o.append(dk.text(12, y + 45, tk.fit(f'{len(by_t[t])} package(s) · {sum(p["loc"] for p in by_t[t]):,} lines', LW - 20, 10.5), 10.5, fill='var(--muted)'))
+        ps = by_t[t]
+        avail = W - RW - LW - 6
+        bw = min(220, (avail - 8 * (len(ps) - 1)) / len(ps))
+        for k, p in enumerate(ps):
+            x = LW + k * (bw + 8)
+            pill, pw = ak.svg_ctag(x + bw - 5, y + 13, cls_of(p))
+            o.append(f'<a href="#pkg-{E(p["pkg"])}"><g class="as"><rect class="box" x="{x:.1f}" y="{y + 7}" width="{bw:.1f}" height="{bh - 14}" rx="7"/>'
+                     + dk.text(x + 9, y + 30, tk.fit(p['pkg'], bw - pw - 16, 12.5, True), 12.5, weight='700')
+                     + dk.text(x + 9, y + 47, tk.fit(f"{p['loc']:,} lines · {p['files']} files" if bw >= 170 else f"{p['loc']:,} lines", bw - 14, 10), 10, fill='var(--muted)')
+                     + pill + f'<title>{E(p["pkg"])}: {E((p.get("claim") or "").split(" Measured:")[0])}</title></g></a>')
+    x0 = W - RW + 14
+    for k, ((a, b), n) in enumerate(edges):
+        ya, yb = ty[a] + bh / 2 + (k % 3 - 1) * 9, ty[b] + bh / 2 + (k % 3 - 1) * 9
+        xk = x0 + 14 + k * ((RW - 40) / max(1, len(edges)))
+        d = f'M{x0 - 10},{ya:.1f} L{xk:.1f},{ya:.1f} L{xk:.1f},{yb:.1f} L{x0 - 8},{yb:.1f}'
+        o.append(f'<path class="ln r" d="{d}" marker-end="url(#sa-ah)"><title>{E(name.get(a, a))} imports {E(name.get(b, b))}: {n} import line(s)</title></path>')
+    o.append('</svg>')
+    tab = [[E(name.get(a, a)), E(name.get(b, b)), f'<span class="num">{n}</span>'] for (a, b), n in edges]
+    rel_rows = [[d for d in deps if PKG_TIER.get(d['from'], 'foundation') == a and PKG_TIER.get(d['to'], 'foundation') == b] for (a, b), _ in edges]
+    trs = [[c[0], c[1], c[2] + ' ' + ak.ctag(rows_cl(rr, 'the import edges it sums'))] for c, rr in zip(tab, rel_rows)]
+    return ('<figure><div class="scrollx">' + ''.join(o) + '</div><figcaption>Each box is one first-party package (click it for its '
+            'card); each bracket on the right joins two layers where a package of the upper one imports a package of the lower one '
+            '(hover for the number of import lines, ▶ traces them in turn). The per-package graph is in the Package map.</figcaption>'
+            '<details><summary>The layer relations as a table</summary>'
+            + table(['Layer', 'imports layer', 'import lines'], trs, 't-tier-rel', notag='each count carries its own derived tag')
+            + '</details></figure>')
+
+
+def life_diagram(chains, hops):
+    """r33: the execution paths in the order a transfer meets them, numbered (connectorkit plays them in order); the
+    miner internals hang off the mining step as un-numbered connectors that say why they are not steps."""
+    main = [c for c in LIFE if c in chains]
+    extra = [c for c in chains if c not in LIFE]
+    per, bw, bh, gx, gy = 4, 248, 92, 22, 44
+    W = 20 + per * bw + (per - 1) * gx + 34
+    nrow = (len(main) + per - 1) // per + (1 if extra else 0)
+    H = 16 + nrow * (bh + gy) - gy + 30
+    pos = {}
+    for i, c in enumerate(main):
+        r, k = divmod(i, per)
+        k = k if r % 2 == 0 else per - 1 - k          # snake: the second row runs right to left
+        pos[c] = (20 + k * (bw + gx), 16 + r * (bh + gy))
+    if extra:                                      # miner internals: the last row, right-aligned under the right column
+        r = (len(main) + per - 1) // per
+        for k, c in enumerate(extra):
+            pos[c] = (20 + (per - len(extra) + k) * (bw + gx), 16 + r * (bh + gy))
+    desc = ('The execution paths of this page in the order a transfer meets them: ' + '; '.join(
+        f'{i + 1} {chains[c]["title"].split(" — ")[0]} ({len(hops.get(c, []))} hops)' for i, c in enumerate(main))
+        + ('. Miner internals beside the mining step: ' + '; '.join(chains[c]['title'].split(' — ')[0] for c in extra) if extra else '') + '.')
+    o = [f'<svg class="dg" viewBox="0 0 {W} {H}" role="img" aria-labelledby="life-t life-d"><title id="life-t">How the parts work together: '
+         f'the execution paths in order</title><desc id="life-d">{E(desc)}</desc>{DEFS}']
+    for i, c in enumerate(main + extra):
+        x, y = pos[c]
+        ch = chains[c]
+        hs = sorted(hops.get(c, []), key=lambda h: h['order'])
+        lanes = list(dict.fromkeys(LAYER_LANE.get(h.get('layer'), h.get('layer')) for h in hs))
+        pill, pw = ak.svg_ctag(x + bw - 6, y + 12, cls_of(ch))
+        ln = ', '.join(lanes)
+        sub2 = ln if len(ln) * 10 * tk.CW <= bw - 18 else f'{len(lanes)} layers'
+        o.append(f'<a href="#chain-{E(c)}"><g class="as"><rect class="{"box" if c in LIFE else "boxa"}" x="{x}" y="{y}" width="{bw}" height="{bh}" rx="8"/>'
+                 + dk.text(x + 10, y + 26, tk.fit(ch['title'].split(' — ')[0], bw - pw - 20, 12.5, True), 12.5, weight='700')
+                 + dk.text(x + 10, y + 46, tk.fit(f'{len(hs)} hops, re-located at build time', bw - 18, 10.5), 10.5, fill='var(--muted)')
+                 + dk.text(x + 10, y + 63, tk.fit(sub2, bw - 18, 10), 10, fill='var(--muted)')
+                 + dk.text(x + 10, y + 80, tk.fit(f'starts at {rel(hs[0]["evidence"][0]["abs"]).split("/")[-1]}' if hs else '', bw - 18, 10), 10, fill='var(--muted)')
+                 + pill + f'<title>{E(ch["title"])}</title></g></a>')
+    for i in range(len(main) - 1):
+        (x1, y1), (x2, y2) = pos[main[i]], pos[main[i + 1]]
+        if y1 == y2:
+            if x2 > x1:
+                d, bx = f'M{x1 + bw},{y1 + bh / 2} L{x2 - 3},{y2 + bh / 2}', (x1 + bw + x2) / 2
+            else:
+                d, bx = f'M{x1},{y1 + bh / 2} L{x2 + bw + 3},{y2 + bh / 2}', (x2 + bw + x1) / 2
+            by_ = y1 + bh / 2 - 13
+        else:
+            d = f'M{x1 + bw / 2},{y1 + bh} L{x2 + bw / 2},{y2 - 3}'
+            bx, by_ = x1 + bw / 2 + 14, (y1 + bh + y2) / 2
+        o.append(f'<g class="cx"><path class="ln" d="{d}" marker-end="url(#sa-ah)"/><g class="nb"><circle cx="{bx:.1f}" cy="{by_:.1f}" r="9"/>'
+                 f'<text x="{bx:.1f}" y="{by_:.1f}">{i + 1}</text></g></g>')
+    if 'mining' in pos:
+        mx, my = pos['mining']
+        for k, c in enumerate(extra):
+            x, y = pos[c]
+            xr = W - 8 - 6 * k                     # up the right margin, clear of every box
+            o.append(f'<path class="ln m" d="M{x + bw - 30},{y} L{x + bw - 30},{y - 12 - 6 * k} L{xr},{y - 12 - 6 * k} L{xr},{my + 20 + 8 * k} L{mx + bw + 3},{my + 20 + 8 * k}" '
+                     f'marker-end="url(#sa-ah)" data-cxwhy="a miner internal: how the miner produces the share of the mining step, not a step of the chain"/>')
+    o.append(dk.text(W / 2, H - 8, 'numbered = the order a transfer meets the paths · orange = miner internals · click a box for its path', 10.5, anchor='middle', fill='var(--muted)'))
+    o.append('</svg>')
+    return ('<figure><div class="scrollx">' + ''.join(o) + '</div><figcaption>Press ▶ to walk the paths in order. Transaction '
+            'verification and smart-contract execution run inside the core hops of block ingest; they are drawn after it because '
+            'that is where a reader meets them in the code.</figcaption></figure>')
+
+
+def pipe_diagram(stats, nraw, nsrc):
+    """r33: how this page is built and checked, numbered in run order; each box cites the harness line that does it."""
+    def at(relp, rx, why):
+        p = ROOT / relp
+        try:
+            ls = p.read_text(errors='replace').splitlines()
+        except OSError:
+            return ak.fixed('HARNESS', why, [])
+        ln = next((i + 1 for i, l in enumerate(ls) if re.search(rx, l)), None)
+        if not ln:
+            return ak.fixed('HARNESS', why, [])
+        return ak.fixed('HARNESS', why, [ak.cite_file('/' + relp, ln, ls[ln - 1].strip()[:200], 'HARNESS', label=relp,
+                                                     note="the harness's own code; path from the repository root")])
+    steps = [('Index the tree', 'harness/prep_corpus.py', r'^def main|^if __name__', 'tags, package index, manifest'),
+             ('Mine the rows', 'harness/miners/minelib.py', r'^def emit', f'{nraw} raw files, each row with anchors'),
+             ('Resolve every anchor', 'harness/gen_deroarch.py', r'^def resolve\(', f"{stats['anchors_ok']:,}/{stats['anchors']:,} anchors re-read"),
+             ('Render this page', 'harness/gen_deroarch.py', r'^def render\(', f"{stats['rows']:,} rows drawn"),
+             ('Stamp the sources', 'harness/gen_deroarch.py', r'^def build\(', f'{nsrc:,} source hashes'),
+             ('Page gates G5-G14', 'harness/kit/kitgate.py', r'G13', 'scripts, tags, citations, charts'),
+             ('Known-answer tests', 'harness/kat/verify_deroarch.py', r'DK01', 'each with a mutation proof'),
+             ('Coherence G25', 'harness/intel/coherence.py', r'^def check_srcarch', 'page figures = the records')]
+    per, bw, bh, gx, gy = 4, 248, 80, 22, 44
+    W = 20 + per * bw + (per - 1) * gx + 20
+    H = 16 + 2 * (bh + gy) - gy + 16
+    pos = []
+    for i in range(len(steps)):
+        r, k = divmod(i, per)
+        k = k if r % 2 == 0 else per - 1 - k
+        pos.append((20 + k * (bw + gx), 16 + r * (bh + gy)))
+    desc = 'How the page is built, in run order: ' + '; '.join(f'{i + 1} {t} ({s}): {m}' for i, (t, s, _, m) in enumerate(steps)) + '.'
+    o = [f'<svg class="dg" viewBox="0 0 {W} {H}" role="img" aria-labelledby="pipe-t pipe-d"><title id="pipe-t">How this page is built and checked</title>'
+         f'<desc id="pipe-d">{E(desc)}</desc>{DEFS}']
+    for i, (t, s, rx, m) in enumerate(steps):
+        x, y = pos[i]
+        cl = at(s, rx, f'step {i + 1}: {t}')
+        pill, pw = ak.svg_ctag(x + bw - 6, y + 12, cl)
+        o.append(f'<g class="as"><rect class="{"boxa" if i in (2, 7) else "box"}" x="{x}" y="{y}" width="{bw}" height="{bh}" rx="8"/>'
+                 + dk.text(x + 10, y + 26, tk.fit(t, bw - pw - 20, 12.5, True), 12.5, weight='700')
+                 + dk.text(x + 10, y + 46, tk.fit(s, bw - 18, 10), 10, fill='var(--muted)')
+                 + dk.text(x + 10, y + 64, tk.fit(m, bw - 18, 10.5), 10.5) + pill + '</g>')
+    for i in range(len(steps) - 1):
+        (x1, y1), (x2, y2) = pos[i], pos[i + 1]
+        if y1 == y2:
+            if x2 > x1:
+                d, bx = f'M{x1 + bw},{y1 + bh / 2} L{x2 - 3},{y2 + bh / 2}', (x1 + bw + x2) / 2
+            else:
+                d, bx = f'M{x1},{y1 + bh / 2} L{x2 + bw + 3},{y2 + bh / 2}', (x2 + bw + x1) / 2
+            by_ = y1 + bh / 2 - 13
+        else:
+            d, bx, by_ = f'M{x1 + bw / 2},{y1 + bh} L{x2 + bw / 2},{y2 - 3}', x1 + bw / 2 + 14, (y1 + bh + y2) / 2
+        o.append(f'<g class="cx"><path class="ln" d="{d}" marker-end="url(#sa-ah)"/><g class="nb"><circle cx="{bx:.1f}" cy="{by_:.1f}" r="9"/>'
+                 f'<text x="{bx:.1f}" y="{by_:.1f}">{i + 1}</text></g></g>')
+    o.append('</svg>')
+    return ('<figure><div class="scrollx">' + ''.join(o) + '</div><figcaption>Press ▶ to walk the build in order. Steps 1–5 are '
+            '<code>gen_deroarch.py build</code> and the miners before it; 6–8 are the gates that must pass before the page is '
+            'trusted. A row whose anchor stops resolving at step 3 is not drawn: it goes to the quarantine.</figcaption></figure>')
+
 
 def render(rows, rejected, unverified, stats, fp):
     ak.reg_reset()
@@ -1297,25 +1686,54 @@ def render(rows, rejected, unverified, stats, fp):
     rt = {r['field']: r for r in by['runtime'] if r.get('field')}
     gi = lambda k, d='-': rt[k]['value'] if k in rt else d
     now = inputs_time()                  # r26 B93: reproducible (two builds of one tree are byte-exact)
+    cur_id, cur_name = current_round()
     # r23c: the repo-relative files a group of rows cites, for the 'evolved' strips
     sfiles = lambda secs: {rel(e['abs']) for k in secs for r in by.get(k, []) for e in r['evidence']}
-    O = []
-    A = O.append
+    # r33: every section renders into its own buffer (H opens it); the page assembles them in PARTS order and numbers
+    # them there, so a section's number follows the table of contents, not the order the code draws it in
+    bufs = collections.OrderedDict()
+    cur = ['_pre']
+    bufs['_pre'] = []
 
-    # ───── masthead
+    def A(s):
+        bufs[cur[0]].append(s)
+
+    def H(sid, title, lede):
+        cur[0] = sid
+        bufs[sid] = []
+        return (f'<section id="{sid}"><h2><span class="sn">00</span>{E(title)}</h2>'
+                f'<p class="lede">{md(lede)}</p>')
+
+    cid_rows = {r['id']: r for r in rows}
+    C = lambda i: cid_rows.get(i)
+    pk = {p['pkg']: p for p in pkgs}
+    role = lambda p: (p.get('claim') or '').split(' Measured:')[0].strip() or 'first-party package'
+    T = lambda r: tag(r) if r else ''
+    chains = {r['chain']: r for r in by['flows']}
+    hops = collections.defaultdict(list)
+    for h in by['hops']:
+        hops[h['chain']].append(h)
+    tv = track_verdicts()
+    pkv = press_kpis(tv) if tv else []
+
+    # ───── hero (r33: names the round, the theme button, the live tickers)
     live_h = gi('height'); live_d = gi('difficulty'); live_bt = gi('averageblocktime50')
-    refused = (f"{stats['rejected']} row(s) failed that test and are listed, with the reason, in the "
-               f'quarantine.' if stats['rejected'] else
-               f"Nothing was refused this build; {stats['unverified']} item(s) the miners could not anchor "
-               f'at all are named in the quarantine, and the selftest proves the check can still fail.')
+    refused = (f"{stats['rejected']} row(s) failed that test and are listed, with the reason, in the quarantine." if stats['rejected'] else
+               f"Nothing was refused this build; {stats['unverified']} item(s) the miners could not anchor at all are named in "
+               f'the quarantine, and the selftest proves the check can still fail.')
     captured = (by['runtime'][0].get('captured') if by['runtime'] else '')
-    A(f'''<header class="mast"><div class="wrap">
-      <div class="eyebrow">Living architecture · projected from the tree, not written about it</div>
-      <h1>DERO HE <span class="dim">— the whole source tree,<br>read against the node that is running it</span></h1>
-      <p class="sub">Every statement on this page is drawn only if a line of this repository, of the code it vendors, or of a
-      snapshot of the live daemon still says so — {stats['anchors_ok']} anchors behind {stats['rows']} rows, each
-      re-read from disk at gate time. {refused}</p>
-      <div class="tickers">
+    hero = (f'''<header class="hero"><div class="kicker">DERO HE · source architecture · {E(cur_name)}
+      <span class="kick2">(projected from the tree at build time, not written about it)</span></div>
+      <h1>The DERO HE source tree, <span class="dim">end to end — read against the node that runs it</span></h1>
+      <p class="lede">A map of the whole DERO HE node for a developer who has never opened it: what each package is for,
+      how a transfer becomes a block, which constants the consensus rules rest on, and what the running node, its logs and
+      its peers show. Every statement below is drawn only if a line of this repository, of the code it vendors, or of a
+      snapshot of the live daemon still says so — {stats['anchors_ok']:,} anchors behind {stats['rows']:,} rows, re-read
+      from disk at build time. {refused} The small coloured tags open the exact file and line.</p>
+      <div class="hero-links"><a class="btn" href="#start">Start here →</a><a class="btn ghost" href="#tour">The tree in layers</a>
+      <a class="btn ghost" href="#lifecycle">How a transfer becomes a block</a><a class="btn ghost" href="#index">Search every row</a>
+      <button type="button" id="themebtn" class="btn ghost" aria-label="Colour theme: auto (click to change)">Theme: auto</button></div>
+      <div class="tickers" aria-label="The live node at build time">
         <div class="tick live"><b>{E(live_h)}</b><span>chain height</span></div>
         <div class="tick"><b>{E(gi('version'))}</b><span>version</span></div>
         <div class="tick"><b>{E(live_bt)}s</b><span>mean block, last 50</span></div>
@@ -1324,56 +1742,207 @@ def render(rows, rejected, unverified, stats, fp):
         <div class="tick"><b>{sum(p['loc'] for p in pkgs):,}</b><span>first-party lines</span></div>
         <div class="tick"><b>{stats['anchors_ok']}/{stats['anchors']}</b><span>anchors resolved</span></div>
       </div>
-      <p class="sub" style="margin-top:14px;font-size:12.5px">Snapshot captured {E(captured)} · inputs as of {E(now.isoformat(timespec='seconds'))} (HEAD commit time) · fingerprint <code>{E(fp)}</code></p>
-    </div></header>''')
+      <p class="sub" style="font-size:12.5px">Snapshot captured {E(captured)} · inputs as of {E(now.isoformat(timespec='seconds'))} (HEAD commit time) · fingerprint <code>{E(fp)}</code></p>
+    </header>''')
 
-    NAV = [('live', 'Live node'), ('evolution', 'Evolution'), ('map', 'Package map'), ('consensus', 'Consensus rules'), ('flows', 'Execution paths'),
-           ('findings', 'Findings'), ('intel', 'Node intelligence'), ('coverage', 'Coverage'), ('triage', 'Console errors'), ('press', 'Disclosure audit'), ('areas', 'Areas'), ('chainobs', 'Consensus observatory'), ('peers', 'Network peers'), ('bridge', 'Log bridge'), ('local', 'Local changes'),
-           ('deps', 'Vendored code'), ('quarantine', 'Quarantine'), ('index', 'Index'), ('method', 'Method')]
-    A('<nav class="toc"><div class="wrap">' + ''.join(f'<a href="#{i}">{E(t)}</a>' for i, t in NAV) + '</div></nav>')
-    A('<div class="wrap">')
-    sec = [0]
-
-    def H(sid, title, lede):
-        sec[0] += 1
-        return (f'<section id="{sid}"><h2><span class="num">{sec[0]:02d}</span>{E(title)}</h2>'
-                f'<p class="lede">{md(lede)}</p>')
-
-    # ───── 01 live node
-    A(H('live', 'The node this page was read against',
-        'A page about a daemon that is not running is a page about a guess. These numbers come from one read-only '
-        'JSON-RPC snapshot taken while the page was built; each row cites the line of that snapshot it was read from.'))
-    rt_rows = sorted(by['runtime'], key=lambda r: (not r['title'].startswith('★'), r['title']))
-    rtr = [[f'<b>{E(r["title"])}</b>', f'<span class="mono">{E(r["value"])}</span>', md(r.get('how') or ''), proof(r, 1)]
-           for r in rt_rows]
-    A(table(['Reading', 'Value', 'What it means', 'proof'],
-            ak.tag_rows(rtr, rt_rows, ['', '', '', None], cls_of), 't-rt', filt=True))
-    tipage = rt.get('tip_age')
-    if tipage and int(tipage['value']) > 600:
-        A(note(f"**This node has not reached the tip.** Its newest block was minted "
-               f"{int(tipage['value']) / 86400:.1f} days ago, about {int(tipage['value']) / 18:,.0f} blocks behind the "
-               f"live network, and it is ingesting them at "
-               f"{rt['ingest_rate']['value'] if 'ingest_rate' in rt else '?'} blocks per second — replay speed, not "
-               f"tip speed. Every other reading here is self-consistent and says **OK**: that is the point of the "
-               f"finding *Nothing in GetInfo tells you whether the node has reached the tip*. Read the two "
-               f"★ rows below before any of the others.", 'bad'))
-        A(catchup_svg(by))
-    A(evolved(by, sfiles(['runtime']), what='this section'))
-    inc = gi('incoming_connections_count', 1)
-    if str(inc) == '0':
-        A(note('**Incoming peers are zero.** Every peer in the pool was dialled out by this node. The listener is up, but '
-               'nothing outside can reach it: see finding *The peer-to-peer listener is UDP, not TCP* — a TCP forward '
-               'on 11011 forwards nothing, because no TCP socket on 11011 exists.', 'warn'))
+    # ═════════ Part I · Orientation ═════════
+    # ───── start here
+    bt, mbsz, stab = C('const-bt'), C('const-mbsz'), C('const-stab')
+    minr, maxr = C('const-minr'), C('const-maxr')
+    A(H('start', 'Start here: DERO HE in plain words',
+        'DERO HE is a privacy-first blockchain node written in Go: balances are stored encrypted, every transfer proves '
+        'in zero knowledge that it balances, and smart contracts run in a small BASIC-like virtual machine. This page maps '
+        'its whole source tree and reads it against a running node. The three cards say what the node does; the '
+        'sections after them walk the tree from the top down.'))
+    A('<div class="grid3">')
+    A(f'''<div class="card lead"><h3>What the node does</h3><p><code>derod</code> keeps a copy of the chain, exchanges blocks
+      and transactions with its peers, checks every one of them against the consensus rules, and serves wallets (JSON-RPC)
+      and miners (GETWORK). A block is targeted every <b>{E(first_num(bt and bt['value']))} seconds</b> {T(bt)} and carries
+      the miniblocks miners submit, <b>{E(first_num(mbsz and mbsz['value']))} bytes</b> each {T(mbsz)}; a block
+      {E(first_num(stab and stab['value']))} deep is treated as settled {T(stab)}.</p>
+      <p class="mut">Read next: <a href="#lifecycle">how a transfer becomes a block</a>, <a href="#consensus">the rules</a>.</p></div>''')
+    cr, tvr = pk.get('cryptography'), chains.get('txverify')
+    A(f'''<div class="card lead"><h3>What makes it private</h3><p>Balances live on chain as ciphertexts. A transfer hides its sender
+      and receiver in a ring of accounts — between <b>{E(first_num(minr and minr['value']))}</b> {T(minr)} and
+      <b>{E(first_num(maxr and maxr['value']))}</b> {T(maxr)} members — and carries a proof that the encrypted amounts balance
+      without revealing them. The maths is in <code>cryptography</code>: {md(role(cr) if cr else 'the HE primitives')} {T(cr)}</p>
+      <p class="mut">Read next: <a href="#chain-txverify">transaction verification</a>{' ' + T(tvr) if tvr else ''}, <a href="#press">the disclosed range-proof defect</a>.</p></div>''')
+    ab, dvm = pk.get('astrobwt'), pk.get('dvm')
+    A(f'''<div class="card lead"><h3>How the chain is secured and extended</h3><p>Miners prove work in <code>astrobwt</code>
+      ({md(role(ab) if ab else '')}) {T(ab)} The difficulty follows an exponential controller {T(C('const-diff'))}, and
+      the reward per block halves on a fixed schedule {T(C('const-calc'))}. Programs on chain run in <code>dvm</code>
+      ({md(role(dvm) if dvm else '')}) {T(dvm)}</p>
+      <p class="mut">Read next: <a href="#chain-mining">mining</a>, <a href="#chain-scexec">smart-contract execution</a>.</p></div>''')
+    A('</div>')
+    # how to read the page: the evidence classes, as a chart
+    cnt = collections.Counter(e['kind'] for r in rows for e in r['evidence'])
+    KW = [('SRC', 'a line of the first-party DERO source, its build scripts or go.mod'),
+          ('EXT', 'a line of third-party code under vendor/, or of a document taken under audit: said, not so'),
+          ('HARNESS', 'the owner’s own measured system: a live snapshot, a log, a record of a run'),
+          ('GK', 'the project’s knowledge base: its skill and memory store'),
+          ('PLAN', 'proposed in harness/loop/PROPOSALS.md and not yet run')]
+    kk = [(k, w) for k, w in KW if cnt.get(k)]
+    A('<h3>How to read this page</h3>')
+    A('<div class="grid2"><div class="prose"><p>Every row, card, bar and box carries a small <b>class tag</b>. Hover or focus it '
+      'to see the exact file and line it was read from, with the quoted line; click to pin the panel. The class says what kind '
+      'of proof the line is:</p><ul>' + ''.join(f'<li><span class="lg lg-{k}">{k}</span> {E(w)}</li>' for k, w in kk)
+      + '</ul><p>Plain-language passages like this one are orientation, not claims: every number in them comes from a tagged row. '
+      'Long tables have a filter box; the <a href="#index">index</a> searches every row of the page.</p></div>')
+    A(vbar('ch-classes', 'Anchors behind the page, by evidence class', 'How many anchors (file and line) of each class the drawn rows rest on.',
+           rows, [k for k, _ in kk], [cnt[k] for k, _ in kk], unit='anchors', W=380, H=230,
+           tag_rows_=[[r for r in rows if any(e['kind'] == k for e in r['evidence'])][:60] for k, _ in kk]))
+    A('</div>')
+    # health at a glance: the area scorecard, the observatories and the disclosure track, each from its own rows
+    ar = by.get('areas', [])
+    ast = collections.Counter(r['state'] for r in ar)
+    cobs = by.get('chainobs', [])
+    csum = next((r for r in cobs if r.get('kind') == 'summary'), None)
+    cg = (csum or {}).get('grades') or {}
+    prow = next((r for r in by.get('peers', []) if r.get('kind') == 'kpi'), None)
+    pk2 = (prow or {}).get('kpis') or {}
+    A('<h3>Health at a glance</h3>')
+    A('<p class="lede" style="margin:4px 0 8px">Four instruments that run every round, summarised from the same rows their own '
+      'sections draw. Each chart has its data table under it.</p><div class="charts">')
+    if ar:
+        so = [s for s in ('OK', 'WATCH', 'ATTENTION', 'FAIL', 'PAUSED') if ast.get(s)] + sorted(s for s in ast if s not in ('OK', 'WATCH', 'ATTENTION', 'FAIL', 'PAUSED'))
+        A(vbar('ch-area-states', f'Areas of the stack by state ({len(ar)} scored)', 'The number of areas of harness/areas.json in each state of the newest scorecard.',
+               ar, so, [ast[s] for s in so], unit='areas', tag_rows_=[[r for r in ar if r['state'] == s] for s in so]))
+    if cg:
+        go = [g for g in ('OBSERVED', 'ANOMALY', 'NORMAL', 'NO-DATA') if g in cg]
+        A(vbar('ch-chain-grades', 'Chain observatory: detectors by grade', 'How the consensus observatory graded its detectors on the newest capture.',
+               [csum], go, [int(cg[g]) for g in go], unit='detectors', tag_rows_=[[csum]] * len(go)))
+    if prow and pk2:
+        pg = [('OBSERVED', pk2.get('observed')), ('ANOMALY', pk2.get('anomaly'))]
+        pg = [(g, v) for g, v in pg if v is not None]
+        A(vbar('ch-peer-grades', 'Peer observatory: detectors flagged', 'How many peer detectors the network-peer observatory graded OBSERVED or ANOMALY.',
+               [prow], [g for g, _ in pg], [int(v) for _, v in pg], unit='detectors', tag_rows_=[[prow]] * len(pg)))
+    if pkv:
+        dl = pkv[1:]
+        dclaims = [r for r in by.get('disclosure', []) if r.get('kind') == 'track-claim'] or by.get('forensics', [])
+        A(hbar('ch-disclosure', f'Foundation disclosure: {pkv[0][0]} claims by verdict', 'The newest verdict of each press claim C1-C8 in the disclosure track.',
+               [dclaims[0]] * len(dl), [l.replace(' here', '').replace(' from a pruned node', '') for _, l in dl], [int(v) for v, _ in dl], unit='claims',
+               label_w=130, W=380, row=30))
+    A('</div>')
+    A(kpis([(f"{len(pkgs)}", 'first-party packages'), (f"{sum(p['loc'] for p in pkgs):,}", 'lines of first-party Go'),
+            (str(len(chains)), 'execution paths traced'), (str(len([r for r in by.get('findings', [])])), 'findings'),
+            (f"{stats['rows']:,}", 'rows on this page'), (f"{stats['anchors_ok']:,}", 'anchors re-read at build')]))
+    A('<h3>Where to go next</h3><div class="grid2">'
+      '<div class="card"><h4>New to the code</h4><p><a href="#tour">The tree in layers</a> → <a href="#lifecycle">how the parts work together</a> '
+      '→ <a href="#flows">the execution paths, hop by hop</a> → <a href="#glossary">the glossary</a>.</p></div>'
+      '<div class="card"><h4>Working on the protocol</h4><p><a href="#consensus">Consensus rules and their arithmetic</a> → '
+      '<a href="#coverage">the risk register</a> → <a href="#press">the disclosure audit</a> → <a href="#chainobs">the chain observatory</a>.</p></div>'
+      '<div class="card"><h4>Running a node</h4><p><a href="#live">The live node</a> → <a href="#triage">every console error, triaged</a> → '
+      '<a href="#bridge">the log bridge</a> → <a href="#peers">the network peers</a>.</p></div>'
+      '<div class="card"><h4>Changing this page</h4><p><a href="#harness">How it is built</a> → <a href="#method">re-run and extend</a> → '
+      '<a href="#quarantine">what was refused</a>. The DVM game suite has its own guide: '
+      '<a href="dero-enhanced-game-theory.html">verified games for DERO miners</a>.</p></div></div>')
     A('</section>')
 
-    # ───── r23c: the evolution of the tree, read from git
-    evo_section(by, A, H)
+    # ───── the tree in layers
+    ntier = len({PKG_TIER.get(p['pkg'], 'foundation') for p in pkgs})
+    A(H('tour', 'The tree in layers',
+        f'{len(pkgs)} first-party packages, grouped into {ntier} layers from the programs you run down to the shared '
+        'foundation. The layers follow the imports: a package sits above the packages it imports. Each box is a '
+        'package with its measured size; click it for its card below.'))
+    A(tier_diagram(pkgs, deps))
+    A('<div class="cards">')
+    for tid, tname, tdesc in TIERS:
+        ps = [p for p in pkgs if PKG_TIER.get(p['pkg'], 'foundation') == tid]
+        if not ps:
+            continue
+        A(f'<div class="card tier"><h3>{E(tname)}</h3><p class="mut">{E(tdesc)}.</p><ul class="pkgl">'
+          + ''.join(f'<li id="pkg-{E(p["pkg"])}"><code>{E(p["pkg"])}/</code> {T(p)} — {md(role(p))}'
+                    f'<span class="m">{p["loc"]:,} lines · {p["files"]} source files · {p["test_files"]} test files</span></li>' for p in ps)
+          + '</ul></div>')
+    A('</div>')
+    A('<div class="charts">')
+    A(hbar('ch-pkg-files', 'Source files and test files per package', 'Measured source files per first-party package, with the test files as a tick.',
+           pkgs, [p['pkg'] for p in pkgs], [p['files'] for p in pkgs], unit='files', label_w=110, W=560,
+           ticks=[p['test_files'] for p in pkgs], tick_name='test files', series='source files'))
+    A('</div>')
+    A('</section>')
 
-    # ───── 02 package map
-    A(H('map', 'What the tree is made of',
-        'Eighteen first-party packages. Size is measured by walking the tree, and every import edge below is proved by '
-        'the import line that creates it — so the diagram is the dependency graph the compiler sees, not a drawing of '
-        'one. Hover any arrow to trace it; the ▶ plays them in turn.'))
+    # ───── how the parts work together
+    if chains:
+        A(H('lifecycle', 'How the parts work together',
+            f'The page traces {len(chains)} execution paths through the tree, hop by hop, each hop re-located in the source '
+            'at build time. Read in the order below they follow a transfer from start-up to a committed block. Each path '
+            'is drawn in full in Execution paths; the table names the file where its code starts.'))
+        A(life_diagram(chains, hops))
+        order = [c for c in LIFE if c in chains] + [c for c in chains if c not in LIFE]
+        lanes_all = []
+        for c in order:
+            for h in sorted(hops[c], key=lambda h: h['order']):
+                ln = LAYER_LANE.get(h.get('layer'), h.get('layer'))
+                if ln not in lanes_all:
+                    lanes_all.append(ln)
+        mat = [[sum(1 for h in hops[c] if LAYER_LANE.get(h.get('layer'), h.get('layer')) == ln) for ln in lanes_all] for c in order]
+        A(chk.matrix_chart('ch-chain-layers', 'Which layers each execution path passes through',
+                           'The number of hops of each execution path that run in each layer of the tree.',
+                           [shortlab(chains[c]['title'].split(' — ')[0], 30) for c in order], lanes_all, mat, unit='hops',
+                           pill_svg=ak.svg_ctag(200 + 56 * len(lanes_all) + 8, 9, rows_cl([chains[c] for c in order], 'the paths it counts'))[0],
+                           row_tag=lambda i: ak.ctag(cls_of(chains[order[i]])), label_w=200, cell_w=56, col_h=78, zero='·'))
+        ltr = [[f'<b>{E(chains[c]["title"].split(" — ")[0])}</b>', md(tk.html_clip(chains[c].get('claim') or '', 110)),
+                f'<span class="num">{len(hops[c])}</span>',
+                (f'<span class="mono" style="overflow-wrap:anywhere">{E(rel(sorted(hops[c], key=lambda h: h["order"])[0]["evidence"][0]["abs"]))}</span>' if hops[c] else '-'),
+                proof(chains[c], 1)] for c in order]
+        A('<h3>Where each path starts in the code</h3>')
+        A(table(['Path', 'What it shows', 'Hops', 'Start reading at', 'proof'],
+                ak.tag_rows(ltr, [chains[c] for c in order], ['', '', '', '', None], cls_of), 't-life'))
+        A('</section>')
+
+    # ───── glossary
+    G = [('Block', 'const-bt', 'A batch of transactions the network agrees on. One is targeted every few seconds; the value is the target block time.'),
+         ('Miniblock', 'const-mbsz', 'The unit a miner submits: a fixed-size header that carries its own proof of work. A block collects several.'),
+         ('Stable depth', 'const-stab', 'How many blocks must follow a block before the node treats it as settled.'),
+         ('Difficulty', 'const-diff', 'How hard a miniblock is to find. It is recomputed every block from how long the last one took.'),
+         ('Block reward', 'const-base', 'The new coins a block pays its miners; it halves on a fixed schedule.'),
+         ('Reward halving', 'const-calc', 'The formula that halves the reward every reduction interval.'),
+         ('Ring size', 'const-minr', 'A transfer hides its real sender and receiver among this many accounts at least.'),
+         ('Maximum ring', 'const-maxr', 'The largest ring a transfer may use.'),
+         ('Fee per kilobyte', 'const-fee', 'What a transaction pays per kilobyte of its size.'),
+         ('Graviton', 'const-btree', 'The versioned key-value store that holds all consensus state; the balance tree is one of its trees.'),
+         ('Hard fork (HF3)', 'const-mhf3', 'A height at which the rules changed for every node at once.'),
+         ('GETWORK', 'const-gw', 'The port miners connect to for a job (a block template) and to submit miniblocks.'),
+         ('JSON-RPC', 'const-rpcp', 'The daemon’s API port for wallets, explorers and tools.'),
+         ('Wallet RPC', 'const-wrpc', 'The port a wallet serves its own API on.'),
+         ('Integrator address', 'const-dev', 'The address a miner names to receive the integrator share. Its value is withheld on this page.')]
+    PG = [('Homomorphic encryption (HE)', 'cryptography', 'Encryption that still allows adding the hidden amounts: the H and E of DERO HE.'),
+          ('AstroBWT', 'astrobwt', 'The proof-of-work hash: a Burrows-Wheeler suffix sort that favours CPUs.'),
+          ('DVM', 'dvm', 'The DERO Virtual Machine that runs smart contracts written in DVM-BASIC.'),
+          ('walletapi', 'walletapi', 'The library every DERO wallet is built on.')]
+    gl = []
+    gobj = []
+    for term, cid, plain in G:
+        r = C(cid)
+        if r:
+            val = 'withheld' if cid == 'const-dev' else r.get('value')
+            gl.append([f'<b>{E(term)}</b>', E(plain), f'<code>{E(val)}</code> <span class="mut">({E(r["title"])})</span>', proof(r, 1)])
+            gobj.append(r)
+    for term, pkn, plain in PG:
+        r = pk.get(pkn)
+        if r:
+            gl.append([f'<b>{E(term)}</b>', E(plain), f'<code>{E(pkn)}/</code> <span class="mut">{md(role(r))}</span>', proof(r, 1)])
+            gobj.append(r)
+    for term, ch, plain in (('KCP over UDP', 'p2pconn', 'The transport peers use: a reliable protocol over UDP, so a TCP port forward reaches nothing.'),
+                            ('Registration', 'txverify', 'The first transaction of a new account; it carries a signature instead of a ring proof.')):
+        r = chains.get(ch)
+        if r:
+            gl.append([f'<b>{E(term)}</b>', E(plain), f'<span class="mut">execution path: {E(r["title"].split(" — ")[0])}</span>', proof(r, 1)])
+            gobj.append(r)
+    if gl:
+        A(H('glossary', 'Glossary',
+            'The words this page uses, in plain language, each tied to the line of the tree that defines it. The values are '
+            'read from the source at build time.'))
+        A(table(['Term', 'In plain words', 'In the tree', 'proof'], ak.tag_rows(gl, gobj, ['', '', '', None], cls_of), 't-gloss', filt=True))
+        A('</section>')
+
+    # ═════════ Part II · The source tree ═════════
+    # ───── package map
+    A(H('map', 'Package map: what the tree is made of',
+        'The first-party packages, sized by walking the tree; every import edge below is proved by the import line that '
+        'creates it — so the diagram is the dependency graph the compiler sees, not a drawing of one. Hover any arrow to '
+        'trace it; the ▶ plays them in turn.'))
     A(kpis([(f"{len(pkgs)}", 'first-party packages'), (f"{sum(p['loc'] for p in pkgs):,}", 'lines of Go'),
             (f"{sum(p['files'] for p in pkgs)}", 'source files'),
             (f"{sum(p['test_files'] for p in pkgs)}", 'test files'),
@@ -1382,10 +1951,9 @@ def render(rows, rejected, unverified, stats, fp):
           'Import relations between the first-party packages, grouped into the tiers the imports imply. '
           'An arrow means at least one file of the left package imports the right one; the count is in the table below.',
           'first-party package import graph'))
-    A(fig(dk.bars([{'label': p['pkg'], 'value': p['loc'], 'note': p['claim'][:160], '_row': p} for p in pkgs[:12]],
-                  dkcls, W=1000, label_w=180, unit=' lines'), dkcls and
-          'The twelve largest packages by measured non-test lines. walletapi and cmd dominate because both carry '
-          'several binaries’ worth of behaviour.', 'lines of code per package'))
+    A(hbar('ch-pkg-loc', 'Lines of Go per first-party package', 'Measured non-test lines of Go per first-party package.',
+           pkgs, [p['pkg'] for p in pkgs], [p['loc'] for p in pkgs], unit='lines', label_w=110, W=760,
+           note='walletapi and cmd dominate because both carry several binaries’ worth of behaviour.'))
     A(evolved(by, prefixes=sorted(p['pkg'].rstrip('/') + '/' for p in pkgs), what='this package map'))
     ptr = [[f'<b class="mono">{E(p["pkg"])}</b>', md(p.get('claim').split(' Measured:')[0]),
             f'<span class="num">{p["loc"]:,}</span>', f'<span class="num">{p["files"]}</span>',
@@ -1399,8 +1967,8 @@ def render(rows, rejected, unverified, stats, fp):
     A(table(['Edge', 'Import lines', 'proof'], ak.tag_rows(dtr, top, ['', '', None], cls_of), 't-dep'))
     A('</section>')
 
-    # ───── 03 consensus
-    A(H('consensus', 'The rules, and the arithmetic behind them',
+    # ───── consensus
+    A(H('consensus', 'Consensus rules, and the arithmetic behind them',
         'Every constant below was read out of the line that declares it. Where a number follows from others — the '
         'halving interval, the bounds on a difficulty step — it is computed at build time from those same lines, so '
         'the page cannot drift from the tree.'))
@@ -1426,17 +1994,13 @@ def render(rows, rejected, unverified, stats, fp):
                 ak.tag_rows(tr, g, ['', '', '', None], cls_of), f't-c-{key}'))
     A('</section>')
 
-    # ───── 04 flows
-    A(H('flows', 'The paths a block, a share and a transaction actually take',
+    # ───── flows
+    A(H('flows', 'Execution paths: the way a block, a share and a transaction actually go',
         'Each chain is a declared sequence of hops; the build locates every hop in the tree and refuses to draw the '
         'chain if even one of them has moved. Hover a connector to trace it, or press ▶ to walk the chain in order.'))
-    chains = {r['chain']: r for r in by['flows']}
-    hops = collections.defaultdict(list)
-    for h in by['hops']:
-        hops[h['chain']].append(h)
     for cid, c in chains.items():
         hs = sorted(hops[cid], key=lambda h: h['order'])
-        A(f'<h3>{E(c["title"])}</h3><p class="lede" style="margin:4px 0 10px">{md(c["claim"])}</p>')
+        A(f'<h3 id="chain-{E(cid)}">{E(c["title"])}</h3><p class="lede" style="margin:4px 0 10px">{md(c["claim"])}</p>')
         A(evolved(by, {rel(e['abs']) for h in hs for e in h['evidence']}, what='this chain'))
         A(fig(dk.lanes(flow_spec(cid, c['title'], hs), dkcls, W=1120),
               f'{len(hs)} hops, each anchored on the line that implements it.', c['title']))
@@ -1446,26 +2010,100 @@ def render(rows, rejected, unverified, stats, fp):
                                               'file and line it was found at.', c['title'] + ' — steps'))
     A('</section>')
 
-    # ───── 05 findings
-    A(H('findings', 'What reading the code against the running node established',
-        'Two of these are defects in code this node runs; two are local fixes already shipped; the rest is arithmetic '
-        'and operational fact. Each card lists what it costs and what, if anything, should be done — including where '
-        'the right answer is to change nothing.'))
-    F = sorted(by['findings'], key=lambda r: ['defect', 'operational', 'reporting', 'fix', 'analysis'].index(r.get('severity', 'analysis')))
-    A(evolved(by, sfiles(['findings']), what='these findings'))
-    A('<div class="cards">')
-    for r in F:
-        word, col = SEV.get(r.get('severity'), ('note', 'var(--mut)'))
-        A(f'''<div class="card {E(r.get('severity',''))}" id="{E(r['id'])}">
-          <h4>{E(r['title'])} {tag(r)}</h4>
-          <div>{chip(word, col)}{badges(r)}</div>
-          <p>{md(r['claim'])}</p>
-          <div class="meta"><b>Impact.</b> {md(r.get('impact',''))}<br><b>What to do.</b> {md(r.get('action',''))}
-          <br><span class="mut">Proof:</span> {proof(r, 4)}</div></div>''')
-    A('</div></section>')
+    # ───── vendored
+    A(H('deps', 'Vendored code: the third-party code this build links in',
+        'Vendored modules are quoted, not owned — they carry the EXT class. A module is listed only when a first-party '
+        'import line proves it is really linked; two of the largest are transitive and are named in the quarantine instead.'))
+    A(evolved(by, prefixes=('vendor/', 'go.mod'), what='the vendored tree'))
+    vd = sorted(by['vendor'], key=lambda r: -r['loc'])
+    if vd:
+        A(hbar('ch-vendor', 'Lines per vendored module', 'Measured lines of each vendored module a first-party import links in.',
+               vd, [shortlab(r['module'].split('/')[-1] if len(r['module']) > 26 else r['module'], 26) for r in vd], [r['loc'] for r in vd],
+               unit='lines', label_w=190, W=760, cols=('module', 'lines'),
+               note='Labels are the last path element of the module where the full path is long; the data table and the table below name it in full.'))
+    A(table(['Module', 'Lines', 'Files', 'Imported by', 'proof'],
+            ak.tag_rows([[f'<span class="mono">{E(r["module"])}</span>', f'<span class="num">{r["loc"]:,}</span>',
+                          f'<span class="num">{r["files"]}</span>',
+                          ' '.join(f'<code>{E(p)}</code>' for p in (r.get('importers') or [])[:4]), proof(r, 1)]
+                         for r in vd], vd, ['', '', '', '', None], cls_of), 't-vd'))
+    A('</section>')
 
+    # ───── local changes
+    A(H('local', 'Local changes: what this tree does that upstream Release153 does not',
+        'The baseline is the upstream tag, and the diff is `git diff Release153..HEAD`. The shipped Go files that differ '
+        'are listed first; everything else added here is documentation, this harness, or experiments that no binary links.'))
+    loc = sorted(by['local'], key=lambda r: (r['status'], r['path']))
+    A(evolved(by, {r['path'] for r in loc}, what='this diff'))
+    A(kpis([(str(len(loc)), 'shipped Go files changed'),
+            (str(sum(r['added'] for r in loc)), 'lines added'), (str(sum(r['removed'] for r in loc)), 'lines removed'),
+            (str(len(by['commits'])), 'commits on the branch'),
+            (str(len([r for r in by['local-other'] if r.get('kind') == 'experiment'])), 'experiment-only paths')]))
+    pkgchg = collections.defaultdict(list)
+    for r in loc:
+        pkgchg[r['path'].split('/')[0] if '/' in r['path'] else '(root)'].append(r)
+    pco = sorted(pkgchg, key=lambda k: -sum(r['added'] + r['removed'] for r in pkgchg[k]))[:16]
+    if pco:
+        A(hbar('ch-local-pkg', 'Shipped Go lines changed against Release153, by top-level directory',
+               'Lines added plus removed in the shipped Go files of each top-level directory, against the upstream tag.',
+               [pkgchg[k][0] for k in pco], pco, [sum(r['added'] + r['removed'] for r in pkgchg[k]) for k in pco],
+               unit='lines changed', label_w=120, W=760, ticks=[len(pkgchg[k]) for k in pco], tick_name='files',
+               series='lines added + removed', cols=('directory', 'lines changed', 'files')))
+    ltr2 = [[f'<span class="mono">{E(r["path"])}</span>', chip(r['status'], 'var(--ok)' if r['status'] == 'added' else 'var(--l4)'),
+             f'<span class="num">+{r["added"]} / −{r["removed"]}</span>', tk.html_clip(r.get('subject') or '', 70),
+             proof(r, 1)] for r in loc]
+    A(table(['File', 'Status', 'Lines', 'Commit subject', 'proof'],
+            ak.tag_rows(ltr2, loc, ['', '', '', '', None], cls_of), 't-loc', filt=True))
+    cm = by['commits']
+    A('<h3>The commit ledger</h3>')
+    A(table(['Commit', 'Subject', 'Files', 'Shipped Go', 'proof'],
+            ak.tag_rows([[f'<code>{E(r["sha"])}</code>', tk.html_clip(r['subject'], 86),
+                          f'<span class="num">{r["files"]}</span>', f'<span class="num">{r["code_files"]}</span>', proof(r, 1)]
+                         for r in cm], cm, ['', '', '', '', None], cls_of), 't-cm', filt=True))
+    A('</section>')
 
-    # ───── node intelligence: what the intel tools measured on the live node, its logs and its datadir
+    # ───── evolution (r23c), read from git
+    evo_section(by, A, H)
+    if bufs.get('evolution') and bufs['evolution'][-1] == '</section>':
+        bufs['evolution'].pop()                  # evo_section closes its section: the r33 chart goes inside it
+    rs = [r for r in evo_rounds(by) if not r.get('pending')]
+    if rs:
+        A('<h3>Commits per round, at a glance</h3>')
+        A(hbar('ch-evo-commits', 'Commits per round on local-enhancements', 'The number of commits git attributes to each round by the round rule.',
+               rs, [EVO_SHORT.get(r['round'], r['round']) for r in rs], [r['commit_n'] for r in rs], unit='commits',
+               label_w=70, W=640, row=20, ticks=None))
+        A('</section>')
+    else:
+        A('</section>')
+
+    # ═════════ Part III · The running node ═════════
+    # ───── live node
+    A(H('live', 'Live node: the node this page was read against',
+        'A page about a daemon that is not running is a page about a guess. These numbers come from one read-only '
+        'JSON-RPC snapshot taken while the page was built; each row cites the line of that snapshot it was read from.'))
+    rt_rows = sorted(by['runtime'], key=lambda r: (not r['title'].startswith('★'), r['title']))
+    rtr = [[f'<b>{E(r["title"])}</b>', f'<span class="mono">{E(r["value"])}</span>', md(r.get('how') or ''), proof(r, 1)]
+           for r in rt_rows]
+    A(table(['Reading', 'Value', 'What it means', 'proof'],
+            ak.tag_rows(rtr, rt_rows, ['', '', '', None], cls_of), 't-rt', filt=True))
+    tipage = rt.get('tip_age')
+    if tipage and int(tipage['value']) > 600:
+        A(note(f"**This node has not reached the tip.** Its newest block was minted "
+               f"{int(tipage['value']) / 86400:.1f} days ago, about {int(tipage['value']) / 18:,.0f} blocks behind the "
+               f"live network, and it is ingesting them at "
+               f"{rt['ingest_rate']['value'] if 'ingest_rate' in rt else '?'} blocks per second — replay speed, not "
+               f"tip speed. Every other reading here is self-consistent and says **OK**: that is the point of the "
+               f"finding *Nothing in GetInfo tells you whether the node has reached the tip*. Read the two "
+               f"★ rows below before any of the others.", 'bad'))
+        A(catchup_svg(by))
+    A(evolved(by, sfiles(['runtime']), what='this section'))
+    inc = gi('incoming_connections_count', 1)
+    if str(inc) == '0':
+        A(note('**Incoming peers are zero.** Every peer in the pool was dialled out by this node. The listener is up, but '
+               'nothing outside can reach it: see finding *The peer-to-peer listener is UDP, not TCP* — a TCP forward '
+               'on 11011 forwards nothing, because no TCP socket on 11011 exists.', 'warn'))
+    A('</section>')
+
+    # ───── node intelligence
     intel = by.get('intel', [])
     if intel:
         A(H('intel', 'Node intelligence: the logs, the datadir and the tests, measured',
@@ -1478,32 +2116,31 @@ def render(rows, rejected, unverified, stats, fp):
         other = [r for r in intel if r.get('kind') in ('mutation', 'discovery', 'metrics', 'outcome', 'metrics-live', 'share-gaps', 'split-regime', 'run-ledger',
                                                        'split-binding', 'miner-runs', 'payout-ledger', 'contention')]
         mruns = [r for r in intel if r.get('kind') == 'miner-run']
-        cur = runs[-1] if runs else None
+        lrun = runs[-1] if runs else None
         A(kpis([(str(sum(1 for r in dd if r.get('result') == 'PASS')) + '/' + str(sum(1 for r in dd if r.get('result') != 'INFO')),
                  'datadir checks passing'),
-                (f"{cur['mean']} s" if cur else '\u2014', 'mean block interval, current run'),
-                (str(cur['errors_at_tip']) if cur else '\u2014', 'ERROR lines at tip, current run'),
-                (next((f"{r['caught']}/{r['total']}" for r in other if r.get('kind') == 'mutation'), '\u2014'),
+                (f"{lrun['mean']} s" if lrun else '—', 'mean block interval, current run'),
+                (str(lrun['errors_at_tip']) if lrun else '—', 'ERROR lines at tip, current run'),
+                (next((f"{r['caught']}/{r['total']}" for r in other if r.get('kind') == 'mutation'), '—'),
                  'Go mutations caught'),
-                (next((f"{r['confirmed']}+{r['partly']}/{r['findings']}" for r in other if r.get('kind') == 'discovery'), '\u2014'),
+                (next((f"{r['confirmed']}+{r['partly']}/{r['findings']}" for r in other if r.get('kind') == 'discovery'), '—'),
                  'discovery findings confirmed (+partly)')]))
         A(evolved(by, sfiles(['intel']), what='this section'))
         if runs:
-            A(fig(dk.bars([{'label': r['title'][:44], 'value': r['mean'] or 0,
-                            'note': f"mean {r['mean']} s · median {r['median']} s · p90 {r['p90']} s over {r['intervals']:,} intervals",
-                            '_row': r} for r in runs], dkcls, W=1000, label_w=330, unit=' s'),
-                  'Mean interval between blocks while at the tip, one bar per run of the daemon (target 18 s). The '
-                  'gaps are skewed (p90 about 31 s), so the median sits near 16 s while the mean sits near 18.5 s; the '
-                  '64-hour run measures 18.54 s here and 18.52 s in the Round-6 GetInfo audit, two independent '
-                  'instruments.', 'Block cadence per run'))
+            A(hbar('ch-cadence', 'Mean block interval at the tip, per run of the daemon',
+                   'The mean interval between blocks while at the tip, one bar per run of the daemon, with the median as a tick; the target is 18 s.',
+                   runs, [shortlab(r['title'], 34) for r in runs], [float(r['mean'] or 0) for r in runs], unit='s', label_w=250, W=760,
+                   ticks=[float(r['median'] or 0) for r in runs], tick_name='median', series='mean', marker=(18, 'target 18 s'),
+                   cols=('run', 'mean s', 'median s'),
+                   note='The gaps are skewed (p90 about 31 s), so the median sits below the mean; two independent instruments agree on the long run.'))
             rtr = [[f'<b>{E(r["title"])}</b>', f'<span class="mono">{r["mean"]} / {r["median"]} / {r["p90"]}</span>',
                     f'<span class="mono">{r["errors_at_tip"]}</span>',
                     E('; '.join(f"{x['level']} {x['rule']}" for x in r['alerts']) or 'none'), proof(r, 1)] for r in runs]
             A(table(['Run', 'mean / median / p90 s', 'ERRORs at tip', 'alerts', 'proof'],
                     ak.tag_rows(rtr, runs, ['', '', '', '', None], cls_of), 't-intel-runs'))
         if mruns:
-            mtr = [[f'<b>{E(r["title"])}</b>' + (f'<br><span class="mono">{E(r["start"][:16])} \u2192 {E(str(r.get("end"))[:16])} '
-                    f'\u00b7 {E(Path(str(r.get("log"))).name)} \u00b7 {r.get("accepted_in_window")} accepted, longest gap '
+            mtr = [[f'<b>{E(r["title"])}</b>' + (f'<br><span class="mono">{E(r["start"][:16])} → {E(str(r.get("end"))[:16])} '
+                    f'· {E(Path(str(r.get("log"))).name)} · {r.get("accepted_in_window")} accepted, longest gap '
                     f'{r.get("longest_gap_s")} s</span>' if r.get('end') else ''),
                     f'<span class="mono">{r["mean_hs"]} / {r["staged_hs"]}</span>',
                     f'<span class="mono">{r["drop_fraction"]}</span>', f'<span class="mono">{r["paid_fraction"]}</span>',
@@ -1514,7 +2151,7 @@ def render(rows, rejected, unverified, stats, fp):
         if dd:
             RC = {'PASS': 'var(--ok)', 'FAIL': 'var(--gap)', 'KNOWN': 'var(--warn)', 'INFO': 'var(--mut)'}
             dtr = [[f'<span class="mono">{E(r["title"])}</span>', chip(r['result'].lower(), RC.get(r['result'], 'var(--mut)')),
-                    tk.html_clip(r['claim'].split(' \u2014 ', 1)[-1], 160), proof(r, 1)] for r in dd]   # html_clip output is markup: never E() it
+                    tk.html_clip(r['claim'].split(' — ', 1)[-1], 160), proof(r, 1)] for r in dd]   # html_clip output is markup: never E() it
             A('<h3>The datadir, checked against the code that writes it</h3>')
             A(table(['Check', 'Result', 'What decided it', 'proof'],
                     ak.tag_rows(dtr, dd, ['', '', '', None], cls_of), 't-intel-dd'))
@@ -1527,47 +2164,34 @@ def render(rows, rejected, unverified, stats, fp):
             A('</div>')
         A('</section>')
 
-
-    # ───── coverage and the risk surface
-    cov = by.get('coverage', [])
-    rk = by.get('riskmap', [])
-    if cov:
-        tot = next((r for r in cov if r.get('kind') == 'total'), None)
-        A(H('coverage', 'What this page covers, and the risk surface it does not yet explain',
-            'A function counts as **covered** when some row cites a line inside it. **Risk** functions are the ones '
-            'whose names carry verification, proof of work, difficulty, fees, balances, handshakes, bans or pruning. '
-            'The register below lists every one of them with measured structure only — size, callers, panics, '
-            'recovers — and is excluded from the coverage figure so it cannot inflate it. Gate G16 is a ratchet: it '
-            'fails if any risk function that an earlier snapshot covered is uncovered now.'))
-        if tot:
-            A(kpis([(f"{tot['risk_covered']}/{tot['risk']}", 'risk functions cited by a row'),
-                    (f"{tot['covered']}/{tot['funcs']}", 'functions covered'),
-                    (str(sum(1 for r in rk if r.get('consensus'))), 'risk functions in consensus packages'),
-                    (str(sum(1 for r in rk if r.get('panics'))), 'risk functions that can panic()')]))
-        A(evolved(by, sfiles(['riskmap']), what='the risk register'))
-        pk = [r for r in cov if r.get('kind') == 'pkg']
-        if pk:
-            A(fig(dk.bars([{'label': r['pkg'], 'value': r['risk'] - r['risk_covered'],
-                            'note': r['claim'][:150], '_row': r} for r in pk[:12]], dkcls, W=1000, label_w=260, unit=' uncovered'),
-                  'Uncovered risk functions per package. The two new execution paths on this page (transaction '
-                  'verification and miniblock proof of work) close part of the blockchain package\u2019s gap.',
-                  'Uncovered risk functions by package'))
-        if rk:
-            rtr = [[f'<span class="mono">{E(r["title"])}</span>', f'<span class="mono">{E(r["file"])}</span>',
-                    f'<span class="mono">{r["lines"]}</span>', f'<span class="mono">{r["caller_files"]}</span>',
-                    f'<span class="mono">{r["panics"]}/{r["recovers"]}</span>',
-                    chip('consensus' if r['consensus'] else 'local', 'var(--gap)' if r['consensus'] else 'var(--mut)'),
-                    proof(r, 1)] for r in sorted(rk, key=lambda r: (-r['panics'], r['file']))]
-            A('<h3>The risk register</h3>')
-            A(table(['Function', 'File', 'Lines', 'Files using it', 'panic/recover', 'Package', 'proof'],
-                    ak.tag_rows(rtr, rk, ['', '', '', '', '', '', None], cls_of), 't-riskmap', filt=True))
-        A('</section>')
-
+    # ───── log bridge
+    A(H('bridge', 'Log bridge: every line the daemon printed, joined to the line that printed it',
+        'The console is evidence only if each line can be traced to the source that emits it. A match counts only when '
+        'the literal sits in a package that owns the logger name derod printed — the registry below is mined from the '
+        '`WithName` calls themselves, so the rule is read out of the tree rather than asserted here.'))
+    A(evolved(by, sfiles(['logbridge', 'loggers']), what='the bridge'))
+    lb = sorted(by['logbridge'], key=lambda r: (r['t'], r['id']))
+    lgc = collections.Counter(r['logger'] for r in lb)
+    if lgc:
+        lgo = sorted(lgc, key=lambda k: (-lgc[k], k))
+        A(hbar('ch-bridge-loggers', 'Bridged console lines per logger', 'How many of the bridged console lines each named logger printed.',
+               [next(r for r in lb if r['logger'] == k) for k in lgo], lgo, [lgc[k] for k in lgo], unit='lines', label_w=140, W=620, row=22))
+    ltr = [[f'<span class="mono">{E(r["t"])}</span>', chip(r['level'].lower(), 'var(--gap)' if r['level'] == 'ERROR' else 'var(--mut)'),
+            f'<span class="mono">{E(r["logger"])}</span>', tk.html_clip(r['message'], 86),
+            proof(r, 2)] for r in lb]
+    A(table(['Time', 'Level', 'Logger', 'Message', 'proof'],
+            ak.tag_rows(ltr, lb, ['', '', '', '', None], cls_of), 't-lb', filt=True))
+    lg = sorted(by['loggers'], key=lambda r: r['title'])
+    A('<h3>The logger registry</h3>')
+    A(table(['Name', 'Registered in', 'proof'],
+            ak.tag_rows([[f'<span class="mono">{E(r["title"])}</span>', f'<span class="mono">{E(r["owner"])}</span>', proof(r, 1)]
+                         for r in lg], lg, ['', '', None], cls_of), 't-lg'))
+    A('</section>')
 
     # ───── console errors, triaged
     tri = by.get('triage', [])
     if tri:
-        A(H('triage', 'Every error the console printed: whose it is, and what it costs',
+        A(H('triage', 'Console errors: every error the console printed, whose it is, and what it costs',
             'A console full of ERROR lines reads as a sick node. It usually is not. Each class below is traced to the '
             'Go line that prints it, to the side of the connection that produced it, and to what the chain itself '
             'says about the transactions involved. The keyhash and tx-store checks are **recomputed at build '
@@ -1580,11 +2204,14 @@ def render(rows, rejected, unverified, stats, fp):
                 (str(sum(1 for r in tri if r['origin'] == 'LOCAL' and 'defect' in r.get('triage_verdict', ''))), 'defects in code this node runs'),
                 ('0', 'need action on this node')]))
         A(triage_svg(by))
+        order = [o[0] for o in ORIGIN]
+        tri = sorted(tri, key=lambda r: (order.index(r.get('origin', 'REMOTE')), r['id']))
+        A(hbar('ch-triage', 'ERROR lines per cause in the console capture', 'How many ERROR lines each triaged cause printed, grouped by where it originates.',
+               tri, [shortlab(r['title'].split(':')[0].split(',')[0], 30) for r in tri], [int(r.get('count') or 0) for r in tri],
+               unit='lines', label_w=230, W=760, cols=('cause', 'ERROR lines')))
         A(evolved(by, sfiles(['triage']), what='the triage'))
         for c in by.get('triage-census', []):
             A(f'<p class="sub">{md(c["claim"])} {tag(c)} <span class="mut">Proof:</span> {proof(c, 2)}</p>')
-        order = [o[0] for o in ORIGIN]
-        tri = sorted(tri, key=lambda r: (order.index(r.get('origin', 'REMOTE')), r['id']))
         ttr = [[f'<b>{E(r["title"].split(":")[0].split(",")[0])}</b>', chip(r['origin'].lower(), 'var(--mut)'),
                 f'<span class="mono">{r.get("count", "")}</span>', E(r.get('triage_verdict', '')),
                 md(tk.html_clip(r.get('fix') or 'unchanged', 90)), proof(r, 2)] for r in tri]
@@ -1601,13 +2228,73 @@ def render(rows, rejected, unverified, stats, fp):
               <br><span class="mut">Proof:</span> {proof(r, 8)}</div></div>''')
         A('</div></section>')
 
+    # ═════════ Part IV · Findings and audits ═════════
+    # ───── findings
+    A(H('findings', 'Findings: what reading the code against the running node established',
+        'Some of these are defects in code this node runs; some are local fixes already shipped; the rest is arithmetic '
+        'and operational fact. Each card lists what it costs and what, if anything, should be done — including where '
+        'the right answer is to change nothing.'))
+    F = sorted(by['findings'], key=lambda r: ['defect', 'operational', 'reporting', 'fix', 'analysis'].index(r.get('severity', 'analysis')))
+    sv = collections.Counter(r.get('severity', 'analysis') for r in F)
+    if sv:
+        so = [s for s in ('defect', 'operational', 'reporting', 'fix', 'analysis') if sv.get(s)]
+        A(vbar('ch-findings', 'Findings by kind', 'How many findings of each kind this page carries.', F,
+               [SEV[s][0] if s in SEV else s for s in so], [sv[s] for s in so], unit='findings', W=420,
+               tag_rows_=[[r for r in F if r.get('severity', 'analysis') == s] for s in so]))
+    A(evolved(by, sfiles(['findings']), what='these findings'))
+    A('<div class="cards">')
+    for r in F:
+        word, col = SEV.get(r.get('severity'), ('note', 'var(--mut)'))
+        A(f'''<div class="card {E(r.get('severity',''))}" id="{E(r['id'])}">
+          <h4>{E(r['title'])} {tag(r)}</h4>
+          <div>{chip(word, col)}{badges(r)}</div>
+          <p>{md(r['claim'])}</p>
+          <div class="meta"><b>Impact.</b> {md(r.get('impact',''))}<br><b>What to do.</b> {md(r.get('action',''))}
+          <br><span class="mut">Proof:</span> {proof(r, 4)}</div></div>''')
+    A('</div></section>')
+
+    # ───── coverage and the risk surface
+    cov = by.get('coverage', [])
+    rk = by.get('riskmap', [])
+    if cov:
+        tot = next((r for r in cov if r.get('kind') == 'total'), None)
+        A(H('coverage', 'Coverage and risk: what this page covers, and the risk surface it does not yet explain',
+            'A function counts as **covered** when some row cites a line inside it. **Risk** functions are the ones '
+            'whose names carry verification, proof of work, difficulty, fees, balances, handshakes, bans or pruning. '
+            'The register below lists every one of them with measured structure only — size, callers, panics, '
+            'recovers — and is excluded from the coverage figure so it cannot inflate it. Gate G16 is a ratchet: it '
+            'fails if any risk function that an earlier snapshot covered is uncovered now.'))
+        if tot:
+            A(kpis([(f"{tot['risk_covered']}/{tot['risk']}", 'risk functions cited by a row'),
+                    (f"{tot['covered']}/{tot['funcs']}", 'functions covered'),
+                    (str(sum(1 for r in rk if r.get('consensus'))), 'risk functions in consensus packages'),
+                    (str(sum(1 for r in rk if r.get('panics'))), 'risk functions that can panic()')]))
+        A(evolved(by, sfiles(['riskmap']), what='the risk register'))
+        pkc = [r for r in cov if r.get('kind') == 'pkg']
+        if pkc:
+            A(hbar('ch-risk-pkg', 'Risk functions per package: covered and uncovered',
+                   'Risk functions per package that no row of this page cites yet (the bar), with the covered ones as a tick.',
+                   pkc[:14], [shortlab(r['pkg'], 24) for r in pkc[:14]], [r['risk'] - r['risk_covered'] for r in pkc[:14]],
+                   unit='uncovered', label_w=170, W=760, ticks=[r['risk_covered'] for r in pkc[:14]], tick_name='covered',
+                   series='uncovered', cols=('package', 'uncovered', 'covered'),
+                   note='The transaction-verification and miniblock proof-of-work paths close part of the blockchain package’s gap.'))
+        if rk:
+            rtr = [[f'<span class="mono">{E(r["title"])}</span>', f'<span class="mono">{E(r["file"])}</span>',
+                    f'<span class="mono">{r["lines"]}</span>', f'<span class="mono">{r["caller_files"]}</span>',
+                    f'<span class="mono">{r["panics"]}/{r["recovers"]}</span>',
+                    chip('consensus' if r['consensus'] else 'local', 'var(--gap)' if r['consensus'] else 'var(--mut)'),
+                    proof(r, 1)] for r in sorted(rk, key=lambda r: (-r['panics'], r['file']))]
+            A('<h3>The risk register</h3>')
+            A(table(['Function', 'File', 'Lines', 'Files using it', 'panic/recover', 'Package', 'proof'],
+                    ak.tag_rows(rtr, rk, ['', '', '', '', '', '', None], cls_of), 't-riskmap', filt=True))
+        A('</section>')
 
     # ───── disclosure audit: what was said, and what the tree says back
     press, fore = by['press'], by['forensics']
     if press or fore:
-        A(H('press', 'The Foundation\u2019s disclosure, tested against this tree',
+        A(H('press', 'Disclosure audit: the Foundation’s disclosure, tested against this tree',
             'On 2026-10-20 the DERO Foundation published a range-proof soundness defect and withdrew support for '
-            'the chain. The claims are reproduced below from the page\u2019s own text and carry the **EXT** class: a '
+            'the chain. The claims are reproduced below from the page’s own text and carry the **EXT** class: a '
             'line of that document proves only that it was *said*. Whether each is **so** is decided by the rows '
             'underneath, which anchor in the source tree and in the running node instead. The two are deliberately '
             'kept apart.'))
@@ -1638,7 +2325,7 @@ def render(rows, rejected, unverified, stats, fp):
                   <h4>{E(r["title"])} {tag(r)}</h4>
                   <div>{chip(v.lower().replace("-", " "), VCOL.get(v, "var(--mut)"))}
                        {chip(r.get("severity", "note"), "var(--mut)")}
-                       {chip("bears on " + str(r.get("press_claim", "\u2014")), "var(--l4)")}
+                       {chip("bears on " + str(r.get("press_claim", "—")), "var(--l4)")}
                        {badges(r)}</div>
                   <p>{md(r["claim"])}</p>
                   <div class="meta"><b>How it was established.</b> {md(r.get("reasoning", ""))}
@@ -1647,73 +2334,72 @@ def render(rows, rejected, unverified, stats, fp):
         A(disclosure_track_html(by))   # r24: round history, new facts, potential fixes
         A('</section>')
 
-    # ───── r24: every area of the stack, scored (after the disclosure audit, so its section number is unchanged)
+    # ═════════ Part V · Observatories ═════════
     areakit.render(by, A, H, {'E': E, 'md': md, 'proof': proof, 'table': table, 'ak': ak, 'cls_of': cls_of, 'kpis': kpis})
-    # ───── r24: the chain-consensus observatory (after Areas, so sections 10 and 11 keep their numbers)
     consensuskit.render(by, A, H, {'E': E, 'md': md, 'proof': proof, 'table': table, 'ak': ak, 'cls_of': cls_of, 'kpis': kpis,
                                    'note': note, 'fig': fig, 'chip': chip, 'dk': dk, 'tk': tk})
-
-    # ───── r24 (consensus-network): the nodes this node talks to, pseudonymised (after Areas, so 10 and 11 keep their numbers)
     peerkit.render(by, A, H, {'E': E, 'md': md, 'proof': proof, 'table': table, 'ak': ak, 'cls_of': cls_of, 'kpis': kpis,
                               'fig': fig, 'chip': chip})
 
-    # ───── 06 log bridge
-    A(H('bridge', 'Every line the daemon printed, joined to the line that printed it',
-        'The console is evidence only if each line can be traced to the source that emits it. A match counts only when '
-        'the literal sits in a package that owns the logger name derod printed — the registry below is mined from the '
-        '`WithName` calls themselves, so the rule is read out of the tree rather than asserted here.'))
-    A(evolved(by, sfiles(['logbridge', 'loggers']), what='the bridge'))
-    lb = sorted(by['logbridge'], key=lambda r: (r['t'], r['id']))
-    ltr = [[f'<span class="mono">{E(r["t"])}</span>', chip(r['level'].lower(), 'var(--gap)' if r['level'] == 'ERROR' else 'var(--mut)'),
-            f'<span class="mono">{E(r["logger"])}</span>', tk.html_clip(r['message'], 86),
-            proof(r, 2)] for r in lb]
-    A(table(['Time', 'Level', 'Logger', 'Message', 'proof'],
-            ak.tag_rows(ltr, lb, ['', '', '', '', None], cls_of), 't-lb', filt=True))
-    lg = sorted(by['loggers'], key=lambda r: r['title'])
-    A('<h3>The logger registry</h3>')
-    A(table(['Name', 'Registered in', 'proof'],
-            ak.tag_rows([[f'<span class="mono">{E(r["title"])}</span>', f'<span class="mono">{E(r["owner"])}</span>', proof(r, 1)]
-                         for r in lg], lg, ['', '', None], cls_of), 't-lg'))
+    # ═════════ Part VI · The harness ═════════
+    A(H('harness', 'How this page is built and checked',
+        'The page is a projection, not a document: a harness indexes the tree, miners turn it into rows that each carry '
+        'anchors (a file and a quoted line), the build re-reads every anchor and draws only the rows that still resolve, '
+        'and gates check the result. Re-running it on an unchanged tree reproduces the page byte for byte.'))
+    srcs = collections.Counter(r.get('source') or '?' for r in rows)
+    A(pipe_diagram(stats, len(RAW_KEYS), len(sources(rows))))
+    so = sorted(srcs, key=lambda k: (-srcs[k], k))
+    A('<div class="charts">')
+    A(hbar('ch-rows-miner', 'Rows on the page, by the miner that produced them', 'How many drawn rows each raw model file (one per miner) contributed.',
+           [next(r for r in rows if (r.get('source') or '?') == k) for k in so], so, [srcs[k] for k in so], unit='rows', label_w=110, W=560, row=21))
+    ps = collections.Counter(r['page_section'] for r in rows)
+    pso = sorted(ps, key=lambda k: (-ps[k], k))
+    A(hbar('ch-rows-section', 'Rows on the page, by section', 'How many drawn rows each section of the page carries.',
+           [next(r for r in rows if r['page_section'] == k) for k in pso], pso, [ps[k] for k in pso], unit='rows', label_w=110, W=560, row=21))
+    A('</div>')
+    A(note('**Three promises the gates keep.** Nothing is drawn without an anchor that still resolves (G1, G2). A figure that '
+           'another artifact also states equals its record (coherence, G25: area states, disclosure verdicts, the scorecard '
+           'run, the observatory captures and grades, the source stamp). The page carries no local path, address or machine '
+           'name: quotes are shown with placeholders such as [home], [datadir] and [repo], and citations name files from the '
+           'repository root.', 'good'))
     A('</section>')
 
-    # ───── 07 local changes
-    A(H('local', 'What this tree does that upstream Release153 does not',
-        'The baseline is the upstream tag, and the diff is `git diff Release153..HEAD`. Only twelve shipped Go files '
-        'differ; everything else added here is documentation, this harness, or experiments that no binary links.'))
-    loc = sorted(by['local'], key=lambda r: (r['status'], r['path']))
-    A(evolved(by, {r['path'] for r in loc}, what='this diff'))
-    A(kpis([(str(len(loc)), 'shipped Go files changed'),
-            (str(sum(r['added'] for r in loc)), 'lines added'), (str(sum(r['removed'] for r in loc)), 'lines removed'),
-            (str(len(by['commits'])), 'commits on the branch'),
-            (str(len([r for r in by['local-other'] if r.get('kind') == 'experiment'])), 'experiment-only paths')]))
-    ltr2 = [[f'<span class="mono">{E(r["path"])}</span>', chip(r['status'], 'var(--ok)' if r['status'] == 'added' else 'var(--l4)'),
-             f'<span class="num">+{r["added"]} / −{r["removed"]}</span>', tk.html_clip(r.get('subject') or '', 70),
-             proof(r, 1)] for r in loc]
-    A(table(['File', 'Status', 'Lines', 'Commit subject', 'proof'],
-            ak.tag_rows(ltr2, loc, ['', '', '', '', None], cls_of), 't-loc'))
-    cm = by['commits']
-    A('<h3>The commit ledger</h3>')
-    A(table(['Commit', 'Subject', 'Files', 'Shipped Go', 'proof'],
-            ak.tag_rows([[f'<code>{E(r["sha"])}</code>', tk.html_clip(r['subject'], 86),
-                          f'<span class="num">{r["files"]}</span>', f'<span class="num">{r["code_files"]}</span>', proof(r, 1)]
-                         for r in cm], cm, ['', '', '', '', None], cls_of), 't-cm', filt=True))
+    # ───── method
+    A(H('method', 'Re-run, break and extend this',
+        'The page is a projection. Re-running the harness on an unchanged tree must reproduce it byte for byte; '
+        'changing anything it cites must make `check` fail.'))
+    A(f'''<details open><summary>The pipeline</summary>
+      <pre>python3 harness/prep_corpus.py            # index the tree: {CORPUS.name}/tags.tsv, pkgindex.json, manifest.json
+python3 harness/miners/mine_inventory.py  # packages, import graph, vendored weight
+python3 harness/miners/mine_consts.py     # consensus constants, read from their declaring lines
+python3 harness/miners/mine_flows.py      # the execution chains, hop by hop
+python3 harness/miners/mine_logbridge.py  # console lines -> the Go literal that printed them
+python3 harness/miners/mine_localdiff.py  # this tree vs upstream Release153
+python3 harness/miners/mine_evolution.py  # r23c: rounds x subsystems x modules from git log base..HEAD
+python3 harness/miners/mine_runtime.py --capture   # a fresh read-only snapshot of the live daemon
+python3 harness/miners/mine_findings.py   # the analysis rows (numbers computed, never typed)
+python3 harness/gen_deroarch.py build     # resolve + render + stamp + skill AUTO block
+python3 -I harness/pipeline/regen_round.py --apply   # every miner on its on-disk inputs, the build, the page gates, coherence
+python3 -I harness/kit/kitgate.py artifacts/dero-src-arch.html --width 1280,485   # page gates G5-G14
+python3 harness/run_gates.py &lt;label&gt;      # G1..G36 -> harness/loop/GATES.md
+python3 harness/kat/verify_deroarch.py --mutations   # DK01..DK35; each mutation must flip its KAT
+python3 -I harness/kat/test_src_arch_page_r33.py     # r33: sections, charts, records, privacy, theme</pre></details>''')
+    cnt = collections.Counter(e['kind'] for r in rows for e in r['evidence'])
+    A('<h3>What the evidence is made of</h3>')
+    A(table(['Class', 'Anchors', 'What a line of it proves'],
+            [[chip(k, {'SRC': 'var(--ok)', 'EXT': 'var(--l4)', 'HARNESS': 'var(--accent2)', 'GK': 'var(--queued)',
+                       'PLAN': 'var(--mut)'}.get(k, 'var(--mut)')), f'<span class="num">{v}</span>', md(w)]
+             for k, v, w in [(k, cnt.get(k, 0), w) for k, w in
+                             [('SRC', 'a line of the first-party DERO source, its build scripts or go.mod'),
+                              ('EXT', 'a line of third-party code under `vendor/` that this build links in'),
+                              ('HARNESS', 'the owner’s own measured system: a live snapshot, the console log, the run report'),
+                              ('GK', 'the project’s knowledge base: its skill and memory store'),
+                              ('PLAN', 'something proposed in `harness/loop/PROPOSALS.md` and not yet run')]] if v or k in ('SRC', 'EXT')],
+            't-cls', notag='the class vocabulary itself, not an asset'))
     A('</section>')
 
-    # ───── 08 vendored
-    A(H('deps', 'The third-party code this build links in',
-        'Vendored modules are quoted, not owned — they carry the EXT class. A module is listed only when a first-party '
-        'import line proves it is really linked; two of the largest are transitive and are named in the quarantine instead.'))
-    A(evolved(by, prefixes=('vendor/', 'go.mod'), what='the vendored tree'))
-    vd = sorted(by['vendor'], key=lambda r: -r['loc'])
-    A(table(['Module', 'Lines', 'Files', 'Imported by', 'proof'],
-            ak.tag_rows([[f'<span class="mono">{E(r["module"])}</span>', f'<span class="num">{r["loc"]:,}</span>',
-                          f'<span class="num">{r["files"]}</span>',
-                          ' '.join(f'<code>{E(p)}</code>' for p in (r.get('importers') or [])[:4]), proof(r, 1)]
-                         for r in vd], vd, ['', '', '', '', None], cls_of), 't-vd'))
-    A('</section>')
-
-    # ───── 09 quarantine
-    A(H('quarantine', 'What was refused, and why',
+    # ───── quarantine
+    A(H('quarantine', 'Quarantine: what was refused, and why',
         'A page that only shows what it can prove is worth nothing unless it also shows what it could not. These rows '
         'were produced by the miners and then dropped, or were reported by a miner as unprovable in the first place.'))
     A(kpis([(str(stats['rejected']), 'rows refused and not drawn'), (str(stats['unverified']), 'items a miner could not anchor'),
@@ -1733,8 +2419,8 @@ def render(rows, rejected, unverified, stats, fp):
                 't-unv', notag='a ledger of items the miners refused to claim'))
     A('</section>')
 
-    # ───── 10 index
-    A(H('index', 'Everything on this page, searchable',
+    # ───── index
+    A(H('index', 'Index: everything on this page, searchable',
         'One entry per drawn row. Type two characters, or pick a facet.'))
     IX = [{'id': r['id'], 'n': E(str(r.get('title') or r['id'])), 's': r['page_section'],
            'c': ak.ctag(cls_of(r)), 'w': E(rel(r['evidence'][0]['abs']) + ':' + str(r['evidence'][0].get('line')))}
@@ -1745,52 +2431,49 @@ def render(rows, rejected, unverified, stats, fp):
                                        for k, v in sorted(facets.items())) + '</div>')
     A('<div id="sx-res"></div>')
     A(f'<script>window.__IX={json.dumps(IX)};</script>')
-    A('</section>')
-
-    # ───── 11 method
-    A(H('method', 'How to re-run, break and extend this',
-        'The page is a projection. Re-running the harness on an unchanged tree must reproduce it byte for byte; '
-        'changing anything it cites must make `check` fail.'))
-    A(f'''<details open><summary>The pipeline</summary>
-      <pre style="overflow-x:auto;font:12px/1.6 var(--mono);color:var(--mut)">python3 harness/prep_corpus.py            # index the tree: {CORPUS.name}/tags.tsv, pkgindex.json, manifest.json
-python3 harness/miners/mine_inventory.py  # packages, import graph, vendored weight
-python3 harness/miners/mine_consts.py     # consensus constants, read from their declaring lines
-python3 harness/miners/mine_flows.py      # the six execution chains, hop by hop
-python3 harness/miners/mine_logbridge.py  # console lines -> the Go literal that printed them
-python3 harness/miners/mine_localdiff.py  # this tree vs upstream Release153
-python3 harness/miners/mine_evolution.py  # r23c: rounds x subsystems x modules from git log base..HEAD
-python3 harness/miners/mine_runtime.py --capture   # a fresh read-only snapshot of the live daemon
-python3 harness/miners/mine_findings.py   # the analysis rows (numbers computed, never typed)
-python3 harness/gen_deroarch.py build     # resolve + render + stamp + skill AUTO block
-python3 harness/run_gates.py &lt;label&gt;      # G1..G12 -> harness/loop/GATES.md
-python3 harness/kat/verify_deroarch.py --mutations   # DK01..DK35; each mutation must flip its KAT</pre></details>''')
-    cnt = collections.Counter(e['kind'] for r in rows for e in r['evidence'])
-    A('<h3>What the evidence is made of</h3>')
-    A(table(['Class', 'Anchors', 'What a line of it proves'],
-            [[chip(k, {'SRC': 'var(--ok)', 'EXT': 'var(--l4)', 'HARNESS': 'var(--accent2)', 'GK': 'var(--queued)',
-                       'PLAN': 'var(--mut)'}.get(k, 'var(--mut)')), f'<span class="num">{v}</span>', md(w)]
-             for k, v, w in [(k, cnt.get(k, 0), w) for k, w in
-                             [('SRC', 'a line of the first-party DERO source, its build scripts or go.mod'),
-                              ('EXT', 'a line of third-party code under `vendor/` that this build links in'),
-                              ('HARNESS', 'the owner’s own measured system: a live snapshot, the console log, the run report'),
-                              ('GK', 'the project’s knowledge base: its skill and memory store'),
-                              ('PLAN', 'something proposed in `harness/loop/PROPOSALS.md` and not yet run')]] if v or k in ('SRC', 'EXT')],
-            't-cls', notag='the class vocabulary itself, not an asset'))
     A(f'''<footer>Built by <code>harness/gen_deroarch.py</code> from {stats['raw']} mined rows
       · {stats['anchors_ok']} of {stats['anchors']} anchors resolved · fingerprint <code>{E(fp)}</code>
-      · {E(now.strftime('%Y-%m-%d %H:%M %Z'))}. Private page; it cites absolute paths on this machine.
+      · {E(now.strftime('%Y-%m-%d %H:%M %Z'))} · {E(cur_name)}. Citations name files from the repository root; quoted lines show
+      [home], [datadir], [repo] and [address] in place of local values.
       <br>Evolution (r23c): base {E(next((r['base'] for r in by.get('evolution', []) if r.get('kind') == 'evo-base'), '?'))}
       = tag Release152 = merge-base(HEAD, Release153); a commit belongs to the round its subject names (Round N / RN / rN),
       the Release142 port to R1–R3, any other commit to the next round-marked commit; rounds grouped as the Enhancement
       Ledger groups them.</footer>''')
-    A('</section></div>')
+    A('</section>')
 
-    head = (f'<style>{CSS}{ak.CT_CSS}{ak.CITE_CSS}{ck.CONNECTOR_CSS}{tk.TT_CSS}{dk.CSS}</style>')
-    body = ''.join(O) + ak.cites_script() + f'<script>{ak.CT_JS}{ak.CITE_JS}{tk.TT_JS}{JS}{ck.CONNECTOR_JS}</script>'
-    return ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
-            '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            '<title>DERO HE Source Architecture</title>'
-            + head + '</head><body>' + body + '</body></html>')
+    # ───── assembly: the parts in order, sections numbered as the contents lists them
+    have = [i for i in SECTION_IDS if i in bufs]
+    extra = [i for i in bufs if i not in SECTION_IDS and i != '_pre']     # a kit section the parts do not name yet
+    num = {i: n for n, i in enumerate(have + extra, 1)}
+    title_of = {i: t for _, s in PARTS for i, t in s}
+    toc = []
+    body = []
+    for pname, secs in PARTS + ([('More', [(i, i) for i in extra])] if extra else []):
+        ids = [i for i, _ in secs if i in bufs]
+        if not ids:
+            continue
+        toc.append(f'<li class="part">{E(pname)}</li>' + ''.join(
+            f'<li><a href="#{i}"><span class="sn">{num[i]}</span>{E(title_of.get(i, i))}</a></li>' for i in ids))
+        body.append(f'<p class="partbanner" aria-hidden="true">{E(pname)}</p>')
+        for i in ids:
+            s = ''.join(bufs[i])
+            body.append(s.replace(f'<section id="{i}"><h2><span class="sn">00</span>', f'<section id="{i}"><h2><span class="sn">{num[i]}</span>', 1))
+    toc_html = ''.join(toc)
+    cites = ak.compact(ak._REG)
+    cites['H'] = ''                     # r33: no home directory reaches the page (citations are repo-relative)
+    reg_js = ('<script type="application/json" id="ak-cites">'
+              + json.dumps(cites, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/') + '</script>')
+    head = (f'<style>{theme_css()}{CSS}{chk.CHART_CSS}{chk.MATRIX_CSS}{ak.CT_CSS}{ak.CITE_CSS}{ck.CONNECTOR_CSS}{tk.TT_CSS}{dk.CSS}</style>')
+    page = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark">'
+            f'<title>DERO HE Source Architecture ({E(cur_name)})</title>'
+            + head + '</head><body><a class="skip" href="#main">Skip to the content</a>'
+            f'<details id="tocd"><summary>Contents</summary><ol>{toc_html}</ol></details>'
+            f'<div class="layout"><nav class="toc" aria-label="Contents"><div class="toct">Contents</div><ol>{toc_html}</ol></nav>'
+            f'<main id="main">{hero}{"".join(bufs["_pre"])}{"".join(body)}</main></div>'
+            + reg_js + f'<script>{ak.CT_JS}{ak.CITE_JS}{tk.TT_JS}{JS}{ck.CONNECTOR_JS}</script><script>{THEME_JS}</script>'
+            '</body></html>')
+    return pub(page)
 
 
 # ───────────────────────────── stamp, drift, skill sync ─────────────────────────────
@@ -1800,7 +2483,7 @@ from prep_corpus import sha   # noqa: E402 — ONE definition of the content has
 
 def sources(rows):
     """Everything the page depends on. A change to any of it makes the page STALE (living-architecture law)."""
-    s = {str(HERE / 'gen_deroarch.py'), str(HERE / 'prep_corpus.py'), str(SKILL)}
+    s = {str(HERE / 'gen_deroarch.py'), str(HERE / 'prep_corpus.py'), str(SKILL), str(HERE / 'round.json')}   # r33: the page names the round
     s |= {str(p) for p in (HERE / 'kit').glob('*.py')}
     s |= {str(p) for p in (HERE / 'miners').glob('*.py')}
     s |= {str(p) for p in RAW.glob('*.json')}
@@ -1910,7 +2593,7 @@ def build(strict=False):
     src = sources(rows)
     fp = fingerprint(src)
     h = render(rows, rejected, unverified, stats, fp)
-    lint = svg_lint(h)
+    lint = svg_lint(h) + page_lint(h)          # r33: + a private value or a chart without its text alternative
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(h)
     st = {'built': datetime.datetime.now().astimezone().isoformat(timespec='seconds'), 'fingerprint': fp, 'root': str(ROOT),

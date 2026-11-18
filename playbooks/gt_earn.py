@@ -131,6 +131,18 @@ def read_targets():
         return {}
 
 
+def chain_credits(rpc_fn, lo, hi, addrs):
+    """{wallet: atomic} the chain credits to each wallet over the settled heights [lo, hi], by the consensus split the
+    chain audit uses (cycle_audit.chain_mined: each normal miniblock gets (base reward + the block's tx fees) //
+    len(miniblocks); the final share of a 10-miniblock block is the integrator's). r33 GT-B17: the counter used
+    reward // 10 and missed the fee share (lesson 32). Display only: it feeds earn_tick, never the miner. Pure apart
+    from rpc_fn (read-only DERO.GetBlock / DERO.GetBlockHeadersRange)."""
+    if hi < lo or not addrs:
+        return {w: 0 for w in addrs}
+    import cycle_audit
+    return cycle_audit.chain_mined(rpc_fn, lo, hi, addrs)
+
+
 def rotate(a, run, names, addrs, wdir, gw):
     """D-GT-5: one pipeline-owned miner rotates among the miner wallets (slice_min each) so every one earns; every
     minute the chain-credited miniblocks per wallet are recorded; it ends when each wallet holds target_dero."""
@@ -146,20 +158,19 @@ def rotate(a, run, names, addrs, wdir, gw):
         stop_miners(run, keep=f'mainnet-miner-{n}')    # one pipeline-owned miner at a time
         gtlib.start_proc(run, f'mainnet-miner-{n}', [str(gtlib.BIN / 'gt-dero-miner'), f'--wallet-address={addrs[n]}',
                                                      f"--daemon-rpc-address={gtlib.NETWORKS['mainnet']['getwork']}",
-                                                     f'--mining-threads={a.threads}', f'--cpu-max={a.cpu_max}', '--node-rpc-address=off'])
-        run.event('mainnet_miner_started', wallet=n, height=seen, threads=a.threads, cpu_max=a.cpu_max)
+                                                     f'--mining-threads={a.threads}', f'--cpu-max={a.cpu_max}', '--node-rpc-address=off',
+                                                     f'--game-tag={gtlib.pool_tag(addrs[n])}'])   # r33 GT-B29: gt_pool credit
+        run.event('mainnet_miner_started', wallet=n, tag=gtlib.pool_tag(addrs[n]), height=seen, threads=a.threads, cpu_max=a.cpu_max)
         t_slice = time.time() + a.slice_min * 60
         while time.time() < min(t_slice, t_end):
             time.sleep(60)
             h = int(rpc_call(daemon, 'DERO.GetInfo')['height'])
-            for x in range(seen + 1, h - 1):
-                bh = rpc_call(daemon, 'DERO.GetBlock', {'height': x})['block_header']
-                ms = bh.get('miners', [])
-                for m in (ms[:-1] if len(ms) == 10 else ms):
-                    for nn, ad in addrs.items():
-                        if m == ad and nn in credited:
-                            credited[nn] += int(bh.get('reward', 0)) // 10
-                seen = x
+            if h - 2 > seen:                          # settled heights only (seen+1 .. h-2)
+                got = chain_credits(lambda m, p: rpc_call(daemon, m, p), seen + 1, h - 2,
+                                    {nn: ad for nn, ad in addrs.items() if nn in credited})
+                for nn, v in got.items():
+                    credited[nn] += v
+                seen = h - 2
             run.event('earn_tick', mining=n, height=h, chain_credited={k: v for k, v in credited.items()})
         gtlib.stop_proc(run, f'mainnet-miner-{n}')
         bals = {}
@@ -271,18 +282,17 @@ def main(argv):
         h0 = int(rpc_call(daemon, 'DERO.GetInfo')['height'])
         gtlib.start_proc(run, f'mainnet-miner-{a.wallet}', [str(gtlib.BIN / 'gt-dero-miner'), f'--wallet-address={addr}',
                                                             f"--daemon-rpc-address={gtlib.NETWORKS['mainnet']['getwork']}",
-                                                            f'--mining-threads={a.threads}', f'--cpu-max={a.cpu_max}', '--node-rpc-address=off'])
-        run.event('mainnet_miner_started', wallet=a.wallet, height=h0, threads=a.threads, cpu_max=a.cpu_max)
+                                                            f'--mining-threads={a.threads}', f'--cpu-max={a.cpu_max}', '--node-rpc-address=off',
+                                                            f'--game-tag={gtlib.pool_tag(addr)}'])   # r33 GT-B29
+        run.event('mainnet_miner_started', wallet=a.wallet, tag=gtlib.pool_tag(addr), height=h0, threads=a.threads, cpu_max=a.cpu_max)
         credited, seen, t0 = 0, h0, time.time()
         target = int(a.target_dero * 100000)
         while time.time() - t0 < a.max_hours * 3600:
             time.sleep(60)
             h = int(rpc_call(daemon, 'DERO.GetInfo')['height'])
-            for x in range(seen + 1, h - 1):         # settled heights only
-                bh = rpc_call(daemon, 'DERO.GetBlock', {'height': x})['block_header']
-                ms = bh.get('miners', [])
-                credited += sum(int(bh.get('reward', 0)) // 10 for m in (ms[:-1] if len(ms) == 10 else ms) if m == addr)
-                seen = x
+            if h - 2 > seen:                          # settled heights only (seen+1 .. h-2)
+                credited += chain_credits(lambda m, p: rpc_call(daemon, m, p), seen + 1, h - 2, {a.wallet: addr})[a.wallet]
+                seen = h - 2
             bal = gtw('balance', '--daemon', daemon)
             run.event('earn_tick', wallet=a.wallet, height=h, wallet_balance=bal['mature'], chain_credited=credited,
                       minutes=round((time.time() - t0) / 60, 1))

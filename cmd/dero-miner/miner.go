@@ -94,7 +94,7 @@ ONE CPU, ONE VOTE.
 http://wiki.dero.io
 
 Usage:
-  dero-miner  --wallet-address=<wallet_address> [--daemon-rpc-address=<minernode1.dero.live:10100>] [--mining-threads=<threads>] [--cpu-max=<90>] [--gpu=<path>] [--gpu-mode=<full>] [--gpu-max=<90>] [--node-rpc-address=<127.0.0.1:10102>] [--sort=<auto>] [--pair=<auto>] [--cpu-qos=<default>] [--metrics-bind=<127.0.0.1:10109>] [--phase-duty=<off>] [--supervised] [--testnet] [--debug]
+  dero-miner  --wallet-address=<wallet_address> [--daemon-rpc-address=<minernode1.dero.live:10100>] [--mining-threads=<threads>] [--cpu-max=<90>] [--gpu=<path>] [--gpu-mode=<full>] [--gpu-max=<90>] [--node-rpc-address=<127.0.0.1:10102>] [--sort=<auto>] [--pair=<auto>] [--cpu-qos=<default>] [--metrics-bind=<127.0.0.1:10109>] [--phase-duty=<off>] [--game-tag=<hex16>] [--supervised] [--testnet] [--debug]
   dero-miner --bench [--cpu-max=<90>] [--sort=<auto>] [--pair=<auto>] [--cpu-qos=<default>] [--mining-threads=<threads>] [--gpu-mode=<full>]
   dero-miner -h | --help
   dero-miner --version
@@ -115,6 +115,7 @@ Options:
   --gpu-max=<percent>    Cap GPU duty cycle to this percent (1-100) to limit heat/power; split mode enforces it as a duty bucket since r22 (r21 ran ~5 points above it: 96 keeps the r21 rate); auto or auto:<floor> tunes it live like --cpu-max=auto [default: 90]
   --metrics-bind=<host:port>    Serve Prometheus /metrics and a live /dashboard on this address (off by default; loopback only unless ENABLE_PUBLIC_METRICS=1). Never exposes the wallet address.
   --phase-duty=<off|balanced|R:F>    Duty cap by block phase (phase_duty.go): a regular-phase hash earns 9x a final-phase one. R:F = regular R%%, final F%%; balanced = regular 100%%, final chosen so the mean stays at --cpu-max; not with --cpu-max/--gpu-max=auto [default: off]
+  --game-tag=<hex16>    R33 game miners: write these 8 bytes (16 hex digits) into every miniblock's Flags field and first nonce word so a game contract can verify the miniblock was mined for this game identity (gametag.go). CPU only: refused with --gpu. Off by default (Flags as the job template set it).
   --supervised    Run under a supervisor (launchd, tools/launchd): the console's exit/quit/bye are ignored; stop with SIGTERM/SIGINT (launchctl). The miner already keeps reconnecting to the daemon.
   --node-rpc-address=<host:port>    derod JSON-RPC (not getwork) to read which accepted shares were PAID (DERO.GetMiningOutcome, read-only). Default: the loopback daemon's RPC port; off disables.
 
@@ -317,6 +318,20 @@ func main() {
 		}
 	}
 	supervised = globals.Arguments["--supervised"] == true
+
+	if v, _ := globals.Arguments["--game-tag"].(string); v != "" { // r33 GT-B25 (gametag.go)
+		if g, _ := globals.Arguments["--gpu"].(string); g != "" {
+			logger.Error(nil, "--game-tag is CPU only and is not combined with --gpu")
+			return
+		}
+		t, err := parse_game_tag(v)
+		if err != nil {
+			logger.Error(err, "game-tag argument cannot be parsed")
+			return
+		}
+		game_tag, game_tag_set = t, true
+		logger.Info("game tag written into every miniblock (Flags + first nonce word)", "tag", fmt.Sprintf("%x", t[:]))
+	}
 
 	sort_mode := "auto"
 	if globals.Arguments["--sort"] != nil {
@@ -937,6 +952,7 @@ func mineblock(tid int) {
 
 		copy(work[block.MINIBLOCK_SIZE-12:], random_buf[:]) // add more randomization in the mix
 		work[block.MINIBLOCK_SIZE-1] = byte(tid)
+		apply_game_tag(&work) // r33 GT-B25: no-op without --game-tag; work2 copies work, so both pair nonces carry it
 
 		diff.SetString(myjob.Difficulty, 10)
 

@@ -104,23 +104,46 @@ with the exact blocker (G36 INFO). The sim chain is the PRE-FLIGHT only: it gate
 | D-GT-15 | 2026-11-15 ~15:00 | What must an audit bounty pay? | (a) any amount; (b) more than an honest auditor's own fees | (b) | Research Q3 (verifier's dilemma): an audit that does not pay is skipped; check (g): bounty/(n−1) ≥ 3 calls' fees; econsim M4 checks 15–18 | `sizing.viability_n` (g), `econsim.m4_auditor_ev` | measured on the ladder |
 | D-GT-16 | 2026-11-15 ~15:10 | How is the new code proven before real DERO? | (a) straight to mainnet; (b) a sim PRE-FLIGHT of the ladder's cycle path, then the mainnet ladder | (b) | The R32 cycle lost a Freeze and three rounds on mainnet to paths no test had run; the sim chain gates code only (never a result, D-GT-5) | `scratchpad r32a/pre/run.sh` | — |
 | D-GT-17 | 2026-11-16 ~23:00 | The user: the final R32/R32a analysis must become the next round's compounded enhancements through this file. What does R33 do first? | (a) the R32 carry list as written; (b) a continuous game mode first, then the measurements it makes possible, then the harness debts and the R32 carry | (b) | Two of the open questions (realized vs expected payoffs, the boost's effect on wins) need many cycles that only a continuous mode produces; the hashrate effect is bounded by measured fees (§4 goal 5: 0.3–0.5 % of the block reward while games run) and needs outside miners (GT-B19, user-gated) | §4 goal 5; §7 GT-B12..B20; the ladder records | the R33 instruments |
+| D-GT-18 | 2026-11-17 05:25 | The user: "Make sure R33 is only focused on dero-game-theory-rft.md". Where does R33 live? | (a) parent and child; (b) the child only | (b) | the user's words; the parent stays parked (D-37) and gets no R33 rows | registry r33 delegated_page; this file | every R33 commit touches no parent row |
+| D-GT-19 | 2026-11-17 05:40 | The user: every game contract fully security audited; are the contracts in the git push, where, and with a README tutorial there; "this all needs to be through dero-game-theory-rft.md". | (a) audit and document outside the track; (b) rows GT-B21/GT-B22 of this file, the audit's findings as rows, a deploy gate | (b) | the contracts are pushed at `gametheory/contracts/` (public copy checked 2026-11-17: 4 .bas + gt_audit_commit.md, no README) | §7 GT-B21, GT-B22 | the audit report; the README KAT |
+| D-GT-20 | 2026-11-17 06:40 | The R33 audit: GT-A01 (anyone can re-initialize every deployed contract) and GT-A02 critical; the code cannot be updated in place. What happens to the 7 deployed mainnet contracts? | (a) keep using them; (b) never call or fund them again, fix every critical/high finding with a regression test, redeploy new SCIDs, playbooks refuse a SCID whose on-chain code is not the audited code | (b) | live GetSC 2026-11-17: 7/7 balance 0, frozen 1 (no loss so far); GT-A01 PoC | §7 GT-A01..A17, GT-B21 | the audit regression tests; the playbook code-hash guard |
+| D-GT-21 | 2026-11-17 06:55 | The user opens GT-B19: design and implement ways (contracts contacting outside wallets/contracts, or a paid periodic advertisement beacon) for outsiders to join, so the hashrate effect becomes measurable. | (a) keep games operator-only; (b) research outreach (incl. what is acceptable to send to strangers), then a beacon/discovery design in this file | (b) | the user's words; §4 goal 5 (hashrate effect needs outside miners) | §7 GT-B26 | outreach research + beacon measurements |
+| D-GT-22 | 2026-11-17 07:20 | How do outsiders learn of the games: push messages to harvested addresses, or pull-only discovery? | (a) push: 1-atomic transfers with a 111-byte comment to recent miners (~180 atomic each); (b) pull-only: a beacon contract with measured figures, Gnomon/TELA-indexable headers, a name-service entry, a Subscribe() list, posts the user makes; messages only to addresses that subscribed | (b) | push reveals the operator's address to every recipient (walletapi/daemon_communication.go:1121-1135), weakens recipients' ring anonymity, matches dusting/address-poisoning patterns, and is plausibly direct marketing needing consent (ePrivacy Art. 13); a contract payout shows as "Coinbase" (misleading) | `gametheory/research/r33_outreach.md` OR-1..OR-10, "Do not do" | beacon cost per update, subscribers, attested outside miniblocks |
+| D-GT-23 | 2026-11-17 08:10 | How do the user's R33 objectives (deflation, forensics, many-miner sharing, stake weighting, peer protection, collusion/Sybil fixes) fit together? | (a) separate contracts, each with its own voting; (b) one verified-mining pool contract M5 built on in-contract block verification (GT-B24) and miner tags (GT-B25), plus the beacon M6 and M1–M4 v2 | (b) | GT-B24/B25 CONFIRMED; the DVM cannot read other contracts; research rules 1, 7, 8, 10 | §8.1; §7 GT-B27..B30 | the M5 DVM tests, econsim, sim and mainnet chain audits |
+| D-GT-24 | 2026-11-17 09:05 | The user: "notify me when can i get started with R33 with dero-rft.md -> dero-game-theory-rft.md". D-GT-18 kept R33 out of the parent; how does the user's start path from the parent work? | (a) no parent change; (b) the parent carries only the delegation pointer (registry line, How to start, §8 title) to this file's §1, no R33 work rows | (b) | the user's start path; coherence required the parent to name the current round | parent header/How to start/§8 title | coherence 0 parent drifts |
+| D-GT-25 | 2026-11-17 09:50 | The user: every R33 objective, including every open R32/R32a objective, goes through research → design → implement → debug → enhance in R33. How is that tracked? | (a) the backlog rows only; (b) a tracker §8.2 with a stage per objective, each stage claimed only with evidence, and work items R33-W* for what is left | (b) | the user's words; several rows were stale (GT-A01..A17 said OPEN after the fixes) | §8.2 | every R33-W* row closed with evidence before R33 is measured |
+| D-GT-26 | 2026-11-17 10:05 | GT-B2 (isolated testnet) and GT-B5 (MAT value): run or close? | (a) run both; (b) close both with the evidence | (b) | the pool is pre-flighted on the private chain and measured on real mainnet (D-GT-5); M5 pays DERO for verified work, no MAT | §8.2 rows | reopen on a path that needs the real derod stack or a MAT-valued mechanism |
+| D-GT-27 | 2026-11-17 11:15 | The user: coordinate every R33 task for the most coherent result. How? | (a) run jobs as they come; (b) one commit stream, resource ownership per job, a gated order of work (§8.3) | (b) | three jobs and an agent were live at once; a short-hash fetch had silently skipped a merge (lesson 37) | §8.3 | each gate's PASS recorded in §8.2 |
+| D-GT-28 | 2026-11-17 18:20 | The user: use the silent/monitoring phases for parallel activities so the round takes less time, with high coherency and every objective met. How is that kept? | (a) wait; (b) §6 rule: in every waiting phase run the independent items that do not touch the waiting job's resources (§8.3), each gated before it is recorded | (b) | the user's words; R33's 2-hour epoch waits | §6, §8.3 | §8.2 rows closed during waits, gates PASS |
+| D-GT-29 | 2026-11-18 00:00 | Epoch 19,796 credited m1 and m4 only, so the stake boost (m2) was not yet measured on mainnet. Cut epoch 19,798 to save ~4 h, or keep it? | (a) cut; (b) keep it and steer the earn rotation to m2 (earn_targets.json) | (b) | the user: every objective met; objective 4 needs a credited staker miniblock on mainnet | §8.3; earn_targets.json (backup .bak-r33-stake) | epoch 19,798's re-audit shows m2's weight 200 per credit |
+| D-GT-30 | 2026-11-18 00:40 | The user asked to fix HTML↔PDF drift for ALL artifacts "using and enhancing the project harness and dero-rft". The parent stays parked for R33 (D-GT-18); where does the rule live? | (a) the child only; (b) the harness guard + one parent §0.6 contract row and §7 row B335 (the artifact contract is the parent's) | (b) | the user's words; the artifact contract table is in the parent | parent §0.6, B335; harness/kit/pdfsync.py | regen gate pdfsync --check PASS |
+| D-GT-31 | 2026-11-18 06:20 | Step 3c's record lacks m1's Settle fee (None: the wallet had not indexed the tx in 40 s), so its chain-audit sum fails by 600. Re-run 3c on mainnet, or repair the record from evidence? | (a) re-run (another ~25,000 atomic and ~25 min); (b) repair the one field from two independent sources and fix the cause | (b) | the tx set its fee explicitly (fees_set 600, as every other 600 call paid), and conservation gives the same: payoffs −13,583 = chain-mined 12,300 − fees 25,883; the field carries `fee_source` saying it was repaired | lesson 39; gt_cycle.resolve_fees; KAT R33-8 | the chain audit sum = −fees exactly |
+| D-GT-32 | 2026-11-18 06:35 | The full pipeline_20261118T025648 passed every Go stage (tests, soundness, KATs, go mutations 1763/1763, race 27/0, build, shadow 240 treehashes 0 mismatches, install) and failed only in the project stage: the game-theory page was stale because epoch 19,798 landed mid-run (GP0/GP2/GP9). Re-run the full pipeline (~3.3 h), or close on its Go stages plus a project-only run? | (a) full re-run; (b) its Go stages + a project-only PASS on the final tree | (b) | no Go file changed after the run started (git diff 80839fe2..HEAD -- '*.go' go.mod go.sum is empty), so a re-run re-tests the same Go; the failure was data freshness, fixed by regen | harness/round.json r33 pipeline_full + pipeline_project | the project-only run PASS |
+| D-GT-33 | 2026-11-18 10:40 | The project-only pipeline_20261118T090148 failed only coherence_audit: 5 R33 KATs had no STEP_BUDGETS row, the opt-in `TestR33TagVector` was an orphan (nothing read its output; its comment still said 4-byte tags), and `dvm/r33_verify_common_test.go` holds helpers only. Fix in place, though it edits a Go test file after the full run? | (a) re-run the full pipeline; (b) derive the budget rows (stepbudget --derive, the same 3 records + the measured landed seconds), make TestR33TagVector a real check against a committed vector (`dvm/testdata/r33_tagvec.json`, mutant caught) registered in NEW_TESTS with a Python twin (KAT R33-9), and let coherence_audit pass a helpers-only _test.go | (b) | a test-only change to the dvm package's test set (no non-test Go, no consensus file); the new test PASSES run directly and FAILS on a one-hex mutation; the full run's other Go stages stand | STEP_BUDGETS.json (182 rows); fix_build_verify NEW_TESTS; coherence_audit.py | coherence_audit FAIL 0; the next project-only run PASS |
 
 ---
 
 ## 1. The prompt to paste (Round 33)
 
 ```
-Round 33 of the DERO HE game-theory track. Repo <repo> (branch local-enhancements). FIRST: ls
-<home>/derohe-persist/scratchpad/ and read <home>/derohe-persist/round_state/r32_NOTES.md; run harness/intel/resource_intel.py
-preflight. Then read artifacts/dero-game-theory-rft.md (the child) and follow ALL of it: §0 (instruments, decision log),
-§2 (the user's words), §5 constraints, §6 parts A–E, §7 the OPEN backlog, §8 the R33 plan, §9 NO-GO. The parent
-artifacts/dero-rft.md stays PARKED except where the user resumes it. Start with the pipeline (gt_pipeline.py --sim
-under stallwatch), then the R33 plan (§8, D-GT-17): d1 GT-B12 a continuous game mode on mainnet (new gt wallets
-only, chain-audited cycles, bounded failures); d2 GT-B13/GT-B14 measured over those cycles; d3 GT-B15 a third audit
-task and GT-B16 the dispute drill; d4 GT-B3 the per-entrypoint gas census; d5 GT-B17/GT-B18/GT-B20; d6 the R32 carry
-GT-B1, GT-B4, GT-B7, then GT-B2, GT-B5, GT-B6, GT-B8. Every claim about hashrate stays bounded by §4 goal 5 unless
-GT-B19 (outside participation) is opened by the user. Decide from the instruments and log each decision (§0.4). Mainnet spends, mainnet miner start/stop
-and the GitHub push stay the user's (D-GT-1, parent D-1).
+Round 33 of the DERO HE game-theory track (start from artifacts/dero-rft.md "How to start" -> this file; R33 lives
+ONLY here, D-GT-18/D-GT-24; the parent stays parked). Repo <repo> (branch local-enhancements). FIRST:
+ls <home>/derohe-persist/scratchpad/; read <home>/derohe-persist/round_state/r33_NOTES.md; run
+harness/intel/resource_intel.py preflight; check what runs (pgrep -fl 'gt_earn|gt_pool_cycle|gt-dero-miner').
+Then read artifacts/dero-game-theory-rft.md in slices (wc -l, offset/limit) and follow ALL of it: §0 (instruments,
+decision log D-GT-1..), §2 (the user's words, items 1-15), §5 constraints, §6, §7 the backlog (GT-B*, GT-A* audit
+rows), §8 + §8.1 the R33 design (M5 gt_pool verified mining pool, M6 gt_beacon), §9 NO-GO, §10 lessons.
+Re-prove the layer: python3 -I harness/gametheory/gt_pipeline.py (implementation, debug, enhancement), go test
+./dvm/ -run 'R32|R33', python3 -I harness/kat/test_gt_r33.py and test_gt_mechanisms_r32.py.
+R33 state: DONE - research (gametheory/research/r33_*.md), the independent audit + invariant verification of all six
+contracts (GT-A01..A17 + 5 verify findings fixed, gametheory/audit/), GT-B24/B25 block proofs + 8-byte miner tags
+(GT-B32), gt_pool v2 + gt_beacon, econsim M5 (GT-B30), the contracts README tutorial (GT-B22), the pool cycle playbook
+(GT-B29, sim pre-flight PASS). NEXT, in order: (1) the measured MAINNET pool cycle (playbooks/gt_pool_cycle.py
+--network mainnet --mainnet-confirm, new gt wallets only; record harness/runtime/gt_pool_mainnet_*.json, audit must
+PASS; if a run is in flight, wait for it); (2) GT-B33 batched proofs; (3) GT-B12 continuous mode on top of the pool;
+(4) GT-B26 the beacon's measured publish + pull-only outreach (D-GT-22); (5) GT-B13/B14, then the R32 carry. Every
+hashrate claim stays bounded by §4 goal 5 until outside tags are counted. Decide from the instruments and log each
+decision (§0.4). derod start/stop, the user's own miner and the GitHub push stay the user's (D-GT-1, parent D-1).
 ```
 
 ## 2. The user's words (R32, as given to the coordinator; condensed only where it repeats)
@@ -143,6 +166,37 @@ and the GitHub push stay the user's (D-GT-1, parent D-1).
 9. Open-loop then closed-loop strategies; several develop-test-debug-enhance iterations; 100 % evidence; the whole
    pipeline as a harness-tracked background run with monitoring and a completion notice; deep analysis of the output
    and further improvements until the verify gates pass.
+
+### R33 additions (the user, 2026-11-17; condensed only where it repeats)
+
+10. Find fixes in R33 for the R32a security limits: the audit bounty only detects; it cannot prevent consensus, peer or
+    range-proof problems and does not stop auditor collusion or fake auditor identities.
+11. Add, after deep analysis, design, implementation, debug, simulation runs, real mainnet runs and measurement, and
+    coherent with the rest of R33: (1) deflation of the coin supply through the game suite, where such a contract earns
+    more and its results are easy to verify; (2) chain/block forensics through contracts, earning more and easy to
+    verify; (3) more users mining with the suite: reward sharing for all miners, deflation, better security of the
+    blocks mined that way, and other benefits of scale; (4) a wallet with more DERO in the contracts earns a higher
+    share without breaking the game's democratic basis: everyone else keeps a fair share and no single miner or peer
+    can sabotage the chain; (5) the contracts help secure blocks against peer attacks.
+12. This needs a large upgrade of code intel, harness, tools, skills, memory, playbooks, testnet, measurement methods,
+    artifacts, KAT and KIT suites and coordinator skills; several develop-test-debug-enhance iterations, open loop then
+    closed loop (EVIDENCE_LOOP_PROMPT), the whole pipeline as a harness-tracked background run, a deep final analysis.
+13. "Make sure R33 is only focused on dero-game-theory-rft.md" (D-GT-18).
+13b. "massively enhance the visualization, look and feel of artifacts/dero-enhanced-game-theory.html - make sure that
+    project's working tools, KAT suites, KIT suites, harness is used and enhanced for this job. The objective is to make
+    this artifact really user friendly to understand but also be very technical - the objective of this artifact is to
+    enable other developers to implement such game theories" (GT-B36).
+13c. "also the page should mention how miners joining with gametheory benefits the network. All that needs to be
+    visualized. All the objectives which have been implemented of R32, R32b, R33 needs to be visualized in the html
+    artifact" (GT-B36; there is no round R32b: read as R32a).
+13a. "make sure all the objectives of R33 including any open/pending objectives of R32+R32a are in depth research and
+    then designed->implemented->debug->enhanced though R33 (dero-rft.md -> dero-game-theory-rft.md)" (D-GT-25, §8.2).
+14. Every smart contract written for and run in the games fully security audited; the contracts are in the git push
+    (`gametheory/contracts/`), and that path gets a README: a complete tutorial on writing, using and deploying them;
+    "this all needs to be through dero-game-theory-rft.md" (D-GT-19).
+15. Outside participation: think of and implement ways for contracts to contact outside wallets/contracts to join the
+    games, or any other way to advertise to outside wallets, even if it costs the game wallets coins, e.g. a periodic
+    advertisement beacon; deep research first; designed and implemented in R33 through this file (D-GT-21).
 
 ## 3. The evidence loop (as run in R32)
 
@@ -204,6 +258,11 @@ and the GitHub push stay the user's (D-GT-1, parent D-1).
 
 ## 6. The round procedure
 
+- **Parallel work in every waiting phase (D-GT-28, the user 2026-11-17).** While a long job waits (an epoch, a claim
+  window, a pipeline stage), the coordinator runs every independent R33 item that does not touch the waiting job's
+  resources (§8.3 ownership table): KATs, private-chain runs, read-only analyses, docs and pages. Each such item is
+  gated (tests, coherence) before it is recorded, and the round's objectives (§8.2) stay the measure: parallel work
+  shortens the round, it never skips a gate.
 - **A. Start:** How to start; open the round in `harness/round.json` (r32 `in-progress`, tracks miner paused / node
   active); `r32_NOTES.md`, `r32_DUE.json`.
 - **B. Open loop:** research (§3 O1–O4); refresh `reward_intel.py --live` (read-only).
@@ -229,15 +288,49 @@ and the GitHub push stay the user's (D-GT-1, parent D-1).
 | GT-B10 | the sim-share anomaly (lesson 0): measure the slot order per miner on a sim chain (miners list position per height) to confirm or refute the dispatch-order hypothesis | OPEN | lesson 0 |
 | GT-B11 | time-to-coins from the MEASURED pipeline-miner H/s (22.4 kH/s at 6.46 cores while R32 pipelines ran) instead of the R30 quiet-box rate; add `--hs` to time_to_coins.py | OPEN | §13 04:27 |
 | GT-B8 | a multi-address sybil study for M1 (claims are per address and range; splitting should gain nothing) | OPEN (R32a design: the claim is linear per accepted miniblock, D-GT-13, so a split gains nothing in expectation; not yet measured) | mechanisms.json M1 attacks |
-| GT-B12 | a continuous game mode (the user asked 2026-11-16): the ladder repeats a sized 5-wallet cycle whenever the balances allow, a gap between cycles, every cycle chain-audited, stop after 3 failures in a row; the earn job without its 48 h lifetime; the leftover `earn_targets.json` removed when a ladder ends | OPEN (R33 first) | `playbooks/gt_ladder.py`; earn `--max-hours 48` |
+| GT-B12 | a continuous game mode (the user asked 2026-11-16): the ladder repeats a sized 5-wallet cycle whenever the balances allow, a gap between cycles, every cycle chain-audited, stop after 3 failures in a row; the earn job without its 48 h lifetime; the leftover `earn_targets.json` removed when a ladder ends | OPEN (R33 first) | `playbooks/gt_ladder.py`; earn `--max-hours 48` | — R33 IN PROGRESS: `gt_pool_cycle.py --epochs N` repeats fund → prove → claim → chain audit → beacon on the same audited contracts (every other epoch, since claims of e end inside e + 1), one record per epoch, stops after 3 failed epochs or audits in a row; `--follow` (GT-B34) proves only around blocks with member work; private-chain pre-flight PASS 2026-11-17 09:38 (epochs 1 and 3 in one run on the same contracts, 12 follow-mode proofs each within the budget, both chain audits PASS, records gt_pool_sim_20261117T173220/T173814.json, fees 23,424 / 23,657 atomic); mainnet after the first mainnet cycle's audit
 | GT-B13 | realized vs expected payoffs: step 5's m2 and m3 ended at −846 and −608 (no prize win; their audit shares covered their audit fees but not their prize-round fees) while sizing passed on expectation; measure the spread of realized payoffs over many cycles against `viability_n` | OPEN (needs GT-B12) | §13 2026-11-16 09:04; `sizing.viability_n` |
 | GT-B14 | the MAT boost in a genuine many-player round: m4 won 4 of 5 rounds in step 5; test whether win frequency follows the boosted weights (a statistical test needs many rounds) | OPEN (needs GT-B12) | `gt_prize.bas` Enter weights |
 | GT-B15 | a third deterministic audit task: the SC balances turnstile (sum of each contract's DERO balance at a settled topoheight, from DERO.GetSC) or the formula supply against the published emission; peer validation stays out (not deterministic across nodes) | OPEN | `harness/gametheory/audit_tasks.py` TASKS |
 | GT-B16 | the dispute path on chain: plant a wrong sponsor answer on the sim chain (then, if it holds, one mainnet drill) so a strict auditor majority wins and sets disputed=1; today only the DVM test exercises it | OPEN | `dvm/r32a_audit_test.go` MajorityDispute |
 | GT-B17 | the earn job's own credit counter still uses reward // 10 (display only; the chain audit uses the fee-inclusive split, lesson 32) | OPEN | `playbooks/gt_earn.py` rotate |
 | GT-B18 | a content-hash staleness check for the gt binaries instead of file times (lesson 26) | OPEN | `playbooks/gtlib.py` stale_bins |
-| GT-B19 | outside participation: the hashrate effect can only be measured with miners who are not the operator (publish the contracts and the page, an open entry); a user decision (it invites third parties and real money) | OPEN (user-gated) | §4 goal 5; parent D-1 |
+| GT-B19 | outside participation: the hashrate effect can only be measured with miners who are not the operator (publish the contracts and the page, an open entry); a user decision (it invites third parties and real money) | OPENED by the user 2026-11-17 (D-GT-21) → GT-B26 | §4 goal 5; parent D-1 |
 | GT-B20 | a KAT that a round's first consensus-package change bumps the build metadata in `config/version.go` (lesson 33) | OPEN | lesson 33 |
+| GT-B21 | a full security audit of every contract that runs in a game (gt_attest, gt_service, gt_prize, gt_audit, and every R33 contract before it is deployed): access control, Uint64 overflow/underflow, deposit accounting (in = out + held, nothing stuck), double withdraw, commit-reveal binding and front-running, RANDOM grinding, Sybil/collusion, denial of service, state-machine order, anonymous callers, replay; an independent auditor (code, not conclusions), each finding CONFIRMED by a DVM proof-of-concept test or PLAUSIBLE, each fix with a regression test; a contract is deployed only with 0 open critical/high findings | IN PROGRESS (audit 2026-11-17: 17 findings GT-A01..A17; ALL FIXED in 62b8e048 / merged 49029b67 with 26 regression + 4 conservation DVM tests (`dvm/r33_audit_test.go`), R32/R33 DVM tests 48 PASS, KATs 28/28 + 62/62; the pipeline lint now machine-checks GT-A01/A12 and lessons 34-35 (`harness/kat/test_gt_r33.py` 4/4, 5/5 planted defects caught); residual risks stated by the fixer: A04 any entrant can force a dispute (no gain), A05 keep rbond ≥ prize, A06 keep maxn × fee ≥ prize, A07 a bribed juror majority; the 7 old SCIDs are retired. Independent re-audit 2026-11-17 PARTIAL: the auditor stopped early (no report or PoC written); it read the DVM semantics, gt_pool v1, gt_beacon and gt_service; its unconfirmed leads map to v2 fixes (Claim after Rollover → claim deadline, TestR33PoolLateClaimRefused; caller-chosen parse → fixed miniblock count, TestR33PoolProofGuards; cap split → stated in §8.1; P·W overflow → pool and rollover caps); gt_beacon: no issue seen. Second pass (same auditor, v2): RA-P1 CLOSED by v2; RA-P2 the cap is per identity (stated); RA-P3 the parse rested on the caller's ntx → FIXED: every parsed miniblock must carry the proven height in its 5-byte height field (verified on the 4 real blocks), so a shifted parse needs 10 ground height fields (TestR33PoolProofGuards: another height refused); RA-P4 no overflow; gt_beacon clean. STILL OPEN: an independent full re-audit of gt_attest, gt_prize, gt_audit and gt_service v2, and of gt_pool v2 after the height check, before deployment) | `gametheory/audit/r33_contract_audit.md`; `gametheory/contracts/*.bas` |
+| GT-B22 | `gametheory/contracts/README.md`, published in the public copy at the same path (it already carries the .bas files, no README): a complete tutorial on writing DVM-BASIC contracts like these, testing them in the DVM simulator, estimating gas, deploying them and calling every entrypoint (with the wallet RPC and with the playbooks), reading their state, and each contract's rules, parameters and audit status; generated or checked by a KAT so every .bas and every entrypoint is covered and no private value (path, address, IP) is in it | DONE 2026-11-17: `gametheory/contracts/README.md` (12 sections: the 6 contracts, writing DVM-BASIC with the audit rules, simulator tests, node and wallet, gas estimate, install via wallet `transfer` with `sc` base64 (txid = SCID), calls via `scid` + `sc_rpc` + `burn` deposits, reading `DERO.GetSC` (hex strings), gt_pool step by step with `--game-tag`, gt_beacon, playbooks, audit status); checked by KAT test_gt_r33 R33-5 (every .bas and every M5/M6 entrypoint, no private value); published with the next public sync | public `gametheory/contracts/` |
+| GT-B23 | gt_audit `Settle` may never fit the gas limit: its majority search is O(n²), ~50k gas per inner step against the 10M call limit and 2,000 lines, so with ≥ ~13 revealers and no majority Settle always fails and `Withdraw` (st==1) locks the bounty and every bond (code research ESTIMATE, gt_audit.bas:180-285, dvm/sc.go:241). Confirm with a 16-entrant no-majority DVM test; fix: tally answers at Reveal so Settle is O(n). Until fixed, gt_audit rounds keep maxn ≤ 8 (today's PARAMS maxn 8) | FIXED by GT-A03 (answers tallied at Reveal; Settle O(n), 3.1M gas at n = 32; answer length ≤ 256; timeout refunds) | `gametheory/research/r33_code_capabilities.md` finding 1 |
+| GT-B24 | CANDIDATE "check, don't vote" in the DVM: a block id is `sha3.Sum256(bl.serialize)` (block/block.go:57-58) and the DVM has `sha3256`, `hexdecode`, `substr` (dvm/dvm_functions.go:85-87, 513, 574) and `BLID()` of the executing block (:275-277); a contract that stores BLID() at a call can later accept that block's serialized bytes only if `sha3256(hexdecode(x)) == stored`, then trust its fields (height, timestamp, tips = parent ids, the 48-byte miniblocks with KeyHash) and walk back through tips. Would settle forensic disputes by verification, not majority (research rule 1), and close the collusion/Sybil-auditor gap for header facts. To confirm: a DVM test with a real serialized block (size, gas at 25,000 per hash, string limits), then a sim chain run | CONFIRMED in the DVM simulator 2026-11-17 (`dvm/r33_blockproof_test.go`, TestR33BlockProofVerifiesRealMainnetBlocks): 4 real mainnet blocks (3 empty 598 B, 1 with 3 txs 694 B; `dvm/testdata/r33_mainnet_blocks.json`) anchored by BLID() and proven; every KeyHash, Flags and the header timestamp equal the Go decoder; one flipped hex digit and a wrong tx count refused; Prove gas 1,742,400 compute (of 10M), 1,735–1,927 storage (cap 20,000); the final miniblock is the last; on chain BLID() is the executing block's hash (blockchain/blockchain.go:1021 `bl_current_hash`). Open: a sim-chain run | block/block.go:57; dvm/dvm_functions.go:85-87 |
+| GT-B25 | CANDIDATE in-contract proof of mining: the miniblock `Flags` uint32 is free (block/miniblock.go:55 "can be used as flags by special miners"; no consensus code reads it, grep of blockchain/ and cmd/derod/: only (de)serialization and the explorer); the stock miner randomises only the last 12 bytes (cmd/dero-miner/miner.go:938). A game miner that sets Flags = the first 4 bytes of sha3(its game address) makes every miniblock it mines carry an unforgeable (PoW-bound) tag a contract can check through GT-B24; mined work then becomes a non-refundable identity cost (research rule 7: Sybil-safe weights) and the basis for verifiable reward sharing among many miners. The main risk is not a 2^-32 collision but tag 0 (stock miners' Flags), refused by gt_pool; the KeyHash is not matched | CONFIRMED 2026-11-17: `gt-dero-miner --game-tag=<hex8>` (cmd/dero-miner/gametag.go, TestR33GameTagLandsInFlags: only bytes 32..35 change, CPU only, refused with --gpu); private-chain pre-flight `harness/gametheory/r33_flags_preflight.py` PASS: 8 blocks, 18 non-final miniblocks accepted with Flags == tag, 0 untagged, every sha3(bytes) == block id | block/miniblock.go:55; cmd/dero-miner/gametag.go |
+| GT-B26 | outside participation (the user, 2026-11-17): ways for outside wallets and miners to discover and join the games, including a periodic on-chain advertisement beacon paid by the game wallets; research first (on-chain channels and their code limits, DERO discovery tools, the ethics of unsolicited messages on a privacy chain, beacon and referral mechanism design with Sybil-safe rewards), then design, implement, measure on mainnet; the beacon publishes only measured figures, never promised returns | DESIGN (research done: `gametheory/research/r33_outreach.md`, rules OR-1..OR-10; pull-only, D-GT-22) | §4 goal 5; GT-B19 |
+| GT-B27 | M5 `gt_pool.bas`: Register (tag, fee), Anchor, ProveBlock (GT-B24 parse, credit tagged non-final miniblocks once per block), epochs, W_i = w_i(1 + min(s_i/S, 1)), payout cap, locked stake, burn β, prover fee, concentration alarm; DVM tests with the real mainnet blocks and planted tags; its own independent audit before deploy | IN PROGRESS: `gametheory/contracts/gt_pool.bas` v2 (research defects fixed: tag 0/ff refused, fixed miniblock count 10, claim deadline = Rollover start, Rollover destination cap, prover fee 2000 ≥ measured proof storage 1,735–1,927; ProveParent) + `dvm/r33_pool_test.go` 6/6 PASS (+ chain-back, late claim) (honest epoch with cap/rollover/forensics, proof guards, stake boost and lock, split-neutrality; conservation checked in each); independent audit pending | §8.1 M5 |
+| GT-B28 | M6 `gt_beacon.bas`: measured-figures publish, Subscribe, Gnomon/TELA header; cost per update measured | IN PROGRESS: `gametheory/contracts/gt_beacon.bas` + `dvm/r33_beacon_test.go` PASS (owner-only Publish with measured height ranges and length caps, a future range refused, opt-in Subscribe/Unsubscribe, nameHdr/descrHdr/iconURLHdr, never holds DERO, Initialize once); independent audit pending; mainnet cost per update pending | §8.1 M6; OR-1..OR-10 |
+| GT-B29 | playbooks: the earn job mines with `--game-tag` of each wallet; a prover/anchor loop (anchor every block the gt wallets mine, prove it after it settles); a pool chain audit (payout = formula of verified credits) | SIM PRE-FLIGHT PASS 2026-11-17 (`playbooks/gt_pool_cycle.py`, record `harness/runtime/gt_pool_sim_20261117T164807.json`): 3 wallets registered (tags verified on chain), 3 anchors + 18 chain-back proofs = 21 blocks, credits 64/71/54, claims 12,120/12,120 (both capped at 30 %) and 11,542 = the formula, balance 25,218 = burned 20,600 + pool left 4,618, beacon published; fees 50,637 atomic, 151 s. Mainnet: the earn job mines with 8-byte tags since 08:44 (b8deacdd06c25b08 seen); mainnet cycle next | gt_pool_cycle.py; gt_earn.py |
+| GT-B30 | econsim for M5: split-neutrality, the stake boost bound, the payout cap, the burn β against the sponsor subsidy, prover-fee break-even | DONE 2026-11-17: econsim 25/25 (7 M5 checks: 4,000 random uneven splits over 2–6 identities never gain; stake moves at most 3 − 2√2 = 17.16 % of a pot; boost ≤ 2×; the cap is splittable by a dominant identity (stated); a 10 % member of a 1-DERO epoch nets positive after the 20 % burn, a 1 % member needs 2 epochs to recover the entry fee; pfee 2,000 ≥ measured proof gas 1,927) + the M4 v2 rule (colluders only force a dispute) | harness/gametheory/econsim.py M5 |
+| GT-B31 | gt_pool anchor coverage and selection bias (found 2026-11-17 while wiring the playbook): a block is creditable only if an `Anchor` call executed IN it, and a call cannot choose its block. Anchoring every block costs ~4,800 tx/day; and an integrator that is also a member could include anchors only in blocks where it mined many miniblocks. Design: chain back from an anchor through the proven block's tips (its parent ids are in its bytes), crediting a parent only when (a) its height is the child's height − 1, (b) the child has exactly one tip, (c) no other block of that height was proven (a second one marks the height contested and uncredited); side blocks (same height as the previous topo block, blockchain/blockchain.go:1385-1397) earn no reward (:984-986) and must never be credited; measured alt-block rate 2.05 % (R32) bounds what the conservative rule leaves out. Until done, only directly anchored blocks are credited and the anchor bot anchors at a fixed cadence independent of who mined | DONE in gt_pool v2 (2026-11-17): consensus allows exactly one tip at height − 1 (blockchain/blockchain.go:490-509), so the tip chain back from an anchored block is the main chain; a side block is never a main-chain block's tip and its own txs never execute; `ProveParent` walks back; TestR33PoolChainBack on real consecutive mainnet blocks (the real tip of 7,915,142 = the id of 7,915,141) | gt_pool.bas pproc/ProveParent |
+| GT-B32 | 8-byte miner tags (mainnet scan 2026-11-17, heights 7,915,962–7,916,003): the tagged gt miner's miniblocks were accepted on MAINNET (3 carried b8deacdd, one of them final), and OTHER miners already write constant nonzero Flags (01000000, 02000000, 03000000, 05000000, 06000000), so a 4-byte tag could be ground (~2^32 keys) to take their credit. Tag = first 8 bytes of SHA3256(SIGNER()) in miniblock bytes 32..39 (Flags + Nonce[0]; the CPU loop iterates only bytes 43..46, cmd/dero-miner/miner.go:931/954/973); ~2^64 to grind | DONE in gt_pool, gt-dero-miner --game-tag=<hex16>, gtlib.pool_tag, gt_pool_cycle, tests; members must register before mining tagged | gt_pool.bas mytag/credit; cmd/dero-miner/gametag.go |
+| GT-B33 | batched block proofs — REFUTED by measurement 2026-11-17 (throwaway DVM breakdown, 598-byte real block): ProveBlock storage gas 1,506 = ~1,370 for the call's own argument data (the block as hex; every call pays storage gas = its SCDATA length, dvm/sc.go:261-263) + census 85 + tip 33 + timestamp 17; compute (5.09M) is free. A proof costs ~2 gas per block byte whether batched or not, and binary arguments are not safe through the wallet's JSON. The levers are fewer proven blocks and more member work per proven block (a member share s gives 9s credits per proven block against ~1.5–2.2k atomic); see GT-B34 | CLOSED (NO-GO N9) | dvm/sc.go:263 |
+| GT-B34 | (MEASURED 2026-11-17: follow mode 0.20 credits per proof vs 0.11 fixed-depth, epoch fees 28,138 vs 64,756 atomic) proof economics in flight (from GT-B33 and the mainnet cycle): prove only where it pays — choose anchor windows around blocks the members mined (headers name each miniblock's miner off-chain), stop a chain-back walk at a bound past the last block with member work, and size --anchors/--depth from the measured member share; the mainnet record `gt_pool_mainnet_*.json` supplies the real fee per proof and credits per proven block | OPEN | gt_pool_cycle.py prove |
+| GT-B35 | the concentration alarm needs a sample (research: ≥ 360 proven normal miniblocks for the 0.40 threshold's false-alarm bound), but follow-mode proving (GT-B34) proves ~15 blocks (~135 miniblocks) per epoch: evaluate the alarm over the census summed across epochs, off-chain from the contract's own per-epoch counts (k<e>_<keyhash>), and publish it on the beacon with its epoch range | DONE 2026-11-17: `harness/gametheory/pool_census.py` (read-only GetSC; exit 0/4/3) + the cycle publishes `pool_census` on the beacon; KAT R33-6; MAINNET epochs 19,790–19,791: 378 verified miniblocks, 19 KeyHashes, top 17.7 %: no alarm (`harness/runtime/gt_pool_census_mainnet.json`) | gt_pool census; pool_census.py |
+| GT-B36 | the game-theory page as a developer's guide (the user, 2026-11-17): plain-language overview with honest limits, a generated SVG flow of the verified pool and the audit bounty, mainnet charts from the records (epochs, burn, census, gas census), a per-contract reference (entrypoints parsed from the .bas, storage keys, rules, quoted code), a build-your-own-game guide linked to lessons and audit findings, the audit summary; how miners joining benefits the network (attack cost, main-chain-only pay, forensics, burn, the honestly bounded hashrate effect) visualized; every implemented R32/R32a/R33 objective as a stage matrix parsed from §8.2/§7; light/dark tokens, responsive, accessible; gated by kitgate, regen page gates, coherence, and a new KAT test_gt_page_r33 | DONE 2026-11-18: merged (17 sections, 16 charts, flow/byte/audit diagrams, contract reference with 23 verbatim excerpts, build-your-own-game, network benefits, objectives matrix); kitgate G5–G14 PASS, KAT test_gt_page_r33 10/10 15/15; harness/kit/chartkit.py + kitgate G13/G14 | artifacts/src/gen_gametheory.py |
+| GT-B37 | the mainnet turnstile round of step 3c summed only the run's own contracts (the new gt_audit SCID, balance 0), so its total said nothing about the pool and beacon: let `gt_cycle.py --audit-tasks 3` take an explicit SCID list (the pool, the beacon, the retired R32 contracts) so a mainnet round attests a non-trivial total | OPEN (R34) | gt_cycle task-3 setup; audit_tasks.py --scids |
+| GT-A01 | critical: `Initialize` is public and unguarded in all four contracts: anyone re-initializes after Freeze, becomes owner, resets state; gt_prize drained (2 atomic in, 100,002 out), gt_service drained via the epoch length (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit01*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: first line `IF EXISTS("owner") == 1 THEN RETURN 1` | gt_prize:14, gt_service:11, gt_attest:13, gt_audit:34; `gametheory/audit/r33_contract_audit.md` |
+| GT-A02 | critical: gt_attest juror stake not locked per dispute: one stake votes at full weight in every dispute; payouts exceed the loser's stake (attacker +1,000,000 over 20 disputes; an honest 5,000,000 stake unwithdrawable) (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit02*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: escrow the weight at CommitVote, release at settle | gt_attest:137-145, 226, 229-233; `gametheory/audit/r33_contract_audit.md` |
+| GT-A03 | high: gt_audit Settle O(n²): ≥ 12 distinct answers exceed 10M gas; 7 Sybil junk entries lock a round of 9 honest auditors; unbounded answer length exceeds the 20,000 storage gas; bounty and bonds stuck (confirms GT-B23) (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit03*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: tally at Reveal (O(n) Settle), cap answer length, per-entrant pull refunds without Settle after a timeout | gt_audit:166-286, 134, 148; `gametheory/audit/r33_contract_audit.md` |
+| GT-A04 | high: gt_audit strict majority overrides a revealed correct sponsor answer: 2 Sybils answering junk take the bounty, the honest auditor loses its bond (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit04*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: no majority-over-sponsor; verify (GT-B24) or slash only provably wrong answers | gt_audit:184, 192-193, 360; `gametheory/audit/r33_contract_audit.md` |
+| GT-A05 | high: gt_prize: forfeited reveal bonds go to the same round's prize, so withholding a losing reveal is free; 2 Sybils win 91.6 % vs a fair 66.7 % (refutes the M3 bound in mechanisms.json) (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit05*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: forfeits go to the treasury/next round, never to the current prize | gt_prize:127-143, 157-162; `gametheory/audit/r33_contract_audit.md` |
+| GT-A06 | medium: gt_prize first-come entry slots: 32 Sybils at 1 atomic fill a round and take the sponsor prize (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit06*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: minimum entry, entry fee not refundable, or weight by verified mining (GT-B25) | gt_prize:103-104; `gametheory/audit/r33_contract_audit.md` |
+| GT-A07 | high: gt_attest one challenge slot per claim: the claimant's own Sybil challenges first, no juror reveals, the claimant keeps both bonds and the false claim mints MAT (then a 2x boost in M2/M3) (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit07*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: several challenge slots; an unrevealed dispute never mints; verify claims (GT-B24/B25) | gt_attest:90-93, 184, 300; `gametheory/audit/r33_contract_audit.md` |
+| GT-A08 | medium: gt_attest juror commits omit the juror address: a commit can be copied and revealed with the published salt (25,000 earned without judging) (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit08*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: bind the commit to ADDRESS_STRING(SIGNER()) as gt_audit does | gt_attest:141-142, 162; `gametheory/audit/r33_contract_audit.md` |
+| GT-A09 | medium: gt_attest: any unchallenged claim mints MAT after 20 blocks (~6 min); the contract cannot check the chain (by design) (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit09*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: claims verified in-contract (GT-B24/B25) or a longer window and a funded challenger | gt_attest:17, 178-181; `gametheory/audit/r33_contract_audit.md` |
+| GT-A10 | medium: gt_service: sponsor funds in an epoch with no fee payer can never be paid out (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit10*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: roll unclaimed sponsor funds forward or refund to the sponsor | gt_service:96-105, 138-140; `gametheory/audit/r33_contract_audit.md` |
+| GT-A11 | low: gt_attest minstake 0: a zero-weight juror wins, ClaimJuror divides by zero forever, a later stake is locked (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit11*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: require weight > 0 | gt_attest:44, 138, 226; `gametheory/audit/r33_contract_audit.md` |
+| GT-A12 | low: installed anonymously (ring > 2): every anonymous caller passes the owner check; the treasury can never be withdrawn (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit12*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: refuse an owner that is not a valid address | every Initialize; `gametheory/audit/r33_contract_audit.md` |
+| GT-A13 | low: rounding remainders, slashes with no winner and stray deposits with calls are owned by nobody (no sweep) (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit13*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: refuse DEROVALUE() where none is expected; sweep to the treasury | gt_attest:226, 229; gt_service:141; `gametheory/audit/r33_contract_audit.md` |
+| GT-A14 | low (PLAUSIBLE): a block producer at the end of a reveal window can omit a competitor's reveal (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit14*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: reveal windows long enough to span many producers (research rule 4) | Reveal in prize, attest, audit; `gametheory/audit/r33_contract_audit.md` |
+| GT-A15 | info (PLAUSIBLE): silent Uint64 wrap in products of owner-set parameters (bond × k, the prize boost) (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit15*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: bound every owner parameter at Initialize | gt_attest:68, 226; gt_service:141; gt_prize:160; `gametheory/audit/r33_contract_audit.md` |
+| GT-A16 | info: a notarization stores only the height, not the submitter; a copied digest can front-run (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit16*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: store the submitter; commit-reveal for digests | gt_service:71-72; `gametheory/audit/r33_contract_audit.md` |
+| GT-A17 | info (design): a claim is not tied to the claimant's actual miniblocks; several addresses can claim the same range (audit CONFIRMED by a DVM proof-of-concept unless marked) | FIXED 2026-11-17 (62b8e048/49029b67; regression test `dvm/r33_audit_test.go` TestR33Audit17*, invariants `dvm/r33_verify_*_test.go` 37/37) — fix: GT-B25 tags + GT-B24 block proofs | gt_attest Claim; `gametheory/audit/r33_contract_audit.md` |
 
 ## 8. Dimension plan (R32 as run; R33 carry)
 
@@ -252,6 +345,137 @@ GT-B15 a third audit task + GT-B16 the dispute drill on the sim chain; d4 GT-B3 
 recorded estimates; d5 GT-B17, GT-B18, GT-B20 (harness debts); d6 the R32 carry GT-B1, GT-B4, GT-B7 (they turn
 assumptions into measurements), then GT-B2, GT-B5, GT-B6, GT-B8; GT-B19 only on the user's decision.
 
+### 8.1 R33 design (D-GT-23; the user's objectives 10–15 of §2, built on the confirmed GT-B24 and GT-B25)
+
+**The key fact.** A contract can verify a block itself: it stores `BLID()` when a call executes in a block
+(`Anchor`), and later accepts that block's bytes only if `SHA3256(bytes)` equals the stored id (GT-B24, CONFIRMED in
+the DVM on 4 real mainnet blocks, 1.74M of 10M gas). Every miniblock in those bytes carries its miner's KeyHash and a
+free `Flags` field; a game miner writes its game tag there (`--game-tag`, GT-B25, CONFIRMED on a private chain), and
+the PoW over all 48 bytes makes the tag unforgeable. So mining for a game identity is **checked by the contract, not
+voted on** (research rule 1), which removes the collusion and Sybil-majority problems of R32a's M1/M4 for every fact
+that lives in a block. The DVM cannot read other contracts (code research), so the mechanisms that need these facts
+live in one contract.
+
+**M5 `gt_pool.bas` — verified mining pool (objectives 3, 4, 1, 2, 5).**
+- *Identity.* `Register()` binds `tag = first 4 bytes of SHA3256(SIGNER())` (SIGNER() is the raw 33-byte key; lesson 34)
+  to the signer (a taken tag is refused; anonymous signers refused; tags 00000000 and ffffffff are refused because
+  stock miners leave Flags at 0, so a ground key with tag 0 would be credited for everyone's work). A non-refundable entry fee `e` (research rule 7: identity must cost
+  something that is not refunded) is split between the burn (below) and the reward pool.
+- *Proof of mining.* `Anchor()` (anyone) stores `BLID()` for its height; `ProveBlock(h, bytes, ntx, m)` verifies the
+  bytes against the anchor, then credits each non-final miniblock whose Flags equals a member's tag (once per block).
+  Only main-chain blocks execute calls, so only accepted blocks can be anchored: orphaned work is never paid. A
+  prover earns a small fixed proof fee from the pool (someone must pay the ~1.74M-gas call).
+- *Reward sharing (objective 3).* Payouts per epoch of E heights from the pool (sponsor deposits, entry fees, game
+  fees): member i gets `pool × W_i / ΣW`, `W_i = w_i × (1 + min(s_i / S, 1))`, where `w_i` is i's verified miniblocks
+  in the epoch (a PPLNS-style height window, research rule 8: hopping-proof and linear in work, so splitting work over
+  addresses gains nothing).
+- *Stake weighting without plutocracy (objective 4).* `s_i` is DERO i has locked in the pool (time-locked, withdrawable
+  after the lock). Stake at most doubles a member's work share, and stake without mining earns nothing. Splitting a
+  stake across identities never helps: two identities with w/2 each and s/2 each get w(1 + min(s/2S, 1)) ≤
+  w(1 + min(s/S, 1)). A per-IDENTITY payout cap (share ≤ c of an epoch, the excess rolls on) limits one dominant identity only:
+  an operator can split around it at the entry fee per extra identity (R33 research `r33_pool_math.md`); fairness
+  rests on the weight being linear in verified work, not on the cap.
+- *Deflation (objective 1).* A fixed fraction β of every inflow is moved to `burned`, which no entrypoint can send
+  (no SEND path reads it; no UPDATE_SC_CODE; Initialize guarded): verifiable by anyone as `GetSC` balance ≥ `burned`
+  + all liabilities. The supply figure itself is a formula (blockchain/supply.go) and never shows a burn, so the page
+  reports "emitted minus provably locked". A burn is a cost paid by the burner, not a payment to miners (research
+  rule 10); members accept it because the pool's sponsor subsidy is larger than their burn share.
+- *Forensics (objective 2).* Every proven block leaves public, verified facts in the contract: height, header
+  timestamp, each miniblock's KeyHash and Flags. Per epoch the contract keeps the largest share of miniblocks held by
+  one KeyHash among proven blocks (a concentration alarm, public flag) and timestamp gaps; a prover is paid per
+  proven block, so the forensics data is produced by the same incentive. Facts that are not in a block (emission
+  totals, balances) stay with the audit bounty M4 v2 (no majority over the sponsor, GT-A04 fix).
+- *Peer attacks (objective 5), honestly bounded.* A contract cannot see or stop P2P traffic, eclipse attacks or
+  reorgs (an orphaned block's state, including its anchor, is reverted). What the pool can do: pay only work that
+  ended in main-chain blocks (orphan-causing behaviour is unpaid), raise the number of independent miners (each
+  needs its own work; more independent hashrate raises the cost of a 51 % or selfish-mining attack), publish the
+  concentration alarm, and cap any one miner's payout share. These are incentives and detection, not prevention.
+
+**M6 `gt_beacon.bas` — discovery (GT-B26, D-GT-22).** The operator publishes the live games (SCIDs, parameters, how to
+join, the README path), and only measured figures with height ranges (fees per block, verified miniblocks, burned,
+payouts), each reproducible from `GetSC` and block headers; no promised returns. `Subscribe()` lists addresses that
+opted in. Indexable by Gnomon (TELA-style name/description header). Cost per update measured with
+`DERO.GetGasEstimate`.
+
+**M1–M4 v2.** The audit fixes GT-A01..A17 (independent audit; every contract re-audited before deploy, GT-B21). M1's
+mining claim is superseded by M5's verified credit (GT-A07/A09/A17); M1 stays only as the R32 record.
+
+**Measurement (what decides success).** Sim chain first (pre-flight only, D-GT-5), then mainnet with new SCIDs: (1) every
+pool payout equals its formula from the contract's verified credits (a chain audit like cycle_audit); (2) the burn is
+locked (balance check at several heights); (3) split-neutrality and the payout cap measured in econsim and the DVM
+tests; (4) outside participation counted only by tags that are not the operator's committed wallet set (OR-7..OR-10);
+(5) the hashrate effect stays bounded by §4 goal 5 until outside tags appear.
+
+### 8.2 R33 objectives tracker (the user, 2026-11-17: every R33 objective and every open R32/R32a objective goes through research → design → implement → debug → enhance in R33; D-GT-25)
+
+Stages: R researched (sources/anchors in `gametheory/research/`), D designed (§8.1 or a row), I implemented, T tested
+(DVM/KAT/econsim), P pre-flight on the private chain, M measured on mainnet, E enhanced from a measurement. A stage is
+claimed only with its evidence; "—" means not reached yet.
+
+| Objective (source) | R | D | I | T | P | M | E | Evidence / next |
+|---|---|---|---|---|---|---|---|---|
+| S. security limits of R32a: collusion, Sybil auditors, consensus/peer/range-proof (§2 item 10) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | check-don't-vote block proofs (GT-B24, measured on mainnet: 36 + follow-mode proofs verified in-contract), gt_audit v2 dispute-not-override (GT-A04; W16 drill on a private chain), bribery = griefing only (W4), front-running harmless (W6); limits stated (§8.1) |
+| 1. deflation through the suite (item 11.1) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | gt_pool burn β 20 % (balance ≥ burned, conservation tests); sim burned 20,600; MAINNET epoch 19,790: 21,000 atomic burned (locked, GetSC-verifiable), published on the mainnet beacon |
+| 2. chain/block forensics through contracts (11.2) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | verified timestamps + KeyHash census per epoch (k/kn/km), research r33_forensics_and_security.md (alarm t = 0.40). MAINNET epoch 19,790 (read from the pool contract, GetSC): 324 proven normal miniblocks, 19 distinct KeyHashes, largest 55 = 17.0 % (then 53, 53, 47, 37): no concentration; 42 verified timestamps. E: the alarm summed across epochs (one follow epoch is too small a sample): census over 5 epochs (19,790–19,798, `harness/runtime/gt_pool_census_mainnet.json`, refreshed 2026-11-18 by pool_census.py): 918 verified miniblocks, 23 KeyHashes, top 18.7 %: no alarm (sample ≥ 360, GT-B35), published on the beacon |
+| 3. more miners, reward sharing for all (11.3) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | gt_pool linear work weight, follow-mode proving (GT-B34), continuous mode (GT-B12). MAINNET: 5 epochs (19,790 / 19,791 / 19,793 / 19,796 / 19,798), every independent re-audit PASS, credits paid to m1, m2 and m4; outside members stay the user's decision (pull-only, GT-B19/B26) |
+| 4. stake-weighted without plutocracy (11.4) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | W = w(1+min(s/S,1)), split-neutral (econsim 4,000 splits; TestR33PoolSplitNeutral), ≤ 17.16 % pot transfer. P: W1 private chain, m3 with a matured 1-DERO stake at weight 200 per credit. MAINNET epoch 19,798 (record `gt_pool_mainnet_20261118T115043.json`, independent re-audit `gt_pool_reaudit_mainnet_e19798.json` PASS, 15 proven blocks 7,919,229–7,919,256): m2 (1 DERO locked at 7,917,727, matured) 3 credits → W 600 = 200 per credit (the 2× ceiling, never more), TW 600, claim 5,100 = the 30 % per-identity cap of P0 17,000 (the cap, not the stake, bounds a lone staker). E: epoch 19,796 left the boost unexercised (m2 mined no proven miniblock) → D-GT-29 steered the earn miner to m2 |
+| 5. secure blocks from peer attacks (11.5) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | only main-chain work is paid; concentration alarm; honest limits (no P2P view). Mainnet: the largest miner held 17.0 % of epoch 19,790's verified miniblocks (alarm at 40 %). E: census over 5 epochs (19,790–19,798, `harness/runtime/gt_pool_census_mainnet.json`, refreshed 2026-11-18 by pool_census.py): 918 verified miniblocks, 23 KeyHashes, top 18.7 %: no alarm (sample ≥ 360, GT-B35) |
+| outside participation / beacon (item 15, GT-B26/B28) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | pull-only (D-GT-22); gt_beacon on mainnet with measured figures (pool epoch summary, SCID, census); the contracts README tutorial; `gametheory/ANNOUNCE_DRAFT.md` (measured figures with height ranges only, IDs as placeholders) for the user to post if they choose. Outside participation itself is the user's decision (GT-B19) |
+| contract security audit (item 14, GT-B21) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | GT-A01..A17 + 5 invariant findings fixed; 37/37 invariants; the fixed gt_pool (5 epochs) and gt_audit v2 (step 3c) run on mainnet. Next: re-run the invariant suite after every contract change (KAT) |
+| contracts README tutorial (GT-B22) | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | `gametheory/contracts/README.md` + KAT R33-5 |
+| R32 primary: DVM/SC game suite grounded in the reward code (§2 items 3–5) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | R32 measured 2026-11-15: three contracts (M1–M3), econsim, the zero-touch pipeline G35; one mainnet cycle settled and chain-audited (G36); then superseded for mining credit by M5 (R33) |
+| R32 primary: dedicated wallets, mining to them, deploy, play; the user's address never used (§2 items 5–6) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | gt-wallet + playbooks; banguard (sha256) refuses the user's address everywhere; the earn job mines the gt wallets only (D-GT-4) |
+| R32 primary: the artifact page + PDF in the house style (§2 item 7) | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | `artifacts/dero-enhanced-game-theory.html` (R33 rebuilt as a developer's guide, GT-B36) + its PDF kept in sync by pdfsync (B335) |
+| R32a primary: the mainnet ladder 3 → 5 wallets (§2 R32a path) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | R32a measured 2026-11-16: steps 3/4/5 settled, 15/15 prize rounds genuine, 6/6 audit rounds, every chain-audit sum = −fees |
+| R32a primary: miners paid to mine along with the games (network hashrate) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | R32a: fees 0.27–0.59 % of the block reward (bound, §4 goal 5); R33: verified mining pool pays verified work (M5), members' verified share = hashrate prediction (GT-B13) |
+| R32a primary: security concerns addressed where a game can (detection) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | R32a M4 audit bounty; R33 v2 dispute-not-override, block proofs (check, don't vote), turnstile task 3, the census alarm |
+| GT-B1 multi-round sim game, N ≥ 6, strategy mixes (R32) | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ | DONE (W1, record `gt_pool_sim_20261117T190627.json`, chain audit PASS, 44 proven blocks): 7 wallets, 5 members: m1/m2 honest, m3 with a matured 1-DERO stake (weight 200 per credit), j1+j2 one operator split, u1 untagged non-member (0 credit), u2 a non-member mining with m1's tag (its work credited to m1: 113 ≈ 2 × 53, u2 gains nothing); claims = pool × W / TW (m1 72,000 × 11,300 / 39,200 = 20,755). The split's 122 vs ~53 is the sim's dispatch-bound mining (W10), not a pool rule: credits equal each tag's verified miniblocks |
+| GT-B2 isolated-testnet path (R32) | ✓ | ✓ | — | — | — | — | — | CLOSED (D-GT-26): the private simulator chain pre-flights every path and the result is measured on real mainnet (D-GT-5), so an isolated testnet adds no evidence; reopen only if a path needs the real derod P2P/getwork stack before mainnet |
+| GT-B3 mainnet fee per entrypoint (R32) | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | DONE (W3): `harness/gametheory/gas_census.py` → `harness/runtime/gt_gas_census_mainnet.json` (KAT H3): 453 mainnet calls in 5 records; every estimated call paid more than its storage gas (smallest margin 107, prize:Draw); pool on mainnet: ProveParent storage median 1,482.5, fee median 1,682.5 (+200), ProveBlock 1,546 / 1,746, Register 128 / 232, Anchor 106 / 229 |
+| GT-B4 juror bribery (R32) | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | DONE (W4, `dvm/r33_wb_test.go` TestR33WBAuditBriberyW4): k = 1..7 bribed auditors of 8 against an honest sponsor: every round disputed, all 8 bonds refunded, the bounty back to the sponsor, the contract at 0; briber net ≤ −564·k atomic (its own call fees) minus any bribe; the honest auditors lose their would-be share (14,285 at k = 1 to 100,000 at k = 7): griefing, never profit |
+| GT-B5 MAT value assumption (R32) | ✓ | ✓ | — | — | — | — | — | CLOSED for R33 (D-GT-26): M5 pays DERO and credits only verified work, so no R33 mechanism rests on a MAT value; MAT remains an assumption of the M1–M3 boost games, whose boost effect is measured by W14 |
+| GT-B6 front-running public SC arguments (R32) | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | DONE (W6, TestR33WBFrontRun*/RegisterRace/BeaconPublish/AuditCommitCopy): a copied ProveBlock/ProveParent leaves credits, weights, census and claims identical and moves only the 2,000 prover fee (the original reverts cleanly; its sender still pays its tx fee); a Register copier gets its own tag; beacon Publish is owner-only; a copied audit commit can never be revealed (the copier forfeits its bond) |
+| GT-B7 DVM own-token stored balance underflow (R32) | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | DONE (W7, TestR33WBOwnAssetCounterW7) — the R32 row was wrong in detail: the own-asset overflow/underflow checks are skipped (dvm/simulator.go:211, 223), the wrapped difference is computed (:229) but `StoreSCValue` drops any write keyed by the contract's own id (dvm/sc.go:395-398), so nothing wraps in state; the own-token balance is never stored and reads 0; own-token deposits back are dropped (dvm/sc.go:209-213); DERO keeps its underflow revert. Safe: the own token is unlimited by design and no builtin reads that balance; residual: a holder minted ≥ 2^64 in total gets an undecodable balance (author's concern, not supply/consensus) |
+| GT-B8 multi-address Sybil study (R32) | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ | DONE: the pool rule is split-neutral (econsim 4,000 splits, TestR33PoolSplitNeutral); W1 shows the only way splitting gained was more miner PROCESSES at sim difficulty 1 (W10); on mainnet miniblocks follow hashrate, so a split gains nothing in credit and pays an extra entry fee per identity |
+| GT-B10 sim-share anomaly (R32) | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ | DONE (W10, from W1): 396 normal miniblocks over 44 blocks, 7 miner processes at --cpu-max 20 or 40: ≈ 56 each (u1 56, m2 53, m3 52, j1 45, j2 77, m1's two 113): at difficulty 1 a share follows the number of processes, not CPU (lesson 0's hypothesis measured); sim shares are never used as hashrate evidence |
+| GT-B11 time-to-coins from measured H/s (R32) | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | DONE (W11, KAT H11): `time_to_coins.py --hs H | --from-earn-log FILE` (restart-aware rate): the r32 earn log, 55.1 h of ticks → 9.955 DERO/day ≈ 23.2 kH/s effective at the live difficulty, agreeing with the 22.4 kH/s the miner reported in R32 |
+| GT-B13 realized vs expected payoffs (R32a) | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | DONE (W13): the pool pays the formula exactly (3 mainnet epochs, independent re-audit PASS), so realized vs expected is the work: cycle 1's fixed-depth sample (unbiased w.r.t. who mined) gave members 4 / 324 = 1.23 % of normal miniblocks; predicted from the measured 23.2 kH/s (W11) against the network's ~1.89 MH/s (difficulty 3,313,621, 17.54 s blocks) = 1.23 %; z = +0.01. Verified credits track real hashrate on mainnet |
+| GT-B14 boost vs win frequency (R32a) | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | DONE (W14): econsim replicates gt_prize Draw exactly (Reveal sd += num; pick = sd % tw): 20,000 rounds, boosted 200,000 vs four 100,000 → wins 6,652 / 3,349 / 3,332 / 3,277 / 3,390, χ² 2.02 (df 4, p ≫ 0.01): frequency = weight / total. R32a step 5's m4 4-of-5 had P(≥ 4 of 5 at 1/3) ≈ 4.5 %: luck, not a defect |
+| GT-B15 third audit task: SC balance turnstile (R32a) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | DONE (W15, KAT H15): `audit_tasks.py --task 3 --scids S1,.. --topoheight T`: sha256 over sorted `<scid>:<balance>` lines + `total:<sum>:<n>` from DERO.GetSC at T; refused below the pruned floor, within 20 of the tip, > 32 or malformed SCIDs; live: the six mainnet gt contracts at topoheight 7,916,400 → total 97,000 atomic, the same answer twice. PRIVATE CHAIN (W15, `gt_cycle.py --audit-tasks 3,1`, record `harness/runtime/gt_cycle_sim_w15_20261117.json`): a gt_audit round with task 3 over the cycle's 4 contracts (total 66,000 atomic): sponsor and both auditors matched, 2 winners, 3,000 each, settled; then a task-1 round settled the same way. MAINNET (step 3c, 2026-11-18 04:39–05:03, record `gt_cycle_mainnet_20261118T050346.json`, heights 7,919,884–7,919,961): gt_audit v2 installed (new SCID, fee 17,790), one task-3 round: 4 auditors entered and revealed, all matched the sponsor, settled nw 4, share 1,500 each, no dispute, every bond refunded; fees 25,883 atomic; chain audit (`gt_cycle_audit_mainnet_20261118T050346.json`, mining from the chain: m1 12,300) net m1 −26,107, m2..m5 +56 each, sum = −fees exactly. E: the record missed the Settle fee (lesson 39, fixed + KAT R33-8). Limit: the run's turnstile covered only its own contracts (the new audit SCID, total 0) → GT-B37 |
+| GT-B16 the dispute path on chain (R32a) | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ | DONE (W16, `gt_cycle.py --wrong-audit 1`, record `harness/runtime/gt_cycle_sim_w16_20261117.json`, private chain 2026-11-17 11:16): round 0 honest → 2 winners, 3,000 each; round 1 with a planted wrong sponsor answer → disp 1, refund 1, nw 0, every bond refunded, the 6,000 bounty reclaimed by the sponsor; the same run re-played the fixed M1–M4 end to end (prize round drawn, 3 entrants) |
+| GT-B17 earn credit counter reward//10 (R32a) | ✓ | ✓ | ✓ | ✓ | — | — | — | DONE (W17, KAT H17): gt_earn `chain_credits()` uses cycle_audit.chain_mined ((base reward + block fees) // miniblocks, the integrator's final share excluded); display only; takes effect on the earn job's next relaunch |
+| GT-B18 content-hash staleness of gt bins (R32a) | ✓ | ✓ | ✓ | ✓ | — | — | — | DONE (W18, KAT H18): gtlib.stale_bins compares `<bin>.srchash` (every package the command imports from the module or vendor/, plus go.mod/go.sum/vendor/modules.txt, ~1,070–1,400 files, ~0.5 s), file times only when no hash is recorded |
+| GT-B20 version-bump KAT (R32a) | ✓ | ✓ | ✓ | ✓ | — | — | — | DONE (W20, `harness/kat/test_version_bump_r33.py` VB1/VB2, 8/8 mutations): every non-pending round in harness/round.json: a consensus-package change between new_tests_base and head_after requires config/version.go to carry that round's suffix; 13 rounds ok |
+
+### 8.3 R33 coordination (the user, 2026-11-17: "make sure everything is well coordinated for all above tasks to get best coherent results"; D-GT-27)
+
+One commit stream: every change lands in <repo> by the main session; agents work only in their own
+`git clone --shared` under the scratchpad and hand back a commit, which is merged (fetched by branch, never by a short
+hash: lesson 37) and re-tested before anything builds on it. Live jobs never share a resource:
+
+| Job | Resource it owns | May run with | Must not run with |
+|---|---|---|---|
+| earn job (gt_earn, stallwatch) | the one pipeline-owned mainnet miner, tagged (8-byte) | everything | a second mainnet miner |
+| mainnet pool cycle (gt_pool_cycle --network mainnet) | the m1..m5 wallet servers on 47850-47854; mainnet spends of the gt wallets | earn job, sim runs, agents | another mainnet cycle (same wallets and ports) |
+| private-chain runs (gt_playbook + gt_pool_cycle/gt_cycle --network sim) | ports 47100/47102/47180, sim wallets 47250+ | everything mainnet | another sim run (same ports) |
+| agents | their clone only; no node writes; mainnet RPC read-only | everything | each other's files (split by file before launch) |
+
+Order of work (each step's gate must PASS before the next uses its output):
+1. mainnet cycle 1 (r33-pool-mainnet-1) → its chain audit (gate: audit ok, conservation, claims = formula);
+2. agent A's harness items (W3/W11/W15/W17/W18/W20) and W16 drill → merged; gates: go test ./dvm -run 'R32|R33',
+   test_gt_r33, test_gt_mechanisms_r32, gt_pipeline implementation/debug/enhancement;
+3. mainnet continuous mode (--follow --epochs N), sized from cycle 1's fee per proof and credits per proven block;
+   gate per epoch: the chain audit; stop after 3 failures;
+3b. DONE (epoch 19,798, weight 200 per credit, re-audit PASS). objective 4 on mainnet: one pool epoch with m2 locking 1 DERO of stake (`--lock m2=100000`), after the continuous loop
+   releases the wallets; gate: the audit models the matured boost;
+3c. DONE (2026-11-18 05:03, 4/4 auditors matched, settled; chain audit sum = −fees). GT-B15 on chain: deploy the fixed gt_audit v2 (new SCID; the R32 SCIDs stay retired, D-GT-20) and run one audit
+   round with task 3 (the turnstile over the gt contracts); gate: every auditor matches, the round settles;
+4. W13 from the continuous records; the beacon publishes each audited epoch and the census (GT-B35);
+4b. GT-B26 outreach: an announcement draft with measured figures only (`gametheory/ANNOUNCE_DRAFT.md`), posted by the
+   user if the user chooses (pull-only, D-GT-22; nothing is sent to anyone by the pipeline);
+5. R33 close: every §8.2 row closed with evidence; the full pipeline (fix_build_verify, the miner package changed);
+   pages, PDF, memories; the public sync with the contracts README; the push is the user's.
+
 ## 9. NO-GO ledger (do not re-propose without new evidence)
 
 N1 referral pyramid / pay-earlier-from-later deposits (Ponzi-shaped; econsim stop-inflow flags it) · N2 SC-native PoW
@@ -259,7 +483,7 @@ faucet (diverts hashrate from AstroBWT: the opposite of the goal) · N3 marketin
 (misleading) · N4 a contract that raises the block reward (infeasible, consensus) · N5 emission-funded yield with
 promised returns · N6 quadratic funding without sybil resistance · N7 an orphan-insurance contract (research Q5: uncle
 rewards lowered the selfish-mining threshold from 0.25 to about 0.185; paying for orphans subsidises withholding) · N8 superlinear
-loyalty / streak bonuses or per-identity stipends (research Q1: they reward consolidation and Sybil identities). Full reasons: `gametheory/mechanisms.json`.
+loyalty / streak bonuses or per-identity stipends (research Q1: they reward consolidation and Sybil identities). · N9 batched gt_pool proofs as a fee saving (a proof's storage gas is ~2 per block byte of call data, dvm/sc.go:261-263; batching moves the same bytes; measured 2026-11-17, GT-B33). Full reasons: `gametheory/mechanisms.json`.
 
 ## 10. Lessons (R32)
 
@@ -299,6 +523,45 @@ loyalty / streak bonuses or per-identity stipends (research Q1: they reward cons
 31. **A consensus-package edit moves anchors: re-check them before the full pipeline.** The full pipeline of 2026-11-16 07:44 FAILED in S3k (test_gt_reward_r32 GR1): the three comment lines of the D-41 fix in dvm/sc.go moved reward anchors RW42/RW43 by +3 lines (MOVED; quotes unchanged), and the soundness page still counted 9 consensus-package files instead of 11 (G22). Before a full run after any consensus-package edit: `reward_intel.py --check` (0 MOVED), `soundness.py` (G22), `disclosure_track.py --check`, the gomut anchors (find-text, unaffected), then regen. The new trace condition also got a Go mutation (gm-r32a-dvm-sim-trace-always). CORRECTED 2026-11-16 12:10: the first form ('if simulator {') was INVALID in the full pipeline (S3b: the `globals` import became unused), and the main session had read that compile failure as the test failing. The mutant now restores the old bug exactly (trace whenever --debug is present as a bool) and fails on the test's own assertion (r32a_simtrace_test.go:76). Read which line a test failed on before calling a mutation proved.
 32. **A miner's share includes the block's fees.** Step 5's chain audit missed the sum by 420 atomic. A per-wallet reconstruction from the record (fees, prizes, audit shares) matched four wallets exactly and put the whole 420 on m1, the wallet that was mining. The audit had credited each share as reward // 10; consensus pays (base reward + the block's tx fees) // len(miniblocks) (process_miner_transaction, reward_intel.split RW13-RW18), and the blocks carried our own SC calls. Fix: `chain_mined` reads each block's fees from DERO.GetBlockHeadersRange (by topoheight) and splits base + fees. With it, all three ladder steps balance EXACTLY: sums −85,608 / −46,144 / −56,252 equal minus the fees, and the 29 and 22 atomic residues of steps 3 and 4 were the same fee share (KAT GT26 fee case + mutation; 28/28, 62/62).
 33. **A new node build carries its round in the version.** The user asked (2026-11-16 15:50) whether `+22102026.r31` was right for the R32a build: it was not. The binary was the R32a build (installed 14:43:57; the `sc execution error` string absent, sha-256 differs from the r31 backup), but `config/version.go` had not been bumped, so derod could not say which round it was. Every earlier node round bumped it (r28d, r29, r30, r31). Fix: build metadata `+22102026.r32a` (the guard's `build-metadata only` class; semver and the P2P handshake ignore it); a full pipeline with install, and one more user restart. Bump the version in the same commit as the first consensus-package change of a round.
+
+34. **`SIGNER()` is already the raw key; `ADDRESS_RAW(SIGNER())` is the empty string.** gt_pool's first tag rule
+    hashed `ADDRESS_RAW(SIGNER())`; ADDRESS_RAW only parses an address string and returns "" otherwise
+    (dvm/dvm_functions.go:348-352), so every member got the same tag and the second Register was refused. A DVM test
+    with two members caught it before any deployment. Rule: hash `SIGNER()` directly; test every identity rule with ≥ 2
+    identities.
+35. **DVM `IF` takes only `THEN GOTO`.** `IF c THEN LET/STORE/RETURN` is not DVM-BASIC (dvm/dvm.go:730-746); write the
+    branch as a jump.
+
+36. **A DVM jump targets a line number: never reuse one.** Adding the gt_service wrap fix renumbered line 92, the
+    target of `88 GOTO 92`, so the exact-payout path fell into the new share computation; R32/R33 tests caught it at
+    once (5 service tests). Rule: inserted lines take unused numbers; grep every `GOTO <n>` before reusing `n`. A `DIM`
+    that a jump skips is never declared ("used without definition"): declare at the top.
+
+37. **Fetch an agent's commit by its branch, and check the merge landed.** `git fetch <clone> 2dd0db53` failed (a short
+    hash is not a ref), the cherry-pick did nothing, and the tracker row was committed as if the tests were merged; a
+    test run with "[no tests to run]" exposed it. Rule: fetch by branch (or the full hash), and run the merged tests by
+    name before recording them.
+
+38. **A directory is not a work file, and a relaunch must resume, not replay.** The continuous loop's watchdog watched
+    the run directory; its mtime changes only when files are added, not when events.jsonl grows, so after 4 h it
+    judged the loop stalled and relaunched it mid-epoch 19,793 (15:21). The new process funded the epoch a second time
+    and its audit trusted its own empty proof list, so it reported 2 credits against the contract's (correct) 4.
+    Fixes: the watchdog watches events.jsonl; the audit takes the contract's pr<h> keys as the proven set; the loop
+    records funded/recorded epochs and skips them, never claims twice, preloads contract-proven heights;
+    `harness/gametheory/pool_audit.py` re-audits any epoch independently (19,790 / 19,791 / 19,793 all PASS).
+39. **A fee the wallet has not indexed yet is not zero.** Step 3c's record summed fees with `fee or 0`; m1's Settle was
+    not in the wallet's transfer list within 40 s, so the total missed 600 and the chain audit's sum check failed by
+    exactly 600 (m1's balance delta +2,475 was one 3,075 miniblock minus the 600 fee). Fixes: the cycle resolves every
+    unresolved fee again at record time, else takes the fee the tx set explicitly, records `fee_source` and
+    `fees_unresolved`; never invents one (KAT R33-8, two mutants caught). The same run showed cycle_audit assumed a
+    prize contract; an audit-only record is now audited and writes only its own file (G36's game-cycle file untouched).
+40. **A page is checked against the records as they are when the check runs.** The project-only pipeline_20261118T071831
+    failed GP0 (page STALE): its gt_pipeline step rewrote gt_sizing_last.json from the live earn log (9.887 → 9.806
+    DERO/day), and the KAT files ran before the stage's own re-render. Fix: the stage re-renders the game-theory page
+    right after the steps that rewrite its live records, before the KATs (lesson 14's class, one step earlier).
+    The same run class then failed test_src_arch_page_r33 (SA1/SA8, pipeline_20261118T080213): that page is rebuilt
+    only after the miners, so its KAT now runs after the build (fix_build_verify AFTER_BUILD_KATS). Rule: a page's KAT
+    runs after the last step that rewrites the page or its inputs.
 
 ## 11. The research dossier (summary; the full text and every URL: `gametheory/research/`)
 
@@ -361,6 +624,18 @@ votes with slashing and P+ε acknowledged (M1), Ponzi shapes as NO-GO (N1, N5), 
 - D-GT-4 path: `playbooks/gt_earn.py`, `harness/gametheory/time_to_coins.py`, `gt-wallet register --pow-threads`; the pipeline's playbook stage checks the earn plan stops at the user's flag (exit 5).
 - Consensus guard: PASS (the reward agent's run; no non-test consensus file changed).
 
+### Round 33 — after implementation (2026-11-17)
+
+| field | value |
+|---|---|
+| Scope | the user's R33 items 10–15 of §2 + every open R32/R32a row (§8.2 tracker, D-GT-25), child rft only (D-GT-18/24) |
+| Research | `gametheory/research/r33_*.md` (web 46 sources + 10 FAILED; code capabilities; outreach; index; block proofs; pool math; forensics and security) |
+| Contracts | `gt_pool.bas` (M5 verified mining pool: Anchor, ProveBlock, ProveParent, 8-byte tags, stake boost ≤ 2×, burn, census) and `gt_beacon.bas` (M6) new; gt_attest/service/prize/audit fixed (independent audit GT-A01..A17, invariant verification 5 findings, 37/37 invariants) |
+| Node-side code | `cmd/dero-miner --game-tag=<hex16>` (miniblock bytes 32..39; CPU only); no consensus-package change |
+| Tests | DVM: r33_blockproof, r33_pool (6), r33_beacon, r33_audit (17 regression + 4 conservation), r33_verify_* (37 invariants), r33_wb (W4/W6/W7), r33_tagvec; KATs test_gt_r33 (6), test_pool_cycle_r33 (4, 6/6 mutations), test_gt_harness_r33 (5, 18/18), test_version_bump_r33 (2, 8/8); econsim 26/26 |
+| Playbooks / harness | gt_pool_cycle.py (install with code check, register with tag check, follow-mode proving, continuous epochs, resume, rollover, beacon publish), pool_audit.py, pool_census.py, gas_census.py, audit task 3, time_to_coins --from-earn-log, content-hash staleness, the fee-inclusive earn counter |
+| Docs | `gametheory/contracts/README.md` tutorial (KAT R33-5), `gametheory/ANNOUNCE_DRAFT.md`, the game-theory page's R33 section; lessons 34–38; D-GT-18..28 |
+
 ## 13. Update log — after measurement
 
 ### Round 32 — after measurement (2026-11-15)
@@ -392,6 +667,63 @@ votes with slashing and P+ε acknowledged (M1), Ponzi shapes as NO-GO (N1, N5), 
   (`harness/runtime/gt_time_to_coins.json`): 1 DERO in 1.11 h at 8 threads / 80 %; user action U-MAINNET-EARN.
 - **Mainnet (read-only):** reward 30,750 atomic in 60/60 blocks; difficulty formula 60/60; supply 16,867,343 = formula;
   6.0 distinct keys per block; the default Dev_Address integrated 1 of 60 blocks (`harness/runtime/gt_reward_live.json`).
+
+### Round 33 — mainnet pool cycle 1 (2026-11-17, record `harness/runtime/gt_pool_mainnet_20261117T191844.json`)
+
+| field | value |
+|---|---|
+| Run | `gt_pool_cycle.py --network mainnet --mainnet-confirm --wallets m1..m5 --anchors 4 --depth 8`, run r33-pool-mainnet-1, epoch 19,790, heights 7,916,059 → 7,916,522, 8,538 s; gt_pool + gt_beacon installed on mainnet (new SCIDs, audited code), 5 wallets registered with their 8-byte tags verified in the contract |
+| Chain audit | PASS: 36 proven blocks (7,916,102–7,916,324) re-read and parsed; credits m1 4 (= the tagged non-final miniblocks), TW 400, claim m1 22,800 = min(P0 × W / TW, 30 % × P0) with P0 76,000; balance 74,200 = burned 21,000 + pools + stakes |
+| Economics | fees 64,756 atomic for the epoch; 36 proofs at 1,672–1,773 atomic each (storage estimate 1,472 + 200); member work ≈ 1.2 % of the proven blocks' normal miniblocks, so anchored fixed-depth proving cost ~9 proofs per credit → continuous mode uses --follow (GT-B34) |
+| Cap | with one credited member the 30 % per-identity cap paid 22,800 of 76,000; the rest is not lost: Rollover moves it into a later epoch (now automatic in the loop); the pot drains at most 30 % per epoch while one member is credited |
+| Deflation | 21,000 atomic burned on mainnet (20 % of the 100,000 sponsor deposit + entry fees), locked with no exit |
+
+### Round 33 — mainnet continuous mode, epoch 19,791 (follow mode; record `harness/runtime/gt_pool_mainnet_20261117T212105.json`)
+
+| field | value |
+|---|---|
+| Run | the same audited pool contract, `--follow --epochs 3 --max-proofs 15 --sponsor 20000`; 15 proofs (7,916,535–7,916,624) |
+| Chain audit | PASS: credits m1 3 = the tagged miniblocks; claim m1 3,000 = 30 % × P0 10,000 (cap); conservation; balance 85,200, burned 25,000 cumulative |
+| Follow vs fixed depth | 0.20 credits per proof (3 / 15) against 0.11 in cycle 1 (4 / 36); epoch fees 28,138 vs 64,756 atomic (GT-B34 measured) |
+| Rotation | every credit was m1's because the earn job mined m1 for four slices from 10:46 (m1 was the poorest after sponsoring); the rotation resumed at 12:07 (m5, m3, m4, m2), so the next measured epoch covers more members |
+
+### Round 33 — mainnet continuous mode, epoch 19,793 (record `gt_pool_mainnet_20261118T012514.json`; re-audit `gt_pool_reaudit_mainnet_e19793.json`)
+
+| field | value |
+|---|---|
+| Driver audit | FAIL (contract w 4 vs parsed 2): a harness defect, not the contract — the watchdog relaunched the loop mid-epoch (lesson 38); the second process audited only its own 15 proofs |
+| Independent re-audit | PASS (`pool_audit.py`, the contract's 21 proven heights 7,917,233–7,917,361): credits m1 4 (= the tagged miniblocks at 7,917,233 / 286 / 310 / 332), TW 400, claim 7,200 = 30 % × P0 24,000, conservation; epochs 19,790 and 19,791 re-audited PASS too |
+| Spend | the relaunched process funded the epoch twice (2 × 20,000; P0 24,000 = 32,000 − 4 prover fees × 2,000); no loss: the second deposit stays in the pool (20 % burned) |
+| Next | relaunched 17:30 on the fixed code: --follow --epochs 2 with m2 locking 1 DERO (objective 4 on mainnet), watchdog on events.jsonl |
+
+### Round 33 — mainnet continuous mode, stake epoch 19,796 (record `gt_pool_mainnet_20261118T074545.json`, re-audit PASS)
+
+| field | value |
+|---|---|
+| Chain audit | PASS (driver and independent re-audit): 15 proven blocks (7,918,422–7,918,456), credits m1 1, m4 1, claims 19,560 each = 30 % × P0 65,200 (P0 includes epoch 19,790's leftover, rolled over automatically) |
+| Stake | m2 locked 1 DERO at 7,917,727 (matured for 19,796) but mined no proven miniblock in the epoch: the boost was not exercised → D-GT-29 keeps epoch 19,798 with the miner steered to m2 |
+| Census | epochs 19,790–19,796: 783 verified miniblocks, 21 KeyHashes, the largest 17.0 %: no alarm (beacon pool_census) |
+| Burn | 37,000 atomic cumulative |
+
+### Round 33 — mainnet stake epoch 19,798 (record `gt_pool_mainnet_20261118T115043.json`, re-audit `gt_pool_reaudit_mainnet_e19798.json` PASS)
+
+| field | value |
+|---|---|
+| Chain audit | PASS (driver and independent re-audit): 15 proven blocks (7,919,229–7,919,256), follow mode, fees 28,728 atomic, wall 37,241 s |
+| Stake (objective 4) | MEASURED on mainnet: m2, 1 DERO locked at 7,917,727 and matured, 3 credits → weight 600 = 200 per credit (the 2× ceiling); TW 600; claim 5,100 = the 30 % per-identity cap of P0 17,000 |
+| Census | epochs 19,790–19,798: 918 verified miniblocks, 23 KeyHashes, the largest 18.7 %: no alarm |
+| Burn | 41,000 atomic cumulative; contract balance 195,780 = burned + pools + stakes (conservation) |
+
+### Round 33 — mainnet step 3c, GT-B15 (record `gt_cycle_mainnet_20261118T050346.json`, chain audit `gt_cycle_audit_mainnet_20261118T050346.json`)
+
+| field | value |
+|---|---|
+| Deploy | gt_audit v2 (the fixed contract) installed by m1, fee 17,790 atomic, 11,755 code bytes; the R32 SCIDs stay retired (D-GT-20) |
+| Round | task 3 (SC balance turnstile), bounty 6,000, auditor bond 600: 4 auditors (m2..m5) entered and revealed, every answer matched the sponsor's; settled nw 4, share 1,500, no dispute, no forfeit, every bond refunded |
+| Fees | 25,883 atomic, 18 calls, wall 1,437.6 s (heights 7,919,884–7,919,961) |
+| Chain audit | net game payoff m1 −26,107, m2..m5 +56 each (= share 1,500 − 1,444 fees), sum −25,883 = −fees exactly; m1's 12,300 mined in the window read from the chain |
+| Defect found | the record missed m1's Settle fee (600; the wallet had not indexed the tx) → lesson 39, D-GT-31, KAT R33-8 |
+| Limit | the turnstile summed only the run's own contracts (the new audit SCID, 0) → GT-B37 (an explicit SCID list) |
 
 ### Live observations log (newest last)
 - 2026-11-15 01:16 sim smoke: the first gt wallet mined 222 blocks alone after a bootstrap miner registered it.

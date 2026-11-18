@@ -149,7 +149,10 @@ func TestR32aAuditCopyAttack(t *testing.T) {
 	w.deroIs("B", 0)
 }
 
-// a wrong answer forfeits its bond to carry, and carry joins the next round's bounty at Post.
+// a wrong answer. R32a forfeited the wrong auditor's bond to carry and paid the right one. R33 GT-A04 changes this on
+// purpose: any revealed answer that differs from the sponsor's marks the round disputed (public), every bond is
+// refunded and the bounty goes back to the sponsor (Reclaim, at once); a majority can grief but never profit.
+// carry still joins the next Post (here nothing was carried).
 func TestR32aAuditWrongAnswerCarry(t *testing.T) {
 	w, scid := gtAuditReady(t, "A", "B", "other")
 	w.at(200)
@@ -163,26 +166,32 @@ func TestR32aAuditWrongAnswerCarry(t *testing.T) {
 	w.auditReveal(scid, a, 1, "B", "wrong")
 	w.at(241)
 	w.must(scid, "Settle", "other", 0, nil, gtU("a", a))
-	w.auditCredit(scid, a, 0, 40000+gtAuditBond)
-	w.auditCredit(scid, a, 1, 0)
-	if w.readU(scid, "carry") != gtAuditBond || w.readU(scid, "a0_disp") != 0 {
-		t.Fatalf("carry %d disp %d", w.readU(scid, "carry"), w.readU(scid, "a0_disp"))
+	w.auditCredit(scid, a, 0, gtAuditBond)
+	w.auditCredit(scid, a, 1, gtAuditBond)
+	if w.readU(scid, "carry") != 0 || w.readU(scid, "a0_disp") != 1 || w.readU(scid, "a0_sb") != 40000 {
+		t.Fatalf("carry %d disp %d sb %d", w.readU(scid, "carry"), w.readU(scid, "a0_disp"), w.readU(scid, "a0_sb"))
 	}
+	w.mustFail(scid, "Reclaim", "A", 0, nil, "not the sponsor", gtU("a", a))
+	w.must(scid, "Reclaim", "owner", 0, nil, gtU("a", a))
+	w.mustFail(scid, "Reclaim", "owner", 0, nil, "reclaimed twice", gtU("a", a))
+	w.deroIs("owner", 40000)
 	w.at(300)
 	a1 := w.auditPost(scid, 5000, "next", "y")
-	if a1 != 1 || w.readU(scid, "a1_bounty") != 5000+gtAuditBond || w.readU(scid, "a1_cin") != gtAuditBond ||
-		w.readU(scid, "carry") != 0 {
+	if a1 != 1 || w.readU(scid, "a1_bounty") != 5000 || w.readU(scid, "a1_cin") != 0 || w.readU(scid, "carry") != 0 {
 		t.Fatalf("round 1 bounty %d cin %d carry %d", w.readU(scid, "a1_bounty"), w.readU(scid, "a1_cin"), w.readU(scid, "carry"))
 	}
 	w.must(scid, "Withdraw", "A", 0, nil, gtU("a", a), gtU("j", 0))
-	w.deroIs("A", 40000+gtAuditBond)
-	w.deroIs("B", 0)
-	if got := w.held(scid, crypto.ZEROHASH); got != gtAuditBond+5000 {
-		t.Fatalf("SC holds %d, want round 1 bounty %d", got, gtAuditBond+5000)
+	w.must(scid, "Withdraw", "B", 0, nil, gtU("a", a), gtU("j", 1))
+	w.deroIs("A", gtAuditBond)
+	w.deroIs("B", gtAuditBond)
+	if got := w.held(scid, crypto.ZEROHASH); got != 5000 {
+		t.Fatalf("SC holds %d, want round 1 bounty %d", got, 5000)
 	}
 }
 
-// the sponsor's revealed digest is wrong; two of three auditors agree on another digest: disputed = 1, they win.
+// the sponsor's revealed digest is wrong; two of three auditors agree on another digest. R32a let that majority win.
+// R33 GT-A04 changes this on purpose: the round is disputed = 1 (the public detection signal), but nobody wins:
+// every bond is refunded and the bounty goes back to the sponsor (a Sybil majority could otherwise take it).
 func TestR32aAuditMajorityDispute(t *testing.T) {
 	w, scid := gtAuditReady(t, "A", "B", "C", "other")
 	w.at(200)
@@ -198,19 +207,20 @@ func TestR32aAuditMajorityDispute(t *testing.T) {
 	w.auditReveal(scid, a, 2, "C", "bad")
 	w.at(241)
 	w.must(scid, "Settle", "other", 0, nil, gtU("a", a))
-	if w.readU(scid, "a0_disp") != 1 || w.readU(scid, "a0_nw") != 2 || w.read(scid, "a0_win") != "good" {
+	if w.readU(scid, "a0_disp") != 1 || w.readU(scid, "a0_nw") != 0 || w.read(scid, "a0_win") != "" || w.readU(scid, "a0_refund") != 1 {
 		t.Fatalf("disp %d nw %d win %v", w.readU(scid, "a0_disp"), w.readU(scid, "a0_nw"), w.read(scid, "a0_win"))
 	}
-	w.auditCredit(scid, a, 0, 30000+gtAuditBond)
-	w.auditCredit(scid, a, 1, 30000+gtAuditBond)
-	w.auditCredit(scid, a, 2, 0)
-	if w.readU(scid, "carry") != gtAuditBond {
-		t.Fatalf("carry %d, want C's bond", w.readU(scid, "carry"))
+	w.auditCredit(scid, a, 0, gtAuditBond)
+	w.auditCredit(scid, a, 1, gtAuditBond)
+	w.auditCredit(scid, a, 2, gtAuditBond)
+	if w.readU(scid, "carry") != 0 || w.readU(scid, "a0_sb") != 60000 {
+		t.Fatalf("carry %d sb %d, want 0 and the bounty", w.readU(scid, "carry"), w.readU(scid, "a0_sb"))
 	}
 }
 
-// the sponsor withholds its reveal: a strict majority wins (disputed = 1); with no majority or no reveals at all the
-// round is undecided (refund = 1) and the bounty goes to carry.
+// the sponsor withholds its reveal. R32a let a strict majority win (disputed = 1) and forfeited non-revealers' bonds
+// when undecided. R33 GT-A04 changes this on purpose: with no sponsor reveal every bond is refunded (refund = 1) and
+// the bounty is claimable by the sponsor only after the timeout (start + commitw + revealw + tmo).
 func TestR32aAuditSponsorNoReveal(t *testing.T) {
 	w, scid := gtAuditReady(t, "A", "B", "C", "other")
 	w.at(200)
@@ -226,17 +236,19 @@ func TestR32aAuditSponsorNoReveal(t *testing.T) {
 	w.at(241)
 	w.mustFail(scid, "RevealSponsor", "owner", 0, nil, "after the reveal window", gtU("a", a), gtS("answer", "x"), gtS("salt", "q"))
 	w.must(scid, "Settle", "other", 0, nil, gtU("a", a))
-	if w.readU(scid, "a0_disp") != 1 || w.readU(scid, "a0_nw") != 2 || w.readU(scid, "a0_refund") != 0 {
-		t.Fatalf("majority path: disp %d nw %d", w.readU(scid, "a0_disp"), w.readU(scid, "a0_nw"))
+	if w.readU(scid, "a0_disp") != 0 || w.readU(scid, "a0_nw") != 0 || w.readU(scid, "a0_refund") != 1 || w.readU(scid, "a0_sb") != 20000 {
+		t.Fatalf("no sponsor reveal: disp %d nw %d refund %d", w.readU(scid, "a0_disp"), w.readU(scid, "a0_nw"), w.readU(scid, "a0_refund"))
 	}
-	w.auditCredit(scid, a, 0, 10000+gtAuditBond)
-	w.auditCredit(scid, a, 2, 0)
+	for j := uint64(0); j < 3; j++ {
+		w.auditCredit(scid, a, j, gtAuditBond)
+	}
+	dl := uint64(200 + 20 + 20 + 2000)
+	w.at(dl)
+	w.mustFail(scid, "Reclaim", "owner", 0, nil, "before the timeout", gtU("a", a))
 
-	// round 1: no sponsor reveal, 1-1 split: undecided, revealers' bonds back, the non-revealer forfeits
+	// round 1: no sponsor reveal, 1-1 split, C does not reveal: every bond back, carry untouched
 	w.at(300)
-	carry0 := w.readU(scid, "carry")
 	a1 := w.auditPost(scid, 7000, "x", "q")
-	b1 := 7000 + carry0
 	w.at(301)
 	w.auditEnter(scid, a1, "A", "h1")
 	w.auditEnter(scid, a1, "B", "h2")
@@ -246,13 +258,12 @@ func TestR32aAuditSponsorNoReveal(t *testing.T) {
 	w.auditReveal(scid, a1, 1, "B", "h2")
 	w.at(341)
 	w.must(scid, "Settle", "other", 0, nil, gtU("a", a1))
-	if w.readU(scid, "a1_refund") != 1 || w.readU(scid, "a1_nw") != 0 || w.readU(scid, "carry") != b1+gtAuditBond {
-		t.Fatalf("undecided: refund %d nw %d carry %d want %d", w.readU(scid, "a1_refund"), w.readU(scid, "a1_nw"),
-			w.readU(scid, "carry"), b1+gtAuditBond)
+	if w.readU(scid, "a1_refund") != 1 || w.readU(scid, "a1_nw") != 0 || w.readU(scid, "carry") != 0 || w.readU(scid, "a1_forf") != 0 {
+		t.Fatalf("undecided: refund %d nw %d carry %d", w.readU(scid, "a1_refund"), w.readU(scid, "a1_nw"), w.readU(scid, "carry"))
 	}
-	w.auditCredit(scid, a1, 0, gtAuditBond)
-	w.auditCredit(scid, a1, 1, gtAuditBond)
-	w.auditCredit(scid, a1, 2, 0)
+	for j := uint64(0); j < 3; j++ {
+		w.auditCredit(scid, a1, j, gtAuditBond)
+	}
 
 	// round 2: nobody reveals and no sponsor reveal: every bond back
 	w.at(400)
@@ -269,7 +280,10 @@ func TestR32aAuditSponsorNoReveal(t *testing.T) {
 	}
 	w.must(scid, "Withdraw", "B", 0, nil, gtU("a", a2), gtU("j", 1))
 	w.must(scid, "Withdraw", "B", 0, nil, gtU("a", a), gtU("j", 1))
-	w.deroIs("B", 10000+2*gtAuditBond)
+	w.deroIs("B", 2*gtAuditBond)
+	w.at(dl + 1)
+	w.must(scid, "Reclaim", "owner", 0, nil, gtU("a", a))
+	w.deroIs("owner", 20000)
 }
 
 func TestR32aAuditGuards(t *testing.T) {

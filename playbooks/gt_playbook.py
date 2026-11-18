@@ -382,10 +382,11 @@ class Playbook:
                 vote = truth if j != 'j3' else rng.randint(0, 1)          # j3: a lazy juror votes at random
                 salt = gtlib.new_password()
                 votes[(i, j)] = (vote, salt)
-                self.invoke(j, 'attest', 'CommitVote', [arg_u('i', i), arg_s('h', gtlib.commit_vote(i, vote, salt))], wait=False)
+                self.invoke(j, 'attest', 'CommitVote', [arg_u('i', i), arg_s('h', gtlib.commit_vote(i, vote, salt, self.addr(j)))], wait=False)  # R33 GT-A08: address-bound
                 time.sleep(1)
         if challenged:
-            vh = max(int(self.sc_vars('attest')[0].get(f'c{i}vh', 0)) for i in challenged)
+            # R33 GT-A07: votes are committed until claim height + window + commitw, revealed in the next revealw
+            vh = max(int(self.sc_vars('attest')[0].get(f'c{i}h', 0)) for i in challenged) + P['window']
             self.wait_height(vh + P['commitw'] + 1)
             for (i, j), (vote, salt) in votes.items():
                 self.invoke(j, 'attest', 'RevealVote', [arg_u('i', i), arg_u('vote', vote), arg_s('salt', salt)], wait=False)
@@ -470,7 +471,7 @@ class Playbook:
         for n, amt in entrants.items():
             num, salt = random.Random(n + self.run.id).randrange(1 << 60), gtlib.new_password()
             secrets_[n] = (num, salt)
-            self.invoke(n, 'prize', 'Enter', [arg_s('commit', gtlib.commit_num(num, salt))], dero=amt + P['rbond'], wait=False)
+            self.invoke(n, 'prize', 'Enter', [arg_s('commit', gtlib.commit_num(num, salt))], dero=amt + P['rbond'] + P.get('fee', 1000), wait=False)  # R33 GT-A06: the entry fee
             time.sleep(1)
         self.wait_height(self.height() + 4)
         v, _ = self.sc_vars('prize')

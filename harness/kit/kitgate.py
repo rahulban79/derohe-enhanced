@@ -11,6 +11,9 @@
   G11 no cut sentence without its tooltip + ⓘ: textkit.audit on the page AND on the rendered DOM
   G12 every tag opens its exact citations: assetkit.cite_audit (0 uncited, 0 malformed) + the popover opens on an HTML
       pill and an SVG pill with only vscode://file/ or https:// links, pins on click and closes on Escape
+  G13 r33: every chart (svg.chart) has its text alternative: role=img, a <title> and a <desc> named by aria-labelledby,
+      and a data table with one row per bar (chartkit.audit; a page without a chart passes)
+  G14 r33 (browser only): no horizontal page scroll at any --width (a wide table or diagram scrolls in its own box)
   exit 0 all PASS · 3 any FAIL. --ledger appends one row per gate (markdown table) for a living ledger.
 """
 if __name__ == '__main__' and {'-h', '--help'} & set(__import__('sys').argv[1:]):   # r27 B120: usage, exit 0, nothing run or written
@@ -22,6 +25,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import assetkit as ak  # noqa: E402
+import chartkit as chk  # noqa: E402
 import connectorkit as ck  # noqa: E402
 import textkit as tk  # noqa: E402
 
@@ -45,7 +49,7 @@ TAGS_JS = ("var bt={unk:document.querySelectorAll('.ct-UNK').length,as:0,as_unta
 PROBE_END = ("<script>addEventListener('load',function(){" + ck.PROBE_START_JS + "setTimeout(function(){" + TAGS_JS + ck.PROBE_COLLECT_JS +
              "var d=document.createElement('pre');d.id='KITPROBE';d.textContent=JSON.stringify({errors:window.__errs,trace:tr,tags:bt,"
              "has_conn:!!document.querySelector('svg [marker-end]:not(marker *),svg path.ie,svg path.cx,svg g.cx'),"
-             "has_num:!!document.querySelector('svg g.cx .nb text')});document.body.appendChild(d);},400);});</script>")
+             "has_num:!!document.querySelector('svg g.cx .nb text'),hscroll:document.documentElement.scrollWidth-document.documentElement.clientWidth});document.body.appendChild(d);},400);});</script>")
 
 
 class Bal(html.parser.HTMLParser):
@@ -144,6 +148,13 @@ def run(page, label='manual', ledger=None, widths=(1280,), use_browser=True):
     res.append(('G12 every tag opens its exact citations', ok12, f"registry {ca['registry']} entries · " + ', '.join(
         f"{k} {v['cited']} cited / {v['nocite']} uncited" + (f" / {v['contradicted']} contradicted" if v.get('contradicted') else '') for k, v in sorted(ca['by_class'].items()))
         + f" · malformed {ca['malformed']} · popover {cp if use_browser else 'not run'}"))
+    ch = chk.audit(h)
+    res.append(('G13 every chart has a text alternative', ch['ok'], f"{ch['charts']} chart(s), {len(ch['bad'])} without a full text alternative"
+                + (f": {ch['bad'][:4]}" if ch['bad'] else '')))
+    if use_browser:
+        hs = {w: (probes.get(w) or {}).get('hscroll') for w in widths}
+        ok14 = all(isinstance(v, (int, float)) and v <= 1 for v in hs.values())
+        res.append(('G14 no horizontal page scroll', ok14, ' · '.join(f'{w}px: {"overflow " + str(v) + " px" if v and v > 1 else ("ok" if v is not None else "probe missing")}' for w, v in hs.items())))
     if ledger:
         ts = datetime.datetime.now().astimezone().isoformat(timespec='seconds')
         g = Path(ledger)

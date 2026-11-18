@@ -275,6 +275,9 @@ def audit(root, base, head='HEAD'):
         elif c == 'gotest':
             names = go_test_names(text(f))
             hit = [n for n in names if re.search(r'(?<![\w])' + n + r'(?![\w])', nt)]
+            if not names:      # r33: a _test.go file of helpers only (no Test/Fuzz func) is not a KAT: nothing to register
+                rows[f] = (c, 'ok', 'test helpers only (no Test/Fuzz function)')
+                continue
             rows[f] = (c, 'ok', f'NEW_TESTS {hit[0]}') if hit else (
                 c, 'FAIL', f'unregistered KAT: none of {len(names)} test name(s) in NEW_TESTS')
         elif c == 'page':

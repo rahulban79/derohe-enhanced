@@ -198,3 +198,33 @@ def prune_private(d, keep=12, max_bytes=200 * 1024 * 1024, pattern=None):
             except OSError:
                 pass
     return kept, removed
+
+
+# r33 (public sync check, 2026-11-18): the src-arch generator and its KAT held the machine's node name and the user's
+# name as regex literals, so the code itself would have published them. The terms live outside every repository.
+PUB_TERMS = Path(os.environ.get('DERO_PUB_TERMS') or (Path.home() / 'derohe-persist' / 'pub_private_terms.json'))
+
+
+def private_terms(path=None):
+    """[(compiled regex, placeholder)] for the private names a public page must not show: every string of each
+    placeholder key in the out-of-repo terms file (e.g. {"my-node": [...], "user": [...]}), plus this machine's short
+    host name as 'my-node'. Terms shorter than 4 characters are ignored (too many false hits). [] apart from the
+    host name when the file is absent (a public checkout has nothing private to hide)."""
+    import json, socket
+    out, seen = [], set()
+    f = Path(path) if path else PUB_TERMS
+    try:
+        doc = json.loads(f.read_text()) if f.is_file() else {}
+    except (OSError, ValueError):
+        doc = {}
+    pairs = [(k, t) for k, v in doc.items() if not k.startswith('_') for t in (v if isinstance(v, list) else [v])]
+    host = socket.gethostname().split('.')[0]
+    pairs.append(('my-node', host))
+    for ph, t in pairs:
+        t = str(t).strip()
+        if len(t) < 4 or t.lower() in seen:
+            continue
+        seen.add(t.lower())
+        out.append((re.compile(r'(?i)\b' + re.escape(t) + r'\w*'), ph))
+    return out
+

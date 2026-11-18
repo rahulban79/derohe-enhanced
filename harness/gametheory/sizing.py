@@ -46,7 +46,15 @@ def measured_rate(rows):
     hours = (t1 - t0).total_seconds() / 3600
     if hours < 0.5:
         return None, hours
-    return (total(ticks[-1]) - total(ticks[0])) / DERO / hours * 24, hours
+    # r33: the earn job's counter restarts at 0 when the job is relaunched; sum the increase between consecutive ticks
+    # and count a drop as a restart (its new value is earned since), so a relaunch never makes the rate 0 or negative
+    gained, prev = 0, total(ticks[0])
+    for r in ticks[1:]:
+        cur = total(r)
+        gained += cur - prev if cur >= prev else cur
+        prev = cur
+    rate = gained / DERO / hours * 24
+    return (rate if rate > 0 else None), hours
 
 
 def fee_per_call(gas):
@@ -61,12 +69,13 @@ def deploy_fee(gas):
 def decide(params, gas, rate, est_rate, rows_src):
     fpc = fee_per_call(gas)
     a, z, s = params['attest'], params['prize'], params['service']
-    # the first cycle: m1 deploys 3 contracts + 6 setup calls, plays M3 (enter, reveal, withdraw), M2 (2 notarize + claim)
+    # the first cycle: m1 deploys 3 contracts + 7 setup calls (R33: + prize SetFees), plays M3 (enter, reveal, withdraw), M2 (2 notarize + claim)
     # and claims M1 (k = 10 miniblocks, unchallenged); m2 plays M3 and M2. Principal stays the user's default 1 DERO.
     principal = 1 * DERO
+    zfee = z.get('fee', 1000)      # R33 GT-A06: the gt_prize entry fee is spent, not returned
     cost = {
-        'm1': deploy_fee(gas) + 6 * fpc + (principal + z['rbond'] + 3 * fpc) + (2 * s['fee'] + 3 * fpc) + (10 * a['bond'] + 2 * fpc),
-        'm2': (principal + z['rbond'] + 3 * fpc) + (2 * s['fee'] + 3 * fpc),
+        'm1': deploy_fee(gas) + 7 * fpc + (principal + z['rbond'] + zfee + 3 * fpc) + (2 * s['fee'] + 3 * fpc) + (10 * a['bond'] + 2 * fpc),
+        'm2': (principal + z['rbond'] + zfee + 3 * fpc) + (2 * s['fee'] + 3 * fpc),
     }
     reasons = [f'R1 default: {DEFAULT_N} wallets x {DEFAULT_TARGET / DERO:.5f} DERO (D-GT-6)',
                f'R2 fee per call {fpc} atomic (max storage gas {max((v[1] for v in gas.values()), default=0)} + {TX_KB} KB x {FEE_PER_KB}); deploy fees {deploy_fee(gas)}']

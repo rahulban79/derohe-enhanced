@@ -1,6 +1,6 @@
 {
  "_doc": "r23c round registry: the one place a round's ids live (read by harness/pipeline/fix_build_verify.py and harness/pipeline/benchlock.py, checked by harness/kat/test_round_registry_r23c.py). The literal string 'pending' means not known yet: never replace it with a guess. Protocol: artifacts/dero-rft.md and harness/README.md.",
- "current": "r32a",
+ "current": "r33",
  "upstream_base": "bf274e5",
  "benchlock": "~/derohe-persist/bench.lock",
  "rounds": [
@@ -252,8 +252,9 @@
    "go_mutations": "1762/1762",
    "new_rpc_methods": {},
    "github_sync": {
-    "base": "21d558ee",
-    "target": "348826b6"
+    "base": "a2fbe593",
+    "target": "bd9d5834",
+    "public_commit": "718eab4"
    },
    "tracks": {
     "miner": "paused",
@@ -265,6 +266,28 @@
   },
   {
    "id": "r33",
+   "status": "measured",
+   "version_suffix": "22102026.r32a",
+   "new_tests_base": "dbbcf0e4",
+   "merge_commit": "db301b40",
+   "head_after": "db301b40",
+   "pipeline_full": "pipeline_20261118T025648",
+   "go_mutations": "1763/1763",
+   "new_rpc_methods": {},
+   "github_sync": {
+    "base": "bd9d5834",
+    "target": "pending"
+   },
+   "tracks": {
+    "miner": "paused",
+    "node": "active"
+   },
+   "evidence": "R33 opened 2026-11-17 05:25 by the main session from dbbcf0e4 (R32a measured and pushed 718eab4). The user: \"Make sure R33 is only focused on dero-game-theory-rft.md\" — delegated to the child rft; parent rft stays parked (D-37). Scope: the child rft R33 plan (D-GT-17, GT-B12..B20) plus the user's 2026-11-17 objectives: fixes for the R32a security limits (auditor collusion, Sybil auditors; consensus/peer/range-proof problems), deflation, chain forensics, many-miner reward sharing, stake-weighted rewards without plutocracy, peer-attack protection; research first, then sim and mainnet runs (new gt wallets only). The pipeline-owned gt miner runs; the user's own miner stays off. | build: no consensus-package change in R33 (git diff dbbcf0e4..HEAD: cmd/dero-miner, dvm tests, contracts, harness only; KAT test_version_bump_r33), so the installed +22102026.r32a build stays, as R32 kept r31. | MEASURED 2026-11-18: mainnet gt_pool epochs 19,790/19,791/19,793/19,796/19,798, every independent re-audit PASS; 41,000 atomic burned; census 918 verified miniblocks, 23 KeyHashes, top 18.7 % (no alarm); members' verified share = hashrate prediction (z +0.01); stake boost measured (epoch 19,798: weight 200 per credit, claim at the 30 % cap); gt_audit v2 task-3 round settled on mainnet (4/4 auditors matched, chain audit sum = -fees). Full pipeline_20261118T025648: every Go stage PASS (go mutations 1763/1763, race 27 packages 0 races, shadow 240 treehashes 0 mismatches, install); its project stage failed on a page made stale by epoch 19,798 landing mid-run, closed by regen + a project-only run (child rft D-GT-32). No consensus change: the installed +22102026.r32a build stays, no derod restart needed. | Project-only pipeline_20261118T103001 PASS on f66111e8 (pages, guard, project; coherence_audit FAIL 0) after the close fixes (lessons 39-40, D-GT-33).",
+   "delegated_page": "artifacts/dero-enhanced-game-theory.html",
+   "pipeline_project": "pipeline_20261118T103001"
+  },
+  {
+   "id": "r34",
    "status": "planned",
    "version_suffix": "pending",
    "new_tests_base": "pending",
@@ -281,7 +304,7 @@
     "miner": "paused",
     "node": "active"
    },
-   "evidence": "plan only: artifacts/dero-game-theory-rft.md §1 (R33 prompt) and artifacts/dero-rft.md (parked tracks)"
+   "evidence": "planned next round (B90: named before its first commit)"
   }
  ]
 }

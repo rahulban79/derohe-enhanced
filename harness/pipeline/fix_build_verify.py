@@ -80,6 +80,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 HARNESS = HERE.parent
+AFTER_BUILD_KATS = ('test_src_arch_page_r33.py',)   # r33: KATs of a page that S7 rebuilds late (see the S7 step list)
 ROOT = HARNESS.parent
 BIN = ROOT / 'bin'
 STAGE = BIN / '.staging'
@@ -1583,6 +1584,15 @@ for _pkg, _pat in {
 OWNED += ['dvm/r32_gametheory_test.go', 'blockchain/r32_reward_split_test.go', 'cmd/simulator/r32_getwork_bind_test.go',
           'cmd/gt-wallet/main.go', 'cmd/gt-wallet/main_test.go']
 VET_PKGS += ['./cmd/gt-wallet/']
+
+# r33 (dero-game-theory-rft §8.1-§8.3; non-consensus: DVM tests of the six contracts, the block-proof probe, the
+# audit regressions, the invariant verification, W4/W6/W7, and the miner's --game-tag)
+for _pkg, _pat in {
+        './dvm/': 'TestR33AuditA01ReinitByAnyone|TestR33AuditA01PrizeReinitDrain|TestR33AuditA01ServiceReinitEpochDrain|TestR33AuditA12AnonymousSigner|TestR33AuditA02StakeReuse|TestR33AuditA07SelfChallenge|TestR33AuditA08CommitCopy|TestR33AuditA11ZeroWeightDivZero|TestR33AuditA17ClaimsUnbound|TestR33AuditA09UnchallengedWindow|TestR33AuditA03SettleLineLimit|TestR33AuditA03SettleGriefSweep|TestR33AuditA03SettleStorageGas|TestR33AuditA03Timeout|TestR33AuditA04SybilMajority|TestR33AuditA05PrizeWithhold|TestR33AuditA06PrizeSybilFill|TestR33AuditA14RevealWindows|TestR33PrizeDraw64|TestR33AuditA10ServiceSponsorStuck|TestR33AuditA16Submitter|TestR33AuditA13Deposits|TestR33AuditA15Bounds|TestR33AuditConservationAttest|TestR33AuditConservationService|TestR33AuditConservationPrize|TestR33AuditConservationAudit|TestR33Beacon|TestR33BlockProofVerifiesRealMainnetBlocks|TestR33PoolHonestEpoch|TestR33PoolProofGuards|TestR33PoolStakeBoostAndLock|TestR33PoolSplitNeutral|TestR33PoolChainBack|TestR33PoolLateClaimRefused|TestR33VerifyAttestAccess|TestR33VerifyAttestOutcomes|TestR33VerifyAttestRandom|TestR33VerifyAttestLivenessSilentJuror|TestR33VerifyAttestBounds|TestR33VerifyAuditAccess|TestR33VerifyAuditRandom|TestR33VerifyAuditLiveness|TestR33VerifyAuditBounds|TestR33VerifyBeaconAccess|TestR33VerifyBeaconRandom|TestR33VerifyBeaconBounds|TestR33VerifyPoolRandom|TestR33VerifyPoolBurn|TestR33VerifyPoolInitializeDeposit|TestR33VerifyPoolBounds|TestR33VerifyPoolWeightsAndCap|TestR33VerifyPoolAccess|TestR33VerifyPrizeAccess|TestR33VerifyPrizeRandom|TestR33VerifyPrizeRefreeze|TestR33VerifyPrizeBounds|TestR33VerifyServiceAccess|TestR33VerifyServiceRandom|TestR33VerifyServiceRollLiveness|TestR33VerifyServiceLivenessSilentPayer|TestR33VerifyServiceSweepGuards|TestR33VerifyServiceBounds|TestR33WBAuditBriberyW4|TestR33WBFrontRunProveBlockW6a|TestR33WBFrontRunProveParentW6a|TestR33WBRegisterRaceW6b|TestR33WBBeaconPublishW6c|TestR33WBAuditCommitCopyW6d|TestR33WBOwnAssetCounterW7|TestR33TagVector',
+        './cmd/dero-miner/': 'TestR33GameTagLandsInFlags',
+}.items():
+    NEW_TESTS[_pkg] = f'{NEW_TESTS[_pkg]}|{_pat}' if _pkg in NEW_TESTS else _pat
+OWNED += sorted(__import__('glob').glob('dvm/r33_*_test.go')) + ['cmd/dero-miner/gametag.go', 'cmd/dero-miner/gametag_test.go']
 
 UPSTREAM_BASE = 'bf274e5'           # pristine Release153 content (harness/baseline); rule #28 compares against it
 NEW_TESTS_BASE = 'HEAD'
@@ -3160,9 +3170,17 @@ def s7_project():
              # playbooks/params_r32.json; the sim-chain playbook run (--sim) is a separate harness-tracked job
              [sys.executable, 'harness/gametheory/gt_pipeline.py'],
              [sys.executable, 'harness/intel/detectors.py', '--all'],
-             [sys.executable, 'harness/intel/area_intel.py', '--live']]   # r24: per-area scorecards + proposals (G23)
+             [sys.executable, 'harness/intel/area_intel.py', '--live'],   # r24: per-area scorecards + proposals (G23)
+             # r33 (project-only pipeline_20261118T071831, GP0 STALE): gt_pipeline just rewrote gt_sizing_last.json
+             # from the live earn log, and test_gt_page_r33 (in the KAT files below) checks the page against it, so
+             # re-render the game-theory page here, before the KATs (the later render + --check still runs)
+             [sys.executable, 'artifacts/src/gen_gametheory.py']]
     # the stand-alone KAT files (harness/kat/test_*.py): before R19 test_guard_build_inputs.py existed but no stage ran it
-    steps += [[sys.executable, str(p.relative_to(ROOT))] for p in sorted((HARNESS / 'kat').glob('test_*.py'))]
+    # r33 (project-only pipeline_20261118T080213, SA1/SA8): test_src_arch_page_r33 checks dero-src-arch.html against the
+    # live area scorecard and the consensus/peer captures, which this stage rewrites above, while the page is rebuilt
+    # only below (gen_deroarch build after the miners): it runs after that build (AFTER_BUILD_KATS), not in the glob
+    steps += [[sys.executable, str(p.relative_to(ROOT))] for p in sorted((HARNESS / 'kat').glob('test_*.py'))
+              if p.name not in AFTER_BUILD_KATS]
     steps += [[sys.executable, 'harness/prep_corpus.py']]
     steps += [[sys.executable, f'harness/miners/mine_{m}.py'] for m in
               ('inventory', 'consts', 'flows', 'logbridge', 'localdiff', 'evolution', 'findings', 'press', 'forensics', 'intel', 'areas', 'consensus', 'peers')]   # r23c: evolution (git); r24: consensus observatory rows; r24: peers (mine_peers.py)
@@ -3172,6 +3190,7 @@ def s7_project():
               [sys.executable, 'harness/gen_deroarch.py', 'build'],
               [sys.executable, 'harness/kit/retrofit.py', 'apply', 'harness/model/evidence/release151-migration-report.json'],
               [sys.executable, 'harness/kat/verify_deroarch.py', '--mutations']]
+    steps += [[sys.executable, f'harness/kat/{k}'] for k in AFTER_BUILD_KATS]
     # r24: the current round's ledger page renders the Areas and Disclosure-track sections from area_intel.json and the
     # track at render time, and this S7 rewrote area_intel.json (step 1): re-render it BEFORE run_gates, so G25 and the
     # coherence step compare it with the scorecard of THIS run (found by G25: ledger 'docs WATCH' vs scorecard 'docs OK';

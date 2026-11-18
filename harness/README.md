@@ -378,7 +378,9 @@ python3 -I kat/test_gt_reward_r32.py          # the block-reward split read from
 `../playbooks/gt_ladder.py --mainnet-confirm` grows the mainnet game from 3 to 5 wallets (one deployment, one measured
 step per wallet count, mining continuous; it writes the next step's needs to `<GT_HOME>/mainnet/earn_targets.json`).
 `gametheory/audit_tasks.py --task 1|2 --from H --upto H2` computes the deterministic answer of an audit round (block
-headers; rewards against the code formula), read-only, never below the pruned floor or inside the settle depth.
+headers; rewards against the code formula), read-only, never below the pruned floor or inside the settle depth;
+`--task 3 --scids S1,S2 --topoheight T` (r33 GT-B15, the SC balance turnstile) digests the DERO balances of the listed
+contracts at one settled topoheight (DERO.GetSC) and their sum, under the same refusal rules.
 `gametheory/cycle_audit.py --record <cycle record> [--write]` re-derives a cycle from the contracts and the block headers
 (entrants, mining by the consensus split, net payoffs = −fees); G36 needs it. `gametheory/recipe_lint.py` refuses a live
 command file that marks DONE after a failure. `gametheory/sizing.plan_n_wallet` sizes an N-wallet step.
@@ -388,5 +390,45 @@ python3 -I kat/test_gt_mechanisms_r32.py      # GT1-GT28: contracts, playbooks, 
 python3 -I kat/test_guard_constructs_r29.py   # GC1-GC11: incl. the two DVM print constructs (r32a)
 ```
 
-<!-- doc-current-through: r32a -->
+
+## The verified mining pool (r33)
+
+`../playbooks/gt_pool_cycle.py` runs measured gt_pool epochs (`--follow` proves only around member blocks,
+`--epochs N` continuous, `--lock name=atomic` stakes, `--members`/`--miner-spec` for strategy mixes on a private chain).
+`gametheory/pool_audit.py --scid S --epoch E` re-audits an epoch from the chain over the contract's own proven heights;
+`gametheory/pool_census.py --scid S` evaluates the concentration alarm over every epoch; `gametheory/gas_census.py`
+tabulates gas and fees per entrypoint from every record.
+
+```
+python3 -I kat/test_pool_cycle_r33.py   # PC1-PC4: parser, audit model, the contract's proven set, resume rules
+python3 -I kat/test_gt_r33.py           # R33-1..8: lint of all six contracts, README, census, real-block parse, fee resolution
+python3 -I kat/test_gt_page_r33.py      # GP0-GP9: the game-theory page = records (figures, matrix, charts, privacy, theme)
+python3 -I kat/test_src_arch_page_r33.py   # the overhauled dero-src-arch.html = the tree
+```
+
+`../playbooks/gt_cycle.py --contracts audit --audit-tasks 3 --mainnet-confirm` deploys and plays only the named
+contracts (mainnet step 3c: the fixed gt_audit v2 with one turnstile round). A call fee the wallet has not indexed
+yet is resolved again at record time, else taken from the fee the tx set; the record carries `fee_source` and
+`fees_unresolved` (lesson 39). `gametheory/cycle_audit.py` also audits such audit-only records (no prize contract)
+and then writes only the per-record file, never G36's game-cycle file. DK31/DK33 read the raw miner lines from the
+live log or, in a checkout without it, from the snapshot's `raw_excerpt` (`intel/miner_intel.py`).
+
+## Artifact PDFs stay in sync with their pages (r33, rft §7 B335)
+
+File times cannot prove which page a PDF was printed from. `kit/pdfsync.py` keeps `../artifacts/pdf_manifest.json`:
+per PDF the SHA-256 of the HTML it was printed from, the SHA-256 and size of the PDF, the UTC time; `required` is the
+set of pages that must have a PDF (bootstrapped from the PDFs on disk, never extended to a page without one; a page
+leaves it only by `--drop PAGE --reason TEXT`, and a page required at git HEAD that vanished is STALE). `--print` is the
+`print_copy.py` recipe (print copy → headless Chrome → `--neutral-info` → `pdfscan.py` exit 0; a failing step writes
+nothing). `regen_round.py --apply` runs `pdfsync.py --print` after the last page write and gates `--check`. The PDFs
+themselves stay git-ignored (`artifacts/*.pdf`); the manifest is committed.
+
+```
+python3 -I kit/pdfsync.py --check          # 0 in sync · 3 STALE (html-changed, pdf-changed, no-entry, no-pdf, ...)
+python3 -I kit/pdfsync.py --print [PAGE]   # reprint the stale (or named) PDFs, then the manifest · 5 a print failed
+python3 -I kit/pdfsync.py --list
+python3 -I kat/test_pdfsync_r33.py         # PS1-PS6 (forged pages; Chrome injected, never run)
+```
+
+<!-- doc-current-through: r33 -->
 

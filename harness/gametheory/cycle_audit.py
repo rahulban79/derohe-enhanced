@@ -146,10 +146,10 @@ def main(argv):
     rec = json.loads((rp if rp.is_absolute() else ROOT / rp).read_text())
     rec['_path'] = str(rp)
     rdir = gtlib.GT_HOME / 'runs' / (a.run or rec.get('run') or 'r32-mainnet-cycle')
-    scid = json.loads((rdir / 'state.json').read_text())['scids']['prize']
+    scid = json.loads((rdir / 'state.json').read_text())['scids'].get('prize')   # r33 3c: an audit-only run has no prize
     ev = [json.loads(l) for l in (rdir / 'events.jsonl').read_text().splitlines() if l.strip()]
     earn = [json.loads(l) for l in (gtlib.GT_HOME / 'runs' / a.earn_run / 'events.jsonl').read_text().splitlines() if l.strip()]
-    pv = rpc('DERO.GetSC', {'scid': scid, 'variables': True, 'code': False}).get('stringkeys') or {}
+    pv = (rpc('DERO.GetSC', {'scid': scid, 'variables': True, 'code': False}).get('stringkeys') or {}) if scid else {}
     addrs = wallet_addresses(rec['wallets'])
     chain = (lambda lo, hi: chain_mined(rpc, lo, hi, addrs)) if addrs else None
     out = audit(rec, ev, earn, pv, chain=chain)
@@ -159,7 +159,8 @@ def main(argv):
         return 6
     print(text)
     if a.write:
-        OUT.write_text(text + '\n')
+        if scid:       # r33 3c: G36's newest-cycle file is a game cycle's; an audit-only record writes its own file only
+            OUT.write_text(text + '\n')
         # r32a: one audit per record as well, so the page can show every ladder step (the file above is the newest)
         (ROOT / 'harness/runtime' / ('gt_cycle_audit_' + Path(rec['_path']).stem.replace('gt_cycle_', '') + '.json')).write_text(text + '\n')
     return 0

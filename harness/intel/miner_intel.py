@@ -232,6 +232,32 @@ def split_stats(run):
     return out
 
 
+# r33 (DK31/DK33 failed with 0 samples in every clone: bin/dero-miner.log is git-ignored and lives only in the build
+# checkout): the raw lines the two harness checks re-read, kept in the tracked snapshot. Only lines that match their
+# regexes inside a run window are kept, and none that carries an address.
+EXCERPT_RX = re.compile(r'"M":"(?:TOTAL hashrate|GPU split)"')
+
+
+def raw_excerpt(log, runs):
+    """the raw TOTAL-hashrate and GPU-split lines of `log` and its rotated siblings that fall inside the latest run's
+    [start, end] window, oldest file first; a line carrying a DERO address is dropped. Pure on the files."""
+    base = re.sub(r'\.\d+$', '', str(log))
+    files = [f'{base}.{i}' for i in range(9, 0, -1)] + [base]
+    wins = [(r['start'], r.get('end') or '~') for r in runs[-1:]]   # the checks read the latest run (rows[-1])
+    out = []
+    for f in files:
+        if not Path(f).exists():
+            continue
+        with open(f, errors='replace') as fh:
+            for l in fh:
+                if not EXCERPT_RX.search(l) or re.search(r'\bde[rt]o1[0-9a-z]{20,}', l):
+                    continue
+                m = re.search(r'"T":"([^"]+)"', l)
+                if m and any(a <= m.group(1) <= b for a, b in wins):
+                    out.append(l.rstrip('\n'))
+    return out
+
+
 def regime_windows(S):
     """per-window regime readings from consecutive 'GPU split' lines: the first line's window is unknown (it includes
     start-up), so each later line is one window of (its T - the previous T) seconds"""
@@ -689,6 +715,7 @@ def main():
         except Exception as e:                            # noqa: BLE001 — no census is said, never silently allowed
             ct = {'contended': None, 'why': f'census failed: {type(e).__name__}: {e}'}
     rep = analyse(a.log, a.derod_log, not a.no_rpc, contention=ct)
+    rep['raw_excerpt'] = raw_excerpt(a.log, rep['runs'])   # r33: DK31/DK33 re-read these where the log is absent
     if ct and ct.get('fact'):
         rep['facts'].append(ct['fact'])
     out = Path(a.out) if a.out else HARNESS / f"runtime/minerintel_{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.json"

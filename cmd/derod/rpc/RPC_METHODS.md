@@ -184,7 +184,9 @@ Round 32 (2026-11-15): no derod or wallet RPC change (the Go diff of R32 touches
 
 Round 32a (2026-11-16, node build +22102026.r32a): DERO.GetGasEstimate no longer prints to the derod console. The DVM simulator it runs traced every interpreted line whenever `--debug` was declared (docopt stores an absent flag as false; `dvm/sc.go`) and printed `sc execution error %!s(<nil>)` after every call (`dvm/simulator.go`); the trace now needs `--debug` true and the nil print is gone. The answer itself is unchanged (gascompute, gasstorage, status).
 
-<!-- doc-current-through: r32a -->
+Round 33 (2026-11-17/18): no derod or wallet RPC change (the R33 Go diff is `cmd/dero-miner` — the `--game-tag` flag — and DVM tests). The gt_pool contract and its playbooks rely on three read-only facts: `DERO.GetBlock` returns the block's bytes as `blob` (the contract hashes them with `SHA3256(HEXDECODE(...))`), `DERO.GetSC` lists every stored key (the pool's own `pr<h>` proven heights, read by `pool_audit.py`), and `DERO.GetBlockHeadersRange` gives the per-block `fees` that the chain audit's mining split needs.
+
+<!-- doc-current-through: r33 -->
 
 Example:
 

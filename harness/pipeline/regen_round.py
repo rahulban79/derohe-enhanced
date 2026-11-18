@@ -26,6 +26,10 @@ published pages into a scratch dir (the out-of-repo tool, read-only: -B, DERO_PD
 SKIP with the reason) and coherence. KAT harness/kat/test_regen_gates_r31.py; HS7 (test_harness_measure_r28).
 Exit 0 coherence PASS (or dry run) · 4 coherence still drifts after the regeneration · 3 a step failed · 6 a page gate
 FAILED · 2 bad args · 5 the regeneration and its gates PASS but the area proposals feed is STALE (below).
+r33 (rft §7 B335, §0.6 row 'Artifact PDFs'): after the last page write and before coherence, the step
+`harness/kit/pdfsync.py --print` reprints every artifacts/*.pdf whose page changed (print copy -> headless Chrome ->
+--neutral-info -> pdfscan, artifacts/pdf_manifest.json updated), and the page gate `pdfsync` (`--check`) must PASS (a
+tree without the tool plans no such gate). KAT harness/kat/test_pdfsync_r33.py PS5.
 r31 (detector agent note, rft §8 R31 Part B item 7): when the area detector records are stale (harness/intel/detectors.py
 --check: a scanned input, the tool or the registry changed since they were written) the regeneration re-runs
 `detectors.py --all` right after prep_corpus (a pure on-disk scan, never the node). The proposals feed
@@ -71,13 +75,16 @@ def ledger_step(root=ROOT):
 TAIL_STEPS = ([['harness/kit/soundpage.py', '--write-gen'],   # r30 (B225): the soundness page's record blocks
             ['harness/kit/soundpage.py', '--write-known'], # r30 merge (v5): the dataset section; G30/G31 fail without it
             ['artifacts/src/gen_enhancements.py'],         # r31 prep (rft §2.27): before the index that lists it
+            ['artifacts/src/gen_gametheory.py'],           # r33: the delegated ledger page reads mainnet records that land mid-round
             ['harness/gen_index.py'],
             ['harness/kit/soundpage.py', '--write-measured'],  # r31 (B329): the measured line reads round.json; write it, then check
             ['harness/kit/soundpage.py', '--check-measured'],
+            ['harness/kit/pdfsync.py', '--print'],          # r33 (B335): reprint every PDF whose page changed
             ['harness/intel/coherence.py', '--record']])
 
 
 DETECTORS = 'harness/intel/detectors.py'
+PDFSYNC = 'harness/kit/pdfsync.py'                         # r33 (B335): the HTML<->PDF manifest (step + gate)
 FEED = 'harness/runtime/area_proposals.json'
 FEED_CMD = 'python3 -I harness/intel/area_intel.py --live'
 FEED_STALE = 5
@@ -189,6 +196,8 @@ def gate_plan(root=ROOT, pubscrub=None, out_dir=None):
          ('FE8 forensics frontend KAT', [PY, '-I', 'harness/kat/test_forensics_frontend2_r26.py'], None, {}),
          ('pdfscan', [PY, '-I', 'harness/kit/pdfscan.py'] + pdfs if pdfs else None,
           None if pdfs else 'no PDF in artifacts/ (the ledger PDF is printed at publish: scan it then)', {})]
+    if (root / PDFSYNC).is_file():                         # r33 (B335): every PDF printed from its current page
+        g.append(('pdfsync', [PY, '-I', PDFSYNC, '--check'], None, {}))
     if not pubscrub.is_file():
         g.append(('pubscrub dry run', None, f'no pubscrub at {pubscrub.name} (outside the repo: the publish step checks it)', {}))
     elif not pages:

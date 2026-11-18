@@ -8,6 +8,9 @@ characters long. In the contract, `HEX(SHA256(s))` is `hex.EncodeToString(sha256
 - Sponsor (`Post` commit, checked by `RevealSponsor`): `sha256(answer + ":" + salt)`
 - Auditor (`Enter` commit, checked by `Reveal`): `sha256(answer + ":" + salt + ":" + address_string)`
 
+R33 (GT-A03): `answer` must be 1 to 256 bytes long, or `Reveal` and `RevealSponsor` refuse it. The playbook
+answers are 64-hex digests, so this changes nothing for them. The commit formulas themselves are unchanged in R33.
+
 `address_string` is what `ADDRESS_STRING(SIGNER())` returns: the auditor's address in its **mainnet** encoding
 (`dero1...`). `dvm_address_string` builds it with `rpc.NewAddressFromKeys`, which sets `Mainnet: true`
 (rpc/address.go `NewAddressFromKeys`). On a testnet or simulator chain it is therefore still `dero1...`, not

@@ -6275,8 +6275,8 @@
    "file": "cmd/dero-miner/miner.go",
    "pkg": "./cmd/dero-miner/",
    "test": "TestUsageParsesNewFlags",
-   "find": " [--phase-duty=<off>] [--supervised] [--testnet]",
-   "replace": " [--phase-duty=<off>] [--testnet]"
+   "find": " [--game-tag=<hex16>] [--supervised] [--testnet]",
+   "replace": " [--game-tag=<hex16>] [--testnet]"
   },
   {
    "id": "gm-r23b-launchd-supervised",
@@ -14105,6 +14105,15 @@
    "replace": "if _, isBool := globals.Arguments[\"--debug\"].(bool); isBool && simulator { // r32a mutated: the old bug, trace whenever --debug is present",
    "test": "TestR32aSimulatorQuietWithoutDebug",
    "pkg": "./dvm/"
+  },
+  {
+   "id": "gm-r33-usage-game-tag",
+   "file": "cmd/dero-miner/gametag.go",
+   "pkg": "./cmd/dero-miner/",
+   "test": "TestR33GameTagLandsInFlags",
+   "find": "\t\tcopy(work[game_tag_offset:game_tag_offset+game_tag_len], game_tag[:])",
+   "replace": "\t\t_ = game_tag",
+   "note": "r33 GT-B25/B32: the tag is not written into the work blob"
   }
  ]
 }

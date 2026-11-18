@@ -2754,4 +2754,40 @@ auditor matching; emission audits 0 mismatches. Full pipeline S1–S6 PASS (go m
 119/119), installed 18:41:52, the user restarted derod 21:03:32 on +22102026.r32a; at 21:04:32 the tip block was 10 s old
 with 33 peers.
 
-<!-- doc-current-through: r32a -->
+
+## 53. ★ Round 33: a verified mining pool — the contract checks the block, not a vote (delegated; 2026-11-17)
+
+> From the child rft (`artifacts/dero-game-theory-rft.md` §8.1–§8.3, decisions D-GT-18..28, lessons 34–38, §12/§13)
+> and the records `harness/runtime/gt_pool_*` (mainnet epochs with independent re-audits).
+
+**53.1 Block proofs in the DVM.** A block id is SHA3-256 of the block's bytes (block/block.go:57) and the DVM has
+`SHA3256`, `HEXDECODE`, `SUBSTR` and `BLID()` of the executing block (blockchain/blockchain.go:1021 passes it). `gt_pool`
+stores `BLID()` at an `Anchor` call and later accepts a block's bytes only if their hash matches; consensus allows one
+tip at height − 1 (blockchain/blockchain.go:490-509), so `ProveParent` walks back the main chain from one anchor.
+Every parsed miniblock must carry the block's height, so a shifted parse cannot pass.
+
+**53.2 Proof of mining.** `dero-miner --game-tag=<16 hex>` writes an 8-byte tag into miniblock bytes 32..39 (Flags and
+the first nonce word; the CPU loop iterates only bytes 43..46). The tag is the first 8 bytes of SHA3-256 of the
+member's key, so the contract credits only work that carries it, covered by the proof of work. 4 bytes were not enough:
+other mainnet miners write constant Flags.
+
+**53.3 The pool.** Credits are linear in verified work; locked stake at most doubles a share (split-neutral); 20 % of
+every inflow is burned (no exit); each proven block leaves its timestamp and a KeyHash census. Contracts cannot see
+P2P or reorgs: the pool pays only main-chain work and publishes the concentration it sees.
+
+**53.4 Security.** An independent audit of the four R32 contracts (17 findings, 2 critical: a re-callable Initialize)
+and an invariant verification of all six (5 findings, among them a re-callable Freeze); all fixed with regression
+tests; 37/37 invariants hold. The R32 deployments are retired (D-GT-20).
+
+**53.5 Measured.** Mainnet epochs 19,790, 19,791, 19,793, 19,796 and 19,798: every epoch passes the independent
+re-audit (`harness/gametheory/pool_audit.py`); the members' verified share equals the share their measured hashrate
+predicts (1.23 % vs 1.23 %); follow-mode proving doubled credits per proof; a matured 1-DERO stake weighed 200 per
+credit (the 2× ceiling) and the claim stayed at the 30 % per-identity cap; the census over 5 epochs (918 miniblocks,
+23 KeyHashes, top 18.7 %) raised no alarm; the burn (41,000 atomic) and the census are on the beacon.
+
+**53.6 Audit task 3 on mainnet.** The fixed gt_audit v2 (new SCID) ran one SC-balance turnstile round: 4 auditors,
+every answer matched the sponsor's, settled without dispute, and the chain audit sums to −fees exactly
+(`harness/gametheory/cycle_audit.py` takes audit-only records). The round covered only the run's own contract (GT-B37
+opens an explicit SCID list); a fee the wallet had not indexed is now resolved at record time (lesson 39).
+
+<!-- doc-current-through: r33 -->

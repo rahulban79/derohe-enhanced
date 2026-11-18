@@ -239,6 +239,67 @@ def stop_inflow_check(ledger):
 
 
 # ---------------------------------------------------------------- the checks
+
+# ---- M5 gt_pool (r33, dero-game-theory-rft §8.1 / GT-B30); every rule mirrors gametheory/contracts/gt_pool.bas ----
+M5_DEFAULTS = {'fee': 1000, 'beta': 20, 'epochlen': 400, 'grace': 100, 'S': 100000, 'cap': 30, 'pfee': 2000, 'lockh': 2000}
+M5_PROOF_STORAGE_GAS = (1735, 1927)   # measured ProveBlock storage gas, 598 B / 694 B real blocks (dvm/r33_blockproof_test.go)
+
+
+def m5_weight(w, s, S=100000):
+    """gt_pool credit(): 100 + min(100 * s / S, 100) per verified miniblock (integer floors as the DVM)."""
+    b = min(100 * s // S, 100)
+    return w * (100 + b)
+
+
+def m5_split_gain(w, s, parts_w, parts_s, S=100000):
+    """weight of k identities holding parts of (w, s) minus the single identity's weight (<= 0 means no gain)."""
+    assert sum(parts_w) == w and sum(parts_s) <= s
+    return sum(m5_weight(a, b, S) for a, b in zip(parts_w, parts_s)) - m5_weight(w, s, S)
+
+
+def m5_max_stake_transfer(steps=100000):
+    """the largest share of an epoch pot that full stake can move from unstaked to staked members: staker work
+    fraction x, share 2x / (1 + x); max over x of 2x/(1+x) - x (closed form 3 - 2 sqrt 2 at x = sqrt 2 - 1)."""
+    return max(2 * x / (1 + x) - x for x in (i / steps for i in range(1, steps)))
+
+
+def m5_payout(pool, W, TW, cap=30):
+    return min(pool * W // TW, pool * cap // 100)
+
+
+def m5_cap_split_gain(pool, x, k, cap=30, fee=1000):
+    """a miner with work share x splits into k identities (each under the cap): extra payout minus extra entry fees."""
+    one = min(x, cap / 100) * pool
+    split = min(x, k * cap / 100) * pool
+    return split - one - (k - 1) * fee
+
+
+def m5_member_net(sponsor, n_members, my_share, fee=1000, beta=20, epochs=1):
+    """a member's net over the epochs it stays: its share of the sponsor pot after the burn, minus the entry fee."""
+    pot = sponsor * (100 - beta) // 100
+    return round(my_share * pot * epochs) - fee
+
+
+def m3_draw_frequencies(weights, rounds=20000, seed=32):
+    """gt_prize Draw replicated exactly (gametheory/contracts/gt_prize.bas Reveal 130: sd += num; Draw 180-250:
+    pick = sd % tw, the first revealed entry whose cumulative weight exceeds pick wins); every entrant reveals a
+    uniformly random 64-bit number. Returns the win counts and the chi-square statistic against weights / total."""
+    import random as _r
+    rng = _r.Random(seed)
+    tw = sum(weights)
+    wins = [0] * len(weights)
+    for _ in range(rounds):
+        sd = sum(rng.getrandbits(64) for _ in weights) % (1 << 64)
+        pick, acc = sd % tw, 0
+        for j, w in enumerate(weights):
+            acc += w
+            if pick < acc:
+                wins[j] += 1
+                break
+    exp = [rounds * w / tw for w in weights]
+    chi2 = sum((o - e) ** 2 / e for o, e in zip(wins, exp))
+    return wins, chi2
+
 def analyse(seed=32, params=None):
     params = params or {}
     p1 = dict(M1_DEFAULTS, **params.get('M1', {}))
@@ -313,8 +374,43 @@ def analyse(seed=32, params=None):
     checks.append(('M4 an honest auditor gains when bounty / winners exceeds its fees (6000/2 > 900)', res['m4']['honest_ev'] > 0))
     checks.append(('M4 a bounty below the fee bound does not pay an honest auditor (1500/2 < 900)', res['m4']['below_bound_ev'] < 0))
     checks.append(('M4 a lazy guess or a copied commit loses its bond', res['m4']['lazy_ev'] < 0))
-    checks.append(('M4 colluders override the sponsor only as a strict majority (3 of 5 yes, 2 of 4 no) - not prevented',
-                   m4_majority_override(5, 3) and not m4_majority_override(4, 2)))
+    # r33 GT-A04 (gt_audit v2): a disagreement never overrides the sponsor and never slashes: the round is disputed and
+    # every bond refunded, so colluders (junk answers) gain nothing and lose their fees
+    res['m4']['v2_colluder_ev'] = -fee3
+    checks.append(('M4 v2: colluding junk answers only force a dispute: no bounty, bonds refunded, the colluders lose their fees',
+                   res['m4']['v2_colluder_ev'] < 0))
+
+    # M3 (r33 W14 / GT-B14): win frequency follows the boosted weights (a boosted 100000 principal weighs 200000)
+    wins, chi2 = m3_draw_frequencies([200000, 100000, 100000, 100000, 100000], seed=seed)
+    res['m3_draw'] = {'wins': wins, 'chi2': round(chi2, 2), 'df': 4}
+    checks.append(('M3 the draw\'s win frequency matches weight / total over 20,000 rounds (chi-square < 13.28, p = 0.01, df 4)', chi2 < 13.28))
+    # M5 (r33): the verified mining pool
+    import random as _r
+    rng = _r.Random(seed)
+    worst = 0
+    for _ in range(4000):
+        w, s_ = rng.randint(1, 3000), rng.choice([0, rng.randint(1, 10**6)])
+        k = rng.randint(2, 6)
+        cuts_w = sorted(rng.sample(range(1, w), k - 1)) if w > k else []
+        parts_w = [b - a for a, b in zip([0] + cuts_w, cuts_w + [w])] if cuts_w else [w] + [0] * (k - 1)
+        cuts_s = sorted(rng.randint(0, s_) for _ in range(k - 1))
+        parts_s = [b - a for a, b in zip([0] + cuts_s, cuts_s + [s_])]
+        worst = max(worst, m5_split_gain(w, s_, parts_w, parts_s))
+    res['m5'] = {'split_worst_gain': worst, 'max_stake_transfer': round(m5_max_stake_transfer(), 5),
+                 'cap_split_gain_dominant': m5_cap_split_gain(10**8, 0.6, 2), 'cap_split_gain_small': m5_cap_split_gain(10**5, 0.6, 2),
+                 'member_net_1pct_of_1dero': m5_member_net(10**5, 50, 0.01), 'member_net_10pct_of_1dero': m5_member_net(10**5, 5, 0.10),
+                 'pfee_minus_max_proof_gas': M5_DEFAULTS['pfee'] - max(M5_PROOF_STORAGE_GAS)}
+    checks.append(('M5 splitting work and stake over 2-6 identities never raises the weight (4000 random uneven splits)', worst <= 0))
+    checks.append(('M5 stake moves at most 3 - 2 sqrt 2 = 17.16 % of an epoch pot (numeric max = closed form, 1e-4)',
+                   abs(res['m5']['max_stake_transfer'] - (3 - 2 * 2 ** 0.5)) < 1e-4))
+    checks.append(('M5 the stake boost at most doubles a work share (weight 200 vs 100 per miniblock)', m5_weight(1, 10**9) == 2 * m5_weight(1, 0)))
+    checks.append(('M5 stated limit: a dominant identity (60 %) gains by splitting around the 30 % cap when the pot is large (1 DERO+)',
+                   res['m5']['cap_split_gain_dominant'] > 0 and res['m5']['cap_split_gain_small'] < res['m5']['cap_split_gain_dominant']))
+    checks.append(('M5 a 10 % member of a 1-DERO sponsored epoch nets positive after the 20 % burn and the entry fee',
+                   res['m5']['member_net_10pct_of_1dero'] > 0))
+    checks.append(('M5 a 1 % member of a 1-DERO epoch does NOT recover its entry fee in one epoch (stays several epochs)',
+                   res['m5']['member_net_1pct_of_1dero'] < 0 and m5_member_net(10**5, 50, 0.01, epochs=2) > 0))
+    checks.append(('M5 the prover fee covers the measured proof storage gas (2000 >= 1927)', res['m5']['pfee_minus_max_proof_gas'] >= 0))
 
     # HR: hashrate gain = real incentive / block reward
     res['hr'] = {'gain_1pct_needs_per_block': round(0.01 * 61500), 'gain_if_100_atomic_per_block': hashrate_gain(61500, 100)}
@@ -328,7 +424,7 @@ def analyse(seed=32, params=None):
     res['checks'] = [{'check': c, 'ok': bool(ok)} for c, ok in checks]
     res['ok'] = all(ok for _, ok in checks)
     res['seed'] = seed
-    res['params'] = {'M1': p1, 'M2': p2, 'M3': p3, 'mat_value_atomic': mat_value}
+    res['params'] = {'M1': p1, 'M2': p2, 'M3': p3, 'M5': M5_DEFAULTS, 'mat_value_atomic': mat_value}
     return res
 
 

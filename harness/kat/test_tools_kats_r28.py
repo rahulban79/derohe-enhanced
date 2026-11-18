@@ -27,7 +27,7 @@ never on the live tree, and none reaches the network, the live node or a path ou
   TK14 harness/kit/retrofit.py: apply tags a sourced cell SRC and an unsourced one UNK; strip(apply(h)) == h; apply is
        idempotent; a researched citation verifies only within ±3 lines (an ambiguous quote is never relocated);
        `check` says STALE before apply and current after.
-  TK15 harness/kit/kitgate.py (--no-browser): G5 parses only real JavaScript (a JSON data block is not code), G6
+  TK15 harness/kit/kitgate.py (--no-browser; r33: + G13 chart text alternatives): G5 parses only real JavaScript (a JSON data block is not code), G6
        tolerates optional end tags and names stray / unclosed ones, --ledger appends one row per gate; exit 3 / 0.
   TK16 harness/kit/urlcheck.py (cache only, sandbox without network): a GitHub #L citation is found within ±3 lines,
        'line-mismatch' farther away, 'quote-not-found' absent, http-404 recorded; typographic quotes normalise; inline
@@ -417,9 +417,9 @@ def tk15(P):
     rows = [l for l in led.read_text().splitlines() if l.startswith('| 20')]
     rcg = run(root, ['harness/kit/kitgate.py', str(root / 'kg_good.html'), '--no-browser'], sandbox=False)[0]
     rcb = run(root, ['harness/kit/kitgate.py', str(root / 'kg_badjs.html'), '--no-browser'], sandbox=False)[0]
-    ok = (all(res['good'].values()) and sorted(res['good']) == ['G10', 'G11', 'G12', 'G5', 'G6'] and not res['badjs']['G5']
+    ok = (all(res['good'].values()) and sorted(res['good']) == ['G10', 'G11', 'G12', 'G13', 'G5', 'G6'] and not res['badjs']['G5']
           and res['badjs']['G6'] and not res['stray']['G6'] and res['stray']['G5'] and not res['unclosed']['G6']
-          and len(rows) == 5 and all('| kat |' in r and '| PASS |' in r for r in rows) and rcg == 0 and rcb == 3)
+          and len(rows) == 6 and all('| kat |' in r and '| PASS |' in r for r in rows) and rcg == 0 and rcb == 3)
     return ok, f'{res} · ledger rows {len(rows)} · cli {rcg}/{rcb}'
 
 
